@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#0a0a0c"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>WolfMindset</title>
+<link rel="manifest" href="/manifest.json"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--b:#0a0a0c;--s:#13141a;--s2:#1c1e26;--s3:#242630;--br:#2a2d38;--br2:#363a48;--sv:#c8cdd6;--sv2:#9aa0ab;--sv3:#5a6070;--bl:#3b82f6;--bl2:#1d4ed8;--bl3:#1e3a5f;--blg:#60a5fa;--tx:#e8eaed;--tx2:#9aa0ab;--tx3:#4a5060;--gnd:rgba(34,197,94,0.12);--gnb:#86efac;--am:rgba(251,191,36,0.12);--amb:#fde68a}
+html,body{height:100%;background:var(--b);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
+#root{height:100%;display:flex;flex-direction:column}
+.screen{display:none;flex-direction:column;height:100%}.screen.on{display:flex}
+
+/* LOGIN */
+.login-wrap{align-items:center;justify-content:center;background:var(--b);padding:32px 20px;overflow-y:auto}
+.logo-area{text-align:center;margin-bottom:28px}
+.logo-svg{width:80px;height:80px;margin:0 auto 12px}
+.logo-title{font-size:22px;font-weight:600;color:var(--sv);letter-spacing:0.1em}
+.logo-sub{font-size:10px;color:var(--sv3);letter-spacing:0.2em;text-transform:uppercase;margin-top:3px}
+.login-card{background:var(--s);border:0.5px solid var(--br);border-radius:16px;padding:24px;width:100%;max-width:340px}
+.ltabs{display:flex;gap:3px;background:var(--b);border-radius:10px;padding:3px;border:0.5px solid var(--br);margin-bottom:18px}
+.ltab{flex:1;padding:8px;border:none;border-radius:8px;font-size:14px;cursor:pointer;background:none;color:var(--sv3);font-family:inherit}
+.ltab.on{background:var(--s2);color:var(--sv);font-weight:500;border:0.5px solid var(--br)}
+.inp{width:100%;padding:11px 13px;border:0.5px solid var(--br);border-radius:10px;background:var(--b);color:var(--tx);font-size:15px;margin-bottom:10px;font-family:inherit}
+.inp:focus{outline:none;border-color:var(--bl)}
+.inp option{background:var(--s)}
+.btn-p{width:100%;padding:13px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit}
+.btn-p:active{background:var(--bl)}
+.err{font-size:13px;color:#f87171;margin-bottom:10px;text-align:center}
+
+/* LAYOUT */
+.app-layout{display:flex;flex-direction:column;height:100%;background:var(--b)}
+.topbar{background:var(--s);border-bottom:0.5px solid var(--br);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-logo{width:28px;height:28px}
+.topbar-name{font-size:13px;font-weight:600;color:var(--sv);letter-spacing:0.06em}
+.topbar-right{font-size:11px;color:var(--tx3)}
+.main-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:80px}
+.bottom-nav{flex-shrink:0;background:var(--s);border-top:0.5px solid var(--br);display:flex;padding:8px 0 max(12px,env(safe-area-inset-bottom));position:fixed;bottom:0;left:0;right:0;z-index:50}
+.bnav{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;border:none;background:none;padding:4px;font-family:inherit}
+.bnav svg{width:22px;height:22px;color:var(--tx3)}
+.bnav.on svg{color:var(--blg)}
+.bnav-lbl{font-size:10px;color:var(--tx3);letter-spacing:0.04em}
+.bnav.on .bnav-lbl{color:var(--blg)}
+
+/* COACH SIDEBAR LAYOUT */
+.coach-layout{display:flex;height:100%}
+.sidebar{width:200px;min-width:200px;background:var(--s);border-right:0.5px solid var(--br);display:flex;flex-direction:column;flex-shrink:0}
+.sb-brand{padding:14px 16px;border-bottom:0.5px solid var(--br);display:flex;align-items:center;gap:9px}
+.sb-name{font-size:12px;font-weight:600;color:var(--sv);letter-spacing:0.06em}
+.sb-role{font-size:10px;color:var(--sv3);letter-spacing:0.08em;text-transform:uppercase}
+.coach-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.coach-topbar{background:var(--s);border-bottom:0.5px solid var(--br);padding:11px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.coach-topbar-title{font-size:14px;font-weight:500;color:var(--sv)}
+.coach-content{flex:1;overflow-y:auto;padding:18px}
+.nav{flex:1;padding:8px;overflow-y:auto}
+.ni{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--tx3);margin-bottom:2px;border:none;background:none;width:100%;text-align:left;font-family:inherit}
+.ni:hover{background:var(--s2);color:var(--sv2)}
+.ni.on{background:var(--bl3);color:var(--blg);font-weight:500;border:0.5px solid rgba(59,130,246,0.2)}
+.ni svg{width:14px;height:14px;flex-shrink:0;opacity:.8}
+.sb-out{margin:8px;padding:8px 10px;border:none;background:none;color:var(--tx3);font-size:12px;cursor:pointer;text-align:left;border-radius:8px;font-family:inherit}
+.sb-out:hover{background:var(--s2)}
+
+/* COMPONENTS */
+.sec{background:var(--s);border:0.5px solid var(--br);border-radius:12px;padding:15px;margin-bottom:12px}
+.sec-title{font-size:10px;font-weight:500;color:var(--sv3);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:0.08em}
+.sec-btn{font-size:12px;color:var(--blg);cursor:pointer;background:none;border:none;font-family:inherit}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:14px}
+.mcard{background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:13px}
+.mlbl{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px}
+.mval{font-size:20px;font-weight:500;color:var(--sv)}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:500}
+.b-sv{background:rgba(200,205,214,0.08);color:var(--sv2);border:0.5px solid var(--br2)}
+.b-bl{background:var(--bl3);color:var(--blg);border:0.5px solid rgba(59,130,246,0.25)}
+.b-gn{background:var(--gnd);color:var(--gnb);border:0.5px solid rgba(34,197,94,0.2)}
+.b-am{background:var(--am);color:var(--amb);border:0.5px solid rgba(251,191,36,0.2)}
+.cc{background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:13px;cursor:pointer}
+.cc:hover{border-color:var(--bl)}
+.av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;border:1px solid;flex-shrink:0}
+.client-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.cc-name{font-size:13px;font-weight:500;color:var(--sv);margin-bottom:2px}
+.cc-sub{font-size:11px;color:var(--tx3);margin-bottom:7px}
+.back-lnk{display:flex;align-items:center;gap:7px;margin-bottom:15px;cursor:pointer;color:var(--tx3);font-size:13px}
+.ta{width:100%;padding:9px 11px;border:0.5px solid var(--br);border-radius:8px;background:var(--b);color:var(--tx);font-size:13px;resize:vertical;min-height:75px;font-family:inherit;margin-bottom:8px}
+.ta:focus{outline:none;border-color:var(--bl)}
+.save-btn{padding:9px 18px;background:var(--bl2);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit}
+.save-btn:active{background:var(--bl)}
+.inp-sm{padding:8px 10px;border:0.5px solid var(--br);border-radius:8px;background:var(--b);color:var(--tx);font-size:13px;font-family:inherit}
+.inp-sm:focus{outline:none;border-color:var(--bl)}
+.mbar-row{display:flex;justify-content:space-between;font-size:12px;color:var(--tx3);margin-bottom:3px}
+.mbar-row span:last-child{color:var(--sv2);font-weight:500}
+.mbar{height:3px;background:var(--s2);border-radius:2px;overflow:hidden;margin-bottom:9px}
+.mbar-fill{height:100%;border-radius:2px}
+.prog-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--br)}
+
+/* MOBILE ENTRENO */
+.day-scroll{display:flex;gap:8px;overflow-x:auto;padding:0 16px 16px;scrollbar-width:none}
+.day-scroll::-webkit-scrollbar{display:none}
+.day-pill{flex-shrink:0;padding:8px 14px;border:0.5px solid var(--br);border-radius:20px;font-size:12px;color:var(--tx3);background:none;cursor:pointer;font-family:inherit;text-align:center;line-height:1.3}
+.day-pill.on{background:var(--bl3);color:var(--blg);border-color:rgba(59,130,246,0.4);font-weight:500}
+.ex-card-m{background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:14px;margin:0 16px 10px}
+.ex-card-m.completed{border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.03)}
+.ex-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
+.ex-num{width:32px;height:32px;border-radius:50%;background:var(--bl3);color:var(--blg);font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:0.5px solid rgba(59,130,246,0.3)}
+.ex-num.dn{background:var(--gnd);color:var(--gnb);border-color:rgba(34,197,94,0.3)}
+.ex-name{font-size:14px;font-weight:500;color:var(--sv);margin-bottom:2px}
+.ex-muscle{font-size:11px;color:var(--tx3);line-height:1.4}
+.series-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:11px}
+.serie-box{background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 7px;text-align:center;cursor:pointer;position:relative;user-select:none}
+.serie-box.done-s{background:var(--gnd);border-color:rgba(34,197,94,0.3)}
+.serie-lbl{font-size:10px;color:var(--tx3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em}
+.serie-val{font-size:14px;font-weight:500;color:var(--sv)}
+.peso-row{display:flex;align-items:center;gap:10px;background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.peso-lbl{font-size:12px;color:var(--tx3);flex:1}
+.peso-ctrls{display:flex;align-items:center;gap:10px}
+.peso-btn{width:34px;height:34px;border-radius:8px;border:0.5px solid var(--br2);background:var(--s);color:var(--sv);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;user-select:none}
+.peso-btn:active{background:var(--bl3)}
+.peso-disp{font-size:16px;font-weight:500;color:var(--blg);min-width:64px;text-align:center}
+.timer-sec{background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:13px;margin-bottom:10px}
+.timer-time{font-size:40px;font-weight:500;color:var(--sv);letter-spacing:-0.02em;text-align:center;line-height:1}
+.timer-lbl{font-size:10px;color:var(--tx3);text-align:center;margin-top:3px;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.08em}
+.timer-bar{height:4px;background:var(--br);border-radius:2px;overflow:hidden;margin-bottom:10px}
+.timer-prog{height:100%;background:var(--bl);border-radius:2px;transition:width 1s linear}
+.timer-prog.urg{background:#ef4444}
+.timer-btns{display:flex;gap:8px}
+.t-btn{flex:1;padding:10px;border:0.5px solid var(--br2);border-radius:10px;background:var(--s);color:var(--sv2);font-size:13px;cursor:pointer;font-family:inherit}
+.t-btn.go{background:var(--bl2);color:#fff;border-color:var(--bl2)}
+.t-btn:active{opacity:.85}
+.pr-chip{background:rgba(251,191,36,0.08);border:0.5px solid rgba(251,191,36,0.25);border-radius:8px;padding:8px 11px;margin-bottom:10px;font-size:12px;color:var(--amb);line-height:1.4}
+
+/* REST OVERLAY */
+.rest-ov{display:none;position:fixed;inset:0;background:rgba(10,10,12,0.98);z-index:200;flex-direction:column;align-items:center;justify-content:center;padding:32px}
+.rest-ov.show{display:flex}
+.rest-title{font-size:11px;color:var(--sv3);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px}
+.rest-time{font-size:80px;font-weight:500;color:var(--sv);letter-spacing:-0.03em;line-height:1;margin-bottom:6px}
+.rest-sub{font-size:13px;color:var(--tx3);margin-bottom:28px}
+.rest-bar-w{width:100%;max-width:280px;height:5px;background:var(--br);border-radius:3px;overflow:hidden;margin-bottom:28px}
+.rest-fill{height:100%;background:var(--bl);border-radius:3px;transition:width 1s linear}
+.rest-fill.urg{background:#ef4444}
+.rest-skip{padding:12px 32px;border:0.5px solid var(--br2);border-radius:12px;background:none;color:var(--sv2);font-size:14px;cursor:pointer;font-family:inherit}
+.rest-next{font-size:12px;color:var(--tx3);margin-top:14px;text-align:center}
+
+/* DIETA MÓVIL */
+.meal-card-m{background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:14px;margin:0 16px 10px}
+.meal-hdr{font-size:11px;font-weight:500;color:var(--blg);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px}
+.meal-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--br)}
+.meal-row:last-child{border-bottom:none}
+.meal-dot{width:5px;height:5px;border-radius:50%;background:var(--bl);flex-shrink:0}
+.meal-food{flex:1;font-size:14px;color:var(--sv2)}
+.meal-g{font-size:13px;color:var(--blg);font-weight:500}
+.libre-card{background:var(--am);border:0.5px solid rgba(251,191,36,0.2);border-radius:14px;padding:14px;margin:0 16px 10px;text-align:center}
+.libre-tag{font-size:10px;color:var(--amb);font-weight:500;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px}
+.libre-msg{font-size:13px;color:var(--tx2);line-height:1.5}
+.adapt-box{margin:0 16px 10px;background:var(--s);border:0.5px solid rgba(59,130,246,0.2);border-radius:14px;padding:14px}
+.adapt-lbl{font-size:11px;color:var(--blg);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;font-weight:500}
+.adapt-inp{width:100%;padding:11px;border:0.5px solid var(--br);border-radius:10px;background:var(--s2);color:var(--tx);font-size:14px;font-family:inherit;margin-bottom:8px}
+.adapt-inp:focus{outline:none;border-color:var(--bl)}
+.adapt-result{margin-top:10px;background:var(--bl3);border:0.5px solid rgba(59,130,246,0.3);border-radius:10px;padding:12px;font-size:13px;color:#bfdbfe;line-height:1.6;display:none}
+
+/* CHAT */
+.chat-wrap{display:flex;flex-direction:column;height:100%}
+.chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:9px;padding:16px;-webkit-overflow-scrolling:touch}
+.msg{max-width:86%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.55}
+.msg-u{background:var(--bl2);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.msg-b{background:var(--s);color:var(--tx);align-self:flex-start;border:0.5px solid var(--br);border-bottom-left-radius:4px}
+.msg-sender{font-size:10px;color:var(--sv3);margin-bottom:3px;letter-spacing:0.06em;text-transform:uppercase}
+.chat-input-row{display:flex;gap:8px;padding:10px 16px;border-top:0.5px solid var(--br);flex-shrink:0}
+.chat-inp{flex:1;padding:12px;border:0.5px solid var(--br);border-radius:12px;background:var(--s2);color:var(--tx);font-size:15px;font-family:inherit}
+.chat-inp:focus{outline:none;border-color:var(--bl)}
+.chat-inp::placeholder{color:var(--tx3)}
+.chat-send-btn{width:46px;height:46px;border-radius:12px;background:var(--bl2);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chat-send-btn:active{background:var(--bl)}
+.typing{display:none;font-size:11px;color:var(--tx3);padding:0 16px 6px}
+
+/* IA analysis */
+.ia-result{background:var(--bl3);border:0.5px solid rgba(59,130,246,0.3);border-radius:10px;padding:13px;font-size:13px;line-height:1.65}
+.ia-title{font-size:10px;font-weight:500;color:var(--blg);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.08em}
+.ia-body{color:#bfdbfe}
+
+/* stats */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px;margin-bottom:14px}
+.stat-card{background:var(--s);border:0.5px solid var(--br);border-radius:12px;padding:13px}
+.motiv-card{background:var(--s);border-left:3px solid var(--bl);border-radius:0 14px 14px 0;padding:14px;margin:0 16px 12px}
+.motiv-text{font-size:14px;color:var(--sv2);line-height:1.7}
+.sec-lbl{font-size:10px;font-weight:500;color:var(--sv3);text-transform:uppercase;letter-spacing:0.1em;padding:14px 16px 8px}
+.ph-upload-lbl{display:block;border:1px dashed var(--br2);border-radius:14px;padding:22px;text-align:center;cursor:pointer;margin:0 16px 10px}
+.ph-upload-lbl:hover{border-color:var(--bl);background:var(--s2)}
+
+@media(max-width:600px){.sidebar{display:none}.coach-layout{display:block}}
+</style>
+</head>
+<body>
+<div id="root">
+
+<!-- LOGIN -->
+<div class="screen on login-wrap" id="sLogin" style="display:flex">
+  <div class="logo-area">
+    <svg class="logo-svg" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="80" height="80" rx="12" fill="#0d0d10"/>
+      <path d="M12 64L24 20L40 50L56 20L68 64" stroke="#c8cdd6" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M24 20L19 8L29 16" stroke="#c8cdd6" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M56 20L61 8L51 16" stroke="#c8cdd6" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M12 64L24 57L40 64L56 57L68 64" stroke="#3b82f6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M17 53L12 60" stroke="#9aa0ab" stroke-width="2" stroke-linecap="round"/>
+      <path d="M15 50L10 56" stroke="#9aa0ab" stroke-width="2" stroke-linecap="round"/>
+      <path d="M63 53L68 60" stroke="#9aa0ab" stroke-width="2" stroke-linecap="round"/>
+      <path d="M65 50L70 56" stroke="#9aa0ab" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <div class="logo-title">WOLFMINDSET</div>
+    <div class="logo-sub">Fitness &amp; Wellness</div>
+  </div>
+  <div class="login-card">
+    <div class="ltabs">
+      <button class="ltab on" onclick="setLM('coach',this)">Coach</button>
+      <button class="ltab" onclick="setLM('cliente',this)">Cliente</button>
+    </div>
+    <div id="lerr" class="err" style="display:none"></div>
+    <input class="inp" id="lu" placeholder="Usuario" autocomplete="username"/>
+    <input class="inp" id="lp" placeholder="Contraseña" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <div id="csel" style="display:none;margin-bottom:10px">
+      <select class="inp" id="cid" style="margin-bottom:0"><option value="">Selecciona tu perfil</option></select>
+    </div>
+    <button class="btn-p" onclick="doLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- COACH PANEL -->
+<div class="screen" id="sCoach">
+  <div class="coach-layout">
+    <div class="sidebar">
+      <div class="sb-brand">
+        <svg width="28" height="28" viewBox="0 0 80 80" fill="none"><rect width="80" height="80" rx="12" fill="#0d0d10"/><path d="M12 64L24 20L40 50L56 20L68 64" stroke="#c8cdd6" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M12 64L24 57L40 64L56 57L68 64" stroke="#3b82f6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/></svg>
+        <div><div class="sb-name">WOLFMINDSET</div><div class="sb-role">Coach</div></div>
+      </div>
+      <div class="nav">
+        <button class="ni on" onclick="cNav('clientes',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M1 13c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="12" cy="5" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M14 13c0-1.86-.93-3.5-2.34-4.47" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>Clientes</button>
+        <button class="ni" onclick="cNav('nuevo',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="6" r="3" stroke="currentColor" stroke-width="1.2"/><path d="M1 14c0-3.31 2.69-6 6-6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M12 10v4M10 12h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Nuevo cliente</button>
+        <button class="ni" onclick="cNav('progreso',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Progreso</button>
+        <button class="ni" onclick="cNav('ia',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 015 5c0 2.4-1.7 4.4-4 4.9V14H7v-2.1C4.7 11.4 3 9.4 3 7a5 5 0 015-5z" stroke="currentColor" stroke-width="1.2"/></svg>Asistente IA</button>
+      </div>
+      <button class="sb-out" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+    <div class="coach-main">
+      <div class="coach-topbar"><div class="coach-topbar-title" id="cTitle">Clientes</div><div style="font-size:10px;color:var(--sv3);letter-spacing:0.08em;text-transform:uppercase">WolfMindset · Coach</div></div>
+      <div class="coach-content" id="cContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CLIENTE PANEL (móvil) -->
+<div class="screen" id="sCliente">
+  <div class="app-layout">
+    <div class="topbar">
+      <div class="topbar-left">
+        <svg class="topbar-logo" viewBox="0 0 80 80" fill="none"><rect width="80" height="80" rx="12" fill="#0d0d10"/><path d="M12 64L24 20L40 50L56 20L68 64" stroke="#c8cdd6" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M12 64L24 57L40 64L56 57L68 64" stroke="#3b82f6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/></svg>
+        <div class="topbar-name">WOLFMINDSET</div>
+      </div>
+      <div class="topbar-right" id="klUserName"></div>
+    </div>
+    <div class="main-scroll" id="klContent"></div>
+    <div class="bottom-nav">
+      <button class="bnav on" onclick="klNav('entreno',this)" id="bnavEntreno">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M3 10h2M15 10h2M5 10l1-3 2 6 2-8 2 8 2-6 1 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="bnav-lbl">Entreno</span>
+      </button>
+      <button class="bnav" onclick="klNav('dieta',this)">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M10 3v4M7 5c0 3 1 5 3 5s3-2 3-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M5 10h10l-1.5 7h-7L5 10z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        <span class="bnav-lbl">Dieta</span>
+      </button>
+      <button class="bnav" onclick="klNav('asistente',this)">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M3 4h14a1 1 0 011 1v8a1 1 0 01-1 1H6l-3 2V5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/></svg>
+        <span class="bnav-lbl">Asistente</span>
+      </button>
+      <button class="bnav" onclick="klNav('progreso',this)">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M3 15l4-5 3 3 4-6 3 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="bnav-lbl">Progreso</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- REST OVERLAY -->
+<div class="rest-ov" id="restOv">
+  <div class="rest-title">Descanso</div>
+  <div class="rest-time" id="restTime">90</div>
+  <div class="rest-sub">segundos hasta la siguiente serie</div>
+  <div class="rest-bar-w"><div class="rest-fill" id="restFill" style="width:100%"></div></div>
+  <button class="rest-skip" onclick="skipRest()">Saltar descanso</button>
+  <div class="rest-next" id="restNext"></div>
+</div>
+
+<script>
+const API = '';
+let TOKEN = localStorage.getItem('wm_token');
+let USER = JSON.parse(localStorage.getItem('wm_user') || 'null');
+let CLIENTE_DATA = null;
+let klTab = 'entreno';
+let activeDia = 0;
+let chatH = [], iaH = [];
+let timerIntervals = {};
+let restInt = null;
+
+const AVCS = [
+  {bg:'rgba(59,130,246,0.15)',tx:'#60a5fa',br:'rgba(59,130,246,0.3)'},
+  {bg:'rgba(200,205,214,0.1)',tx:'#c8cdd6',br:'rgba(200,205,214,0.25)'},
+  {bg:'rgba(168,85,247,0.12)',tx:'#c084fc',br:'rgba(168,85,247,0.3)'},
+  {bg:'rgba(34,197,94,0.1)',tx:'#86efac',br:'rgba(34,197,94,0.25)'},
+  {bg:'rgba(251,191,36,0.1)',tx:'#fde68a',br:'rgba(251,191,36,0.25)'}
+];
+const ac = i => AVCS[i % AVCS.length];
+const ini = n => n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+const fmt = s => { const m=Math.floor(s/60),r=s%60; return m>0?`${m}:${String(r).padStart(2,'0')}`:`${s}s`; };
+
+async function api(path, opts = {}) {
+  const r = await fetch(API + '/api' + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {}), ...opts.headers }
+  });
+  if (!r.ok) throw await r.json();
+  return r.json();
+}
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+
+// ── LOGIN ──────────────────────────────────────────────
+function setLM(m, btn) {
+  document.querySelectorAll('.ltab').forEach(t => t.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('csel').style.display = m === 'cliente' ? 'block' : 'none';
+  if (m === 'cliente') loadClienteOptions();
+}
+
+async function loadClienteOptions() {
+  try {
+    // Usar login temporal para obtener lista — en producción el cliente introduce usuario directamente
+    document.getElementById('csel').style.display = 'none'; // el cliente usa su propio username
+  } catch(e) {}
+}
+
+async function doLogin() {
+  const u = document.getElementById('lu').value.trim();
+  const p = document.getElementById('lp').value;
+  const err = document.getElementById('lerr');
+  err.style.display = 'none';
+  try {
+    const data = await api('/auth/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
+    TOKEN = data.token;
+    USER = data.user;
+    localStorage.setItem('wm_token', TOKEN);
+    localStorage.setItem('wm_user', JSON.stringify(USER));
+    if (USER.role === 'coach') { show('sCoach'); renderCoach('clientes'); }
+    else { show('sCliente'); document.getElementById('klUserName').textContent = USER.nombre; await loadClienteData(data.user.clienteId); klNav('entreno', document.getElementById('bnavEntreno')); }
+  } catch(e) {
+    err.textContent = e.error || 'Error al conectar'; err.style.display = 'block';
+  }
+}
+
+async function loadClienteData(id) {
+  CLIENTE_DATA = await api('/clientes/' + id);
+}
+
+function doLogout() {
+  TOKEN = null; USER = null; CLIENTE_DATA = null;
+  localStorage.removeItem('wm_token'); localStorage.removeItem('wm_user');
+  show('sLogin');
+}
+
+// Auto-login si hay token
+if (TOKEN && USER) {
+  if (USER.role === 'coach') { show('sCoach'); renderCoach('clientes'); }
+  else { show('sCliente'); document.getElementById('klUserName').textContent = USER.nombre; api('/clientes/' + USER.clienteId).then(d => { CLIENTE_DATA = d; klNav('entreno', document.getElementById('bnavEntreno')); }).catch(() => doLogout()); }
+}
+
+// ── COACH ──────────────────────────────────────────────
+function cNav(s, btn) {
+  document.querySelectorAll('#sCoach .ni').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  const T = { clientes:'Clientes', nuevo:'Nuevo cliente', progreso:'Progreso', ia:'Asistente IA Coach' };
+  document.getElementById('cTitle').textContent = T[s];
+  renderCoach(s);
+}
+
+async function renderCoach(s) {
+  const el = document.getElementById('cContent');
+  if (s === 'clientes') {
+    const clientes = await api('/clientes');
+    el.innerHTML = hClientes(clientes);
+  } else if (s === 'nuevo') {
+    el.innerHTML = hNuevoCliente();
+  } else if (s === 'progreso') {
+    const clientes = await api('/clientes');
+    el.innerHTML = hProgreso(clientes);
+  } else if (s === 'ia') {
+    el.innerHTML = hIACoach();
+    iaH = [{ role:'assistant', content:'Hola coach, listo. Puedo analizar el progreso de tus clientes, sugerirte ajustes de carga y periodización. ¿En qué trabajamos?' }];
+  }
+}
+
+function hClientes(clientes) {
+  if (!clientes.length) return '<div style="color:var(--tx3);font-size:14px;padding:20px">Sin clientes aún. Crea el primero.</div>';
+  const cards = clientes.map((c, i) => {
+    const a = ac(i);
+    const dp = c.peso_actual ? '' : '—';
+    return `<div class="cc" onclick="verCliente(${c.id})">
+      <div class="av" style="width:38px;height:38px;font-size:13px;background:${a.bg};color:${a.tx};border-color:${a.br};margin-bottom:9px">${ini(c.nombre)}</div>
+      <div class="cc-name">${c.nombre}</div>
+      <div class="cc-sub">${c.objetivo} · ${c.nivel} · Sem ${c.semanas}</div>
+      ${c.peso_actual ? `<span class="badge b-sv">${c.peso_actual}kg</span>` : ''}
+    </div>`;
+  }).join('');
+  return `<div class="grid3">
+    <div class="mcard"><div class="mlbl">Clientes</div><div class="mval">${clientes.length}</div></div>
+    <div class="mcard"><div class="mlbl">Fotos totales</div><div class="mval">${clientes.reduce((a,c)=>a+(c.fotos_count||0),0)}</div></div>
+    <div class="mcard"><div class="mlbl">Activos</div><div class="mval" style="color:#86efac;font-size:14px">Online</div></div>
+  </div>
+  <div class="sec"><div class="sec-title">Clientes</div><div class="client-grid">${cards}</div></div>`;
+}
+
+async function verCliente(id) {
+  const c = await api('/clientes/' + id);
+  const i = 0;
+  const a = ac(0);
+  document.getElementById('cContent').innerHTML = `
+  <div class="back-lnk" onclick="renderCoach('clientes')"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>volver</div>
+  <div style="display:flex;align-items:center;gap:13px;margin-bottom:18px">
+    <div class="av" style="width:48px;height:48px;font-size:16px;background:${a.bg};color:${a.tx};border-color:${a.br}">${ini(c.nombre)}</div>
+    <div><div style="font-size:16px;font-weight:500;color:var(--sv)">${c.nombre}</div><div style="font-size:12px;color:var(--tx3);margin-top:2px">${c.objetivo} · ${c.nivel} · Semana ${c.semanas}</div></div>
+  </div>
+  <div class="grid2" style="margin-bottom:13px">
+    <div class="sec"><div class="sec-title">Macros internos</div>
+      ${mb2('Proteínas','#3b82f6',c.prot,c.prot*4,c.kcal_internas)}
+      ${mb2('Carbos','#a78bfa',c.carbs,c.carbs*4,c.kcal_internas)}
+      ${mb2('Grasas','#f97316',c.fat,c.fat*9,c.kcal_internas)}
+      <div style="font-size:11px;color:var(--tx3);margin-top:4px">${c.kcal_internas} kcal/día (oculto)</div>
+    </div>
+    <div class="sec"><div class="sec-title">Pesos registrados</div>
+      ${c.pesos.slice(-4).map((p,idx)=>`<div class="prog-row"><span style="font-size:12px;color:var(--tx3)">Sem ${idx+1}</span><span style="font-size:13px;color:var(--sv);font-weight:500">${p.peso}kg</span></div>`).join('') || '<div style="font-size:12px;color:var(--tx3)">Sin registros aún</div>'}
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sec-title">Ajustar datos <button class="sec-btn" onclick="guardarDatos(${c.id})">Guardar</button></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Objetivo</div><input class="inp-sm" id="obj" value="${c.objetivo}" style="width:100%"/></div>
+      <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Nivel</div><select class="inp-sm" id="niv" style="width:100%"><option ${c.nivel==='Principiante'?'selected':''}>Principiante</option><option ${c.nivel==='Intermedio'?'selected':''}>Intermedio</option><option ${c.nivel==='Avanzado'?'selected':''}>Avanzado</option></select></div>
+      <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Kcal (interno)</div><input class="inp-sm" id="kcal" type="number" value="${c.kcal_internas}" style="width:100%"/></div>
+      <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Proteína (g)</div><input class="inp-sm" id="prot" type="number" value="${c.prot}" style="width:100%"/></div>
+      <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Carbos (g)</div><input class="inp-sm" id="carbs" type="number" value="${c.carbs}" style="width:100%"/></div>
+      <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Grasas (g)</div><input class="inp-sm" id="fat" type="number" value="${c.fat}" style="width:100%"/></div>
+    </div>
+    <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Comida libre</div>
+    <input class="inp-sm" id="clibre" value="${c.comida_libre||''}" style="width:100%;margin-bottom:8px"/>
+    <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Mensaje motivacional semana</div>
+    <textarea class="ta" id="msgsem">${c.mensaje_semana||''}</textarea>
+    <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Notas coach</div>
+    <textarea class="ta" id="notasc">${c.notas_coach||''}</textarea>
+  </div>
+  <div class="sec">
+    <div class="sec-title">Días de entreno <button class="sec-btn" onclick="addDia(${c.id})">+ día</button></div>
+    <div id="diasWrap">${c.dias.map((d,di)=>`
+      <div style="margin-bottom:10px">
+        <div style="font-size:12px;font-weight:500;color:var(--sv2);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+          ${d.nombre} — ${d.grupo}
+          <button class="sec-btn" onclick="addEjercicio(${d.id},${c.id})">+ ejercicio</button>
+        </div>
+        ${d.ejercicios.map((e,ei)=>`<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--sv)">${e.nombre}</div><div style="font-size:11px;color:var(--tx3)">${e.series} series × ${e.reps} · ${e.peso_objetivo>0?e.peso_objetivo+'kg':''} · ${e.descanso}s descanso</div></div>
+          <button class="sec-btn" onclick="editarEjercicio(${e.id},${d.id},${c.id})">editar</button>
+        </div>`).join('')}
+      </div>`).join('')}
+  </div>
+  <div class="sec">
+    <div class="sec-title">Comidas <button class="sec-btn" onclick="addComida(${c.id})">+ comida</button></div>
+    ${c.comidas.map((m,mi)=>`<div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:500;color:var(--blg);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:7px;display:flex;justify-content:space-between">${m.nombre}<button class="sec-btn" onclick="addAlimento(${m.id},${c.id})">+ alimento</button></div>
+      ${m.items.map(it=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--br)">
+        <div style="width:5px;height:5px;border-radius:50%;background:var(--bl);flex-shrink:0"></div>
+        <span style="flex:1;font-size:13px;color:var(--sv2)">${it.nombre}</span>
+        <span style="font-size:12px;color:var(--blg);font-weight:500">${it.gramos}g</span>
+        <button style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:11px" onclick="editAlimento(${it.id},${c.id})">editar</button>
+      </div>`).join('')}
+    </div>`).join('')}
+  </div>`;
+
+  window._cid = c.id;
+}
+
+async function guardarDatos(id) {
+  await api(`/clientes/${id}`, { method:'PUT', body: JSON.stringify({
+    objetivo: document.getElementById('obj').value,
+    nivel: document.getElementById('niv').value,
+    kcal_internas: parseInt(document.getElementById('kcal').value),
+    prot: parseInt(document.getElementById('prot').value),
+    carbs: parseInt(document.getElementById('carbs').value),
+    fat: parseInt(document.getElementById('fat').value),
+    comida_libre: document.getElementById('clibre').value,
+    mensaje_semana: document.getElementById('msgsem').value,
+    notas_coach: document.getElementById('notasc').value
+  })});
+  const b = document.querySelector('.sec-btn');
+  alert('Guardado correctamente');
+}
+
+async function addDia(cid) {
+  const nombre = prompt('Día (ej: Lunes):'); if (!nombre) return;
+  const grupo = prompt('Grupo muscular (ej: Pecho + Tríceps):'); if (!grupo) return;
+  await api(`/clientes/${cid}/dias`, { method:'POST', body: JSON.stringify({ nombre, grupo, orden: 0 }) });
+  verCliente(cid);
+}
+
+async function addEjercicio(diaId, cid) {
+  const nombre = prompt('Nombre del ejercicio:'); if (!nombre) return;
+  const musculos = prompt('Músculos (ej: Pecho mayor, tríceps):') || '';
+  const series = parseInt(prompt('Series:', '3') || '3');
+  const reps = prompt('Reps:', '10-12') || '10-12';
+  const peso = parseFloat(prompt('Peso objetivo (kg):', '0') || '0');
+  const descanso = parseInt(prompt('Descanso (segundos):', '90') || '90');
+  await api(`/dias/${diaId}/ejercicios`, { method:'POST', body: JSON.stringify({ nombre, musculos, series, reps, peso_objetivo: peso, descanso }) });
+  verCliente(cid);
+}
+
+async function editarEjercicio(exId, diaId, cid) {
+  const series = parseInt(prompt('Series:') || '0');
+  const reps = prompt('Reps:') || '';
+  const peso = parseFloat(prompt('Peso objetivo (kg):') || '0');
+  const descanso = parseInt(prompt('Descanso (segundos):') || '0');
+  const body = {};
+  if (series) body.series = series;
+  if (reps) body.reps = reps;
+  if (peso) body.peso_objetivo = peso;
+  if (descanso) body.descanso = descanso;
+  await api(`/ejercicios/${exId}`, { method:'PUT', body: JSON.stringify(body) });
+  verCliente(cid);
+}
+
+async function addComida(cid) {
+  const nombre = prompt('Nombre de la comida (ej: Desayuno):'); if (!nombre) return;
+  await api(`/clientes/${cid}/comidas`, { method:'POST', body: JSON.stringify({ nombre, orden: 0 }) });
+  verCliente(cid);
+}
+
+async function addAlimento(comidaId, cid) {
+  const nombre = prompt('Alimento:'); if (!nombre) return;
+  const gramos = parseInt(prompt('Gramos (en crudo):') || '0');
+  await api(`/comidas/${comidaId}/alimentos`, { method:'POST', body: JSON.stringify({ nombre, gramos }) });
+  verCliente(cid);
+}
+
+async function editAlimento(id, cid) {
+  const gramos = parseInt(prompt('Nuevos gramos (en crudo):') || '0');
+  if (!gramos) return;
+  await api(`/alimentos/${id}`, { method:'PUT', body: JSON.stringify({ gramos }) });
+  verCliente(cid);
+}
+
+function hNuevoCliente() {
+  return `<div class="sec"><div class="sec-title">Crear nuevo cliente</div>
+    <div style="display:grid;gap:10px">
+      <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Nombre completo</div><input class="inp-sm" id="nc_nombre" placeholder="Ej: Carlos Martínez" style="width:100%"/></div>
+      <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Usuario (para login)</div><input class="inp-sm" id="nc_user" placeholder="Ej: carlos" style="width:100%"/></div>
+      <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Contraseña</div><input class="inp-sm" id="nc_pass" type="password" placeholder="Mínimo 6 caracteres" style="width:100%"/></div>
+      <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Objetivo</div><select class="inp-sm" id="nc_obj" style="width:100%"><option>Volumen</option><option>Definición</option><option>Fuerza</option><option>Recomposición</option></select></div>
+      <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Nivel</div><select class="inp-sm" id="nc_niv" style="width:100%"><option>Principiante</option><option selected>Intermedio</option><option>Avanzado</option></select></div>
+      <button class="save-btn" style="width:100%;padding:12px" onclick="crearCliente()">Crear cliente</button>
+      <div id="nc_msg" style="font-size:13px;text-align:center"></div>
+    </div>
+  </div>`;
+}
+
+async function crearCliente() {
+  const nombre = document.getElementById('nc_nombre').value.trim();
+  const username = document.getElementById('nc_user').value.trim();
+  const password = document.getElementById('nc_pass').value;
+  const objetivo = document.getElementById('nc_obj').value;
+  const nivel = document.getElementById('nc_niv').value;
+  const msg = document.getElementById('nc_msg');
+  if (!nombre || !username || !password) { msg.style.color='#f87171'; msg.textContent='Rellena todos los campos'; return; }
+  try {
+    await api('/auth/register-cliente', { method:'POST', body: JSON.stringify({ username, password, nombre, objetivo, nivel }) });
+    msg.style.color='#86efac'; msg.textContent=`Cliente ${nombre} creado. Login: ${username}`;
+  } catch(e) { msg.style.color='#f87171'; msg.textContent = e.error || 'Error'; }
+}
+
+function hProgreso(clientes) {
+  return `<div class="sec"><div class="sec-title">Progreso de clientes</div>
+    <table style="width:100%;border-collapse:collapse">
+      <tr>${['Cliente','Peso','% Grasa','Semana','Fotos'].map(h=>`<th style="text-align:left;padding:5px 8px;font-size:10px;font-weight:500;color:var(--tx3);border-bottom:0.5px solid var(--br);text-transform:uppercase;letter-spacing:0.07em">${h}</th>`).join('')}</tr>
+      ${clientes.map((c,i)=>{
+        const a=ac(i);
+        return `<tr>
+          <td style="padding:9px 8px"><div style="display:flex;align-items:center;gap:7px"><div class="av" style="width:26px;height:26px;font-size:10px;background:${a.bg};color:${a.tx};border-color:${a.br}">${ini(c.nombre)}</div><span style="font-size:13px;color:var(--sv)">${c.nombre}</span></div></td>
+          <td style="padding:9px 8px;font-size:13px;color:var(--sv);font-weight:500">${c.peso_actual||'—'}</td>
+          <td style="padding:9px 8px;font-size:13px;color:var(--sv2)">${c.grasa_actual||'—'}${c.grasa_actual?'%':''}</td>
+          <td style="padding:9px 8px;font-size:13px;color:var(--blg)">${c.semanas}</td>
+          <td style="padding:9px 8px"><span class="badge b-bl">${c.fotos_count||0}</span></td>
+        </tr>`;
+      }).join('')}
+    </table>
+  </div>`;
+}
+
+function hIACoach() {
+  return `<div style="background:var(--bl3);border:0.5px solid rgba(59,130,246,0.3);border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:13px;color:#bfdbfe">
+    <div style="font-size:10px;color:var(--blg);font-weight:500;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">IA privada — solo coach</div>
+    Pregúntame sobre progresión, periodización, ajuste de cargas o cualquier cliente.
+  </div>
+  <div class="sec" style="display:flex;flex-direction:column;height:500px">
+    <div class="sec-title">Chat IA Coach</div>
+    <div class="chat-msgs" id="iaMsgs" style="flex:1;background:var(--b);border:0.5px solid var(--br);border-radius:10px;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:9px;margin-bottom:10px">
+      <div class="msg msg-b"><div class="msg-sender">WolfMindset IA</div>Hola coach, listo. Puedo analizar el progreso de tus clientes, sugerirte ajustes de carga y periodización. ¿En qué trabajamos?</div>
+    </div>
+    <div class="typing" id="iaTyping">procesando...</div>
+    <div style="display:flex;gap:8px">
+      <input class="inp-sm" id="iaIn" placeholder="Pregunta sobre clientes, progresión..." style="flex:1;padding:9px 11px" onkeydown="if(event.key==='Enter')sendIA()"/>
+      <button class="save-btn" onclick="sendIA()">Enviar</button>
+    </div>
+  </div>`;
+}
+
+async function sendIA() {
+  const inp = document.getElementById('iaIn'), msg = inp.value.trim(); if (!msg) return; inp.value = '';
+  const msgs = document.getElementById('iaMsgs');
+  msgs.innerHTML += `<div class="msg msg-u">${msg}</div>`; msgs.scrollTop = msgs.scrollHeight;
+  iaH.push({ role:'user', content: msg });
+  document.getElementById('iaTyping').style.display = 'block';
+  try {
+    const data = await api('/ia/chat', { method:'POST', body: JSON.stringify({ messages: iaH, system: 'Eres el asistente IA privado del coach WolfMindset. Ayudas con: progresión de carga, periodización, ajustes calóricos internos, estancamientos, volumen óptimo, deload. Respuestas técnicas, concisas. Máximo 4 frases.' }) });
+    iaH.push({ role:'assistant', content: data.reply });
+    document.getElementById('iaTyping').style.display = 'none';
+    msgs.innerHTML += `<div class="msg msg-b"><div class="msg-sender">WolfMindset IA</div>${data.reply}</div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+  } catch(e) { document.getElementById('iaTyping').style.display='none'; msgs.innerHTML += `<div class="msg msg-b"><div class="msg-sender">WolfMindset IA</div>Error. Inténtalo de nuevo.</div>`; }
+}
+
+function mb2(l,c,a,cal,tot){const p=Math.round((cal/tot)*100);return`<div><div class="mbar-row"><span>${l}</span><span>${a}g · ${p}%</span></div><div class="mbar"><div class="mbar-fill" style="width:${p}%;background:${c}"></div></div></div>`;}
+
+// ── CLIENTE ────────────────────────────────────────────
+function klNav(s, btn) {
+  klTab = s;
+  document.querySelectorAll('.bnav').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderKL();
+}
+
+function renderKL() {
+  const el = document.getElementById('klContent');
+  if (!CLIENTE_DATA) { el.innerHTML = '<div style="padding:20px;color:var(--tx3)">Cargando...</div>'; return; }
+  if (klTab === 'entreno') el.innerHTML = hEntreno();
+  else if (klTab === 'dieta') el.innerHTML = hDieta();
+  else if (klTab === 'asistente') { el.innerHTML = hAsistente(); chatH = [{ role:'assistant', content:`Hola ${CLIENTE_DATA.nombre.split(' ')[0]}, aquí para ayudarte con dudas de entreno, dieta y recuperación. ¿Qué necesitas?` }]; }
+  else if (klTab === 'progreso') el.innerHTML = hProgresoCliente();
+}
+
+function hEntreno() {
+  const c = CLIENTE_DATA;
+  if (!c.dias.length) return '<div style="padding:20px;color:var(--tx3);font-size:14px">Tu coach aún no ha publicado el plan de entreno.</div>';
+  const pills = c.dias.map((d,i) => `<button class="day-pill ${i===activeDia?'on':''}" onclick="selDia(${i})">${d.nombre}<br><span style="font-size:10px;opacity:.7">${d.grupo.split('+')[0].trim()}</span></button>`).join('');
+  const d = c.dias[activeDia] || c.dias[0];
+  const exCards = d.ejercicios.map((e,ei) => {
+    const allDone = e._series && e._series.every(s=>s.done);
+    const series = e._series || Array.from({length:e.series},(_,si) => ({done:false,peso:e.peso_objetivo}));
+    if (!e._series) { e._series = series; }
+    const boxes = series.map((s,si) => `<div class="serie-box ${s.done?'done-s':''}" onclick="toggleSerie(${ei},${si})">
+      ${s.done?`<svg style="position:absolute;top:4px;right:4px;width:12px;height:12px" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#86efac" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
+      <div class="serie-lbl">Serie ${si+1}</div>
+      <div class="serie-val" style="${s.done?'color:var(--gnb)':''}">${e.reps} reps</div>
+      ${e.peso_objetivo>0?`<div style="font-size:11px;color:var(--tx3);margin-top:2px">${s.peso}kg</div>`:''}
+    </div>`).join('');
+    return `<div class="ex-card-m ${allDone?'completed':''}" id="excard_${ei}">
+      <div class="ex-header">
+        <div class="ex-num ${allDone?'dn':''}">${allDone?`<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-6" stroke="#86efac" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`:ei+1}</div>
+        <div><div class="ex-name">${e.nombre}</div><div class="ex-muscle">${e.musculos||''}</div></div>
+      </div>
+      ${e.es_pr?`<div class="pr-chip">Nueva marca esta semana. ¡Sigue así, estás progresando!</div>`:''}
+      <div class="series-grid">${boxes}</div>
+      ${e.peso_objetivo>0?`<div class="peso-row">
+        <div class="peso-lbl">Peso de trabajo</div>
+        <div class="peso-ctrls">
+          <button class="peso-btn" onclick="ajPeso(${ei},-2.5)">−</button>
+          <div class="peso-disp" id="pd_${ei}">${e._series[0].peso}kg</div>
+          <button class="peso-btn" onclick="ajPeso(${ei},2.5)">+</button>
+        </div>
+      </div>`:''}
+      <div class="timer-sec">
+        <div class="timer-time" id="tt_${ei}">${fmt(e.descanso)}</div>
+        <div class="timer-lbl">Descanso entre series</div>
+        <div class="timer-bar"><div class="timer-prog" id="tb_${ei}" style="width:100%"></div></div>
+        <div class="timer-btns">
+          <button class="t-btn go" onclick="startTimer(${ei},${e.descanso})">Iniciar descanso</button>
+          <button class="t-btn" onclick="resetTimer(${ei},${e.descanso})">Reset</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="padding-top:8px">
+    <div class="day-scroll">${pills}</div>
+    <div style="padding:0 16px 12px;font-size:13px;color:var(--sv2);font-weight:500">${d.grupo}</div>
+    ${exCards}
+  </div>`;
+}
+
+function selDia(i) { activeDia = i; document.getElementById('klContent').innerHTML = hEntreno(); }
+
+function toggleSerie(ei, si) {
+  const d = CLIENTE_DATA.dias[activeDia];
+  const e = d.ejercicios[ei];
+  if (!e._series) e._series = Array.from({length:e.series},(_,i)=>({done:false,peso:e.peso_objetivo}));
+  e._series[si].done = !e._series[si].done;
+  if (e._series[si].done) {
+    const next = e._series[si+1];
+    if (next && !next.done) showRest(e.descanso, e.nombre, si+2, e.series);
+  }
+  document.getElementById('klContent').innerHTML = hEntreno();
+}
+
+function ajPeso(ei, delta) {
+  const e = CLIENTE_DATA.dias[activeDia].ejercicios[ei];
+  if (!e._series) e._series = Array.from({length:e.series},(_,i)=>({done:false,peso:e.peso_objetivo}));
+  e._series.forEach(s => s.peso = Math.max(0, parseFloat((s.peso + delta).toFixed(1))));
+  const el = document.getElementById(`pd_${ei}`);
+  if (el) el.textContent = e._series[0].peso + 'kg';
+}
+
+function startTimer(ei, total) {
+  if (timerIntervals[ei]) clearInterval(timerIntervals[ei]);
+  let secs = total;
+  const tEl = document.getElementById(`tt_${ei}`), bEl = document.getElementById(`tb_${ei}`);
+  timerIntervals[ei] = setInterval(() => {
+    secs--;
+    if (tEl) tEl.textContent = fmt(secs);
+    if (bEl) { bEl.style.width = (secs/total*100)+'%'; bEl.className = 'timer-prog'+(secs<=10?' urg':''); }
+    if (secs <= 0) { clearInterval(timerIntervals[ei]); delete timerIntervals[ei]; if(tEl)tEl.textContent='¡Vamos!'; }
+  }, 1000);
+}
+
+function resetTimer(ei, total) {
+  if (timerIntervals[ei]) { clearInterval(timerIntervals[ei]); delete timerIntervals[ei]; }
+  const tEl = document.getElementById(`tt_${ei}`), bEl = document.getElementById(`tb_${ei}`);
+  if (tEl) tEl.textContent = fmt(total);
+  if (bEl) { bEl.style.width='100%'; bEl.className='timer-prog'; }
+}
+
+let restTotal = 0, restSecs = 0;
+function showRest(secs, exName, serieNum, totalSeries) {
+  restTotal = secs; restSecs = secs;
+  document.getElementById('restTime').textContent = fmt(secs);
+  document.getElementById('restNext').textContent = serieNum <= totalSeries ? `Siguiente: ${exName} — serie ${serieNum} de ${totalSeries}` : 'Último descanso';
+  document.getElementById('restFill').style.width = '100%';
+  document.getElementById('restFill').className = 'rest-fill';
+  document.getElementById('restOv').classList.add('show');
+  if (restInt) clearInterval(restInt);
+  restInt = setInterval(() => {
+    restSecs--;
+    document.getElementById('restTime').textContent = fmt(restSecs);
+    const pct = (restSecs/restTotal*100);
+    document.getElementById('restFill').style.width = pct+'%';
+    document.getElementById('restFill').className = 'rest-fill'+(restSecs<=10?' urg':'');
+    if (restSecs <= 0) { clearInterval(restInt); restInt=null; skipRest(); }
+  }, 1000);
+}
+
+function skipRest() {
+  if (restInt) { clearInterval(restInt); restInt=null; }
+  document.getElementById('restOv').classList.remove('show');
+}
+
+function hDieta() {
+  const c = CLIENTE_DATA;
+  if (!c.comidas.length) return '<div style="padding:20px;color:var(--tx3);font-size:14px">Tu coach aún no ha publicado el plan de dieta.</div>';
+  const meals = c.comidas.map(m=>`<div class="meal-card-m">
+    <div class="meal-hdr">${m.nombre}</div>
+    ${m.items.map(it=>`<div class="meal-row"><div class="meal-dot"></div><span class="meal-food">${it.nombre}</span><span class="meal-g">${it.gramos}g</span></div>`).join('')}
+  </div>`).join('');
+  const recetas = c.recetas.map(r=>`<div class="meal-card-m">
+    <div class="meal-hdr">Receta · ${r.nombre}</div>
+    ${r.ingredientes.map(it=>`<div class="meal-row"><div class="meal-dot"></div><span class="meal-food">${it.nombre}</span><span class="meal-g">${it.gramos}g</span></div>`).join('')}
+    <div style="font-size:12px;color:var(--tx3);margin-top:10px;padding-top:8px;border-top:0.5px solid var(--br);line-height:1.6">${r.pasos||''}</div>
+  </div>`).join('');
+  return `<div style="padding-top:8px">
+    <div class="sec-lbl">Tu dieta esta semana — todos los pesos en crudo</div>
+    ${meals}
+    <div class="libre-card"><div class="libre-tag">Comida libre</div><div class="libre-msg">${c.comida_libre||'Elige lo que más te apetezca.'}</div></div>
+    ${recetas.length?`<div class="sec-lbl">Recetas opcionales</div>${recetas}`:''}
+    <div class="adapt-box">
+      <div class="adapt-lbl">¿No tienes algún alimento?</div>
+      <input class="adapt-inp" id="adaptIn" placeholder="Ej: solo tengo huevos, avena y fruta..."/>
+      <button class="save-btn" style="width:100%;padding:12px" onclick="adaptarComida()">Adaptar mi comida</button>
+      <div class="adapt-result" id="adaptResult"></div>
+    </div>
+  </div>`;
+}
+
+async function adaptarComida() {
+  const msg = document.getElementById('adaptIn').value.trim(); if (!msg) return;
+  const res = document.getElementById('adaptResult');
+  res.style.display='block'; res.textContent='Adaptando...';
+  try {
+    const data = await api('/ia/chat', { method:'POST', body: JSON.stringify({ messages:[{role:'user',content:msg}], system:`Asistente nutricional WolfMindset. Cliente: objetivo ${CLIENTE_DATA.objetivo}, nivel ${CLIENTE_DATA.nivel}. Dieta flexible. Sugiere alternativa simple con ingredientes disponibles, gramos en crudo, sin mencionar calorías. Lista máx 5 items con gramos. Tono motivador y breve.` }) });
+    res.innerHTML = data.reply;
+  } catch(e) { res.textContent='Consulta con tu coach.'; }
+}
+
+function hAsistente() {
+  const c = CLIENTE_DATA;
+  return `<div class="chat-wrap">
+    <div class="chat-msgs" id="chatMsgs">
+      <div class="msg msg-b"><div class="msg-sender">WolfMindset</div>Hola ${c.nombre.split(' ')[0]}, aquí para ayudarte con dudas de entreno, dieta y recuperación. ¿Qué necesitas?</div>
+    </div>
+    <div class="typing" id="chatTyping">escribiendo...</div>
+    <div class="chat-input-row">
+      <input class="chat-inp" id="chatIn" placeholder="Escribe tu pregunta..." onkeydown="if(event.key==='Enter')sendChat()"/>
+      <button class="chat-send-btn" onclick="sendChat()"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 10l14-7-7 14V10H3z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+    </div>
+  </div>`;
+}
+
+async function sendChat() {
+  const inp = document.getElementById('chatIn'), msg = inp.value.trim(); if (!msg) return; inp.value='';
+  const c = CLIENTE_DATA;
+  const msgs = document.getElementById('chatMsgs');
+  msgs.innerHTML += `<div class="msg msg-u">${msg}</div>`; msgs.scrollTop=msgs.scrollHeight;
+  chatH.push({role:'user',content:msg});
+  document.getElementById('chatTyping').style.display='block';
+  try {
+    const data = await api('/ia/chat', { method:'POST', body: JSON.stringify({ messages:chatH, system:`Asistente de entrenamiento WolfMindset. Cliente: ${c.nombre}, objetivo: ${c.objetivo}, nivel: ${c.nivel}, semana ${c.semanas}. Dieta flexible con comida libre semanal. Responde sobre entreno con pesas, nutrición, recuperación basado en evidencia. Sustituciones de alimento siempre con gramos en crudo. Si mejora en ejercicio, motívale. NUNCA menciones calorías ni que eres IA. 3-4 frases máx. Coach experto, directo, motivador.` }) });
+    chatH.push({role:'assistant',content:data.reply});
+    document.getElementById('chatTyping').style.display='none';
+    msgs.innerHTML += `<div class="msg msg-b"><div class="msg-sender">WolfMindset</div>${data.reply}</div>`;
+    msgs.scrollTop=msgs.scrollHeight;
+  } catch(e) { document.getElementById('chatTyping').style.display='none'; msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">WolfMindset</div>Ahora mismo no puedo responder. Consulta con tu coach.</div>`; }
+}
+
+function hProgresoCliente() {
+  const c = CLIENTE_DATA;
+  return `<div style="padding-top:8px">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="mlbl">Semanas</div><div class="mval">${c.semanas}</div></div>
+      <div class="stat-card"><div class="mlbl">Objetivo</div><div class="mval" style="font-size:14px">${c.objetivo}</div></div>
+      <div class="stat-card"><div class="mlbl">Nivel</div><div class="mval" style="font-size:14px">${c.nivel}</div></div>
+      <div class="stat-card"><div class="mlbl">Días/sem</div><div class="mval">${c.dias.length}</div></div>
+    </div>
+    ${c.mensaje_semana?`<div class="motiv-card"><div class="motiv-text">${c.mensaje_semana}</div></div>`:''}
+    <div class="sec-lbl" style="padding-bottom:8px">Añadir medición</div>
+    <div class="meal-card-m" style="margin-bottom:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Peso (kg)</div><input class="adapt-inp" id="np" type="number" placeholder="84.5" step="0.1" style="margin-bottom:0"/></div>
+        <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">% Grasa</div><input class="adapt-inp" id="ng" type="number" placeholder="16" step="0.1" style="margin-bottom:0"/></div>
+        <div><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Cintura</div><input class="adapt-inp" id="nc" type="number" placeholder="85" style="margin-bottom:0"/></div>
+      </div>
+      <button class="save-btn" style="width:100%" onclick="guardarPeso()">Guardar medición</button>
+    </div>
+    <div class="sec-lbl" style="padding-bottom:8px">Foto de progreso</div>
+    <label class="ph-upload-lbl" for="fUp">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style="margin-bottom:8px"><path d="M12 16V8M8 12l4-4 4 4" stroke="var(--blg)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="3" width="18" height="18" rx="3" stroke="var(--br2)" stroke-width="1.2"/></svg>
+      <div style="font-size:14px;color:var(--tx3)">Subir foto de progreso</div>
+      <div style="font-size:12px;color:var(--tx3);margin-top:3px">JPG · PNG</div>
+    </label>
+    <input type="file" id="fUp" accept="image/*" style="display:none" onchange="uploadFoto(event)"/>
+    <div id="fLoad" style="display:none;padding:0 16px"><div class="ia-result"><div class="ia-title">Analizando...</div></div></div>
+    <div id="fAn" style="padding:0 16px"></div>
+  </div>`;
+}
+
+async function guardarPeso() {
+  const peso = parseFloat(document.getElementById('np').value);
+  const grasa = parseFloat(document.getElementById('ng').value);
+  const cintura = parseFloat(document.getElementById('nc').value);
+  if (!peso) return;
+  await api(`/clientes/${CLIENTE_DATA.id}/peso`, { method:'POST', body: JSON.stringify({ peso, grasa: grasa||null, cintura: cintura||null }) });
+  await loadClienteData(CLIENTE_DATA.id);
+  alert('Medición guardada');
+}
+
+async function uploadFoto(event) {
+  const file = event.target.files[0]; if (!file) return;
+  document.getElementById('fLoad').style.display='block';
+  document.getElementById('fAn').innerHTML='';
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const b64 = e.target.result;
+    const mediaType = b64.split(';')[0].split(':')[1];
+    const imageBase64 = b64.split(',')[1];
+    try {
+      const data = await api('/ia/foto', { method:'POST', body: JSON.stringify({ imageBase64, mediaType, system: `Valoración de progreso WolfMindset. Analiza la foto (objetivo: ${CLIENTE_DATA.objetivo}, nivel: ${CLIENTE_DATA.nivel}, semana ${CLIENTE_DATA.semanas}). Directo, motivador. Sin mencionar tecnología. 4 frases: mejora visible, punto fuerte, motivación, recomendación concreta.` }) });
+      await api(`/clientes/${CLIENTE_DATA.id}/fotos`, { method:'POST', body: JSON.stringify({ url: b64.substring(0,100)+'...', analysis: data.reply }) });
+      document.getElementById('fLoad').style.display='none';
+      document.getElementById('fAn').innerHTML=`<div class="ia-result"><div class="ia-title">Valoración de progreso</div><div class="ia-body">${data.reply}</div></div>`;
+    } catch(err) { document.getElementById('fLoad').style.display='none'; document.getElementById('fAn').innerHTML=`<div class="ia-result"><div class="ia-body">Excelente actitud. La constancia es la clave. Sigue con el plan.</div></div>`; }
+  };
+  reader.readAsDataURL(file);
+}
+</script>
+</body>
+</html>
