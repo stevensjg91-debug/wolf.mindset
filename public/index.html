@@ -482,6 +482,8 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
       <div class="snav">
         <button class="sni on" onclick="cNav('clientes',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 13c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="5" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M14 13c0-1.86-.93-3.5-2.34-4.47" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Clientes</button>
         <button class="sni" onclick="cNav('nuevo',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="6" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M1 14c0-3.31 2.69-6 6-6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 10v4M10 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Nuevo cliente</button>
+        <button class="sni" onclick="cNav('rutinas',this)"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M5 8h6M5 5h4M5 11h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Crear rutina</button>
+        <button class="sni" onclick="cNav('dieta-builder',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2v3M5 4c0 2.5 1 4 3 4s3-1.5 3-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M4 8h8l-1 6H5L4 8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>Crear dieta</button>
         <button class="sni" onclick="cNav('progreso',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Progreso</button>
         <button class="sni" onclick="cNav('ia',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 015 5c0 2.4-1.7 4.4-4 4.9V14H7v-2.1C4.7 11.4 3 9.4 3 7a5 5 0 015-5z" stroke="currentColor" stroke-width="1.3"/></svg>Asistente IA</button>
       </div>
@@ -617,7 +619,7 @@ if(TOKEN&&USER){
 // ═══ COACH ════════════════════════════════════════════
 function cNav(s,btn){
   document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
-  const T={clientes:'Clientes',nuevo:'Nuevo cliente',progreso:'Progreso',ia:'Asistente IA Coach'};
+  const T={clientes:'Clientes',nuevo:'Nuevo cliente',rutinas:'Crear rutina',`dieta-builder`:'Crear dieta',progreso:'Progreso',ia:'Asistente IA Coach'};
   document.getElementById('cTitle').textContent=T[s];renderCoach(s);
 }
 
@@ -626,6 +628,8 @@ async function renderCoach(s){
   if(s==='clientes'){const cl=await api('/clientes');el.innerHTML=hCClientes(cl);}
   else if(s==='nuevo'){el.innerHTML=hNuevo();}
   else if(s==='progreso'){const cl=await api('/clientes');el.innerHTML=hCProgreso(cl);}
+  else if(s==='rutinas'){el.innerHTML=hRutinas();initRutinas();}
+  else if(s==='dieta-builder'){el.innerHTML=hDietaBuilder();initDietaBuilder();}
   else if(s==='ia'){el.innerHTML=hIACoach();iaH=[{role:'assistant',content:'Hola coach, listo para ayudarte con progresión, periodización y ajuste de planes. ¿En qué trabajamos?'}];}
 }
 
@@ -1072,6 +1076,257 @@ async function uploadFoto(event){
   };
   reader.readAsDataURL(file);
 }
+
+// ═══ RUTINAS BUILDER ══════════════════════════════════
+let rutinaState = { clienteId: null, diaId: null, ejerciciosBuscados: [], dias: [] };
+
+function hRutinas() {
+  return `<div class="sec" style="margin-bottom:14px">
+    <div class="sec-hdr">Selecciona cliente</div>
+    <select class="inp" id="rb_cliente" onchange="rbSelectCliente(this.value)" style="margin-bottom:0">
+      <option value="">-- Elige cliente --</option>
+    </select>
+  </div>
+  <div id="rb_dias_wrap" style="display:none">
+    <div class="sec" style="margin-bottom:14px">
+      <div class="sec-hdr">Días de entreno <button class="sec-act" onclick="rbAddDia()">+ Añadir día</button></div>
+      <div id="rb_dias_list"></div>
+    </div>
+    <div id="rb_ex_panel" style="display:none">
+      <div class="sec" style="margin-bottom:14px">
+        <div class="sec-hdr">Añadir ejercicio al día: <span id="rb_dia_nombre" style="color:var(--blg)"></span></div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <select class="inp" id="rb_grupo" onchange="rbBuscarEj()" style="flex:1;min-width:140px">
+            <option value="Todos">Todos los grupos</option>
+            <option>Pecho</option><option>Espalda</option><option>Hombros</option>
+            <option>Bíceps</option><option>Tríceps</option><option>Piernas</option><option>Abdomen</option>
+          </select>
+          <input class="inp" id="rb_buscar" placeholder="Buscar ejercicio..." style="flex:2;min-width:160px" oninput="rbBuscarEj()"/>
+        </div>
+        <div id="rb_ex_lista" style="max-height:320px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function initRutinas() {
+  const cl = await api('/clientes');
+  const sel = document.getElementById('rb_cliente');
+  cl.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.nombre; sel.appendChild(o); });
+}
+
+async function rbSelectCliente(id) {
+  if (!id) return;
+  rutinaState.clienteId = id;
+  document.getElementById('rb_dias_wrap').style.display = 'block';
+  await rbLoadDias();
+}
+
+async function rbLoadDias() {
+  const c = await api('/clientes/' + rutinaState.clienteId);
+  rutinaState.dias = c.dias;
+  const wrap = document.getElementById('rb_dias_list');
+  wrap.innerHTML = c.dias.length ? c.dias.map((d,i) => `
+    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${d.ejercicios.length?'10px':'0'}">
+        <div><div style="font-size:14px;font-weight:700;color:var(--sv)">${d.nombre}</div><div style="font-size:11px;color:var(--tx3);font-weight:500;margin-top:1px">${d.grupo}</div></div>
+        <button class="btn" style="padding:6px 12px;font-size:12px" onclick="rbOpenEj(${d.id},'${d.nombre}')">+ Ejercicio</button>
+      </div>
+      ${d.ejercicios.map((e,ei) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:0.5px solid var(--br)">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--sv2)">${e.nombre}</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:2px">${e.series}×${e.reps} · ${e.peso_objetivo>0?e.peso_objetivo+'kg · ':''}${e.descanso}s descanso</div>
+          </div>
+          <button class="sec-act" onclick="rbEditEx(${e.id},${d.id})" style="font-size:11px">editar</button>
+          <button class="sec-act" onclick="rbDelEx(${e.id},${d.id})" style="font-size:11px;color:#f87171">✕</button>
+        </div>`).join('')}
+    </div>`).join('') : '<div style="font-size:13px;color:var(--tx3)">Sin días. Añade el primero.</div>';
+}
+
+async function rbAddDia() {
+  const n = prompt('Nombre del día (ej: Lunes):'); if (!n) return;
+  const g = prompt('Grupo muscular (ej: Pecho + Tríceps):'); if (!g) return;
+  await api('/clientes/' + rutinaState.clienteId + '/dias', { method:'POST', body: JSON.stringify({ nombre: n, grupo: g }) });
+  await rbLoadDias();
+}
+
+function rbOpenEj(diaId, diaNombre) {
+  rutinaState.diaId = diaId;
+  document.getElementById('rb_ex_panel').style.display = 'block';
+  document.getElementById('rb_dia_nombre').textContent = diaNombre;
+  document.getElementById('rb_ex_panel').scrollIntoView({ behavior: 'smooth' });
+  rbBuscarEj();
+}
+
+async function rbBuscarEj() {
+  const grupo = document.getElementById('rb_grupo').value;
+  const buscar = document.getElementById('rb_buscar').value;
+  const params = new URLSearchParams();
+  if (grupo !== 'Todos') params.append('grupo', grupo);
+  if (buscar) params.append('buscar', buscar);
+  const exs = await api('/ejercicios-db?' + params);
+  const lista = document.getElementById('rb_ex_lista');
+  lista.innerHTML = exs.map(e => `
+    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:12px;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='var(--bl)'" onmouseout="this.style.borderColor='var(--br)'" onclick="rbAddEx(${e.id},'${e.nombre.replace(/'/g,"\\'")}','${e.musculos.replace(/'/g,"\\'")}')">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:12px;font-weight:700;color:var(--blg)">${e.grupo}</span>
+        <span style="font-size:10px;color:var(--tx3);font-weight:600">${e.dificultad}</span>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:3px">${e.nombre}</div>
+      <div style="font-size:11px;color:var(--tx3);font-weight:500">${e.musculos}</div>
+      <div style="font-size:10px;color:var(--sv3);margin-top:4px">${e.equipo}</div>
+      <button class="btn" style="width:100%;padding:7px;font-size:12px;margin-top:8px">+ Añadir</button>
+    </div>`).join('') || '<div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">Sin resultados</div>';
+}
+
+async function rbAddEx(exId, nombre, musculos) {
+  const series = parseInt(prompt('Series:', '3') || '3');
+  const reps = prompt('Reps:', '10-12') || '10-12';
+  const peso = parseFloat(prompt('Peso objetivo (kg):', '0') || '0');
+  const descanso = parseInt(prompt('Descanso (segundos):', '90') || '90');
+  await api('/dias/' + rutinaState.diaId + '/ejercicios', { method:'POST', body: JSON.stringify({ nombre, musculos, series, reps, peso_objetivo: peso, descanso }) });
+  await rbLoadDias();
+}
+
+async function rbEditEx(exId, diaId) {
+  const p = parseFloat(prompt('Nuevo peso objetivo (kg):') || '0');
+  const d = parseInt(prompt('Nuevo descanso (segundos):') || '0');
+  const body = {};
+  if (p) body.peso_objetivo = p;
+  if (d) body.descanso = d;
+  await api('/ejercicios/' + exId, { method: 'PUT', body: JSON.stringify(body) });
+  await rbLoadDias();
+}
+
+async function rbDelEx(exId, diaId) {
+  if (!confirm('¿Eliminar este ejercicio?')) return;
+  await api('/ejercicios/' + exId, { method: 'DELETE' });
+  await rbLoadDias();
+}
+
+// ═══ DIETA BUILDER ═══════════════════════════════════
+let dietaState = { clienteId: null, comidaId: null };
+
+function hDietaBuilder() {
+  return `<div class="sec" style="margin-bottom:14px">
+    <div class="sec-hdr">Selecciona cliente</div>
+    <select class="inp" id="db_cliente" onchange="dbSelectCliente(this.value)" style="margin-bottom:0">
+      <option value="">-- Elige cliente --</option>
+    </select>
+  </div>
+  <div id="db_wrap" style="display:none">
+    <div class="sec" style="margin-bottom:14px">
+      <div class="sec-hdr">Comidas <button class="sec-act" onclick="dbAddComida()">+ Añadir comida</button></div>
+      <div id="db_comidas_list"></div>
+    </div>
+    <div id="db_alim_panel" style="display:none">
+      <div class="sec" style="margin-bottom:14px">
+        <div class="sec-hdr">Añadir alimento a: <span id="db_comida_nombre" style="color:var(--blg)"></span></div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <select class="inp" id="db_cat" onchange="dbBuscarAlim()" style="flex:1;min-width:140px">
+            <option value="Todos">Todas las categorías</option>
+            <option>Proteína</option><option>Carbohidrato</option><option>Verdura</option>
+            <option>Grasa saludable</option><option>Lácteo</option>
+          </select>
+          <input class="inp" id="db_buscar" placeholder="Buscar alimento..." style="flex:2;min-width:160px" oninput="dbBuscarAlim()"/>
+        </div>
+        <div id="db_alim_lista" style="max-height:340px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function initDietaBuilder() {
+  const cl = await api('/clientes');
+  const sel = document.getElementById('db_cliente');
+  cl.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.nombre; sel.appendChild(o); });
+}
+
+async function dbSelectCliente(id) {
+  if (!id) return;
+  dietaState.clienteId = id;
+  document.getElementById('db_wrap').style.display = 'block';
+  await dbLoadComidas();
+}
+
+async function dbLoadComidas() {
+  const c = await api('/clientes/' + dietaState.clienteId);
+  const wrap = document.getElementById('db_comidas_list');
+  const mealIcons = ['☀️','🕐','🍽️','🌅','🌙','🥗'];
+  wrap.innerHTML = c.comidas.length ? c.comidas.map((m, mi) => `
+    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:14px;margin-bottom:10px;overflow:hidden">
+      <div style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:${m.items.length?'0.5px solid var(--br)':'none'}">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:22px">${mealIcons[mi]||'🍽️'}</span>
+          <div style="font-size:14px;font-weight:700;color:var(--sv)">${m.nombre}</div>
+        </div>
+        <button class="btn" style="padding:6px 12px;font-size:12px" onclick="dbOpenAlim(${m.id},'${m.nombre}')">+ Alimento</button>
+      </div>
+      ${m.items.map(it => `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:0.5px solid rgba(39,39,42,.5)">
+          <span style="font-size:20px">${foodEmoji(it.nombre)}</span>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--sv2)">${it.nombre}</div></div>
+          <div style="text-align:right">
+            <input type="number" value="${it.gramos}" min="1" style="width:64px;padding:4px 8px;border:0.5px solid var(--br);border-radius:8px;background:var(--b);color:var(--blg);font-size:13px;font-weight:700;text-align:center" onchange="dbEditGramos(${it.id},this.value)"/>
+            <div style="font-size:10px;color:var(--tx3);margin-top:1px">gramos</div>
+          </div>
+          <button onclick="dbDelAlim(${it.id})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:16px;padding:2px">✕</button>
+        </div>`).join('')}
+    </div>`).join('') : '<div style="font-size:13px;color:var(--tx3)">Sin comidas. Añade la primera.</div>';
+}
+
+async function dbAddComida() {
+  const n = prompt('Nombre (ej: Desayuno, Comida, Cena...):'); if (!n) return;
+  await api('/clientes/' + dietaState.clienteId + '/comidas', { method:'POST', body: JSON.stringify({ nombre: n }) });
+  await dbLoadComidas();
+}
+
+function dbOpenAlim(comidaId, nombre) {
+  dietaState.comidaId = comidaId;
+  document.getElementById('db_alim_panel').style.display = 'block';
+  document.getElementById('db_comida_nombre').textContent = nombre;
+  document.getElementById('db_alim_panel').scrollIntoView({ behavior: 'smooth' });
+  dbBuscarAlim();
+}
+
+async function dbBuscarAlim() {
+  const cat = document.getElementById('db_cat').value;
+  const buscar = document.getElementById('db_buscar').value;
+  const params = new URLSearchParams();
+  if (cat !== 'Todos') params.append('categoria', cat);
+  if (buscar) params.append('buscar', buscar);
+  const alims = await api('/alimentos-db?' + params);
+  const lista = document.getElementById('db_alim_lista');
+  const catColors = { 'Proteína':'#3b82f6','Carbohidrato':'#a78bfa','Verdura':'#22c55e','Grasa saludable':'#f59e0b','Lácteo':'#ec4899' };
+  lista.innerHTML = alims.map(a => `
+    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:12px;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='var(--bl)'" onmouseout="this.style.borderColor='var(--br)'" onclick="dbAddAlim('${a.nombre.replace(/'/g,"\\'")}')">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:20px">${foodEmoji(a.nombre)}</span>
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${catColors[a.categoria]||'#3b82f6'}22;color:${catColors[a.categoria]||'#3b82f6'}">${a.categoria}</span>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:5px">${a.nombre}</div>
+      <div style="font-size:11px;color:var(--tx3);font-weight:500">Por 100g: ${a.proteinas}g prot · ${a.carbos}g carbs · ${a.grasas}g grasas</div>
+      <button class="btn" style="width:100%;padding:7px;font-size:12px;margin-top:8px">+ Añadir</button>
+    </div>`).join('') || '<div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">Sin resultados</div>';
+}
+
+async function dbAddAlim(nombre) {
+  const g = parseInt(prompt('Gramos (en crudo):', '100') || '100');
+  if (!g) return;
+  await api('/comidas/' + dietaState.comidaId + '/alimentos', { method:'POST', body: JSON.stringify({ nombre, gramos: g }) });
+  await dbLoadComidas();
+}
+
+async function dbEditGramos(id, gramos) {
+  await api('/alimentos/' + id, { method:'PUT', body: JSON.stringify({ gramos: parseInt(gramos) }) });
+}
+
+async function dbDelAlim(id) {
+  await api('/alimentos/' + id, { method:'DELETE' });
+  await dbLoadComidas();
+}
+
 </script>
 </body>
 </html>
