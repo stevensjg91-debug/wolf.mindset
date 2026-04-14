@@ -20,7 +20,8 @@ async function initDB() {
   } else {
     db = new SQL.Database();
   }
-  db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'cliente', nombre TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'cliente', nombre TEXT NOT NULL)`);
   db.run(`CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, objetivo TEXT DEFAULT 'Volumen', nivel TEXT DEFAULT 'Intermedio', semanas INTEGER DEFAULT 1, kcal_internas INTEGER DEFAULT 2500, prot INTEGER DEFAULT 160, carbs INTEGER DEFAULT 280, fat INTEGER DEFAULT 80, comida_libre TEXT DEFAULT 'Elige lo que mas te apetezca.', mensaje_semana TEXT DEFAULT '', notas_coach TEXT DEFAULT '')`);
   db.run(`CREATE TABLE IF NOT EXISTS peso_registros (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, peso REAL, grasa REAL, cintura REAL, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)`);
   db.run(`CREATE TABLE IF NOT EXISTS dias_entreno (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, nombre TEXT, grupo TEXT, orden INTEGER DEFAULT 0)`);
@@ -30,16 +31,30 @@ async function initDB() {
   db.run(`CREATE TABLE IF NOT EXISTS recetas (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, nombre TEXT, pasos TEXT, orden INTEGER DEFAULT 0)`);
   db.run(`CREATE TABLE IF NOT EXISTS receta_ingredientes (id INTEGER PRIMARY KEY AUTOINCREMENT, receta_id INTEGER, nombre TEXT, gramos INTEGER)`);
   db.run(`CREATE TABLE IF NOT EXISTS fotos (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, url TEXT, analysis TEXT, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+  db.run(`CREATE TABLE IF NOT EXISTS ejercicios_db (id INTEGER PRIMARY KEY AUTOINCREMENT, grupo TEXT, nombre TEXT, musculos TEXT, tipo TEXT, dificultad TEXT, equipo TEXT)`);
+  db.run(`CREATE TABLE IF NOT EXISTS alimentos_db (id INTEGER PRIMARY KEY AUTOINCREMENT, categoria TEXT, nombre TEXT, calorias REAL, proteinas REAL, carbos REAL, grasas REAL)`);
+
   saveToDisk();
   setInterval(saveToDisk, 30000);
+
   const bcrypt = require('bcryptjs');
   const existing = dbGet('SELECT id FROM users WHERE username = ?', ['wolf']);
   if (!existing) {
     const hash = bcrypt.hashSync('1234', 10);
     dbRun('INSERT INTO users (username, password, role, nombre) VALUES (?, ?, ?, ?)', ['wolf', hash, 'coach', 'Coach WolfMindset']);
-    saveToDisk();
     console.log('Coach creado: wolf / 1234');
   }
+
+  // Seed exercises and foods if empty
+  const exCount = dbGet('SELECT COUNT(*) as c FROM ejercicios_db', []);
+  if (!exCount || exCount.c === 0) {
+    const { EJERCICIOS, ALIMENTOS } = require('./seed');
+    EJERCICIOS.forEach(e => dbRun('INSERT INTO ejercicios_db (grupo,nombre,musculos,tipo,dificultad,equipo) VALUES (?,?,?,?,?,?)', [e.grupo,e.nombre,e.musculos,e.tipo,e.dificultad,e.equipo]));
+    ALIMENTOS.forEach(a => dbRun('INSERT INTO alimentos_db (categoria,nombre,calorias,proteinas,carbos,grasas) VALUES (?,?,?,?,?,?)', [a.categoria,a.nombre,a.calorias,a.proteinas,a.carbos,a.grasas]));
+    saveToDisk();
+    console.log('Base de datos de ejercicios y alimentos cargada');
+  }
+
   console.log('DB lista');
 }
 
