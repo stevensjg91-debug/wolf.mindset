@@ -1,111 +1,56 @@
-const EJERCICIOS = [
-  // PECHO
-  {grupo:'Pecho',nombre:'Press banca con barra',musculos:'Pecho mayor, tríceps, deltoides anterior',tipo:'Compuesto',dificultad:'Intermedio',equipo:'Barra + banco'},
-  {grupo:'Pecho',nombre:'Press banca con mancuernas',musculos:'Pecho mayor, estabilizadores',tipo:'Compuesto',dificultad:'Principiante',equipo:'Mancuernas + banco'},
-  {grupo:'Pecho',nombre:'Press inclinado con barra',musculos:'Pecho superior, deltoides anterior',tipo:'Compuesto',dificultad:'Intermedio',equipo:'Barra + banco inclinado'},
-  {grupo:'Pecho',nombre:'Press inclinado con mancuernas',musculos:'Pecho superior, estabilizadores',tipo:'Compuesto',dificultad:'Principiante',equipo:'Mancuernas + banco inclinado'},
-  {grupo:'Pecho',nombre:'Aperturas con mancuernas',musculos:'Pecho mayor, coracobraquial',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Mancuernas + banco'},
-  {grupo:'Pecho',nombre:'Cruces en polea',musculos:'Pecho mayor, definición',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Poleas'},
-  {grupo:'Pecho',nombre:'Fondos en paralelas',musculos:'Pecho inferior, tríceps',tipo:'Compuesto',dificultad:'Intermedio',equipo:'Barras paralelas'},
-  {grupo:'Pecho',nombre:'Press declinado con barra',musculos:'Pecho inferior, tríceps',tipo:'Compuesto',dificultad:'Intermedio',equipo:'Barra + banco declinado'},
-  // ESPALDA
-  {grupo:'Espalda',nombre:'Peso muerto',musculos:'Espalda baja, glúteos, isquios, trapecios',tipo:'Compuesto',dificultad:'Avanzado',equipo:'Barra'},
-  {grupo:'Espalda',nombre:'Dominadas',musculos:'Dorsal, bíceps, romboides',tipo:'Compuesto',dificultad:'Intermedio',equipo:'Barra dominadas'},
-  {grupo:'Espalda',nombre:'Remo con barra',musculos:'Dorsal, romboides, bíceps',tipo:'Compuesto',dificultad:'Intermedio',equipo:'Barra'},
-  {grupo:'Espalda',nombre:'Remo con mancuerna',musculos:'Dorsal, romboides, bíceps',tipo:'Compuesto',dificultad:'Principiante',equipo:'Mancuerna + banco'},
-  {grupo:'Espalda',nombre:'Jalón al pecho en polea',musculos:'Dorsal, bíceps, teres mayor',tipo:'Compuesto',dificultad:'Principiante',equipo:'Polea alta'},
-  {grupo:'Espalda',nombre:'Remo en polea baja',musculos:'Dorsal, romboides, trapecios',tipo:'Compuesto',dificultad:'Principiante',equipo:'Polea baja'},
-  {grupo:'Espalda',nombre:'Pull-over con mancuerna',musculos:'Dorsal, serrato, pecho',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Mancuerna + banco'},
-  {grupo:'Espalda',nombre:'Peso muerto rumano',musculos:'Isquiotibiales, glúteos, espalda baja',tipo:'Compuesto',dificultad:'Intermedio',equipo:'Barra'},
-  {grupo:'Espalda',nombre:'Remo en máquina',musculos:'Dorsal, romboides',tipo:'Compuesto',dificultad:'Principiante',equipo:'Máquina'},
-  {grupo:'Espalda',nombre:'Hiperextensiones',musculos:'Espalda baja, glúteos',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Banco hiperextensión'},
-  // HOMBROS
-  {grupo:'Hombros',nombre:'Press militar con barra',musculos:'Deltoides anterior y medio, tríceps',tipo:'Compuesto',dificultad:'Intermedio',equipo:'Barra'},
-  {grupo:'Hombros',nombre:'Press con mancuernas sentado',musculos:'Deltoides, tríceps, trapecio',tipo:'Compuesto',dificultad:'Principiante',equipo:'Mancuernas + banco'},
-  {grupo:'Hombros',nombre:'Elevaciones laterales',musculos:'Deltoides medio',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Mancuernas'},
-  {grupo:'Hombros',nombre:'Elevaciones frontales',musculos:'Deltoides anterior',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Mancuernas'},
-  {grupo:'Hombros',nombre:'Pájaros con mancuernas',musculos:'Deltoides posterior, romboides',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Mancuernas'},
-  {grupo:'Hombros',nombre:'Face pulls en polea',musculos:'Deltoides posterior, manguito rotador',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Polea'},
-  {grupo:'Hombros',nombre:'Encogimientos con barra',musculos:'Trapecios',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Barra'},
-  // BÍCEPS
-  {grupo:'Bíceps',nombre:'Curl con barra',musculos:'Bíceps braquial, braquiorradial',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Barra'},
-  {grupo:'Bíceps',nombre:'Curl con mancuernas alterno',musculos:'Bíceps braquial, supinador',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Mancuernas'},
-  {grupo:'Bíceps',nombre:'Curl martillo',musculos:'Braquiorradial, braquial',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Mancuernas'},
-  {grupo:'Bíceps',nombre:'Curl concentrado',musculos:'Bíceps braquial, pico',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Mancuerna'},
-  {grupo:'Bíceps',nombre:'Curl predicador',musculos:'Bíceps braquial, cabeza corta',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Banco predicador'},
-  {grupo:'Bíceps',nombre:'Curl en polea baja',musculos:'Bíceps braquial',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Polea baja'},
-  // TRÍCEPS
-  {grupo:'Tríceps',nombre:'Press francés con barra',musculos:'Tríceps cabeza larga y lateral',tipo:'Aislamiento',dificultad:'Intermedio',equipo:'Barra + banco'},
-  {grupo:'Tríceps',nombre:'Extensión en polea alta',musculos:'Tríceps, cabeza lateral',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Polea alta'},
-  {grupo:'Tríceps',nombre:'Fondos en banco',musculos:'Tríceps, pecho inferior',tipo:'Compuesto',dificultad:'Principiante',equipo:'Banco'},
-  {grupo:'Tríceps',nombre:'Press cerrado con barra',musculos:'Tríceps, pecho, deltoides',tipo:'Compuesto',dificultad:'Intermedio',equipo:'Barra + banco'},
-  {grupo:'Tríceps',nombre:'Patada atrás con mancuerna',musculos:'Tríceps cabeza larga',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Mancuerna'},
-  {grupo:'Tríceps',nombre:'Extensión sobre la cabeza con mancuerna',musculos:'Tríceps cabeza larga',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Mancuerna'},
-  // PIERNAS
-  {grupo:'Piernas',nombre:'Sentadilla libre',musculos:'Cuádriceps, glúteos, isquios',tipo:'Compuesto',dificultad:'Intermedio',equipo:'Barra'},
-  {grupo:'Piernas',nombre:'Prensa de piernas',musculos:'Cuádriceps, glúteos, isquios',tipo:'Compuesto',dificultad:'Principiante',equipo:'Máquina prensa'},
-  {grupo:'Piernas',nombre:'Extensión de cuádriceps',musculos:'Cuádriceps',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Máquina extensión'},
-  {grupo:'Piernas',nombre:'Curl de isquiotibiales tumbado',musculos:'Isquiotibiales',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Máquina curl'},
-  {grupo:'Piernas',nombre:'Hip thrust con barra',musculos:'Glúteos, isquios',tipo:'Compuesto',dificultad:'Intermedio',equipo:'Barra + banco'},
-  {grupo:'Piernas',nombre:'Zancada con mancuernas',musculos:'Cuádriceps, glúteos, equilibrio',tipo:'Compuesto',dificultad:'Principiante',equipo:'Mancuernas'},
-  {grupo:'Piernas',nombre:'Gemelos de pie en máquina',musculos:'Gastrocnemio, sóleo',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Máquina gemelos'},
-  {grupo:'Piernas',nombre:'Sentadilla Hack',musculos:'Cuádriceps, glúteos',tipo:'Compuesto',dificultad:'Intermedio',equipo:'Máquina hack'},
-  {grupo:'Piernas',nombre:'Abductores en máquina',musculos:'Abductores, glúteo medio',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Máquina abductores'},
-  {grupo:'Piernas',nombre:'Adductores en máquina',musculos:'Adductores internos',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Máquina adductores'},
-  // ABDOMEN
-  {grupo:'Abdomen',nombre:'Crunch en suelo',musculos:'Recto abdominal',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Sin equipo'},
-  {grupo:'Abdomen',nombre:'Plancha',musculos:'Core completo, transverso',tipo:'Estabilización',dificultad:'Principiante',equipo:'Sin equipo'},
-  {grupo:'Abdomen',nombre:'Elevación de piernas colgado',musculos:'Recto inferior, flexores cadera',tipo:'Aislamiento',dificultad:'Intermedio',equipo:'Barra dominadas'},
-  {grupo:'Abdomen',nombre:'Rueda abdominal',musculos:'Core completo, dorsal',tipo:'Compuesto',dificultad:'Avanzado',equipo:'Rueda ab'},
-  {grupo:'Abdomen',nombre:'Cable crunch en polea',musculos:'Recto abdominal',tipo:'Aislamiento',dificultad:'Principiante',equipo:'Polea alta'},
-];
+const { initDB, dbRun, dbGet } = require('./database');
+const { EJERCICIOS, ALIMENTOS } = require('./seed-data'); // cambia el nombre si tu archivo se llama distinto
 
-const ALIMENTOS = [
-  // PROTEÍNAS
-  {categoria:'Proteína',nombre:'Pechuga de pollo',calorias:165,proteinas:31,carbos:0,grasas:3.6},
-  {categoria:'Proteína',nombre:'Pechuga de pavo',calorias:135,proteinas:30,carbos:0,grasas:1},
-  {categoria:'Proteína',nombre:'Ternera magra (95%)',calorias:150,proteinas:27,carbos:0,grasas:4.5},
-  {categoria:'Proteína',nombre:'Salmón fresco',calorias:208,proteinas:20,carbos:0,grasas:13},
-  {categoria:'Proteína',nombre:'Merluza',calorias:86,proteinas:17,carbos:0,grasas:1.4},
-  {categoria:'Proteína',nombre:'Atún al natural (escurrido)',calorias:116,proteinas:26,carbos:0,grasas:1},
-  {categoria:'Proteína',nombre:'Huevos enteros',calorias:143,proteinas:13,carbos:1,grasas:10},
-  {categoria:'Proteína',nombre:'Claras de huevo',calorias:52,proteinas:11,carbos:0.7,grasas:0.2},
-  {categoria:'Proteína',nombre:'Bacalao fresco',calorias:82,proteinas:18,carbos:0,grasas:0.7},
-  {categoria:'Proteína',nombre:'Gambas',calorias:99,proteinas:21,carbos:0,grasas:1.1},
-  {categoria:'Proteína',nombre:'Proteína whey',calorias:120,proteinas:25,carbos:3,grasas:1.5},
-  {categoria:'Proteína',nombre:'Requesón 0%',calorias:74,proteinas:13,carbos:3,grasas:0.3},
-  {categoria:'Proteína',nombre:'Yogur griego 0%',calorias:59,proteinas:10,carbos:3.6,grasas:0.4},
-  // CARBOHIDRATOS
-  {categoria:'Carbohidrato',nombre:'Arroz blanco',calorias:365,proteinas:7,carbos:80,grasas:0.7},
-  {categoria:'Carbohidrato',nombre:'Arroz integral',calorias:350,proteinas:7.5,carbos:73,grasas:2.7},
-  {categoria:'Carbohidrato',nombre:'Avena',calorias:389,proteinas:17,carbos:66,grasas:7},
-  {categoria:'Carbohidrato',nombre:'Patata',calorias:77,proteinas:2,carbos:17,grasas:0.1},
-  {categoria:'Carbohidrato',nombre:'Boniato',calorias:86,proteinas:1.6,carbos:20,grasas:0.1},
-  {categoria:'Carbohidrato',nombre:'Pasta (seca)',calorias:370,proteinas:13,carbos:74,grasas:1.5},
-  {categoria:'Carbohidrato',nombre:'Pan de centeno',calorias:259,proteinas:8.5,carbos:48,grasas:3.3},
-  {categoria:'Carbohidrato',nombre:'Quinoa',calorias:368,proteinas:14,carbos:64,grasas:6},
-  {categoria:'Carbohidrato',nombre:'Plátano',calorias:89,proteinas:1.1,carbos:23,grasas:0.3},
-  {categoria:'Carbohidrato',nombre:'Manzana',calorias:52,proteinas:0.3,carbos:14,grasas:0.2},
-  // VERDURAS
-  {categoria:'Verdura',nombre:'Brócoli',calorias:34,proteinas:2.8,carbos:7,grasas:0.4},
-  {categoria:'Verdura',nombre:'Espinacas',calorias:23,proteinas:2.9,carbos:3.6,grasas:0.4},
-  {categoria:'Verdura',nombre:'Ensalada verde',calorias:15,proteinas:1.4,carbos:2.8,grasas:0.2},
-  {categoria:'Verdura',nombre:'Tomate',calorias:18,proteinas:0.9,carbos:3.9,grasas:0.2},
-  {categoria:'Verdura',nombre:'Pepino',calorias:16,proteinas:0.7,carbos:3.6,grasas:0.1},
-  {categoria:'Verdura',nombre:'Pimiento',calorias:31,proteinas:1,carbos:6,grasas:0.3},
-  {categoria:'Verdura',nombre:'Espárragos',calorias:20,proteinas:2.2,carbos:3.9,grasas:0.1},
-  {categoria:'Verdura',nombre:'Champiñones',calorias:22,proteinas:3.1,carbos:3.3,grasas:0.3},
-  {categoria:'Verdura',nombre:'Calabacín',calorias:17,proteinas:1.2,carbos:3.1,grasas:0.3},
-  // GRASAS
-  {categoria:'Grasa saludable',nombre:'Aceite de oliva virgen',calorias:884,proteinas:0,carbos:0,grasas:100},
-  {categoria:'Grasa saludable',nombre:'Aguacate',calorias:160,proteinas:2,carbos:9,grasas:15},
-  {categoria:'Grasa saludable',nombre:'Almendras',calorias:579,proteinas:21,carbos:22,grasas:50},
-  {categoria:'Grasa saludable',nombre:'Nueces',calorias:654,proteinas:15,carbos:14,grasas:65},
-  {categoria:'Grasa saludable',nombre:'Mantequilla de cacahuete natural',calorias:588,proteinas:25,carbos:20,grasas:50},
-  // LÁCTEOS
-  {categoria:'Lácteo',nombre:'Leche semidesnatada',calorias:46,proteinas:3.3,carbos:4.7,grasas:1.6},
-  {categoria:'Lácteo',nombre:'Queso cottage',calorias:98,proteinas:11,carbos:3.4,grasas:4.5},
-  {categoria:'Lácteo',nombre:'Queso parmesano',calorias:431,proteinas:38,carbos:4,grasas:29},
-];
+async function runSeed() {
+  await initDB();
 
-module.exports = { EJERCICIOS, ALIMENTOS };
+  const ejerciciosCount = dbGet('SELECT COUNT(*) as total FROM ejercicios_db');
+  const alimentosCount = dbGet('SELECT COUNT(*) as total FROM alimentos_db');
+
+  if (ejerciciosCount?.total > 0 || alimentosCount?.total > 0) {
+    console.log('La base ya tiene datos. Limpiando tablas...');
+    dbRun('DELETE FROM ejercicios_db');
+    dbRun('DELETE FROM alimentos_db');
+  }
+
+  for (const ej of EJERCICIOS) {
+    dbRun(
+      `INSERT INTO ejercicios_db
+      (grupo, nombre, musculos, tipo, dificultad, equipo)
+      VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        ej.grupo,
+        ej.nombre,
+        ej.musculos,
+        ej.tipo,
+        ej.dificultad,
+        ej.equipo
+      ]
+    );
+  }
+
+  for (const al of ALIMENTOS) {
+    dbRun(
+      `INSERT INTO alimentos_db
+      (categoria, nombre, calorias, proteinas, carbos, grasas)
+      VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        al.categoria,
+        al.nombre,
+        al.calorias,
+        al.proteinas,
+        al.carbos,
+        al.grasas
+      ]
+    );
+  }
+
+  console.log(`Seed completado:
+- ejercicios: ${EJERCICIOS.length}
+- alimentos: ${ALIMENTOS.length}`);
+}
+
+runSeed().catch(err => {
+  console.error('Error ejecutando seed:', err);
+  process.exit(1);
+});
