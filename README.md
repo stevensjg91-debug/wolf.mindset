@@ -78,3 +78,4 @@ wolfmindset/
   package.json
   railway.toml
 ```
+Commit changes
