@@ -145,3 +145,29 @@ router.post('/ia/foto', async (req, res) => {
 });
 
 module.exports = router;
+
+// ── BASE DE DATOS EJERCICIOS Y ALIMENTOS ──────────────
+router.get('/ejercicios-db', (req, res) => {
+  const { grupo, buscar } = req.query;
+  let sql = 'SELECT * FROM ejercicios_db WHERE 1=1';
+  const params = [];
+  if (grupo && grupo !== 'Todos') { sql += ' AND grupo=?'; params.push(grupo); }
+  if (buscar) { sql += ' AND (nombre LIKE ? OR musculos LIKE ?)'; params.push('%'+buscar+'%','%'+buscar+'%'); }
+  sql += ' ORDER BY grupo, nombre';
+  res.json(dbAll(sql, params));
+});
+
+router.get('/alimentos-db', (req, res) => {
+  const { categoria, buscar } = req.query;
+  let sql = 'SELECT * FROM alimentos_db WHERE 1=1';
+  const params = [];
+  if (categoria && categoria !== 'Todos') { sql += ' AND categoria=?'; params.push(categoria); }
+  if (buscar) { sql += ' AND nombre LIKE ?'; params.push('%'+buscar+'%'); }
+  sql += ' ORDER BY categoria, nombre';
+  res.json(dbAll(sql, params));
+});
+
+router.delete('/ejercicios/:id', coachOnly, (req, res) => {
+  dbRun('DELETE FROM ejercicios_dia WHERE id=?', [req.params.id]);
+  res.json({ ok: true });
+});
