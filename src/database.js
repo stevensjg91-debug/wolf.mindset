@@ -37,6 +37,11 @@ async function initDB() {
   db.run(`CREATE TABLE IF NOT EXISTS ejercicios_dia (id INTEGER PRIMARY KEY AUTOINCREMENT, dia_id INTEGER, nombre TEXT, musculos TEXT, series INTEGER DEFAULT 3, reps TEXT DEFAULT '10-12', peso_objetivo REAL DEFAULT 0, descanso INTEGER DEFAULT 90, orden INTEGER DEFAULT 0, es_pr INTEGER DEFAULT 0, youtube_url TEXT DEFAULT '', imagen_url TEXT DEFAULT '')`);
   try { db.run(`ALTER TABLE ejercicios_dia ADD COLUMN youtube_url TEXT DEFAULT \'\'`); } catch(e) {}
   try { db.run(`ALTER TABLE ejercicios_dia ADD COLUMN imagen_url TEXT DEFAULT \'\'`); } catch(e) {}
+  try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN nota_coach TEXT DEFAULT ''"); } catch(e) {}
+  try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN dieta_tipo TEXT DEFAULT 'Omnivoro'"); } catch(e) {}
+  try { db.run("ALTER TABLE clientes ADD COLUMN dieta_tipo TEXT DEFAULT 'Omnivoro'"); } catch(e) {}
+  try { db.run("ALTER TABLE clientes ADD COLUMN alimentos_no TEXT DEFAULT ''"); } catch(e) {}
+  try { db.run("ALTER TABLE clientes ADD COLUMN lesiones TEXT DEFAULT ''"); } catch(e) {}
   db.run(`CREATE TABLE IF NOT EXISTS comidas (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, nombre TEXT, orden INTEGER DEFAULT 0)`);
   db.run(`CREATE TABLE IF NOT EXISTS alimentos (id INTEGER PRIMARY KEY AUTOINCREMENT, comida_id INTEGER, nombre TEXT, gramos INTEGER, orden INTEGER DEFAULT 0)`);
   db.run(`CREATE TABLE IF NOT EXISTS recetas (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, nombre TEXT, pasos TEXT, orden INTEGER DEFAULT 0)`);
