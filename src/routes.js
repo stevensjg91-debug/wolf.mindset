@@ -221,6 +221,8 @@ router.post('/reload-ejercicios', (req, res) => {
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
+
+  force redeploy
 });
 
 module.exports = router;
