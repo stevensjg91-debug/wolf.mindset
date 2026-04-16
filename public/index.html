@@ -664,7 +664,15 @@ async function renderCoach(s){
   else if(s==='dieta-builder'){el.innerHTML=hDietaBuilder();await initDietaBuilder();}
   else if(s==='progreso'){const cl=await api('/clientes');el.innerHTML=hProgreso(cl);}
   else if(s==='pendientes'){const p=await api('/clientes-pendientes');el.innerHTML=hPendientes(p);}
-  else if(s==='ia'){el.innerHTML=hIACoach();iaH=[{role:'assistant',content:'Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?'}];}
+  else if(s==='ia'){
+  el.innerHTML=hIACoach();
+  iaH=[{role:'assistant',content:'Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?'}];
+  fetch('/api/images-status').then(r=>r.json()).then(d=>{
+    const btn=document.getElementById('btn_img_status');
+    if(!btn)return;
+    if(d.count>0){btn.textContent=`✓ ${d.count} imágenes en BD`;btn.style.color='#86efac';}
+    else{btn.textContent='🖼️ Descargar imágenes ejercicios';}
+  }).catch(()=>{});
 }
 
 function hClientes(cl){
@@ -1256,7 +1264,7 @@ function hProgreso(cl){return`<div class="sec"><div class="sec-hdr">Progreso de 
 function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">IA privada del coach</div>Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.</div>
 <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
   <button class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="reloadEjercicios()">🔄 Recargar ejercicios (112)</button>
-  <button class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="downloadImages(this)">🖼️ Descargar imágenes ejercicios</button>
+  <button id="btn_img_status" class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="downloadImages(this)">🖼️ Descargar imágenes ejercicios</button>
 </div>
 <div class="sec" style="display:flex;flex-direction:column;height:480px">
   <div class="chat-msgs" id="iaMsgs" style="flex:1;background:var(--b);border:0.5px solid var(--br);border-radius:10px;padding:11px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
