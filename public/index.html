@@ -672,7 +672,8 @@ async function renderCoach(s){
     if(!btn)return;
     if(d.count>0){btn.textContent=`✓ ${d.count} imágenes en BD`;btn.style.color='#86efac';}
     else{btn.textContent='🖼️ Descargar imágenes ejercicios';}
-  }).catch(()=>{});
+ }).catch(()=>{});
+  }
 }
 
 function hClientes(cl){
@@ -1944,8 +1945,11 @@ async function downloadImages(btn){
   try{
     const r=await fetch('/api/download-images',{method:'POST',headers:{Authorization:'Bearer '+TOKEN}});
     const d=await r.json();
-    btn.textContent=`✓ ${d.ok||0} imágenes descargadas`;
+    const s=await fetch('/api/images-status');
+    const sd=await s.json();
+    btn.textContent=`✓ ${sd.count} imágenes en BD`;
     btn.style.color='#86efac';
+    btn.disabled=false;
   }catch(e){btn.textContent='Error';btn.disabled=false;}
 }
 
