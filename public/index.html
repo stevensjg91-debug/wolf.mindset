@@ -16,16 +16,16 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
 .screen{display:none;flex-direction:column;height:100%}.screen.on{display:flex}
 
 /* LOGIN */
-.login-bg{flex-direction:column;align-items:center;justify-content:center;min-height:100%;padding:32px 20px;overflow-y:auto;background:radial-gradient(ellipse at 50% 0%,#1e3a5f 0%,#09090b 60%)}
+.login-bg{flex-direction:column;align-items:center;justify-content:flex-start;min-height:100%;padding:32px 20px 40px;overflow-y:auto;background:radial-gradient(ellipse at 50% 0%,#1e3a5f 0%,#09090b 60%)}
 .login-logo{text-align:center;margin-bottom:28px}
 .logo-img{width:110px;height:110px;object-fit:contain;margin:0 auto 12px;display:block;mix-blend-mode:lighten}
 .login-brand{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.12em;color:var(--sv)}
 .login-sub{font-size:10px;color:var(--sv3);letter-spacing:.2em;text-transform:uppercase;margin-top:3px}
-.login-card{background:rgba(17,17,19,.95);border:0.5px solid rgba(255,255,255,.08);border-radius:20px;padding:26px;width:100%;max-width:340px}
+.login-card{background:rgba(17,17,19,.95);border:0.5px solid rgba(255,255,255,.08);border-radius:20px;padding:20px 16px;width:100%;max-width:380px;box-sizing:border-box}
 .ltabs{display:flex;gap:3px;background:var(--b);border-radius:10px;padding:3px;border:0.5px solid var(--br);margin-bottom:18px}
 .ltab{flex:1;padding:9px;border:none;border-radius:8px;font-size:14px;cursor:pointer;background:none;color:var(--sv3);font-family:'Inter',sans-serif;transition:.2s}
 .ltab.on{background:var(--bl2);color:#fff;font-weight:600}
-.finp{width:100%;padding:12px 14px;border:0.5px solid var(--br);border-radius:10px;background:rgba(255,255,255,.04);color:var(--tx);font-size:15px;margin-bottom:10px;font-family:'Inter',sans-serif}
+.finp{width:100%;padding:11px 13px;border:0.5px solid var(--br);border-radius:10px;background:rgba(255,255,255,.04);color:var(--tx);font-size:14px;margin-bottom:8px;font-family:'Inter',sans-serif;box-sizing:border-box}
 .finp:focus{outline:none;border-color:var(--bl)}
 .finp option{background:var(--s)}
 .fbtn{width:100%;padding:13px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif}
@@ -295,7 +295,7 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
     <div class="login-brand">WOLFMINDSET</div>
     <div class="login-sub">Solicitud de acceso</div>
   </div>
-  <div class="login-card" style="max-width:380px">
+  <div class="login-card" style="max-width:600px;width:100%;margin:0 auto">
     <div style="font-size:13px;color:var(--tx3);margin-bottom:16px;line-height:1.5">Rellena tus datos y tu coach revisará tu solicitud. Te avisaremos cuando tengas acceso.</div>
     <div id="reg_err" class="ferr" style="display:none"></div>
     <div id="reg_ok" style="display:none;background:rgba(34,197,94,.1);border:0.5px solid rgba(34,197,94,.3);border-radius:10px;padding:12px;font-size:13px;color:var(--gnb);margin-bottom:12px;text-align:center;line-height:1.5"></div>
