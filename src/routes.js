@@ -78,7 +78,6 @@ router.post('/dias/:id/ejercicios', coachOnly, (req, res) => {
   const { nombre, musculos, series, reps, peso_objetivo, descanso, orden, youtube_url, imagen_url, nota_coach } = req.body;
   const r = dbRun('INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, orden, youtube_url, imagen_url, nota_coach) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [req.params.id, nombre, musculos||'', series||3, reps||'10-12', peso_objetivo||0, descanso||90, orden||0, youtube_url||'', imagen_url||'', nota_coach||'']);
-  // Auto-save YouTube/imagen/nota to config for future use
   if (youtube_url || imagen_url || nota_coach) {
     const existing = dbGet('SELECT id FROM ejercicios_config WHERE nombre=?', [nombre]);
     if (existing) {
@@ -174,8 +173,7 @@ router.post('/ia/foto', async (req, res) => {
   } catch(e) { res.status(500).json({ error: 'Error IA foto' }); }
 });
 
-
-// ── EJERCICIOS CONFIG (YouTube/imagen persistente) ────
+// ── EJERCICIOS CONFIG ─────────────────────────────────
 router.get('/ejercicios-config', coachOnly, (req, res) => {
   const configs = dbAll('SELECT * FROM ejercicios_config', []);
   const map = {};
@@ -280,6 +278,8 @@ router.post('/reload-ejercicios', (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ── CREAR EJERCICIO MANUAL ────────────────────────────
 router.post('/ejercicios-db-add', coachOnly, (req, res) => {
   const { nombre, grupo, musculos, tipo, dificultad, equipo } = req.body;
   if(!nombre || !grupo) return res.status(400).json({ error: 'Nombre y grupo obligatorios' });
@@ -291,4 +291,82 @@ router.post('/ejercicios-db-add', coachOnly, (req, res) => {
   saveToDisk();
   res.json({ ok: true, id: r.lastInsertRowid });
 });
+
+// ── SESIONES ENTRENO ──────────────────────────────────
+router.post('/clientes/:id/sesiones', (req, res) => {
+  const { dia_nombre, dia_grupo, duracion_min, series } = req.body;
+  const r = dbRun(
+    'INSERT INTO sesiones_entreno (cliente_id, dia_nombre, dia_grupo, duracion_min) VALUES (?,?,?,?)',
+    [req.params.id, dia_nombre, dia_grupo, duracion_min||0]
+  );
+  const sesionId = r.lastInsertRowid;
+  if(series && series.length) {
+    series.forEach(s => {
+      dbRun(
+        'INSERT INTO series_log (sesion_id, ejercicio_nombre, serie_num, peso_real, reps_real) VALUES (?,?,?,?,?)',
+        [sesionId, s.ejercicio, s.serie_num, s.peso, s.reps]
+      );
+    });
+  }
+  const { saveToDisk } = require('./database');
+  saveToDisk();
+  res.json({ ok: true, sesion_id: sesionId });
+});
+
+router.get('/clientes/:id/sesiones', (req, res) => {
+  const id = req.params.id;
+  if (req.user.role === 'cliente') {
+    const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
+    if (!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
+  }
+  const sesiones = dbAll(
+    'SELECT * FROM sesiones_entreno WHERE cliente_id=? ORDER BY fecha DESC LIMIT 30',
+    [id]
+  );
+  sesiones.forEach(s => {
+    s.series = dbAll('SELECT * FROM series_log WHERE sesion_id=? ORDER BY ejercicio_nombre, serie_num', [s.id]);
+  });
+  res.json(sesiones);
+});
+
+router.get('/clientes/:id/progreso-ejercicio', (req, res) => {
+  const id = req.params.id;
+  if (req.user.role === 'cliente') {
+    const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
+    if (!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
+  }
+  const { ejercicio } = req.query;
+  if(!ejercicio) return res.json([]);
+  const data = dbAll(`
+    SELECT sl.ejercicio_nombre, sl.peso_real, sl.reps_real, sl.serie_num, se.fecha, se.dia_nombre
+    FROM series_log sl
+    JOIN sesiones_entreno se ON sl.sesion_id = se.id
+    WHERE se.cliente_id=? AND sl.ejercicio_nombre=?
+    ORDER BY se.fecha ASC
+  `, [id, ejercicio]);
+  res.json(data);
+});
+
+// ── REGISTRO PÚBLICO ──────────────────────────────────
+const { router: authRouter } = require('./auth');
+
+router.post('/auth/registro', async (req, res) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const { username, password, nombre, email, telefono, objetivo, nivel, peso_actual, altura, edad, sexo, actividad, dieta_tipo, alimentos_no, lesiones, observaciones } = req.body;
+    if(!username || !password || !nombre) return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    const existing = dbGet('SELECT id FROM users WHERE username=?', [username]);
+    if(existing) return res.status(400).json({ error: 'Usuario ya existe' });
+    const hash = bcrypt.hashSync(password, 10);
+    const userR = dbRun("INSERT INTO users (username, password, role, nombre, email, estado, telefono) VALUES (?,?,?,?,?,?,?)",
+      [username, hash, 'cliente', nombre, email||'', 'pendiente', telefono||'']);
+    const userId = userR.lastInsertRowid;
+    dbRun(`INSERT INTO clientes (user_id, objetivo, nivel, peso_actual, altura, edad, sexo, actividad, dieta_tipo, alimentos_no, lesiones, observaciones) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [userId, objetivo||'Volumen', nivel||'Intermedio', peso_actual||0, altura||0, edad||0, sexo||'Hombre', actividad||'Moderada', dieta_tipo||'Omnivoro', alimentos_no||'', lesiones||'', observaciones||'']);
+    const { saveToDisk } = require('./database');
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
