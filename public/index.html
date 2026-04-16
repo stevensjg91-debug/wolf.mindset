@@ -1265,8 +1265,43 @@ function hProgreso(cl){return`<div class="sec"><div class="sec-hdr">Progreso de 
 function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">IA privada del coach</div>Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.</div>
 <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
   <button class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="reloadEjercicios()">🔄 Recargar ejercicios (112)</button>
-  <button id="btn_img_status" class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="downloadImages(this)">🖼️ Descargar imágenes ejercicios</button>
+  <button id="btn_img_status" class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="abrirGestorImagenes()">🖼️ Gestionar imágenes ejercicios</button>
 </div>
+
+<!-- GESTOR DE IMÁGENES -->
+<div id="gestor_imagenes" style="display:none;margin-bottom:12px">
+  <div class="sec">
+    <div class="sec-hdr">Gestionar imágenes de ejercicios</div>
+    
+    <!-- Crear ejercicio nuevo -->
+    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">➕ Crear ejercicio nuevo</div>
+      <div class="g2" style="gap:8px;margin-bottom:8px">
+        <div><div class="form-lbl">Nombre</div><input class="inp" id="new_ex_nombre" placeholder="Bench Press (Barbell)" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl">Grupo</div><select class="inp" id="new_ex_grupo" style="margin-bottom:0"><option>Chest</option><option>Back</option><option>Shoulders</option><option>Biceps</option><option>Triceps</option><option>Legs</option><option>Abs</option></select></div>
+        <div><div class="form-lbl">Músculos</div><input class="inp" id="new_ex_musculos" placeholder="Pectorales, tríceps" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl">Dificultad</div><select class="inp" id="new_ex_dif" style="margin-bottom:0"><option>Principiante</option><option selected>Intermedio</option><option>Avanzado</option></select></div>
+      </div>
+      <input class="inp" id="new_ex_imagen" placeholder="URL imagen/GIF (opcional)" style="margin-bottom:8px"/>
+      <button class="btn btn-sm" onclick="crearEjercicioManual()">✓ Crear ejercicio</button>
+      <span id="new_ex_msg" style="font-size:12px;margin-left:10px"></span>
+    </div>
+
+    <!-- Editar imagen de ejercicio existente -->
+    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px">
+      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🔗 Añadir/editar imagen de ejercicio existente</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <select class="inp" id="edit_ex_grupo_filter" onchange="filtrarEjerciciosGestor()" style="flex:1;min-width:120px;margin-bottom:0">
+          <option value="All">Todos los grupos</option>
+          <option>Chest</option><option>Back</option><option>Shoulders</option><option>Biceps</option><option>Triceps</option><option>Legs</option><option>Abs</option>
+        </select>
+        <input class="inp" id="edit_ex_buscar" placeholder="Buscar ejercicio..." style="flex:2;min-width:140px;margin-bottom:0" oninput="filtrarEjerciciosGestor()"/>
+      </div>
+      <div id="gestor_lista" style="max-height:400px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
 <div class="sec" style="display:flex;flex-direction:column;height:480px">
   <div class="chat-msgs" id="iaMsgs" style="flex:1;background:var(--b);border:0.5px solid var(--br);border-radius:10px;padding:11px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
     <div class="msg msg-b"><div class="msg-sender">WolfMindset IA</div>Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?</div>
@@ -1952,7 +1987,93 @@ async function downloadImages(btn){
     btn.disabled=false;
   }catch(e){btn.textContent='Error';btn.disabled=false;}
 }
+// ═══ GESTOR IMÁGENES ══════════════════════════════════
+async function abrirGestorImagenes(){
+  const panel = document.getElementById('gestor_imagenes');
+  if(!panel) return;
+  const visible = panel.style.display !== 'none';
+  panel.style.display = visible ? 'none' : 'block';
+  if(!visible) await filtrarEjerciciosGestor();
+}
 
+async function filtrarEjerciciosGestor(){
+  const grupo = document.getElementById('edit_ex_grupo_filter')?.value || 'All';
+  const buscar = document.getElementById('edit_ex_buscar')?.value || '';
+  const p = new URLSearchParams();
+  if(grupo !== 'All') p.append('grupo', grupo);
+  if(buscar) p.append('buscar', buscar);
+  const [exs, configs] = await Promise.all([
+    api('/ejercicios-db?' + p),
+    api('/ejercicios-config')
+  ]);
+  const lista = document.getElementById('gestor_lista');
+  if(!lista) return;
+  if(!exs.length){ lista.innerHTML='<div style="color:var(--tx3);font-size:13px;padding:12px">Sin resultados</div>'; return; }
+  lista.innerHTML = exs.map(e => {
+    const cfg = configs[e.nombre] || {};
+    const imgUrl = cfg.imagen_url || '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--br)">
+      <div style="width:44px;height:44px;border-radius:8px;overflow:hidden;background:${EX_GROUP_COLORS[e.grupo]||'var(--s3)'};flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        ${imgUrl ? `<img src="${imgUrl}" style="width:44px;height:44px;object-fit:cover" onerror="this.style.display='none'"/>` : `<span style="font-size:20px">${EX_GROUP_EMOJI[e.grupo]||'💪'}</span>`}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:4px">${e.nombre} <span style="font-size:10px;color:var(--tx3);font-weight:400">${e.grupo}</span></div>
+        <div style="display:flex;gap:6px">
+          <input id="img_url_${e.id}" value="${imgUrl}" placeholder="URL de imagen o GIF..." style="flex:1;padding:5px 8px;border:0.5px solid var(--br);border-radius:7px;background:var(--s3);color:var(--tx);font-size:12px;font-family:'Inter',sans-serif" onkeydown="if(event.key==='Enter')guardarImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id})"/>
+          <button onclick="guardarImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id})" style="padding:5px 10px;background:var(--bl2);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Guardar</button>
+        </div>
+      </div>
+      ${imgUrl ? `<span style="font-size:16px" title="Imagen guardada">✅</span>` : `<span style="font-size:16px;color:var(--tx3)" title="Sin imagen">○</span>`}
+    </div>`;
+  }).join('');
+}
+
+async function guardarImagenEjercicio(nombre, exId){
+  const input = document.getElementById(`img_url_${exId}`);
+  if(!input) return;
+  const url = input.value.trim();
+  try {
+    await api('/ejercicios-config/' + encodeURIComponent(nombre), {
+      method: 'PUT',
+      body: JSON.stringify({ imagen_url: url })
+    });
+    // Feedback visual
+    input.style.borderColor = '#22c55e';
+    setTimeout(() => { input.style.borderColor = ''; filtrarEjerciciosGestor(); }, 1500);
+  } catch(e) {
+    input.style.borderColor = '#ef4444';
+    setTimeout(() => input.style.borderColor = '', 1500);
+  }
+}
+
+async function crearEjercicioManual(){
+  const nombre = document.getElementById('new_ex_nombre').value.trim();
+  const grupo = document.getElementById('new_ex_grupo').value;
+  const musculos = document.getElementById('new_ex_musculos').value.trim();
+  const dificultad = document.getElementById('new_ex_dif').value;
+  const imagen = document.getElementById('new_ex_imagen').value.trim();
+  const msg = document.getElementById('new_ex_msg');
+  if(!nombre){ msg.style.color='#f87171'; msg.textContent='Nombre obligatorio'; return; }
+  try {
+    // Insertar en ejercicios_db via reload no funciona, usamos un endpoint directo
+    const r = await fetch('/api/ejercicios-db-add', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', Authorization:'Bearer '+TOKEN},
+      body: JSON.stringify({ nombre, grupo, musculos, dificultad, tipo:'Fuerza', equipo:'Barra' })
+    });
+    if(imagen){
+      await api('/ejercicios-config/' + encodeURIComponent(nombre), {
+        method: 'PUT',
+        body: JSON.stringify({ imagen_url: imagen })
+      });
+    }
+    msg.style.color='#86efac'; msg.textContent='✓ Creado';
+    document.getElementById('new_ex_nombre').value='';
+    document.getElementById('new_ex_musculos').value='';
+    document.getElementById('new_ex_imagen').value='';
+    await filtrarEjerciciosGestor();
+  } catch(e){ msg.style.color='#f87171'; msg.textContent='Error: '+e.message; }
+}
 async function reloadEjercicios(){
   const btn = event.target;
   btn.textContent = '⏳ Cargando...';
