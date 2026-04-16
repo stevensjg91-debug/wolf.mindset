@@ -1306,10 +1306,12 @@ function hEntreno(){
     if(!e._series)e._series=Array.from({length:e.series},()=>({done:false,peso:e.peso_objetivo}));
     const exDone=e._series.every(s=>s.done);
     const ytUrl=e.youtube_url||EX_YT[e.nombre]||'';
+    // Parse reps to get a number (take first number from "10-12" or "10")
+    const parseReps = r => { const m = String(r).match(/\d+/); return m ? parseInt(m[0]) : 10; };
     const seriesRows=e._series.map((s,si)=>`<tr>
-      <td style="color:var(--sv3);font-weight:600;font-size:12px">S${si+1}</td>
-      <td>${e.peso_objetivo>0?`<input class="serie-peso-inp" type="number" value="${s.peso}" step="2.5" min="0" onchange="updatePeso(${ei},${si},this.value)" placeholder="kg"/>`:'<span style="font-size:12px;color:var(--tx3)">—</span>'}</td>
-      <td><input class="serie-peso-inp" type="text" value="${s.reps_real||e.reps}" onchange="updateReps(${ei},${si},this.value)" style="width:56px;color:var(--gnb)" placeholder="${e.reps}"/></td>
+      <td style="color:var(--sv3);font-weight:600;font-size:13px">S${si+1}</td>
+      <td><input class="serie-peso-inp" type="number" value="${s.peso||0}" step="2.5" min="0" onchange="updatePeso(${ei},${si},this.value)" placeholder="0" style="width:72px"/></td>
+      <td><input class="serie-peso-inp" type="number" value="${parseReps(s.reps_real||e.reps)}" min="1" max="100" onchange="updateReps(${ei},${si},this.value)" style="width:64px;color:var(--gnb)" placeholder="10"/></td>
       <td><button class="serie-check ${s.done?'done':''}" id="chk_${ei}_${si}" onclick="toggleSerie(${ei},${si})">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button></td>
