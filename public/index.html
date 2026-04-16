@@ -257,6 +257,28 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
   .coach-content-wrap{padding:18px}
 }
 @media(max-width:767px){.sidebar{display:none}}
+  /* STRONG STYLE ENTRENO */
+.strong-ex-card{background:var(--s);border:0.5px solid var(--br);border-radius:14px;margin:0 14px 14px;overflow:hidden}
+.strong-ex-card.done-ex{border-color:rgba(34,197,94,.3)}
+.strong-ex-header{display:flex;align-items:center;gap:10px;padding:12px 14px 10px}
+.strong-ex-thumb{width:46px;height:46px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px}
+.strong-serie-header{display:grid;grid-template-columns:32px 1fr 64px 64px 40px;gap:4px;padding:6px 14px;background:var(--s2);border-top:0.5px solid var(--br);font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;text-align:center}
+.strong-serie-header span:first-child{text-align:left}
+.strong-serie-wrap{border-top:0.5px solid var(--br)}
+.strong-serie-row{display:grid;grid-template-columns:32px 1fr 64px 64px 40px;gap:4px;padding:10px 14px;align-items:center;text-align:center;transition:.15s}
+.strong-serie-row.done{background:rgba(34,197,94,.05)}
+.strong-serie-num{font-size:13px;font-weight:700;color:var(--sv3);text-align:left}
+.strong-serie-prev{font-size:12px;color:var(--tx3)}
+.strong-cell{padding:8px 4px;background:var(--s2);border:0.5px solid var(--br);border-radius:8px;color:var(--sv);font-size:16px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:.15s;text-align:center}
+.strong-cell.active{border-color:var(--bl);background:rgba(37,99,235,.12);color:var(--blg)}
+.strong-check{width:34px;height:34px;border-radius:8px;border:1.5px solid var(--br2);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 auto;transition:.15s}
+.strong-check svg{color:var(--tx3)}
+.strong-check.done{background:var(--gn);border-color:var(--gn)}
+.strong-check.done svg{color:#fff}
+.strong-timer-bar{position:relative;height:28px;background:var(--s3);margin:0 14px 2px;border-radius:6px;overflow:hidden}
+.strong-timer-fill{height:100%;background:var(--bl);border-radius:6px;transition:width 1s linear}
+.strong-timer-fill.urg{background:#ef4444}
+.strong-timer-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;font-family:'Bebas Neue',sans-serif;letter-spacing:.05em}
 @media(min-width:768px){#sCliente .scroll{padding-bottom:80px}#sCliente .bnav-bar{position:fixed;bottom:0;left:0;right:0}}
 </style>
 </head>
@@ -1338,6 +1360,10 @@ function renderKL(){
 }
 
 // ENTRENO CLIENTE (estilo Strong)
+// ═══ ENTRENO CLIENTE - ESTILO STRONG ══════════════════
+let activeInput = null; // {ei, si, field} — qué celda está activa
+let runningTimers = {}; // ei_si -> {interval, secs, total, paused}
+
 function hEntreno(){
   if(!CD.dias.length)return`<div style="padding:60px 20px;text-align:center;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">🏋️</div><div style="font-size:16px;font-weight:600;color:var(--sv2)">Tu coach está preparando tu plan</div></div>`;
   const d=CD.dias[activeDia]||CD.dias[0];
@@ -1347,49 +1373,50 @@ function hEntreno(){
   const pct=totalSeries?Math.round(doneSeries/totalSeries*100):0;
 
   const exCards=d.ejercicios.map((e,ei)=>{
-    if(!e._series)e._series=Array.from({length:e.series},()=>({done:false,peso:e.peso_objetivo}));
+    if(!e._series)e._series=Array.from({length:e.series},(_,i)=>({done:false,peso:e.peso_objetivo,reps:parseFirstNum(e.reps),reps_real:parseFirstNum(e.reps),timer:null}));
     const exDone=e._series.every(s=>s.done);
     const ytUrl=e.youtube_url||EX_YT[e.nombre]||'';
-    // Parse reps to get a number (take first number from "10-12" or "10")
-    const parseReps = r => { const m = String(r).match(/\d+/); return m ? parseInt(m[0]) : 10; };
-    const seriesRows=e._series.map((s,si)=>`<tr>
-      <td style="color:var(--sv3);font-weight:600;font-size:13px">S${si+1}</td>
-      <td><input class="serie-peso-inp" type="number" value="${s.peso||0}" step="2.5" min="0" onchange="updatePeso(${ei},${si},this.value)" placeholder="0" style="width:72px"/></td>
-      <td><input class="serie-peso-inp" type="number" value="${parseReps(s.reps_real||e.reps)}" min="1" max="100" onchange="updateReps(${ei},${si},this.value)" style="width:64px;color:var(--gnb)" placeholder="10"/></td>
-      <td><button class="serie-check ${s.done?'done':''}" id="chk_${ei}_${si}" onclick="toggleSerie(${ei},${si})">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button></td>
-    </tr>`).join('');
+    const cfg=(window.exConfig&&window.exConfig[e.nombre])||{};
+    const imgUrl=e.imagen_url||cfg.imagen_url||'';
 
-    return`<div class="ex-strong ${exDone?'done-ex':''}" id="exc_${ei}">
-      <div class="ex-strong-header">
-        <div class="ex-strong-img" style="background:${getExerciseBg(e.nombre)};overflow:hidden;padding:0;cursor:${e.youtube_url||EX_YT[e.nombre]?'pointer':'default'}" onclick="${e.youtube_url||EX_YT[e.nombre]?`openVideo('${e.youtube_url||EX_YT[e.nombre]}','${e.nombre}')`:''}" title="${e.youtube_url||EX_YT[e.nombre]?'Ver técnica en vídeo':''}">
-          ${e.imagen_url?`<img src="${e.imagen_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"/>`:getWgerImg(e.nombre)?`<img src="${getWgerImg(e.nombre)}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.parentElement.style.background='${getExerciseBg(e.nombre)}'"/>`:`<span style="font-size:24px">${getExerciseEmoji(e.nombre)}</span>`}
-          ${e.youtube_url||EX_YT[e.nombre]?`<div style="position:absolute;bottom:4px;right:4px;background:rgba(239,68,68,.9);border-radius:4px;padding:2px 5px;font-size:9px;color:#fff;font-weight:700">▶ VER</div>`:''}
+    const seriesRows=e._series.map((s,si)=>{
+      const timerKey=`${ei}_${si}`;
+      const rt=runningTimers[timerKey];
+      const timerPct=rt?Math.round((rt.secs/rt.total)*100):0;
+      return`<div class="strong-serie-wrap" id="sw_${ei}_${si}">
+        <div class="strong-serie-row ${s.done?'done':''}">
+          <div class="strong-serie-num">${si+1}</div>
+          <div class="strong-serie-prev">${s.peso||0} × ${s.reps_real||s.reps||10}</div>
+          <button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='peso'?'active':''}" onclick="openKeyboard(${ei},${si},'peso')">${s.peso||0}</button>
+          <button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='reps'?'active':''}" onclick="openKeyboard(${ei},${si},'reps')">${s.reps_real||s.reps||10}</button>
+          <button class="strong-check ${s.done?'done':''}" onclick="toggleSerieStrong(${ei},${si})">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
         </div>
-        <div class="ex-strong-info">
-          <div class="ex-strong-grupo">${e.grupo||e.musculos?.split(',')[0]||''}</div>
-          <div class="ex-strong-nombre">${e.nombre}</div>
-          <div class="ex-strong-musculos">${e.musculos||''}</div>
+        ${s.done?`<div class="strong-timer-bar" id="tb_${ei}_${si}">
+          <div class="strong-timer-fill ${rt&&rt.secs<=10?'urg':''}" id="tf_${ei}_${si}" style="width:${timerPct}%"></div>
+          <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(rt.secs):'1:30'}</span>
+        </div>`:''}
+      </div>`;
+    }).join('');
+
+    return`<div class="strong-ex-card ${exDone?'done-ex':''}" id="exc_${ei}">
+      <div class="strong-ex-header">
+        <div class="strong-ex-thumb" style="background:${getExerciseBg(e.nombre)};overflow:hidden">
+          ${imgUrl?`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"/>`:`<span style="font-size:22px">${getExerciseEmoji(e.nombre)}</span>`}
         </div>
-        ${(e.youtube_url||ytUrl)?`<button onclick="openVideo('${e.youtube_url||ytUrl}','${e.nombre}')" class="ex-strong-yt" style="cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg></button>`:''}
+        <div style="flex:1">
+          <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${e.grupo||''}</div>
+          <div style="font-size:16px;font-weight:700;color:var(--sv)">${e.nombre}</div>
+          <div style="font-size:11px;color:var(--tx3)">${e.musculos||''}</div>
+        </div>
+        ${ytUrl?`<button onclick="openVideo('${ytUrl}','${e.nombre}')" style="width:34px;height:34px;border-radius:8px;background:rgba(239,68,68,.15);border:0.5px solid rgba(239,68,68,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg></button>`:''}
       </div>
-      ${e.nota_coach?`<div style="background:linear-gradient(135deg,rgba(180,130,0,0.18),rgba(245,158,11,0.1));border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;padding:9px 13px;margin:0 14px 10px;display:flex;align-items:flex-start;gap:9px"><div style="font-size:16px;margin-top:1px">🐺</div><div><div style="font-size:10px;color:#fcd34d;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Coach dice</div><div style="font-size:13px;color:#fde68a;font-weight:600;line-height:1.4">${e.nota_coach}</div></div></div>`:''}
-      ${(()=>{const w=getInjuryWarnings(e.nombre,CD.lesiones);return w.length?`<div style="background:rgba(239,68,68,.1);border:0.5px solid rgba(239,68,68,.3);border-radius:8px;padding:7px 12px;margin:0 14px 10px;display:flex;align-items:center;gap:8px;font-size:12px;color:#fca5a5;font-weight:600">⚠️ Precaución: ${w.join(', ')}</div>`:'';})()}
-      ${e.es_pr?`<div class="pr-banner"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3.5L13 6l-2.5 2.5.5 3.5L8 10.5 5 12l.5-3.5L3 6l3.5-.5L8 2z" stroke="var(--amb)" stroke-width="1.2" stroke-linejoin="round"/></svg>¡Nueva marca esta semana!</div>`:''}
-      <table class="series-table">
-        <tr><th style="text-align:left">#</th><th>Peso kg</th><th>Reps reales</th><th>✓</th></tr>
-        ${seriesRows}
-      </table>
-      <div class="timer-box">
-        <div class="timer-time-disp" id="tt_${ei}">${fmt(e.descanso)}</div>
-        <div class="timer-lbl">Descanso entre series</div>
-        <div class="tbar"><div class="tbar-fill" id="tb_${ei}" style="width:100%"></div></div>
-        <div class="timer-btns">
-          <button class="tbtn go" onclick="startTimer(${ei},${e.descanso})">▶ Iniciar</button>
-          <button class="tbtn" onclick="resetTimer(${ei},${e.descanso})">↺ Reset</button>
-        </div>
+      ${e.nota_coach?`<div style="background:linear-gradient(135deg,rgba(180,130,0,0.18),rgba(245,158,11,0.1));border-left:3px solid #f59e0b;padding:8px 12px;margin:0 0 8px;display:flex;gap:8px;align-items:flex-start"><span style="font-size:14px">🐺</span><div><div style="font-size:9px;color:#fcd34d;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1px">Coach dice</div><div style="font-size:12px;color:#fde68a;font-weight:600">${e.nota_coach}</div></div></div>`:''}
+      <div class="strong-serie-header">
+        <span>Serie</span><span>Anterior</span><span>kg</span><span>Rep.</span><span>✓</span>
       </div>
+      ${seriesRows}
     </div>`;
   }).join('');
 
@@ -1397,64 +1424,229 @@ function hEntreno(){
     <div class="hero-day-lbl">Entrenamiento</div>
     <div class="hero-day-name">${d.nombre}</div>
     <div class="hero-day-sub">${d.grupo}</div>
-    ${pct>0?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.4);font-weight:600;margin-bottom:5px"><span>Progreso</span><span>${doneSeries}/${totalSeries}</span></div><div style="height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--bl);border-radius:2px;transition:.5s"></div></div></div>`:''}
+    ${pct>0?`<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.4);font-weight:600;margin-bottom:4px"><span>Progreso</span><span>${doneSeries}/${totalSeries}</span></div><div style="height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--bl);border-radius:2px;transition:.5s"></div></div></div>`:''}
   </div>
   <div class="day-scroll">${pills}</div>
-  <div style="padding:12px 14px 6px;font-size:12px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.08em">${d.grupo}</div>
+  <div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.08em">${d.grupo}</div>
   ${exCards}
-  ${d.ejercicios.length>0&&d.ejercicios.every(e=>e._series&&e._series.every(s=>s.done))?`<div style="margin:0 14px 20px;background:var(--gnd);border:0.5px solid rgba(34,197,94,.3);border-radius:14px;padding:18px;text-align:center"><div style="font-size:32px;margin-bottom:8px">🎉</div><div style="font-size:16px;font-weight:700;color:var(--gnb)">¡Entreno completado!</div><div style="font-size:13px;color:var(--tx3);margin-top:4px">Descansa y come bien. El músculo crece ahora.</div></div>`:''}`;
+  ${d.ejercicios.length>0&&d.ejercicios.every(e=>e._series&&e._series.every(s=>s.done))?`<div style="margin:0 14px 20px;background:var(--gnd);border:0.5px solid rgba(34,197,94,.3);border-radius:14px;padding:18px;text-align:center"><div style="font-size:32px;margin-bottom:8px">🎉</div><div style="font-size:16px;font-weight:700;color:var(--gnb)">¡Entreno completado!</div><div style="font-size:13px;color:var(--tx3);margin-top:4px">Descansa y come bien.</div></div>`:''}
+  ${renderKeyboard()}`;
 }
 
-function selDia(i){activeDia=i;document.getElementById('klContent').innerHTML=hEntreno();}
+function parseFirstNum(r){const m=String(r||10).match(/\d+/);return m?parseInt(m[0]):10;}
 
-function updateReps(ei,si,val){
-  const e=CD.dias[activeDia].ejercicios[ei];
-  if(!e._series)e._series=Array.from({length:e.series},()=>({done:false,peso:e.peso_objetivo,reps_real:e.reps}));
-  e._series[si].reps_real=val;
-}
-function updatePeso(ei,si,val){
-  const e=CD.dias[activeDia].ejercicios[ei];
-  if(!e._series)e._series=Array.from({length:e.series},()=>({done:false,peso:e.peso_objetivo}));
-  e._series[si].peso=parseFloat(val)||0;
+function renderKeyboard(){
+  return`<div id="strong_keyboard" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:400;background:var(--s2);border-top:0.5px solid var(--br);padding:8px 12px 32px;border-radius:20px 20px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.4)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 4px">
+      <div style="font-size:11px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.06em" id="kb_label">kg</div>
+      <div style="font-size:22px;font-weight:700;color:var(--sv)" id="kb_display">0</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="kbPause()" style="padding:6px 12px;background:var(--s3);border:0.5px solid var(--br);border-radius:8px;color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" id="kb_pause_btn">⏸ Pausar</button>
+        <button onclick="kbSkip()" style="padding:6px 14px;background:var(--bl2);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Skip →</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+      ${[1,2,3,'⌫',4,5,6,'.',7,8,9,'✓',null,0,null,null].map((k,i)=>{
+        if(k===null)return`<div></div>`;
+        if(k==='✓')return`<button onclick="kbConfirm()" style="background:var(--bl2);color:#fff;border:none;border-radius:10px;padding:16px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit">✓</button>`;
+        if(k==='⌫')return`<button onclick="kbDel()" style="background:var(--s3);color:var(--sv2);border:0.5px solid var(--br);border-radius:10px;padding:16px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit">⌫</button>`;
+        return`<button onclick="kbNum('${k}')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:16px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit">${k}</button>`;
+      }).join('')}
+    </div>
+  </div>`;
 }
 
-function toggleSerie(ei,si){
+let kbValue = '';
+
+function openKeyboard(ei, si, field){
+  activeInput = {ei, si, field};
+  const e = CD.dias[activeDia].ejercicios[ei];
+  kbValue = String(field==='peso' ? (e._series[si].peso||0) : (e._series[si].reps_real||e._series[si].reps||10));
+  const kb = document.getElementById('strong_keyboard');
+  const lbl = document.getElementById('kb_label');
+  const disp = document.getElementById('kb_display');
+  if(kb){ kb.style.display='block'; }
+  if(lbl) lbl.textContent = field==='peso' ? 'kg' : 'reps';
+  if(disp) disp.textContent = kbValue;
+  // update active cell highlight
+  rerenderSerieHeaders();
+}
+
+function kbNum(n){
+  if(kbValue==='0') kbValue=String(n);
+  else kbValue+=String(n);
+  const disp=document.getElementById('kb_display');
+  if(disp)disp.textContent=kbValue;
+}
+function kbDel(){
+  kbValue=kbValue.slice(0,-1)||'0';
+  const disp=document.getElementById('kb_display');
+  if(disp)disp.textContent=kbValue;
+}
+function kbConfirm(){
+  if(!activeInput)return;
+  const {ei,si,field}=activeInput;
   const e=CD.dias[activeDia].ejercicios[ei];
-  if(!e._series)e._series=Array.from({length:e.series},()=>({done:false,peso:e.peso_objetivo}));
-  e._series[si].done=!e._series[si].done;
-  const chk=document.getElementById(`chk_${ei}_${si}`);
-  if(chk)chk.classList.toggle('done',e._series[si].done);
-  if(e._series[si].done){
-    const next=e._series[si+1];
-    if(next&&!next.done)showRest(e.descanso,e.nombre,si+2,e.series);
-    else if(!next){const nex=CD.dias[activeDia].ejercicios[ei+1];if(nex)showRest(e.descanso,nex.nombre,1,nex.series);}
+  const val=parseFloat(kbValue)||0;
+  if(field==='peso') e._series[si].peso=val;
+  else e._series[si].reps_real=val;
+  closeKeyboard();
+  rerenderSerieRow(ei,si);
+}
+function closeKeyboard(){
+  const kb=document.getElementById('strong_keyboard');
+  if(kb)kb.style.display='none';
+  activeInput=null;
+}
+function kbPause(){
+  if(!activeInput)return;
+  const {ei,si}=activeInput;
+  const key=`${ei}_${si}`;
+  const rt=runningTimers[key];
+  if(!rt)return;
+  if(rt.paused){
+    rt.paused=false;
+    const btn=document.getElementById('kb_pause_btn');
+    if(btn)btn.textContent='⏸ Pausar';
+    resumeTimer(ei,si);
+  }else{
+    rt.paused=true;
+    clearInterval(rt.interval);
+    const btn=document.getElementById('kb_pause_btn');
+    if(btn)btn.textContent='▶ Reanudar';
   }
+}
+function kbSkip(){
+  if(!activeInput)return;
+  const {ei,si}=activeInput;
+  stopTimer(ei,si);
+  closeKeyboard();
+}
+
+function toggleSerieStrong(ei,si){
+  const e=CD.dias[activeDia].ejercicios[ei];
+  if(!e._series)e._series=Array.from({length:e.series},(_,i)=>({done:false,peso:e.peso_objetivo,reps:parseFirstNum(e.reps),reps_real:parseFirstNum(e.reps)}));
+  e._series[si].done=!e._series[si].done;
+
+  if(e._series[si].done){
+    // Iniciar timer de descanso para esta serie
+    startTimerInline(ei, si, e.descanso||90);
+    // Abrir teclado apuntando a esta serie para editar kg si quiere
+    openKeyboard(ei, si, 'peso');
+  } else {
+    stopTimer(ei,si);
+    closeKeyboard();
+  }
+
+  rerenderSerieRow(ei,si);
+
   const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
-  if(allDone)setTimeout(()=>{document.getElementById('doneMsg').textContent=`${CD.nombre.split(' ')[0]}, has completado ${CD.dias[activeDia].nombre}. El músculo se construye ahora.`;document.getElementById('doneOv').classList.add('show');},600);
-  // Re-render only the checkmark
+  if(allDone){
+    closeKeyboard();
+    setTimeout(()=>{
+      document.getElementById('doneMsg').textContent=`${CD.nombre.split(' ')[0]}, has completado ${CD.dias[activeDia].nombre}. El músculo se construye ahora.`;
+      document.getElementById('doneOv').classList.add('show');
+    },600);
+  }
+}
+
+function startTimerInline(ei, si, total){
+  const key=`${ei}_${si}`;
+  if(runningTimers[key])clearInterval(runningTimers[key].interval);
+  runningTimers[key]={secs:total, total, paused:false, interval:null};
+  runningTimers[key].interval=setInterval(()=>{
+    const rt=runningTimers[key];
+    if(rt.paused)return;
+    rt.secs--;
+    updateTimerBar(ei,si,rt);
+    // Update kb display if this is active
+    if(activeInput&&activeInput.ei===ei&&activeInput.si===si){
+      const disp=document.getElementById('kb_display');
+      // don't override kb display — it shows the value being edited
+    }
+    if(rt.secs<=0){
+      clearInterval(rt.interval);
+      delete runningTimers[key];
+      updateTimerBar(ei,si,null);
+    }
+  },1000);
+}
+
+function resumeTimer(ei,si){
+  const key=`${ei}_${si}`;
+  const rt=runningTimers[key];
+  if(!rt)return;
+  rt.interval=setInterval(()=>{
+    if(rt.paused)return;
+    rt.secs--;
+    updateTimerBar(ei,si,rt);
+    if(rt.secs<=0){clearInterval(rt.interval);delete runningTimers[key];updateTimerBar(ei,si,null);}
+  },1000);
+}
+
+function stopTimer(ei,si){
+  const key=`${ei}_${si}`;
+  if(runningTimers[key]){clearInterval(runningTimers[key].interval);delete runningTimers[key];}
+  updateTimerBar(ei,si,null);
+}
+
+function updateTimerBar(ei,si,rt){
+  const fill=document.getElementById(`tf_${ei}_${si}`);
+  const label=document.getElementById(`tl_${ei}_${si}`);
+  const bar=document.getElementById(`tb_${ei}_${si}`);
+  if(!fill||!label)return;
+  if(!rt){
+    if(bar)bar.style.display='none';
+    return;
+  }
+  const pct=Math.round((rt.secs/rt.total)*100);
+  fill.style.width=pct+'%';
+  fill.className='strong-timer-fill'+(rt.secs<=10?' urg':'');
+  label.textContent=fmt(rt.secs);
+}
+
+function rerenderSerieRow(ei,si){
+  // Re-render just the exercise card to reflect changes
   const card=document.getElementById(`exc_${ei}`);
-  if(card&&allDone)document.getElementById('klContent').innerHTML=hEntreno();
+  if(!card)return;
+  const e=CD.dias[activeDia].ejercicios[ei];
+  const s=e._series[si];
+  const row=document.getElementById(`sw_${ei}_${si}`);
+  if(!row)return;
+  const key=`${ei}_${si}`;
+  const rt=runningTimers[key];
+  const timerPct=rt?Math.round((rt.secs/rt.total)*100):100;
+  row.innerHTML=`<div class="strong-serie-row ${s.done?'done':''}">
+    <div class="strong-serie-num">${si+1}</div>
+    <div class="strong-serie-prev">${s.peso||0} × ${s.reps_real||s.reps||10}</div>
+    <button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='peso'?'active':''}" onclick="openKeyboard(${ei},${si},'peso')">${s.peso||0}</button>
+    <button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='reps'?'active':''}" onclick="openKeyboard(${ei},${si},'reps')">${s.reps_real||s.reps||10}</button>
+    <button class="strong-check ${s.done?'done':''}" onclick="toggleSerieStrong(${ei},${si})">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+  ${s.done?`<div class="strong-timer-bar" id="tb_${ei}_${si}" ${!rt?'style="display:none"':''}>
+    <div class="strong-timer-fill${rt&&rt.secs<=10?' urg':''}" id="tf_${ei}_${si}" style="width:${timerPct}%"></div>
+    <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(rt.secs):fmt(e.descanso||90)}</span>
+  </div>`:''}`;
 }
 
-function startTimer(ei,total){
-  if(timerInts[ei])clearInterval(timerInts[ei]);let secs=total;
-  timerInts[ei]=setInterval(()=>{secs--;const t=document.getElementById(`tt_${ei}`),b=document.getElementById(`tb_${ei}`);if(t){t.textContent=fmt(secs);t.className='timer-time-disp'+(secs<=10?' urg':'');}if(b){b.style.width=(secs/total*100)+'%';b.className='tbar-fill'+(secs<=10?' urg':'');}if(secs<=0){clearInterval(timerInts[ei]);delete timerInts[ei];if(t)t.textContent='¡Vamos!';}},1000);
+function rerenderSerieHeaders(){
+  // just update active highlights without full re-render
+  if(!activeInput)return;
+  const {ei,si}=activeInput;
+  document.querySelectorAll('.strong-cell.active').forEach(el=>el.classList.remove('active'));
+  const cells=document.querySelectorAll(`#sw_${ei}_${si} .strong-cell`);
+  if(cells[0]&&activeInput.field==='peso')cells[0].classList.add('active');
+  if(cells[1]&&activeInput.field==='reps')cells[1].classList.add('active');
 }
-function resetTimer(ei,total){if(timerInts[ei]){clearInterval(timerInts[ei]);delete timerInts[ei];}const t=document.getElementById(`tt_${ei}`),b=document.getElementById(`tb_${ei}`);if(t){t.textContent=fmt(total);t.className='timer-time-disp';}if(b){b.style.width='100%';b.className='tbar-fill';}}
 
-function showRest(secs,exName,serieNum,totalSeries){
-  restTotal=secs;restSecs=secs;
-  document.getElementById('restTime').textContent=fmt(secs);
-  document.getElementById('restTime').className='rest-time-big';
-  document.getElementById('restSub').textContent=`seg hasta la siguiente serie`;
-  document.getElementById('restNext').textContent=`Siguiente → ${exName}`;
-  document.getElementById('restFill').style.width='100%';
-  document.getElementById('restFill').className='rest-fill';
-  document.getElementById('restOv').classList.add('show');
-  if(restInt)clearInterval(restInt);
-  restInt=setInterval(()=>{restSecs--;const rt=document.getElementById('restTime'),rf=document.getElementById('restFill');if(rt){rt.textContent=fmt(restSecs);rt.className='rest-time-big'+(restSecs<=10?' urg':'');}if(rf){rf.style.width=(restSecs/restTotal*100)+'%';rf.className='rest-fill'+(restSecs<=10?' urg':'');}if(restSecs<=0){clearInterval(restInt);restInt=null;skipRest();}},1000);
+function selDia(i){
+  activeDia=i;
+  runningTimers={};
+  activeInput=null;
+  document.getElementById('klContent').innerHTML=hEntreno();
 }
-function skipRest(){if(restInt){clearInterval(restInt);restInt=null;}document.getElementById('restOv').classList.remove('show');}
 
 // DIETA CLIENTE
 function hDieta(){
