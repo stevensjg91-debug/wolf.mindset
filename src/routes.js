@@ -280,5 +280,15 @@ router.post('/reload-ejercicios', (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
-
+router.post('/ejercicios-db-add', coachOnly, (req, res) => {
+  const { nombre, grupo, musculos, tipo, dificultad, equipo } = req.body;
+  if(!nombre || !grupo) return res.status(400).json({ error: 'Nombre y grupo obligatorios' });
+  const existing = dbGet('SELECT id FROM ejercicios_db WHERE nombre=?', [nombre]);
+  if(existing) return res.status(400).json({ error: 'Ya existe' });
+  const r = dbRun('INSERT INTO ejercicios_db (grupo,nombre,musculos,tipo,dificultad,equipo) VALUES (?,?,?,?,?,?)',
+    [grupo, nombre, musculos||'', tipo||'Fuerza', dificultad||'Intermedio', equipo||'']);
+  const { saveToDisk } = require('./database');
+  saveToDisk();
+  res.json({ ok: true, id: r.lastInsertRowid });
+});
 module.exports = router;
