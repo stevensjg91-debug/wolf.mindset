@@ -488,7 +488,7 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
   <button class="btn" onclick="document.getElementById('doneOv').classList.remove('show')">Cerrar</button>
 
 <!-- PANEL AÑADIR DÍA - STATIC HTML -->
-<div id="rb_dia_panel" style="display:none;position:fixed;inset:0;background:rgba(9,9,11,.92);z-index:200;flex-direction:column;align-items:center;justify-content:center;padding:20px">
+<div id="rb_dia_panel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(9,9,11,.95);z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:20px">
   <div style="background:#111113;border:0.5px solid #27272a;border-radius:16px;padding:20px;width:100%;max-width:420px">
     <div style="font-size:10px;color:#93c5fd;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Añadir día de entreno</div>
     <div style="font-size:11px;color:#52525b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Nombre del día</div>
@@ -929,7 +929,8 @@ function rbToggleDia(id){rbState.diaOpen[id]=!rbState.diaOpen[id];const b=docume
 
 function rbAddDia(){
   const panel = document.getElementById('rb_dia_panel');
-  if(panel) { panel.style.display='flex'; return; }
+  if(!panel){ alert('Error: panel no encontrado'); return; }
+  panel.style.cssText = 'display:flex!important;position:fixed;inset:0;background:rgba(9,9,11,.95);z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:20px';
 }
 
 async function rbConfirmDia(){
