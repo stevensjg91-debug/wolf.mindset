@@ -355,8 +355,21 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
       <option>Muy alta (atleta, 2x día)</option>
     </select>
     
-    <div class="form-lbl">Lesiones / alergias / observaciones</div>
-    <textarea class="finp" id="reg_obs" placeholder="Ej: lesión de rodilla, intolerancia al gluten..." style="resize:vertical;min-height:60px"></textarea>
+    <div class="form-lbl">Tipo de alimentación</div>
+    <select class="finp" id="reg_dieta">
+      <option value="Omnivoro">Omnívoro (como de todo)</option>
+      <option value="Vegetariano">Vegetariano</option>
+      <option value="Vegano">Vegano</option>
+      <option value="Pescetariano">Pescetariano</option>
+      <option value="Sin gluten">Sin gluten / Celiaco</option>
+      <option value="Sin lactosa">Sin lactosa</option>
+    </select>
+    <div class="form-lbl">Alimentos que no puedo comer (opcional)</div>
+    <input class="finp" id="reg_alimentos_no" placeholder="Ej: brócoli, pescado, huevos..."/>
+    <div class="form-lbl">Lesiones / zonas con dolor (opcional)</div>
+    <input class="finp" id="reg_lesiones" placeholder="Ej: rodilla derecha, lumbar..."/>
+    <div class="form-lbl">Otras observaciones (opcional)</div>
+    <textarea class="finp" id="reg_obs" placeholder="Cualquier cosa que tu coach deba saber..." style="resize:vertical;min-height:50px"></textarea>
     
     <button class="fbtn" onclick="doRegistro()" style="margin-top:4px">Enviar solicitud</button>
     <button onclick="show('sLogin')" style="width:100%;margin-top:10px;background:none;border:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:inherit;padding:8px">← Volver al login</button>
@@ -878,11 +891,25 @@ async function rbBuscar(){
 
 function rbToggleDia(id){rbState.diaOpen[id]=!rbState.diaOpen[id];const b=document.getElementById('dia_body_'+id);if(b)b.classList.toggle('open',rbState.diaOpen[id]);}
 
-async function rbAddDia(){
-  const n=prompt('Nombre del día (ej: Lunes):');if(!n)return;
-  const g=prompt('Grupo muscular (ej: Pecho + Tríceps):');if(!g)return;
-  await api('/clientes/'+rbState.clienteId+'/dias',{method:'POST',body:JSON.stringify({nombre:n,grupo:g})});
-  await rbLoadDias();
+function rbAddDia(){
+  const panel = document.getElementById('rb_dia_panel');
+  if(panel) { panel.style.display='flex'; return; }
+}
+
+async function rbConfirmDia(){
+  const n = document.getElementById('rb_dia_nombre').value.trim();
+  const g = document.getElementById('rb_dia_grupo').value.trim();
+  if(!n||!g) return;
+  const btn = document.getElementById('rb_dia_btn');
+  btn.textContent='Guardando...'; btn.disabled=true;
+  try {
+    await api('/clientes/'+rbState.clienteId+'/dias',{method:'POST',body:JSON.stringify({nombre:n,grupo:g})});
+    document.getElementById('rb_dia_panel').style.display='none';
+    document.getElementById('rb_dia_nombre').value='';
+    document.getElementById('rb_dia_grupo').value='';
+    btn.textContent='✓ Añadir día'; btn.disabled=false;
+    await rbLoadDias();
+  } catch(e) { btn.textContent='Error'; btn.disabled=false; }
 }
 
 function rbOpenEx(diaId,diaNombre){
@@ -1531,6 +1558,81 @@ async function guardarPerfil(){
 }
 
 
+
+
+// ═══ AUTO CALC MACROS ═════════════════════════════════
+function autoCalcMacros(){
+  const peso = parseFloat(document.getElementById('pf_peso')?.value || document.querySelector('#cContent [id="kcal"]')?.getAttribute('data-peso') || 0);
+  // Get data from client form fields
+  const pesoEl = document.getElementById('pf_peso');
+  const alturaEl = document.getElementById('pf_altura');  
+  const edadEl = document.getElementById('pf_edad');
+  const sexoEl = document.getElementById('pf_sexo');
+  const actividadEl = document.getElementById('pf_actividad');
+  
+  // Use stored CD data as fallback
+  const p = parseFloat(pesoEl?.value) || (window._cid && CD ? CD.peso_actual : 0);
+  const h = parseInt(alturaEl?.value) || (window._cid && CD ? CD.altura : 0);
+  const e = parseInt(edadEl?.value) || (window._cid && CD ? CD.edad : 0);
+  const sexo = sexoEl?.value || (window._cid && CD ? CD.sexo : 'Hombre');
+  const actividad = actividadEl?.value || (window._cid && CD ? CD.actividad : 'Moderada');
+  const obj = document.getElementById('obj')?.value || 'Volumen';
+  
+  if(!p || !h || !e) {
+    alert('Rellena primero: peso, altura y edad del cliente en su perfil');
+    return;
+  }
+  
+  // Mifflin-St Jeor TMB
+  let tmb;
+  if(sexo === 'Hombre') tmb = Math.round(10*p + 6.25*h - 5*e + 5);
+  else tmb = Math.round(10*p + 6.25*h - 5*e - 161);
+  
+  // Activity factor
+  const factores = {
+    'Sedentario':1.2,'Sedentario (poco o nada de ejercicio)':1.2,
+    'Ligera':1.375,'Ligera (1-2 días/semana)':1.375,
+    'Moderada':1.55,'Moderada (3-4 días/semana)':1.55,
+    'Alta':1.725,'Alta (5-6 días/semana)':1.725,
+    'Muy alta':1.9,'Muy alta (atleta, 2x día)':1.9,
+  };
+  const factor = factores[actividad] || 1.55;
+  const tdee = Math.round(tmb * factor);
+  
+  // Adjust for goal
+  let kcal, protMultiplier;
+  if(obj.includes('Volumen')) { kcal = tdee + 300; protMultiplier = 2.0; }
+  else if(obj.includes('Definición')) { kcal = tdee - 400; protMultiplier = 2.4; }
+  else if(obj.includes('Perder')) { kcal = tdee - 600; protMultiplier = 2.2; }
+  else if(obj.includes('Fuerza')) { kcal = tdee + 200; protMultiplier = 2.2; }
+  else { kcal = tdee; protMultiplier = 2.0; } // Recomposición
+  
+  // Macros
+  const prot = Math.round(p * protMultiplier);
+  const fat = Math.round(p * 1.0);
+  const carbs = Math.max(0, Math.round((kcal - prot*4 - fat*9) / 4));
+  
+  // Update fields
+  const kcalEl = document.getElementById('kcal');
+  const protEl = document.getElementById('prot');
+  const fatEl = document.getElementById('fat');
+  const carbsEl = document.getElementById('carbs');
+  
+  if(kcalEl) kcalEl.value = kcal;
+  if(protEl) protEl.value = prot;
+  if(fatEl) fatEl.value = fat;
+  if(carbsEl) carbsEl.value = carbs;
+  
+  // Update visual bars
+  recalcMacros('kcal');
+  
+  // Show confirmation
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = `✓ ${kcal} kcal · ${prot}g P · ${carbs}g C · ${fat}g G`;
+  btn.style.background = 'rgba(34,197,94,.2)';
+  setTimeout(() => { btn.textContent = orig; btn.style.background = 'rgba(34,197,94,.1)'; }, 4000);
+}
 
 // ═══ CALCULADORA DE MACROS ════════════════════════════
 function recalcMacros(changed){
