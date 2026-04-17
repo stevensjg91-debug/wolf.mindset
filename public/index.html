@@ -2,14 +2,14 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#09090b"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <title>WolfMindset</title>
 <link rel="manifest" href="/manifest.json"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet"/>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--b:#09090b;--s:#111113;--s2:#18181b;--s3:#1f1f23;--br:#27272a;--br2:#3f3f46;--sv:#e4e4e7;--sv2:#a1a1aa;--sv3:#52525b;--bl:#3b82f6;--bl2:#2563eb;--bl3:#1e3a5f;--blg:#93c5fd;--tx:#fafafa;--tx2:#a1a1aa;--tx3:#52525b;--gn:#22c55e;--gnd:rgba(34,197,94,0.1);--gnb:#86efac;--am:#f59e0b;--amd:rgba(245,158,11,0.1);--amb:#fcd34d}
 html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sans-serif;overflow:hidden}
 #root{height:100%;display:flex;flex-direction:column}
@@ -262,10 +262,10 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
 .strong-ex-card.done-ex{border-color:rgba(34,197,94,.3)}
 .strong-ex-header{display:flex;align-items:center;gap:10px;padding:12px 14px 10px}
 .strong-ex-thumb{width:46px;height:46px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px}
-.strong-serie-header{display:grid;grid-template-columns:32px 1fr 64px 64px 40px;gap:4px;padding:6px 14px;background:var(--s2);border-top:0.5px solid var(--br);font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;text-align:center}
+.strong-serie-header{display:grid;grid-template-columns:28px 1fr 58px 52px 40px 36px;gap:4px;padding:6px 14px;background:var(--s2);border-top:0.5px solid var(--br);font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;text-align:center}
 .strong-serie-header span:first-child{text-align:left}
 .strong-serie-wrap{border-top:0.5px solid var(--br)}
-.strong-serie-row{display:grid;grid-template-columns:32px 1fr 64px 64px 40px;gap:4px;padding:10px 14px;align-items:center;text-align:center;transition:.15s}
+.strong-serie-row{display:grid;grid-template-columns:28px 1fr 58px 52px 40px 36px;gap:4px;padding:10px 14px;align-items:center;text-align:center;transition:.15s}
 .strong-serie-row.done{background:rgba(34,197,94,.05)}
 .strong-serie-num{font-size:13px;font-weight:700;color:var(--sv3);text-align:left}
 .strong-serie-prev{font-size:12px;color:var(--tx3)}
@@ -762,8 +762,51 @@ async function verCliente(id){
   <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr">Entreno asignado <button class="sec-act" onclick="cNav('rutinas',document.querySelector('#sCoach .sni:nth-child(2)'))">Editar en Rutinas</button></div>
     ${c.dias.length?c.dias.map(d=>`<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:7px"><div style="font-size:13px;font-weight:700;color:var(--sv)">${d.nombre} — ${d.grupo}</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">${d.ejercicios.length} ejercicios</div></div>`).join(''):'<div style="font-size:13px;color:var(--tx3)">Sin días. Ve a Crear rutina.</div>'}
-  </div>`;
+  </div>
+  <div class="sec" style="margin-bottom:12px">
+    <div class="sec-hdr">Historial de entrenos <span id="sesiones_count" style="color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0;font-size:11px"></span></div>
+    <div id="sesiones_wrap"><div style="font-size:13px;color:var(--tx3)">Cargando...</div></div>
+  </div>
+  <div id="graficas_coach_sec" style="display:none">
+    <div class="sec-lbl" style="padding-top:0;padding-bottom:8px">Progreso ejercicios principales</div>
+    <div id="graficas_coach_wrap" style="padding:0 0 12px"></div>
+  </div>\`;
   window._cid=c.id;
+
+  // Cargar historial
+  api('/clientes/'+id+'/sesiones').then(sesiones=>{
+    const wrap=document.getElementById('sesiones_wrap');
+    const count=document.getElementById('sesiones_count');
+    if(!wrap)return;
+    if(count)count.textContent='('+sesiones.length+' entrenos)';
+    if(!sesiones.length){wrap.innerHTML='<div style="font-size:13px;color:var(--tx3)">Sin entrenos aún.</div>';return;}
+    wrap.innerHTML=sesiones.map(s=>{
+      const byEx={};
+      s.series.forEach(sr=>{if(!byEx[sr.ejercicio_nombre])byEx[sr.ejercicio_nombre]=[];byEx[sr.ejercicio_nombre].push(sr);});
+      return '<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px;margin-bottom:8px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+          '<div><div style="font-size:14px;font-weight:700;color:var(--sv)">'+s.dia_nombre+' — '+s.dia_grupo+'</div>'+
+          '<div style="font-size:11px;color:var(--tx3)">'+new Date(s.fecha).toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div>'+
+          '<span class="badge b-gn">✓</span>'+
+        '</div>'+
+        Object.entries(byEx).map(([nom,srs])=>
+          '<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:700;color:var(--sv2);margin-bottom:3px">'+nom+'</div>'+
+          '<div style="display:flex;gap:5px;flex-wrap:wrap">'+srs.map(sr=>
+            '<span style="background:var(--s3);border:0.5px solid var(--br);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--sv3);font-weight:600">'+
+            sr.peso_real+'kg×'+sr.reps_real+(sr.rir!=null?' RIR'+sr.rir:'')+
+            '</span>').join('')+'</div></div>'
+        ).join('')+'</div>';
+    }).join('');
+  }).catch(()=>{});
+
+  // Gráficas principales
+  const principales=c.dias.flatMap(d=>(d.ejercicios||[]).filter(e=>e.es_principal).map(e=>e.nombre)).filter((n,i,a)=>a.indexOf(n)===i);
+  if(principales.length){
+    const sec=document.getElementById('graficas_coach_sec');
+    if(sec)sec.style.display='block';
+    cargarGraficasCoach(id,principales);
+  }
+
   if(c.peso_actual&&c.altura&&c.edad){
     const tmb=calcTMBCoach(c),gasto=calcGastoCoach(c);
     const w=document.getElementById('tmb_wrap_coach');
@@ -828,7 +871,12 @@ function hRutinas(){return`
           <div><div class="form-lbl">Reps</div><input class="inp" id="rb_add_reps" value="10-12" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/></div>
           <div><div class="form-lbl">Peso objetivo (kg)</div><input class="inp" id="rb_add_peso" type="number" value="0" step="2.5" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/></div>
           <div><div class="form-lbl">Descanso (seg)</div><input class="inp" id="rb_add_descanso" type="number" value="90" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/></div>
+          <div><div class="form-lbl">RIR objetivo</div><input class="inp" id="rb_add_rir" type="number" value="2" min="0" max="5" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/></div>
         </div>
+        <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;cursor:pointer;padding:10px 12px;background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.25);border-radius:10px">
+          <input type="checkbox" id="rb_add_principal" style="width:18px;height:18px;cursor:pointer;accent-color:#f59e0b"/>
+          <div><div style="font-size:13px;font-weight:700;color:var(--amb)">⭐ Ejercicio principal</div><div style="font-size:11px;color:var(--tx3)">Aparece en gráficas de progreso</div></div>
+        </label>
         <div class="form-lbl">Link YouTube (opcional)</div>
         <input class="inp" id="rb_add_yt" placeholder="https://youtube.com/shorts/..." style="margin-bottom:8px"/>
         <div class="form-lbl">Nota para el cliente (opcional)</div>
@@ -898,7 +946,7 @@ async function rbLoadDias(){
       <div class="dia-body ${rbState.diaOpen[d.id]?'open':''}" id="dia_body_${d.id}">
         ${d.ejercicios.map(e=>`<div class="ex-row">
           <div class="ex-row-img" style="background:${EX_COLORS[e.musculos?.split(',')[0]?.trim()]||'var(--s3)'}">${EX_EMOJIS[e.musculos?.includes('Cuád')?'Piernas':e.musculos?.includes('Dorsal')?'Espalda':'Pecho']||'💪'}</div>
-          <div class="ex-row-info"><div class="ex-row-nombre">${e.nombre}</div><div class="ex-row-detail">${e.series}×${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''} · ${e.descanso}s</div>${e.nota_coach?`<div style="font-size:10px;color:var(--amb);font-weight:600;margin-top:2px">📝 ${e.nota_coach}</div>`:''}</div>
+          <div class="ex-row-info"><div class="ex-row-nombre">${e.nombre}</div><div class="ex-row-detail">${e.series}×${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''} · ${e.descanso}s${e.rir!=null?' · RIR '+e.rir:''}</div>${e.es_principal?`<span style="font-size:10px;color:var(--amb);font-weight:700">⭐ Principal</span>`:''}${e.nota_coach?`<div style="font-size:10px;color:var(--amb);font-weight:600;margin-top:2px">📝 ${e.nota_coach}</div>`:''}</div>
           <button onclick="rbDelEx(${e.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:16px;padding:4px">✕</button>
         </div>`).join('')||'<div style="font-size:12px;color:var(--tx3);padding:8px 0">Sin ejercicios. Pulsa + Ejercicio.</div>'}
       </div>
@@ -1015,6 +1063,8 @@ async function rbConfirmAdd(){
   const reps = document.getElementById('rb_add_reps').value||'10-12';
   const peso = parseFloat(document.getElementById('rb_add_peso').value)||0;
   const descanso = parseInt(document.getElementById('rb_add_descanso').value)||90;
+  const rir = parseInt(document.getElementById('rb_add_rir').value)||2;
+  const esPrincipal = document.getElementById('rb_add_principal').checked ? 1 : 0;
   const youtube = document.getElementById('rb_add_yt').value||'';
   const nota = document.getElementById('rb_add_nota').value||'';
   const diaId = rbState.diaId;
@@ -1025,7 +1075,7 @@ async function rbConfirmAdd(){
   
   try {
     await api('/dias/'+diaId+'/ejercicios',{method:'POST',body:JSON.stringify({
-      nombre,musculos,series,reps,peso_objetivo:peso,descanso,youtube_url:youtube,nota_coach:nota
+      nombre,musculos,series,reps,peso_objetivo:peso,descanso,rir,es_principal:esPrincipal,youtube_url:youtube,nota_coach:nota
     })});
     // Reset button BEFORE hiding panel
     btn.innerHTML = '✓ Añadir ejercicio';
@@ -1355,7 +1405,7 @@ function renderKL(){
   if(klTab==='entreno')el.innerHTML=hEntreno();
   else if(klTab==='dieta')el.innerHTML=hDieta();
   else if(klTab==='asistente'){el.innerHTML=hAsistente();chatH=[{role:'assistant',content:`Hola ${CD.nombre.split(' ')[0]}, aquí para ayudarte. ¿Qué necesitas?`}];}
-  else if(klTab==='progreso')el.innerHTML=hProgreso2();
+  else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>cargarGraficasCliente(),100);}
   else if(klTab==='perfil')el.innerHTML=hPerfil();
 }
 
@@ -1406,15 +1456,19 @@ function hEntreno(){
           ${imgUrl?`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"/>`:`<span style="font-size:22px">${getExerciseEmoji(e.nombre)}</span>`}
         </div>
         <div style="flex:1">
-          <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${e.grupo||''}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${e.grupo||''}</div>
+            ${e.es_principal?`<span style="font-size:10px;background:rgba(245,158,11,.2);color:var(--amb);padding:1px 6px;border-radius:4px;font-weight:700">⭐ Principal</span>`:''}
+            ${e.rir!=null?`<span style="font-size:10px;background:rgba(59,130,246,.15);color:var(--blg);padding:1px 6px;border-radius:4px;font-weight:700">RIR objetivo: ${e.rir}</span>`:''}
+          </div>
           <div style="font-size:16px;font-weight:700;color:var(--sv)">${e.nombre}</div>
           <div style="font-size:11px;color:var(--tx3)">${e.musculos||''}</div>
         </div>
         ${ytUrl?`<button onclick="openVideo('${ytUrl}','${e.nombre}')" style="width:34px;height:34px;border-radius:8px;background:rgba(239,68,68,.15);border:0.5px solid rgba(239,68,68,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg></button>`:''}
       </div>
       ${e.nota_coach?`<div style="background:linear-gradient(135deg,rgba(180,130,0,0.18),rgba(245,158,11,0.1));border-left:3px solid #f59e0b;padding:8px 12px;margin:0 0 8px;display:flex;gap:8px;align-items:flex-start"><span style="font-size:14px">🐺</span><div><div style="font-size:9px;color:#fcd34d;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1px">Coach dice</div><div style="font-size:12px;color:#fde68a;font-weight:600">${e.nota_coach}</div></div></div>`:''}
-      <div class="strong-serie-header">
-        <span>Serie</span><span>Anterior</span><span>kg</span><span>Rep.</span><span>✓</span>
+      <div class="strong-serie-header" style="grid-template-columns:28px 1fr 58px 52px 40px 36px">
+        <span>Serie</span><span>Anterior</span><span>kg</span><span>Rep.</span><span>RIR</span><span>✓</span>
       </div>
       ${seriesRows}
     </div>`;
@@ -1436,7 +1490,7 @@ function hEntreno(){
 function parseFirstNum(r){const m=String(r||10).match(/\d+/);return m?parseInt(m[0]):10;}
 
 function renderKeyboard(){
-  return`<div id="strong_keyboard" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:400;background:var(--s2);border-top:1.5px solid var(--br2);padding:10px 14px 12px;box-shadow:0 -8px 32px rgba(0,0,0,.7)">
+  return`<div id="strong_keyboard" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:400;background:var(--s2);border-top:0.5px solid var(--br);padding:8px 12px 32px;border-radius:20px 20px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.4)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 4px">
       <div style="font-size:11px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.06em" id="kb_label">kg</div>
       <div style="font-size:22px;font-weight:700;color:var(--sv)" id="kb_display">0</div>
@@ -1466,21 +1520,8 @@ function openKeyboard(ei, si, field){
   const lbl = document.getElementById('kb_label');
   const disp = document.getElementById('kb_display');
   if(kb){ kb.style.display='block'; }
-  if(lbl) lbl.textContent = field==='peso' ? 'kg' : 'reps';
+  if(lbl) lbl.textContent = field==='peso' ? 'kg' : field==='reps' ? 'reps' : 'RIR';
   if(disp) disp.textContent = kbValue;
-  // Posicionar teclado encima de bnav, respetando barra URL del Safari
-  const bnav=document.querySelector('#sCliente .bnav-bar');
-  const bnavH=bnav?bnav.offsetHeight:60;
-  const urlBarH=window.innerHeight-(window.visualViewport?window.visualViewport.height:window.innerHeight);
-  kb.style.bottom=(bnavH+Math.max(0,urlBarH))+'px';
-  // Dar espacio al scroll para que la serie no quede tapada
-  const kbH=kb.offsetHeight||260;
-  const scroll=document.querySelector('#sCliente .scroll');
-  if(scroll)scroll.style.paddingBottom=(bnavH+kbH+20)+'px';
-  setTimeout(()=>{
-    const rowEl=document.getElementById('sw_'+ei+'_'+si);
-    if(rowEl)rowEl.scrollIntoView({behavior:'smooth',block:'center'});
-  },100);
   // update active cell highlight
   rerenderSerieHeaders();
 }
@@ -1510,8 +1551,6 @@ function closeKeyboard(){
   const kb=document.getElementById('strong_keyboard');
   if(kb)kb.style.display='none';
   activeInput=null;
-  const scroll=document.querySelector('#sCliente .scroll');
-  if(scroll)scroll.style.paddingBottom='80px';
 }
 function kbPause(){
   if(!activeInput)return;
@@ -1558,11 +1597,34 @@ function toggleSerieStrong(ei,si){
   const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
   if(allDone){
     closeKeyboard();
+    guardarSesion();
     setTimeout(()=>{
       document.getElementById('doneMsg').textContent=`${CD.nombre.split(' ')[0]}, has completado ${CD.dias[activeDia].nombre}. El músculo se construye ahora.`;
       document.getElementById('doneOv').classList.add('show');
     },600);
   }
+}
+
+async function guardarSesion(){
+  try{
+    const d=CD.dias[activeDia];
+    const series=[];
+    d.ejercicios.forEach(e=>{
+      (e._series||[]).forEach((s,si)=>{
+        if(s.done)series.push({
+          ejercicio:e.nombre,
+          serie_num:si+1,
+          peso:s.peso||0,
+          reps:s.reps_real||parseFirstNum(e.reps),
+          rir:s.rir_real!=null?s.rir_real:(e.rir!=null?e.rir:2)
+        });
+      });
+    });
+    await api('/clientes/'+CD.id+'/sesiones',{
+      method:'POST',
+      body:JSON.stringify({dia_nombre:d.nombre,dia_grupo:d.grupo,duracion_min:0,series})
+    });
+  }catch(e){console.log('Error guardando sesión:',e);}
 }
 
 function startTimerInline(ei, si, total){
@@ -1723,6 +1785,7 @@ function hProgreso2(){return`<div style="padding-top:8px">
     <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">Nivel</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${CD.nivel}</div></div>
     <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">Días/sem</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.dias.length}</div></div>
   </div>
+  <div id="progreso_graficas_wrap"></div>
   <div class="sec-lbl">Añadir medición</div>
   <div style="margin:0 14px 12px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:14px">
     <div class="g2" style="gap:8px;margin-bottom:10px">
@@ -2302,16 +2365,121 @@ async function reloadEjercicios(){
 }
 
 
-// Ajustar teclado cuando la barra URL del Safari aparece/desaparece
-if(window.visualViewport){
-  window.visualViewport.addEventListener('resize',()=>{
-    const kb=document.getElementById('strong_keyboard');
-    if(!kb||kb.style.display==='none')return;
-    const bnav=document.querySelector('#sCliente .bnav-bar');
-    const bnavH=bnav?bnav.offsetHeight:60;
-    const urlBarH=window.innerHeight-window.visualViewport.height;
-    kb.style.bottom=(bnavH+Math.max(0,urlBarH))+'px';
+// ═══ GRÁFICAS DE PROGRESO ══════════════════════════════════════
+async function cargarGraficasCliente(){
+  const wrap = document.getElementById('progreso_graficas_wrap');
+  if(!wrap) return;
+  try {
+    // Get ejercicios principales from client's days
+    const principales = [];
+    (CD.dias||[]).forEach(d=>{
+      (d.ejercicios||[]).forEach(e=>{
+        if(e.es_principal && !principales.find(p=>p===e.nombre)) principales.push(e.nombre);
+      });
+    });
+    if(!principales.length){ wrap.innerHTML=''; return; }
+
+    wrap.innerHTML = `<div class="sec-lbl">Progreso ejercicios principales</div>
+      <div id="graficas_container" style="padding:0 14px 4px"></div>`;
+
+    const container = document.getElementById('graficas_container');
+    for(const ejercicio of principales){
+      const data = await api('/clientes/'+CD.id+'/progreso-ejercicio?ejercicio='+encodeURIComponent(ejercicio));
+      if(!data.length) continue;
+      container.innerHTML += renderGraficaSVG(ejercicio, data);
+    }
+  } catch(e){ console.log('Error graficas:', e); }
+}
+
+function renderGraficaSVG(nombre, data){
+  // Group by date - take max peso per session
+  const byDate = {};
+  data.forEach(d=>{
+    const fecha = d.fecha ? d.fecha.split('T')[0] : d.fecha;
+    if(!byDate[fecha] || d.peso_real > byDate[fecha].peso) {
+      byDate[fecha] = { peso: d.peso_real, reps: d.reps_real, rir: d.rir };
+    }
   });
+  const puntos = Object.entries(byDate).sort((a,b)=>a[0].localeCompare(b[0]));
+  if(puntos.length < 1) return '';
+
+  const W=320, H=120, PAD={t:10,r:10,b:30,l:40};
+  const iW=W-PAD.l-PAD.r, iH=H-PAD.t-PAD.b;
+  const pesos = puntos.map(p=>p[1].peso);
+  const minP = Math.max(0, Math.min(...pesos)*0.9);
+  const maxP = Math.max(...pesos)*1.05 || 1;
+  const scaleX = i => PAD.l + (puntos.length===1 ? iW/2 : i/(puntos.length-1)*iW);
+  const scaleY = v => PAD.t + iH - ((v-minP)/(maxP-minP||1))*iH;
+
+  // Line path
+  const linePath = puntos.map((p,i)=>`${i===0?'M':'L'}${scaleX(i).toFixed(1)},${scaleY(p[1].peso).toFixed(1)}`).join(' ');
+  // Area path
+  const areaPath = linePath + ` L${scaleX(puntos.length-1).toFixed(1)},${(PAD.t+iH).toFixed(1)} L${scaleX(0).toFixed(1)},${(PAD.t+iH).toFixed(1)} Z`;
+
+  // Y axis labels
+  const yLabels = [minP, (minP+maxP)/2, maxP].map(v=>`
+    <text x="${PAD.l-4}" y="${scaleY(v).toFixed(1)}" fill="#52525b" font-size="9" text-anchor="end" dominant-baseline="middle">${Math.round(v)}</text>
+    <line x1="${PAD.l}" y1="${scaleY(v).toFixed(1)}" x2="${W-PAD.r}" y2="${scaleY(v).toFixed(1)}" stroke="#27272a" stroke-width="0.5"/>`).join('');
+
+  // X axis labels (max 4)
+  const step = Math.max(1, Math.floor(puntos.length/4));
+  const xLabels = puntos.filter((_,i)=>i%step===0||i===puntos.length-1).map((p,_,arr)=>{
+    const i = puntos.indexOf(p);
+    const d = new Date(p[0]);
+    const label = `${d.getDate()}/${d.getMonth()+1}`;
+    return `<text x="${scaleX(i).toFixed(1)}" y="${H-6}" fill="#52525b" font-size="9" text-anchor="middle">${label}</text>`;
+  }).join('');
+
+  // Dots + tooltips
+  const dots = puntos.map((p,i)=>`
+    <circle cx="${scaleX(i).toFixed(1)}" cy="${scaleY(p[1].peso).toFixed(1)}" r="3" fill="#3b82f6" stroke="#1e3a5f" stroke-width="1.5"/>
+    <title>${p[0]}: ${p[1].peso}kg × ${p[1].reps} reps${p[1].rir!=null?' · RIR '+p[1].rir:''}</title>`).join('');
+
+  // Last value
+  const last = puntos[puntos.length-1];
+  const prev = puntos.length > 1 ? puntos[puntos.length-2] : null;
+  const diff = prev ? (last[1].peso - prev[1].peso) : 0;
+  const diffStr = diff > 0 ? `+${diff.toFixed(1)}kg` : diff < 0 ? `${diff.toFixed(1)}kg` : '';
+  const diffColor = diff > 0 ? '#86efac' : diff < 0 ? '#fca5a5' : '#a1a1aa';
+
+  return `<div style="background:var(--s);border:0.5px solid var(--br);border-radius:12px;padding:12px;margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--sv)">${nombre}</div>
+        <div style="font-size:11px;color:var(--tx3)">${puntos.length} sesión${puntos.length!==1?'es':''}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:18px;font-weight:700;color:var(--sv)">${last[1].peso}kg</div>
+        ${diffStr?`<div style="font-size:11px;font-weight:600;color:${diffColor}">${diffStr}</div>`:''}
+        ${last[1].rir!=null?`<div style="font-size:10px;color:var(--blg)">RIR ${last[1].rir}</div>`:''}
+      </div>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;overflow:visible">
+      <defs>
+        <linearGradient id="grad_${nombre.replace(/\s/g,'_')}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.03"/>
+        </linearGradient>
+      </defs>
+      ${yLabels}
+      ${xLabels}
+      <path d="${areaPath}" fill="url(#grad_${nombre.replace(/\s/g,'_')})" stroke="none"/>
+      <path d="${linePath}" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      ${dots}
+    </svg>
+  </div>`;
+}
+
+// Coach también puede ver gráficas en verCliente
+async function cargarGraficasCoach(clienteId, ejerciciosPrincipales){
+  const wrap = document.getElementById('graficas_coach_wrap');
+  if(!wrap||!ejerciciosPrincipales.length) return;
+  wrap.innerHTML = '';
+  for(const ejercicio of ejerciciosPrincipales){
+    const data = await api('/clientes/'+clienteId+'/progreso-ejercicio?ejercicio='+encodeURIComponent(ejercicio));
+    if(!data.length) continue;
+    wrap.innerHTML += renderGraficaSVG(ejercicio, data);
+  }
 }
 </script>
 </body>
