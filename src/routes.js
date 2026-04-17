@@ -76,8 +76,10 @@ router.delete('/dias/:id', coachOnly, (req, res) => {
 
 router.post('/dias/:id/ejercicios', coachOnly, (req, res) => {
   const { nombre, musculos, series, reps, peso_objetivo, descanso, orden, youtube_url, imagen_url, nota_coach } = req.body;
-  const r = dbRun('INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, orden, youtube_url, imagen_url, nota_coach) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [req.params.id, nombre, musculos||'', series||3, reps||'10-12', peso_objetivo||0, descanso||90, orden||0, youtube_url||'', imagen_url||'', nota_coach||'']);
+  const rir = req.body.rir!=null ? req.body.rir : 2;
+  const es_principal = req.body.es_principal!=null ? req.body.es_principal : 0;
+  const r = dbRun('INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, rir, es_principal, orden, youtube_url, imagen_url, nota_coach) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.params.id, nombre, musculos||'', series||3, reps||'10-12', peso_objetivo||0, descanso||90, rir, es_principal, orden||0, youtube_url||'', imagen_url||'', nota_coach||'']);
   if (youtube_url || imagen_url || nota_coach) {
     const existing = dbGet('SELECT id FROM ejercicios_config WHERE nombre=?', [nombre]);
     if (existing) {
@@ -173,7 +175,7 @@ router.post('/ia/foto', async (req, res) => {
   } catch(e) { res.status(500).json({ error: 'Error IA foto' }); }
 });
 
-// ── EJERCICIOS CONFIG ─────────────────────────────────
+// ── EJERCICIOS CONFIG ──────────────────────────────────────────────
 router.get('/ejercicios-config', coachOnly, (req, res) => {
   const configs = dbAll('SELECT * FROM ejercicios_config', []);
   const map = {};
@@ -195,30 +197,7 @@ router.put('/ejercicios-config/:nombre', coachOnly, (req, res) => {
   res.json({ ok: true });
 });
 
-// ── WGER IMAGE PROXY ──────────────────────────────────
-router.get('/wger-img/:nombre', async (req, res) => {
-  const nombre = decodeURIComponent(req.params.nombre);
-  try {
-    const searchUrl = `https://wger.de/api/v2/exercise/search/?term=${encodeURIComponent(nombre)}&language=english&format=json`;
-    const r = await fetch(searchUrl, { signal: AbortSignal.timeout(4000) });
-    const data = await r.json();
-    if (data.suggestions && data.suggestions.length > 0) {
-      const baseId = data.suggestions[0].data?.base_id;
-      if (baseId) {
-        const imgR = await fetch(`https://wger.de/api/v2/exerciseimage/?exercise_base=${baseId}&format=json`, { signal: AbortSignal.timeout(4000) });
-        const imgData = await imgR.json();
-        if (imgData.results && imgData.results.length > 0) {
-          return res.json({ url: imgData.results[0].image });
-        }
-      }
-    }
-    res.json({ url: null });
-  } catch(e) {
-    res.json({ url: null });
-  }
-});
-
-// ── BASE DE DATOS EJERCICIOS Y ALIMENTOS ──────────────
+// ── BASE DE DATOS EJERCICIOS Y ALIMENTOS ──────────────────────────
 router.get('/ejercicios-db', (req, res) => {
   const { grupo, buscar } = req.query;
   let sql = 'SELECT * FROM ejercicios_db WHERE 1=1';
@@ -239,7 +218,7 @@ router.get('/alimentos-db', (req, res) => {
   res.json(dbAll(sql, params));
 });
 
-// ── CLIENTES PENDIENTES ───────────────────────────────
+// ── CLIENTES PENDIENTES ────────────────────────────────────────────
 router.get('/clientes-pendientes', coachOnly, (req, res) => {
   const pendientes = dbAll(`SELECT u.id, u.nombre, u.email, u.username, u.estado, u.telefono,
     c.id as cliente_id, c.objetivo, c.nivel, c.peso_actual, c.altura, c.edad, c.sexo, c.actividad, c.observaciones, c.dieta_tipo, c.alimentos_no, c.lesiones
@@ -261,7 +240,7 @@ router.put('/usuarios/:id/rechazar', coachOnly, (req, res) => {
   res.json({ ok: true });
 });
 
-// ── RELOAD EXERCISE DATABASE ──────────────────────────
+// ── RELOAD EXERCISE DATABASE ───────────────────────────────────────
 router.post('/reload-ejercicios', (req, res) => {
   try {
     dbRun('DELETE FROM ejercicios_db', []);
@@ -279,7 +258,7 @@ router.post('/reload-ejercicios', (req, res) => {
   }
 });
 
-// ── CREAR EJERCICIO MANUAL ────────────────────────────
+// ── CREAR EJERCICIO MANUAL ─────────────────────────────────────────
 router.post('/ejercicios-db-add', coachOnly, (req, res) => {
   const { nombre, grupo, musculos, tipo, dificultad, equipo } = req.body;
   if(!nombre || !grupo) return res.status(400).json({ error: 'Nombre y grupo obligatorios' });
@@ -292,7 +271,7 @@ router.post('/ejercicios-db-add', coachOnly, (req, res) => {
   res.json({ ok: true, id: r.lastInsertRowid });
 });
 
-// ── SESIONES ENTRENO ──────────────────────────────────
+// ── SESIONES ENTRENO ───────────────────────────────────────────────
 router.post('/clientes/:id/sesiones', (req, res) => {
   const { dia_nombre, dia_grupo, duracion_min, series } = req.body;
   const r = dbRun(
@@ -303,8 +282,8 @@ router.post('/clientes/:id/sesiones', (req, res) => {
   if(series && series.length) {
     series.forEach(s => {
       dbRun(
-        'INSERT INTO series_log (sesion_id, ejercicio_nombre, serie_num, peso_real, reps_real) VALUES (?,?,?,?,?)',
-        [sesionId, s.ejercicio, s.serie_num, s.peso, s.reps]
+        'INSERT INTO series_log (sesion_id, ejercicio_nombre, serie_num, peso_real, reps_real, rir) VALUES (?,?,?,?,?,?)',
+        [sesionId, s.ejercicio, s.serie_num, s.peso, s.reps, s.rir!=null?s.rir:null]
       );
     });
   }
@@ -347,9 +326,7 @@ router.get('/clientes/:id/progreso-ejercicio', (req, res) => {
   res.json(data);
 });
 
-// ── REGISTRO PÚBLICO ──────────────────────────────────
-const { router: authRouter } = require('./auth');
-
+// ── REGISTRO PÚBLICO ───────────────────────────────────────────────
 router.post('/auth/registro', async (req, res) => {
   try {
     const bcrypt = require('bcryptjs');
