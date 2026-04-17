@@ -762,45 +762,8 @@ async function verCliente(id){
   <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr">Entreno asignado <button class="sec-act" onclick="cNav('rutinas',document.querySelector('#sCoach .sni:nth-child(2)'))">Editar en Rutinas</button></div>
     ${c.dias.length?c.dias.map(d=>`<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:7px"><div style="font-size:13px;font-weight:700;color:var(--sv)">${d.nombre} — ${d.grupo}</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">${d.ejercicios.length} ejercicios</div></div>`).join(''):'<div style="font-size:13px;color:var(--tx3)">Sin días. Ve a Crear rutina.</div>'}
-  </div>
-  <div class="sec" style="margin-bottom:12px">
-    <div class="sec-hdr">Historial de entrenos</div>
-    <div id="sesiones_wrap"><div style="font-size:13px;color:var(--tx3)">Cargando...</div></div>
   </div>`;
   window._cid=c.id;
-
-  // Cargar sesiones del cliente
-  api('/clientes/'+id+'/sesiones').then(sesiones => {
-    const wrap = document.getElementById('sesiones_wrap');
-    if(!wrap) return;
-    if(!sesiones.length){
-      wrap.innerHTML='<div style="font-size:13px;color:var(--tx3)">Sin entrenos registrados aún.</div>';
-      return;
-    }
-    wrap.innerHTML = sesiones.map(s => `
-      <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px;margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div>
-            <div style="font-size:14px;font-weight:700;color:var(--sv)">${s.dia_nombre} — ${s.dia_grupo}</div>
-            <div style="font-size:11px;color:var(--tx3)">${new Date(s.fecha).toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
-          </div>
-          <span class="badge b-gn">✓ Completado</span>
-        </div>
-        ${Object.entries(s.series.reduce((acc,sr)=>{
-          if(!acc[sr.ejercicio_nombre])acc[sr.ejercicio_nombre]=[];
-          acc[sr.ejercicio_nombre].push(sr);
-          return acc;
-        },{})).map(([nombre,srs])=>`
-          <div style="margin-bottom:6px">
-            <div style="font-size:11px;font-weight:700;color:var(--sv2);margin-bottom:3px">${nombre}</div>
-            <div style="display:flex;gap:5px;flex-wrap:wrap">
-              ${srs.map(sr=>`<span style="background:var(--s3);border:0.5px solid var(--br);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--sv3);font-weight:600">${sr.peso_real}kg × ${sr.reps_real}</span>`).join('')}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `).join('');
-  });
   if(c.peso_actual&&c.altura&&c.edad){
     const tmb=calcTMBCoach(c),gasto=calcGastoCoach(c);
     const w=document.getElementById('tmb_wrap_coach');
@@ -1473,26 +1436,34 @@ function hEntreno(){
 function parseFirstNum(r){const m=String(r||10).match(/\d+/);return m?parseInt(m[0]):10;}
 
 function renderKeyboard(){
-  return`<div id="strong_keyboard" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:400;background:var(--s2);border-top:0.5px solid var(--br);padding:8px 12px 32px;border-radius:20px 20px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.4)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 4px">
-      <div style="font-size:11px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.06em" id="kb_label">kg</div>
-      <div style="font-size:22px;font-weight:700;color:var(--sv)" id="kb_display">0</div>
-      <div style="display:flex;gap:8px">
+  return`<div id="strong_keyboard" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:400;background:var(--s2);border-top:0.5px solid var(--br);padding:8px 12px max(16px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px">
+      <div>
+        <div style="font-size:10px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.06em" id="kb_label">kg</div>
+        <div style="font-size:24px;font-weight:700;color:var(--sv);line-height:1" id="kb_display">0</div>
+      </div>
+      <div style="display:flex;gap:6px">
         <button onclick="kbPause()" style="padding:6px 12px;background:var(--s3);border:0.5px solid var(--br);border-radius:8px;color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" id="kb_pause_btn">⏸ Pausar</button>
         <button onclick="kbSkip()" style="padding:6px 14px;background:var(--bl2);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Skip →</button>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
-      ${[1,2,3,'⌫',4,5,6,'.',7,8,9,'✓',null,0,null,null].map((k,i)=>{
-        if(k===null)return`<div></div>`;
-        if(k==='✓')return`<button onclick="kbConfirm()" style="background:var(--bl2);color:#fff;border:none;border-radius:10px;padding:16px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit">✓</button>`;
-        if(k==='⌫')return`<button onclick="kbDel()" style="background:var(--s3);color:var(--sv2);border:0.5px solid var(--br);border-radius:10px;padding:16px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit">⌫</button>`;
-        return`<button onclick="kbNum('${k}')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:16px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit">${k}</button>`;
-      }).join('')}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
+      <button onclick="kbNum('1')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:12px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">1</button>
+      <button onclick="kbNum('2')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:12px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">2</button>
+      <button onclick="kbNum('3')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:12px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">3</button>
+      <button onclick="kbDel()" style="background:var(--s3);color:var(--sv2);border:0.5px solid var(--br);border-radius:10px;padding:12px 4px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit">⌫</button>
+      <button onclick="kbNum('4')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:12px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">4</button>
+      <button onclick="kbNum('5')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:12px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">5</button>
+      <button onclick="kbNum('6')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:12px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">6</button>
+      <button onclick="kbNum('.')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:12px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">.</button>
+      <button onclick="kbNum('7')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:12px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">7</button>
+      <button onclick="kbNum('8')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:12px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">8</button>
+      <button onclick="kbNum('9')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:12px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">9</button>
+      <button onclick="kbConfirm()" style="background:var(--bl2);color:#fff;border:none;border-radius:10px;padding:12px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">✓</button>
+      <button onclick="kbNum('0')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:12px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit;grid-column:span 3">0</button>
     </div>
   </div>`;
 }
-
 let kbValue = '';
 
 function openKeyboard(ei, si, field){
@@ -1505,9 +1476,10 @@ function openKeyboard(ei, si, field){
   if(kb){ kb.style.display='block'; }
   if(lbl) lbl.textContent = field==='peso' ? 'kg' : 'reps';
   if(disp) disp.textContent = kbValue;
+  const scroll=document.querySelector('#sCliente .scroll');
+  if(scroll)scroll.style.paddingBottom='360px';
   // update active cell highlight
   rerenderSerieHeaders();
-  document.querySelector('#sCliente .scroll').style.paddingBottom = '340px';
 }
 
 function kbNum(n){
@@ -1535,7 +1507,8 @@ function closeKeyboard(){
   const kb=document.getElementById('strong_keyboard');
   if(kb)kb.style.display='none';
   activeInput=null;
-  document.querySelector('#sCliente .scroll').style.paddingBottom = '100px';
+  const scroll=document.querySelector('#sCliente .scroll');
+  if(scroll)scroll.style.paddingBottom='100px';
 }
 function kbPause(){
   if(!activeInput)return;
@@ -1562,38 +1535,6 @@ function kbSkip(){
   closeKeyboard();
 }
 
-async function guardarSesion(){
-  try{
-    const d = CD.dias[activeDia];
-    const series = [];
-
-    d.ejercicios.forEach(e => {
-      (e._series || []).forEach((s, si) => {
-        if(s.done) {
-          series.push({
-            ejercicio: e.nombre,
-            serie_num: si + 1,
-            peso: s.peso || 0,
-            reps: s.reps_real || parseFirstNum(e.reps)
-          });
-        }
-      });
-    });
-
-    await api('/clientes/' + CD.id + '/sesiones', {
-      method:'POST',
-      body: JSON.stringify({
-        dia_nombre: d.nombre,
-        dia_grupo: d.grupo,
-        duracion_min: 0,
-        series
-      })
-    });
-  } catch(e){
-    console.log('Error guardando sesión:', e);
-  }
-}
-
 function toggleSerieStrong(ei,si){
   const e=CD.dias[activeDia].ejercicios[ei];
   if(!e._series)e._series=Array.from({length:e.series},(_,i)=>({done:false,peso:e.peso_objetivo,reps:parseFirstNum(e.reps),reps_real:parseFirstNum(e.reps)}));
@@ -1614,7 +1555,6 @@ function toggleSerieStrong(ei,si){
   const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
   if(allDone){
     closeKeyboard();
-    guardarSesion();
     setTimeout(()=>{
       document.getElementById('doneMsg').textContent=`${CD.nombre.split(' ')[0]}, has completado ${CD.dias[activeDia].nombre}. El músculo se construye ahora.`;
       document.getElementById('doneOv').classList.add('show');
