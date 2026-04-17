@@ -38,7 +38,9 @@ async function initDB() {
 
   db.run(`CREATE TABLE IF NOT EXISTS dias_entreno (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, nombre TEXT, grupo TEXT, orden INTEGER DEFAULT 0)`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS ejercicios_dia (id INTEGER PRIMARY KEY AUTOINCREMENT, dia_id INTEGER, nombre TEXT, musculos TEXT, series INTEGER DEFAULT 3, reps TEXT DEFAULT '10-12', peso_objetivo REAL DEFAULT 0, descanso INTEGER DEFAULT 90, orden INTEGER DEFAULT 0, es_pr INTEGER DEFAULT 0, youtube_url TEXT DEFAULT '', imagen_url TEXT DEFAULT '', nota_coach TEXT DEFAULT '')`);
+  db.run(`CREATE TABLE IF NOT EXISTS ejercicios_dia (id INTEGER PRIMARY KEY AUTOINCREMENT, dia_id INTEGER, nombre TEXT, musculos TEXT, series INTEGER DEFAULT 3, reps TEXT DEFAULT '10-12', peso_objetivo REAL DEFAULT 0, descanso INTEGER DEFAULT 90, rir INTEGER DEFAULT 2, es_principal INTEGER DEFAULT 0, orden INTEGER DEFAULT 0, es_pr INTEGER DEFAULT 0, youtube_url TEXT DEFAULT '', imagen_url TEXT DEFAULT '', nota_coach TEXT DEFAULT '')`);
+  try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN rir INTEGER DEFAULT 2"); } catch(e) {}
+  try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN es_principal INTEGER DEFAULT 0"); } catch(e) {};
   try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN youtube_url TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN imagen_url TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN nota_coach TEXT DEFAULT ''"); } catch(e) {}
@@ -70,8 +72,10 @@ async function initDB() {
     serie_num INTEGER,
     peso_real REAL,
     reps_real INTEGER,
+    rir INTEGER,
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  try { db.run("ALTER TABLE series_log ADD COLUMN rir INTEGER"); } catch(e) {}
 
   saveToDisk();
   setInterval(saveToDisk, 30000);
@@ -118,3 +122,6 @@ function dbGet(sql, params = []) {
 }
 
 module.exports = { initDB, dbRun, dbAll, dbGet, saveToDisk };
+"
+    },
+    "message": "database.js completo con tablas sesiones_entreno y series_log dentro de initDB
