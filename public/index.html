@@ -2,14 +2,14 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
 <meta name="theme-color" content="#09090b"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <title>WolfMindset</title>
 <link rel="manifest" href="/manifest.json"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet"/>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 :root{--b:#09090b;--s:#111113;--s2:#18181b;--s3:#1f1f23;--br:#27272a;--br2:#3f3f46;--sv:#e4e4e7;--sv2:#a1a1aa;--sv3:#52525b;--bl:#3b82f6;--bl2:#2563eb;--bl3:#1e3a5f;--blg:#93c5fd;--tx:#fafafa;--tx2:#a1a1aa;--tx3:#52525b;--gn:#22c55e;--gnd:rgba(34,197,94,0.1);--gnb:#86efac;--am:#f59e0b;--amd:rgba(245,158,11,0.1);--amb:#fcd34d}
 html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sans-serif;overflow:hidden}
 #root{height:100%;display:flex;flex-direction:column}
@@ -1436,31 +1436,22 @@ function hEntreno(){
 function parseFirstNum(r){const m=String(r||10).match(/\d+/);return m?parseInt(m[0]):10;}
 
 function renderKeyboard(){
-  return`<div id="strong_keyboard" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:400;background:var(--s2);border-top:0.5px solid var(--br);padding:8px 12px max(16px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.5)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px">
-      <div>
-        <div style="font-size:10px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.06em" id="kb_label">kg</div>
-        <div style="font-size:24px;font-weight:700;color:var(--sv);line-height:1" id="kb_display">0</div>
-      </div>
-      <div style="display:flex;gap:6px">
+  return`<div id="strong_keyboard" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:400;background:var(--s2);border-top:1.5px solid var(--br2);padding:10px 14px 12px;box-shadow:0 -8px 32px rgba(0,0,0,.7)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 4px">
+      <div style="font-size:11px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.06em" id="kb_label">kg</div>
+      <div style="font-size:22px;font-weight:700;color:var(--sv)" id="kb_display">0</div>
+      <div style="display:flex;gap:8px">
         <button onclick="kbPause()" style="padding:6px 12px;background:var(--s3);border:0.5px solid var(--br);border-radius:8px;color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" id="kb_pause_btn">⏸ Pausar</button>
         <button onclick="kbSkip()" style="padding:6px 14px;background:var(--bl2);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Skip →</button>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:5px">
-      <button onclick="kbNum('1')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:13px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">1</button>
-      <button onclick="kbNum('2')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:13px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">2</button>
-      <button onclick="kbNum('3')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:13px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">3</button>
-      <button onclick="kbDel()" style="background:var(--s3);color:var(--sv2);border:0.5px solid var(--br);border-radius:10px;padding:13px 4px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit">⌫</button>
-      <button onclick="kbNum('4')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:13px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">4</button>
-      <button onclick="kbNum('5')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:13px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">5</button>
-      <button onclick="kbNum('6')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:13px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">6</button>
-      <button onclick="kbNum('.')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:13px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">.</button>
-      <button onclick="kbNum('7')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:13px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">7</button>
-      <button onclick="kbNum('8')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:13px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">8</button>
-      <button onclick="kbNum('9')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:13px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">9</button>
-      <button onclick="kbConfirm()" style="background:var(--bl2);color:#fff;border:none;border-radius:10px;padding:13px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit">✓</button>
-      <button onclick="kbNum('0')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:13px 4px;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit;grid-column:span 3">0</button>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+      ${[1,2,3,'⌫',4,5,6,'.',7,8,9,'✓',null,0,null,null].map((k,i)=>{
+        if(k===null)return`<div></div>`;
+        if(k==='✓')return`<button onclick="kbConfirm()" style="background:var(--bl2);color:#fff;border:none;border-radius:10px;padding:16px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit">✓</button>`;
+        if(k==='⌫')return`<button onclick="kbDel()" style="background:var(--s3);color:var(--sv2);border:0.5px solid var(--br);border-radius:10px;padding:16px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit">⌫</button>`;
+        return`<button onclick="kbNum('${k}')" style="background:var(--s3);color:var(--sv);border:0.5px solid var(--br);border-radius:10px;padding:16px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit">${k}</button>`;
+      }).join('')}
     </div>
   </div>`;
 }
@@ -1477,6 +1468,19 @@ function openKeyboard(ei, si, field){
   if(kb){ kb.style.display='block'; }
   if(lbl) lbl.textContent = field==='peso' ? 'kg' : 'reps';
   if(disp) disp.textContent = kbValue;
+  // Posicionar teclado encima de bnav, respetando barra URL del Safari
+  const bnav=document.querySelector('#sCliente .bnav-bar');
+  const bnavH=bnav?bnav.offsetHeight:60;
+  const urlBarH=window.innerHeight-(window.visualViewport?window.visualViewport.height:window.innerHeight);
+  kb.style.bottom=(bnavH+Math.max(0,urlBarH))+'px';
+  // Dar espacio al scroll para que la serie no quede tapada
+  const kbH=kb.offsetHeight||260;
+  const scroll=document.querySelector('#sCliente .scroll');
+  if(scroll)scroll.style.paddingBottom=(bnavH+kbH+20)+'px';
+  setTimeout(()=>{
+    const rowEl=document.getElementById('sw_'+ei+'_'+si);
+    if(rowEl)rowEl.scrollIntoView({behavior:'smooth',block:'center'});
+  },100);
   // update active cell highlight
   rerenderSerieHeaders();
 }
@@ -1506,6 +1510,8 @@ function closeKeyboard(){
   const kb=document.getElementById('strong_keyboard');
   if(kb)kb.style.display='none';
   activeInput=null;
+  const scroll=document.querySelector('#sCliente .scroll');
+  if(scroll)scroll.style.paddingBottom='80px';
 }
 function kbPause(){
   if(!activeInput)return;
@@ -2295,6 +2301,18 @@ async function reloadEjercicios(){
   }
 }
 
+
+// Ajustar teclado cuando la barra URL del Safari aparece/desaparece
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',()=>{
+    const kb=document.getElementById('strong_keyboard');
+    if(!kb||kb.style.display==='none')return;
+    const bnav=document.querySelector('#sCliente .bnav-bar');
+    const bnavH=bnav?bnav.offsetHeight:60;
+    const urlBarH=window.innerHeight-window.visualViewport.height;
+    kb.style.bottom=(bnavH+Math.max(0,urlBarH))+'px';
+  });
+}
 </script>
 </body>
 </html>
