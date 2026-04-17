@@ -122,6 +122,3 @@ function dbGet(sql, params = []) {
 }
 
 module.exports = { initDB, dbRun, dbAll, dbGet, saveToDisk };
-"
-    },
-    "message": "database.js completo con tablas sesiones_entreno y series_log dentro de initDB
