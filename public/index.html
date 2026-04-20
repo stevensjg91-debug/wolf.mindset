@@ -624,7 +624,6 @@ function fetchWgerImg(nombre){ /* images served from /ex/ */ }
 // LOGIN
 function setLM(m,btn){
   document.querySelectorAll('.ltab').forEach(t=>t.classList.remove('on'));btn.classList.add('on');
-  document.getElementById('csel').style.display=m==='cliente'?'block':'none';
 }
 async function doLogin(){
   const u=document.getElementById('lu').value.trim(),p=document.getElementById('lp').value;
@@ -774,8 +773,15 @@ async function verCliente(id){
   <div id="graficas_coach_sec" style="display:none">
     <div class="sec-lbl" style="padding-top:0;padding-bottom:8px">Progreso ejercicios principales</div>
     <div id="graficas_coach_wrap" style="padding:0 0 12px"></div>
+  </div>
+  <div class="sec" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(37,99,235,.06),rgba(17,17,19,.8));border-color:rgba(59,130,246,.2)">
+    <div class="sec-hdr">📋 Revisión semanal <span id="rev_estado" style="font-size:10px;font-weight:500;color:var(--tx3);text-transform:none;letter-spacing:0"></span></div>
+    <div id="revision_semanal_content"><div style="font-size:13px;color:var(--tx3)">Cargando...</div></div>
   </div>`;
   window._cid=c.id;
+
+  // Revisión semanal
+  cargarRevisionSemanal(id, c);
 
   // Cargar historial
   api('/clientes/'+id+'/sesiones').then(sesiones=>{
@@ -1105,7 +1111,18 @@ async function rbGenerarIA(){
   res.innerHTML='<div class="ia-chip"><div class="ia-chip-title">Generando rutina...</div></div>';
   const c=await api('/clientes/'+rbState.clienteId);
   try{
-    const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:[{role:'user',content:`Genera una rutina de entrenamiento con pesas para ${c.nombre}. Objetivo: ${c.objetivo}. Nivel: ${c.nivel}. Días disponibles: 4. Formato: para cada día indica el nombre del día, grupo muscular, y lista de ejercicios con series x reps y descanso en segundos. Sé específico y práctico.`}],system:'Eres un experto en programación de entrenamiento con pesas basado en evidencia científica. Genera rutinas completas, periodizadas y adaptadas al nivel del cliente. Responde siempre en español.'})});
+    const semanas = c.semanas || 1;
+    const fase = semanas % 4 === 0 ? 'semana de descarga (reduce 40% volumen)' : `semana ${semanas%4||4} de mesociclo (carga progresiva)`;
+    const volPorNivel = {Principiante:'10-12 series/semana/grupo muscular', Intermedio:'14-16 series/semana/grupo muscular', Avanzado:'16-20+ series/semana/grupo muscular'};
+    const volObj = volPorNivel[c.nivel] || volPorNivel.Intermedio;
+    const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:[{role:'user',content:`Genera una rutina de entrenamiento con pesas para ${c.nombre}. 
+Objetivo: ${c.objetivo}. Nivel: ${c.nivel}. Semana ${semanas} (${fase}).
+Volumen objetivo: ${volObj}.
+${c.lesiones?'LESIONES/LIMITACIONES: '+c.lesiones+'. Evita ejercicios contraindicados.':''}
+${c.observaciones?'Observaciones: '+c.observaciones:''}
+Días disponibles: 4.
+Para cada día indica: nombre del día, grupo muscular, y lista de ejercicios con series × reps, peso orientativo inicial en kg, descanso en segundos, y RIR objetivo (2-3 para volumen, 1-2 para intensidad).
+Aplica periodización ondulante: varía intensidad y volumen entre días. Sé específico y práctico.`}],system:'Eres un experto en periodización y programación de fuerza basado en evidencia científica (Mike Israetel, Greg Nuckols). Generas rutinas completas con volumen adecuado al nivel, progresión de carga planificada y RIR objetivo por ejercicio. Responde siempre en español.'})});
     res.innerHTML=`<div class="ia-chip"><div class="ia-chip-title">Rutina generada para ${c.nombre}</div><div class="ia-result-body" style="white-space:pre-line">${d.reply}</div></div>`;
   }catch(e){res.innerHTML='<div style="color:#f87171;font-size:13px">Error generando. Verifica la API key.</div>';}
 }
@@ -2638,6 +2655,347 @@ async function rbConfirmEdit(exId){
     await rbLoadDias();
   }catch(e){
     btn.innerHTML = 'Error - reintentar'; btn.disabled = false;
+  }
+}
+
+
+// ═══ REVISIÓN SEMANAL ═══════════════════════════════════════════
+// Volumen semanal recomendado por grupo muscular y nivel
+const VOL_RECOMENDADO = {
+  Principiante: { min:10, max:12, desc:'10-12 series/semana/grupo' },
+  Intermedio:   { min:14, max:16, desc:'14-16 series/semana/grupo' },
+  Avanzado:     { min:16, max:20, desc:'16-20+ series/semana/grupo' },
+};
+
+// Calcula progresión sugerida basada en RIR real vs objetivo
+function calcularProgresion(pesoActual, repsReales, rirReal, rirObjetivo, nivel) {
+  const diff = rirReal - rirObjetivo; // positivo = le sobró margen → subir
+  let nuevoPeso = pesoActual;
+  let nota = '';
+  
+  if (diff >= 2) {
+    // Sobró mucho margen — subir 5% o 2.5kg mínimo
+    const subida = nivel === 'Avanzado' ? 0.025 : 0.05;
+    nuevoPeso = Math.round((pesoActual * (1 + subida)) / 2.5) * 2.5;
+    nota = `RIR ${rirReal} (obj ${rirObjetivo}) → +${(nuevoPeso-pesoActual).toFixed(1)}kg`;
+  } else if (diff === 1) {
+    // Pequeño margen — subir 2.5kg
+    nuevoPeso = pesoActual + 2.5;
+    nota = `RIR ${rirReal} (obj ${rirObjetivo}) → +2.5kg`;
+  } else if (diff === 0) {
+    // En el objetivo — mantener
+    nota = `RIR ${rirReal} ✓ mantener peso`;
+  } else if (diff === -1) {
+    // Justo al límite — mantener o bajar 2.5
+    nota = `RIR ${rirReal} (obj ${rirObjetivo}) → mantener o -2.5kg`;
+  } else {
+    // No llegó al objetivo — bajar carga
+    nuevoPeso = Math.max(0, pesoActual - 2.5);
+    nota = `RIR ${rirReal} (obj ${rirObjetivo}) → -2.5kg`;
+  }
+  
+  return { nuevoPeso, nota, subida: nuevoPeso > pesoActual, bajada: nuevoPeso < pesoActual };
+}
+
+async function cargarRevisionSemanal(clienteId, clienteData) {
+  const wrap = document.getElementById('revision_semanal_content');
+  const estado = document.getElementById('rev_estado');
+  if (!wrap) return;
+
+  try {
+    const sesiones = await api('/clientes/' + clienteId + '/sesiones');
+    
+    if (!sesiones.length) {
+      wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3);padding:4px 0">Sin sesiones registradas aún. Cuando el cliente complete entrenamientos aparecerá aquí la revisión.</div>';
+      return;
+    }
+
+    // Get the most recent session per day
+    const porDia = {};
+    sesiones.forEach(s => {
+      const dia = s.dia_nombre;
+      if (!porDia[dia] || new Date(s.fecha) > new Date(porDia[dia].fecha)) {
+        porDia[dia] = s;
+      }
+    });
+
+    // Build revision data: for each ejercicio in client's plan, find last performance
+    const ejerciciosPlan = {};
+    (clienteData.dias || []).forEach(d => {
+      (d.ejercicios || []).forEach(e => {
+        ejerciciosPlan[e.nombre] = { ...e, dia: d.nombre };
+      });
+    });
+
+    // Map last performance per ejercicio
+    const ultimoRendimiento = {};
+    sesiones.forEach(s => {
+      s.series.forEach(sr => {
+        if (!ultimoRendimiento[sr.ejercicio_nombre] ||
+            new Date(s.fecha) > new Date(ultimoRendimiento[sr.ejercicio_nombre].fecha)) {
+          ultimoRendimiento[sr.ejercicio_nombre] = {
+            ...sr,
+            fecha: s.fecha,
+            dia: s.dia_nombre
+          };
+        }
+      });
+    });
+
+    // Volume analysis per muscle group
+    const volPorGrupo = {};
+    sesiones.filter(s => {
+      const d = new Date(s.fecha);
+      const semAgo = Date.now() - 7*24*60*60*1000;
+      return d.getTime() > semAgo;
+    }).forEach(s => {
+      s.series.forEach(sr => {
+        const ex = ejerciciosPlan[sr.ejercicio_nombre];
+        if (!ex) return;
+        const grupo = (ex.musculos || '').split(',')[0].trim() || 'Otros';
+        if (!volPorGrupo[grupo]) volPorGrupo[grupo] = 0;
+        volPorGrupo[grupo]++;
+      });
+    });
+
+    const nivel = clienteData.nivel || 'Intermedio';
+    const volRec = VOL_RECOMENDADO[nivel] || VOL_RECOMENDADO.Intermedio;
+
+    // Build the UI
+    let cambiosPendientes = {}; // ejercicio -> nuevoPeso
+
+    const diasConEjercicios = (clienteData.dias || []).filter(d => d.ejercicios.length > 0);
+    
+    if (!diasConEjercicios.length) {
+      wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3)">Sin rutina asignada.</div>';
+      return;
+    }
+
+    // Count total pending adjustments
+    let totalAjustes = 0;
+    diasConEjercicios.forEach(d => {
+      d.ejercicios.forEach(e => {
+        const ult = ultimoRendimiento[e.nombre];
+        if (ult && ult.rir != null) {
+          const prog = calcularProgresion(e.peso_objetivo || 0, ult.reps_real, ult.rir, e.rir || 2, nivel);
+          if (prog.subida || prog.bajada) totalAjustes++;
+        }
+      });
+    });
+
+    if (estado) estado.textContent = totalAjustes > 0 ? `· ${totalAjustes} ajuste${totalAjustes > 1 ? 's' : ''} sugerido${totalAjustes > 1 ? 's' : ''}` : '· Al día';
+
+    // Volume warning
+    let volWarnings = '';
+    Object.entries(volPorGrupo).forEach(([grupo, series]) => {
+      if (series < volRec.min) {
+        volWarnings += `<span style="background:rgba(245,158,11,.1);border:0.5px solid rgba(245,158,11,.2);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--amb);margin-right:5px;margin-bottom:4px;display:inline-block">${grupo}: ${series} series (mín ${volRec.min})</span>`;
+      } else if (series > volRec.max) {
+        volWarnings += `<span style="background:rgba(239,68,68,.08);border:0.5px solid rgba(239,68,68,.2);border-radius:6px;padding:2px 8px;font-size:11px;color:#fca5a5;margin-right:5px;margin-bottom:4px;display:inline-block">${grupo}: ${series} series (máx ${volRec.max})</span>`;
+      }
+    });
+
+    let html = '';
+
+    // Volume summary
+    html += `<div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Volumen esta semana · ${nivel} (${volRec.desc})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px">`;
+    
+    Object.entries(volPorGrupo).forEach(([grupo, series]) => {
+      const ok = series >= volRec.min && series <= volRec.max;
+      const low = series < volRec.min;
+      html += `<span style="background:${ok?'rgba(34,197,94,.1)':low?'rgba(245,158,11,.1)':'rgba(239,68,68,.08)'};border:0.5px solid ${ok?'rgba(34,197,94,.2)':low?'rgba(245,158,11,.2)':'rgba(239,68,68,.2)'};border-radius:6px;padding:3px 9px;font-size:11px;color:${ok?'var(--gnb)':low?'var(--amb)':'#fca5a5'};font-weight:600">${grupo} ${series}s</span>`;
+    });
+    
+    if (!Object.keys(volPorGrupo).length) {
+      html += '<span style="font-size:12px;color:var(--tx3)">Sin datos de esta semana</span>';
+    }
+    
+    html += `</div></div>`;
+
+    // Per-exercise progression
+    html += `<div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Progresión de carga</div>`;
+
+    diasConEjercicios.forEach(d => {
+      html += `<div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--sv2);margin-bottom:8px;padding-bottom:4px;border-bottom:0.5px solid var(--br)">${d.nombre} — ${d.grupo}</div>`;
+
+      d.ejercicios.forEach(e => {
+        const ult = ultimoRendimiento[e.nombre];
+        const pesoObj = e.peso_objetivo || 0;
+        
+        let progRow = '';
+        let nuevoPeso = pesoObj;
+        let notaProg = '';
+        let colorProg = 'var(--tx3)';
+        let iconProg = '—';
+
+        if (ult && ult.rir != null) {
+          const prog = calcularProgresion(pesoObj, ult.reps_real, ult.rir, e.rir || 2, nivel);
+          nuevoPeso = prog.nuevoPeso;
+          notaProg = prog.nota;
+          colorProg = prog.subida ? 'var(--gnb)' : prog.bajada ? '#fca5a5' : 'var(--sv3)';
+          iconProg = prog.subida ? '↑' : prog.bajada ? '↓' : '=';
+        }
+
+        const exId = e.id;
+        const inputId = `rev_peso_${exId}`;
+
+        html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid rgba(39,39,42,.4)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--sv);margin-bottom:1px">${e.nombre}</div>
+            <div style="font-size:11px;color:var(--tx3)">${e.series}×${e.reps} · obj RIR ${e.rir != null ? e.rir : 2}</div>
+            ${ult ? `<div style="font-size:11px;color:var(--sv3);margin-top:1px">Último: ${ult.peso_real}kg×${ult.reps_real} reps${ult.rir != null ? ' · RIR '+ult.rir : ''}</div>` : '<div style="font-size:11px;color:var(--tx3)">Sin datos aún</div>'}
+            ${notaProg ? `<div style="font-size:11px;color:${colorProg};font-weight:600;margin-top:2px">${iconProg} ${notaProg}</div>` : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0">
+            <div style="font-size:9px;color:var(--tx3);font-weight:600;text-transform:uppercase">Nuevo obj kg</div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <button onclick="revAjustarPeso('${inputId}', -2.5)" style="width:26px;height:26px;border-radius:6px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:14px;font-weight:700;line-height:1">−</button>
+              <input id="${inputId}" type="number" value="${nuevoPeso}" step="2.5" min="0"
+                style="width:62px;padding:5px;border:0.5px solid ${nuevoPeso !== pesoObj ? 'var(--bl)' : 'var(--br)'};border-radius:8px;background:${nuevoPeso !== pesoObj ? 'rgba(37,99,235,.1)' : 'var(--s2)'};color:${nuevoPeso !== pesoObj ? 'var(--blg)' : 'var(--sv)'};font-size:14px;font-weight:700;text-align:center;font-family:inherit"
+                onchange="revMarcarCambio('${inputId}', ${pesoObj})"/>
+              <button onclick="revAjustarPeso('${inputId}', 2.5)" style="width:26px;height:26px;border-radius:6px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:14px;font-weight:700;line-height:1">+</button>
+            </div>
+            <div style="font-size:9px;color:var(--tx3)">actual: ${pesoObj}kg</div>
+          </div>
+        </div>`;
+      });
+
+      html += `</div>`;
+    });
+
+    // Save button
+    html += `<div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn" style="flex:1;padding:11px;background:var(--gn)" onclick="guardarRevisionSemanal(${clienteId})">✓ Guardar objetivos para próxima semana</button>
+    </div>
+    <div style="margin-top:10px">
+      <button style="width:100%;padding:9px;background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;color:var(--blg);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" onclick="sugerirProgresionIA(${clienteId})">🤖 Sugerir progresión con IA</button>
+      <div id="ia_progresion_result" style="margin-top:8px"></div>
+    </div>`;
+
+    wrap.innerHTML = html;
+
+  } catch(err) {
+    console.log('Error revision semanal:', err);
+    wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3)">Error cargando revisión.</div>';
+  }
+}
+
+function revAjustarPeso(inputId, delta) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const val = parseFloat(input.value) || 0;
+  input.value = Math.max(0, val + delta);
+  input.dispatchEvent(new Event('change'));
+}
+
+function revMarcarCambio(inputId, pesoOriginal) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const nuevo = parseFloat(input.value) || 0;
+  const changed = nuevo !== pesoOriginal;
+  input.style.borderColor = changed ? 'var(--bl)' : 'var(--br)';
+  input.style.background = changed ? 'rgba(37,99,235,.1)' : 'var(--s2)';
+  input.style.color = changed ? 'var(--blg)' : 'var(--sv)';
+}
+
+async function guardarRevisionSemanal(clienteId) {
+  const btn = event.target;
+  btn.textContent = '⏳ Guardando...';
+  btn.disabled = true;
+
+  try {
+    // Find all rev_peso_ inputs and save changed ones
+    const inputs = document.querySelectorAll('[id^="rev_peso_"]');
+    const promesas = [];
+    
+    inputs.forEach(input => {
+      const exId = input.id.replace('rev_peso_', '');
+      const nuevoPeso = parseFloat(input.value) || 0;
+      promesas.push(
+        api('/ejercicios/' + exId, {
+          method: 'PUT',
+          body: JSON.stringify({ peso_objetivo: nuevoPeso })
+        })
+      );
+    });
+
+    await Promise.all(promesas);
+    
+    btn.textContent = '✓ Objetivos guardados';
+    btn.style.background = '#166534';
+    btn.style.color = '#86efac';
+    setTimeout(() => {
+      btn.textContent = '✓ Guardar objetivos para próxima semana';
+      btn.style.background = 'var(--gn)';
+      btn.style.color = '#fff';
+      btn.disabled = false;
+    }, 3000);
+    
+  } catch(e) {
+    btn.textContent = 'Error — reintentar';
+    btn.disabled = false;
+  }
+}
+
+async function sugerirProgresionIA(clienteId) {
+  const res = document.getElementById('ia_progresion_result');
+  res.innerHTML = '<div class="ia-chip" style="padding:8px 12px"><div class="ia-chip-title">Analizando progreso...</div></div>';
+  
+  try {
+    const [cliente, sesiones] = await Promise.all([
+      api('/clientes/' + clienteId),
+      api('/clientes/' + clienteId + '/sesiones')
+    ]);
+    
+    const nivel = cliente.nivel;
+    const volRec = VOL_RECOMENDADO[nivel] || VOL_RECOMENDADO.Intermedio;
+    
+    // Summarize last 4 sessions
+    const resumenSesiones = sesiones.slice(0, 4).map(s => {
+      const series = s.series.map(sr => `${sr.ejercicio_nombre}: ${sr.peso_real}kg×${sr.reps_real}${sr.rir != null ? ' RIR'+sr.rir : ''}`).join(', ');
+      return `${s.dia_nombre} (${new Date(s.fecha).toLocaleDateString('es-ES')}): ${series}`;
+    }).join('\n');
+
+    const ejerciciosPlan = (cliente.dias || []).flatMap(d =>
+      d.ejercicios.map(e => `${e.nombre}: obj ${e.peso_objetivo}kg × ${e.reps}, RIR obj ${e.rir || 2}${e.es_principal ? ' [PRINCIPAL]' : ''}`)
+    ).join('\n');
+
+    const semanas = cliente.semanas || 1;
+    const fase = semanas % 4 === 0 ? 'DESCARGA (semana 4 del mesociclo)' : `CARGA (semana ${semanas % 4 || 4} de 4)`;
+
+    const prompt = `Analiza el progreso de este cliente y sugiere ajustes concretos para la próxima semana.
+
+CLIENTE: ${cliente.nombre}
+Nivel: ${nivel} | Objetivo: ${cliente.objetivo} | Semana ${semanas} | Fase: ${fase}
+Volumen recomendado: ${volRec.desc}
+
+RUTINA ACTUAL:
+${ejerciciosPlan}
+
+ÚLTIMAS SESIONES:
+${resumenSesiones}
+
+Responde en español, máximo 150 palabras. Sé directo y específico. Indica:
+1. Qué ejercicios subir de carga y cuánto
+2. Si hay que ajustar volumen (series/semana)
+3. Si toca descarga o progresión
+4. Alguna observación sobre el RIR del cliente`;
+
+    const d = await api('/ia/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: prompt }],
+        system: 'Eres un coach experto en periodización y progresión de fuerza. Analizas datos reales de entreno y das recomendaciones concretas y prácticas en español.'
+      })
+    });
+
+    res.innerHTML = `<div class="ia-chip"><div class="ia-chip-title">🤖 Sugerencia IA para próxima semana</div><div class="ia-result-body" style="white-space:pre-line">${d.reply}</div></div>`;
+
+  } catch(e) {
+    res.innerHTML = '<div style="font-size:12px;color:#f87171">Error. Verifica la API key.</div>';
   }
 }
 
