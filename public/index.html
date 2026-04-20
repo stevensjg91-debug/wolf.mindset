@@ -1423,7 +1423,7 @@ function klNav(s,btn){
 function renderKL(){
   const el=document.getElementById('klContent');
   if(!CD){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--tx3)">Cargando...</div>';return;}
-  if(klTab==='entreno')el.innerHTML=hEntreno();
+  if(klTab==='entreno')el.innerHTML=hSeleccionDia();
   else if(klTab==='dieta')el.innerHTML=hDieta();
   else if(klTab==='asistente'){el.innerHTML=hAsistente();chatH=[{role:'assistant',content:`Hola ${CD.nombre.split(' ')[0]}, aquí para ayudarte. ¿Qué necesitas?`}];}
   else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>cargarGraficasCliente(),100);}
@@ -1436,6 +1436,169 @@ let activeInput = null; // {ei, si, field} — qué celda está activa
 let runningTimers = {}; // ei_si -> {interval, secs, total, paused}
 let workoutStartTime = null; // timestamp when workout started
 let workoutTimerInt = null; // interval for workout timer display
+
+// ═══ PANTALLA SELECCIÓN DE DÍA (estilo Hevy) ═══════════
+let vistaActual = 'seleccion'; // 'seleccion' | 'preview' | 'entreno'
+
+function hSeleccionDia(){
+  if(!CD.dias.length) return`<div style="padding:60px 20px;text-align:center;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">🏋️</div><div style="font-size:16px;font-weight:600;color:var(--sv2)">Tu coach está preparando tu plan</div></div>`;
+
+  const cards = CD.dias.map((d,i)=>{
+    const exNames = d.ejercicios.slice(0,3).map(e=>e.nombre).join(', ') + (d.ejercicios.length>3?'...':'');
+    // Find last session for this day
+    const lastSession = (CD.sesiones_resumen||[]).find(s=>s.dia_nombre===d.nombre);
+    const lastStr = lastSession ? `Hace ${diasDesde(lastSession.fecha)}` : 'Sin realizar';
+    const totalSeries = d.ejercicios.reduce((a,e)=>a+e.series,0);
+    return`<div onclick="abrirPreviewDia(${i})" style="background:var(--s2);border:0.5px solid var(--br);border-radius:16px;padding:16px;cursor:pointer;transition:.15s;active:transform:scale(.98)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:17px;font-weight:700;color:var(--sv);margin-bottom:3px">${d.nombre}</div>
+          <div style="font-size:12px;color:var(--blg);font-weight:600">${d.grupo}</div>
+        </div>
+        <div style="background:var(--s3);border-radius:8px;padding:4px 9px;text-align:center;flex-shrink:0;margin-left:10px">
+          <div style="font-size:15px;font-weight:700;color:var(--sv)">${d.ejercicios.length}</div>
+          <div style="font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em">ejerc.</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--tx3);margin-bottom:10px;line-height:1.5">${exNames||'Sin ejercicios'}</div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#52525b" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="#52525b" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span style="font-size:11px;color:var(--tx3)">${lastStr}</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--tx3)">${totalSeries} series</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  return`<div style="padding:16px 14px 8px">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.08em;color:var(--sv);margin-bottom:2px">Entrenar</div>
+    <div style="font-size:13px;color:var(--tx3);margin-bottom:16px">Semana ${CD.semanas} · ${CD.objetivo}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${cards}</div>
+  </div>`;
+}
+
+function diasDesde(fecha){
+  const d = Math.floor((Date.now()-new Date(fecha).getTime())/86400000);
+  if(d===0) return 'Hoy';
+  if(d===1) return 'Ayer';
+  return d+' días';
+}
+
+async function abrirPreviewDia(i){
+  activeDia = i;
+  vistaActual = 'preview';
+  // Load last session data for this day for "anterior" display
+  try {
+    const sesiones = await api('/clientes/'+CD.id+'/sesiones');
+    window._sesionesCache = sesiones;
+  } catch(e) { window._sesionesCache = []; }
+  document.getElementById('klContent').innerHTML = hPreviewDia(i);
+}
+
+function hPreviewDia(i){
+  const d = CD.dias[i];
+  const sesiones = window._sesionesCache || [];
+
+  // Find last performance per ejercicio
+  const ultimoPorEx = {};
+  sesiones.forEach(s=>{
+    if(s.dia_nombre !== d.nombre) return;
+    s.series.forEach(sr=>{
+      if(!ultimoPorEx[sr.ejercicio_nombre]||new Date(s.fecha)>new Date(ultimoPorEx[sr.ejercicio_nombre].fecha)){
+        ultimoPorEx[sr.ejercicio_nombre]={...sr,fecha:s.fecha};
+      }
+    });
+  });
+
+  const lastSession = sesiones.find(s=>s.dia_nombre===d.nombre);
+  const lastStr = lastSession ? `Último: ${diasDesde(lastSession.fecha)}` : 'Sin realizar aún';
+
+  const exList = d.ejercicios.map((e,ei)=>{
+    const ult = ultimoPorEx[e.nombre];
+    const ultStr = ult ? `${ult.peso_real}kg × ${ult.reps_real} reps` : '—';
+    const imgUrl = e.imagen_url || (window.exConfig&&window.exConfig[e.nombre]?.imagen_url) || '';
+    const bg = getExerciseBg(e.nombre);
+    return`<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--br)">
+      <div style="width:48px;height:48px;border-radius:10px;overflow:hidden;background:${bg};flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        ${imgUrl?`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/><span style="display:none;font-size:22px">${getExerciseEmoji(e.nombre)}</span>`:`<span style="font-size:22px">${getExerciseEmoji(e.nombre)}</span>`}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:2px">${e.nombre}</div>
+        <div style="font-size:12px;color:var(--tx3)">${e.series} × ${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''}</div>
+        ${ult?`<div style="font-size:11px;color:var(--sv3);margin-top:1px">Anterior: ${ultStr}</div>`:''}
+        ${e.es_principal?`<span style="font-size:10px;background:rgba(245,158,11,.2);color:var(--amb);padding:1px 6px;border-radius:4px;font-weight:700">⭐</span>`:''}
+      </div>
+      <button onclick="event.stopPropagation();abrirDescripcion('${e.nombre.replace(/'/g,"\'")}')" style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.15);border:0.5px solid rgba(59,130,246,.25);color:var(--blg);cursor:pointer;font-size:14px;font-weight:700;flex-shrink:0;display:flex;align-items:center;justify-content:center">?</button>
+    </div>`;
+  }).join('');
+
+  return`<div style="display:flex;flex-direction:column;height:100%">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--s);border-bottom:0.5px solid var(--br);flex-shrink:0">
+      <button onclick="volverSeleccion()" style="width:34px;height:34px;border-radius:8px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);cursor:pointer;display:flex;align-items:center;justify-content:center">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:700;color:var(--sv)">${d.nombre}</div>
+        <div style="font-size:11px;color:var(--tx3)">${lastStr}</div>
+      </div>
+    </div>
+    <!-- Exercise list -->
+    <div style="flex:1;overflow-y:auto;padding-bottom:90px">
+      <div style="padding:10px 16px 6px;font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.08em">${d.grupo} · ${d.ejercicios.length} ejercicios</div>
+      ${exList}
+    </div>
+    <!-- Entrenar button -->
+    <div style="position:fixed;bottom:0;left:0;right:0;padding:12px 16px max(16px,env(safe-area-inset-bottom));background:rgba(9,9,11,.97);border-top:0.5px solid var(--br);z-index:100">
+      <button onclick="empezarEntreno(${i})" style="width:100%;padding:16px;background:var(--bl2);color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.02em">Entrenar</button>
+    </div>
+  </div>`;
+}
+
+function volverSeleccion(){
+  vistaActual = 'seleccion';
+  document.getElementById('klContent').innerHTML = hSeleccionDia();
+}
+
+function empezarEntreno(i){
+  activeDia = i;
+  vistaActual = 'entreno';
+  workoutStartTime = null;
+  if(workoutTimerInt){clearInterval(workoutTimerInt);workoutTimerInt=null;}
+  runningTimers = {};
+  activeInput = null;
+  document.getElementById('klContent').innerHTML = hEntreno();
+}
+
+// Modal descripción ejercicio
+function abrirDescripcion(nombre){
+  const desc = EX_DESCRIPCIONES[nombre];
+  const emoji = getExerciseEmoji(nombre);
+  const bg = getExerciseBg(nombre);
+  const imgUrl = (window.exConfig&&window.exConfig[nombre]?.imagen_url)||'';
+
+  const pasos = desc ? desc.map((p,i)=>`<div style="display:flex;gap:12px;margin-bottom:10px">
+    <div style="width:22px;height:22px;border-radius:50%;background:rgba(59,130,246,.2);color:var(--blg);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${i+1}</div>
+    <div style="font-size:14px;color:var(--sv2);line-height:1.55">${p}</div>
+  </div>`).join('') : '<div style="font-size:13px;color:var(--tx3)">Descripción no disponible.</div>';
+
+  const modal = document.createElement('div');
+  modal.id = 'desc_modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(9,9,11,.97);z-index:600;display:flex;flex-direction:column;overflow:hidden';
+  modal.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--s);border-bottom:0.5px solid var(--br);flex-shrink:0">
+      <button onclick="document.getElementById('desc_modal').remove()" style="width:34px;height:34px;border-radius:8px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);cursor:pointer;font-size:20px;line-height:1">×</button>
+      <div style="font-size:15px;font-weight:700;color:var(--sv);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nombre}</div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px">
+      <div style="width:100%;height:160px;border-radius:14px;overflow:hidden;background:${bg};display:flex;align-items:center;justify-content:center;margin-bottom:16px">
+        ${imgUrl?`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"/>`:``}
+        <span style="${imgUrl?'display:none':''}font-size:64px">${emoji}</span>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">Instrucciones</div>
+      ${pasos}
+    </div>`;
+  document.body.appendChild(modal);
+}
 
 function hEntreno(){
   if(!CD.dias.length)return`<div style="padding:60px 20px;text-align:center;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">🏋️</div><div style="font-size:16px;font-weight:600;color:var(--sv2)">Tu coach está preparando tu plan</div></div>`;
@@ -1774,7 +1937,12 @@ function selDia(i){
   activeInput=null;
   workoutStartTime=null;
   if(workoutTimerInt){clearInterval(workoutTimerInt);workoutTimerInt=null;}
-  document.getElementById('klContent').innerHTML=hEntreno();
+  // If we're in entreno, go to preview first; if already selecting, go to entreno
+  if(vistaActual==='entreno'){
+    document.getElementById('klContent').innerHTML=hEntreno();
+  } else {
+    abrirPreviewDia(i);
+  }
 }
 
 // DIETA CLIENTE
@@ -2998,6 +3166,107 @@ Responde en español, máximo 150 palabras. Sé directo y específico. Indica:
     res.innerHTML = '<div style="font-size:12px;color:#f87171">Error. Verifica la API key.</div>';
   }
 }
+
+
+// ═══ DESCRIPCIONES DE EJERCICIOS EN ESPAÑOL ═══════════════════
+const EX_DESCRIPCIONES = {
+  // PECHO
+  'Bench Press (Barbell)': ['Túmbate en el banco plano con los pies apoyados en el suelo.','Agarra la barra con las manos algo más separadas que los hombros, agarre prono.','Baja la barra de forma controlada hasta el pecho medio, codos a 45-75°.','Empuja la barra hacia arriba expulsando el aire hasta extender los brazos.','Mantén las escápulas retraídas y los glúteos apoyados en el banco durante todo el movimiento.'],
+  'Bench Press (Dumbbell)': ['Túmbate en el banco plano con una mancuerna en cada mano sobre los muslos.','Lleva las mancuernas a la altura del pecho con los codos a 45-75°.','Empuja las mancuernas hacia arriba hasta casi juntar las manos arriba.','Baja de forma controlada sintiendo el estiramiento del pectoral.','Mantén las escápulas apretadas durante todo el movimiento.'],
+  'Incline Bench Press (Barbell)': ['Ajusta el banco a 30-45° de inclinación.','Agarra la barra con las manos algo más separadas que los hombros.','Baja la barra de forma controlada hasta la parte superior del pecho.','Empuja hacia arriba y ligeramente hacia atrás siguiendo un arco natural.','Mantén los pies en el suelo y las escápulas retraídas.'],
+  'Incline Bench Press (Dumbbell)': ['Ajusta el banco a 30-45° y siéntate con una mancuerna en cada muslo.','Lleva las mancuernas al pecho superior con los codos abiertos.','Empuja hacia arriba hasta casi juntar las mancuernas.','Baja de forma lenta y controlada sintiendo el estiramiento.','Enfoca la contracción en la parte superior del pectoral.'],
+  'Decline Bench Press (Barbell)': ['Ajusta el banco en declive y asegura los pies.','Agarra la barra con agarre prono ligeramente más ancho que los hombros.','Baja la barra hasta la parte baja del pecho de forma controlada.','Empuja con fuerza hasta extender los brazos sin bloquear los codos.','Mantén la tensión en el pectoral durante todo el recorrido.'],
+  'Chest Fly (Dumbbell)': ['Túmbate en banco plano con mancuernas arriba, palmas enfrentadas, codos ligeramente flexionados.','Abre los brazos en arco hacia los lados bajando hasta sentir estiramiento en el pecho.','Junta las mancuernas arriba apretando el pecho en la parte superior.','Mantén la ligera flexión de codo durante todo el movimiento.','Evita bajar demasiado para proteger el hombro.'],
+  'Cable Crossover': ['Coloca los poleas en posición alta y sujeta un cable en cada mano.','Da un paso adelante para tensar los cables.','Con codos ligeramente flexionados, cruza las manos hacia el centro y abajo.','Aprieta el pecho en la posición final durante 1 segundo.','Vuelve de forma controlada sin dejar que los cables te abran en exceso.'],
+  'Pec Deck Fly': ['Ajusta el asiento para que los codos queden a la altura de los hombros.','Coloca los antebrazos en las almohadillas con los codos doblados a 90°.','Junta los brazos al frente apretando el pecho en el centro.','Vuelve lentamente a la posición inicial sin soltar la tensión.','Mantén la espalda apoyada en el respaldo durante todo el movimiento.'],
+  'Cable Fly (High to Low)': ['Coloca las poleas en posición alta.','Sujeta un cable en cada mano y da un paso adelante.','Con codos ligeramente flexionados, lleva las manos hacia abajo y al centro.','Aprieta el pecho en la posición final.','Vuelve lentamente a la posición inicial.'],
+  'Cable Fly (Low to High)': ['Coloca las poleas en posición baja.','Sujeta un cable en cada mano y da un paso adelante.','Lleva las manos hacia arriba y al centro como si abrazaras un árbol.','Aprieta el pecho en la posición superior.','Vuelve lentamente a la posición inicial.'],
+  'Chest Press (Machine)': ['Ajusta el asiento para que las agarraderas queden a la altura del pecho.','Agarra las manillas con agarre neutro o prono según la máquina.','Empuja hacia adelante hasta casi extender los brazos.','Vuelve de forma controlada sin dejar que el peso descanse.','Mantén la espalda apoyada en el respaldo durante todo el movimiento.'],
+  'Chest Dip': ['Agárrate a las barras paralelas con las manos separadas al ancho de los hombros.','Inclina el torso hacia adelante para enfocar el trabajo en el pecho.','Baja doblando los codos hasta que los hombros queden por debajo de los codos.','Empuja hacia arriba hasta casi extender los brazos.','Mantén el control durante el descenso para proteger los hombros.'],
+  'Pull Over (Dumbbell)': ['Túmbate transversalmente en un banco o longitudinalmente con los hombros apoyados.','Sujeta una mancuerna con ambas manos por encima del pecho con los brazos extendidos.','Baja la mancuerna por detrás de la cabeza en arco sintiendo el estiramiento.','Vuelve a la posición inicial apretando pecho y dorsal.','Mantén una ligera flexión de codo durante todo el movimiento.'],
+  // ESPALDA
+  'Deadlift (Barbell)': ['Coloca los pies bajo la barra, separados al ancho de las caderas.','Agarra la barra con las manos al ancho de los hombros, agarre prono o mixto.','Con la espalda recta y pecho alto, empuja el suelo con los pies para levantar.','Extiende caderas y rodillas al mismo tiempo manteniendo la barra pegada al cuerpo.','Baja de forma controlada invirtiendo el movimiento, caderas atrás primero.'],
+  'Romanian Deadlift (Barbell)': ['Sujeta la barra a la altura de las caderas con agarre prono.','Con rodillas ligeramente flexionadas, empuja las caderas hacia atrás bajando la barra por las piernas.','Baja hasta sentir el estiramiento en los isquiotibiales, espalda recta.','Aprieta los glúteos y lleva las caderas al frente para volver arriba.','Mantén la barra cerca del cuerpo durante todo el movimiento.'],
+  'Romanian Deadlift (Dumbbell)': ['Sujeta una mancuerna en cada mano frente a los muslos.','Con rodillas ligeramente flexionadas, empuja las caderas hacia atrás bajando las mancuernas.','Baja hasta sentir estiramiento en los isquiotibiales manteniendo la espalda recta.','Lleva las caderas al frente apretando glúteos para volver a la posición inicial.','Mantén las mancuernas cerca de las piernas durante todo el movimiento.'],
+  'Pull Up (Overhand)': ['Agárrate a la barra con agarre prono, manos algo más separadas que los hombros.','Con los brazos extendidos, retrae las escápulas como primer movimiento.','Tira con los codos hacia abajo y los lados subiendo hasta que la barbilla supere la barra.','Baja de forma lenta y controlada hasta extender completamente los brazos.','Evita el balanceo del cuerpo durante el movimiento.'],
+  'Pull Up (Underhand)': ['Agárrate a la barra con agarre supino, manos al ancho de los hombros.','Retrae las escápulas como primer movimiento.','Tira con los codos hacia las caderas subiendo hasta que la barbilla supere la barra.','Baja de forma lenta y controlada.','El agarre supino enfoca más el bíceps que el agarre prono.'],
+  'Pull Up (Neutral Grip)': ['Agárrate a las barras paralelas con agarre neutro.','Retrae las escápulas como primer movimiento.','Sube hasta que los hombros queden a la altura de las manos.','Baja de forma lenta y controlada.','El agarre neutro reduce el estrés en el hombro.'],
+  'Barbell Row (Overhand)': ['Inclínate hacia adelante con la espalda recta hasta casi horizontal.','Agarra la barra con agarre prono algo más ancho que los hombros.','Tira de la barra hacia el abdomen bajo apretando los omóplatos.','Baja la barra de forma controlada hasta extender los brazos.','Mantén la espalda recta durante todo el movimiento.'],
+  'One-Arm Dumbbell Row': ['Apoya una rodilla y una mano en el banco para estabilizarte.','Agarra la mancuerna con la mano libre dejando el brazo extendido.','Tira la mancuerna hacia la cadera apretando el omóplato.','Baja de forma controlada hasta extender completamente el brazo.','Mantén el torso paralelo al suelo durante el movimiento.'],
+  'Lat Pulldown (Wide Grip)': ['Ajusta el apoyo de rodillas y siéntate con los muslos bien sujetos.','Agarra la barra con agarre prono amplio, más ancho que los hombros.','Tira de la barra hacia el pecho superior apretando los codos hacia abajo.','Vuelve lentamente a la posición inicial controlando la extensión.','Inclínate ligeramente hacia atrás durante el tirón.'],
+  'Lat Pulldown (Narrow Grip)': ['Siéntate con los muslos bien sujetos bajo el apoyo.','Agarra la barra estrecha o las agarraderas neutras.','Tira hacia el pecho apretando los codos hacia las caderas.','Vuelve lentamente controlando el estiramiento del dorsal.','El agarre estrecho permite mayor rango de movimiento.'],
+  'Seated Row (Cable)': ['Siéntate con los pies apoyados y agarra el cable o agarradera.','Con la espalda recta, tira del cable hacia el abdomen.','Aprieta los omóplatos al final del movimiento durante 1 segundo.','Vuelve lentamente manteniendo el control del peso.','Evita redondear la espalda durante el movimiento.'],
+  'Back Extension': ['Colócate en el banco romano con las caderas apoyadas en el borde.','Cruza los brazos o sujeta peso en el pecho, espalda neutra.','Baja el torso hasta unos 45-90° manteniendo la espalda recta.','Sube extendiendo las caderas hasta quedar en línea con las piernas.','Aprieta los glúteos en la posición superior.'],
+  'Face Pull': ['Coloca la polea a la altura de la cara con cuerda.','Agarra los extremos de la cuerda con agarre neutro.','Tira hacia la cara separando las manos al final del movimiento.','Lleva los codos hacia atrás y arriba al nivel de los hombros.','Vuelve lentamente controlando el peso.'],
+  'Shrug (Barbell)': ['Sujeta la barra frente al cuerpo con agarre prono, brazos extendidos.','Eleva los hombros hacia las orejas lo más alto posible.','Mantén la posición alta 1-2 segundos apretando los trapecios.','Baja los hombros de forma controlada.','Evita girar los hombros durante el movimiento.'],
+  'Good Morning (Barbell)': ['Coloca la barra en la espalda alta como en sentadilla.','Con rodillas ligeramente flexionadas, inclínate hacia adelante empujando las caderas atrás.','Baja hasta que el torso quede casi paralelo al suelo.','Vuelve a la posición inicial apretando glúteos e isquiotibiales.','Mantén la espalda recta en todo momento.'],
+  'T-Bar Row': ['Coloca los pies a ambos lados del eje con el pecho apoyado o inclinado.','Agarra las agarraderas y tira hacia el abdomen apretando los omóplatos.','Pausa 1 segundo apretando la espalda al final del movimiento.','Baja de forma controlada hasta extender los brazos.','Mantén la espalda recta durante todo el movimiento.'],
+  'Rack Pull': ['Coloca la barra en el rack a la altura de las rodillas o medias piernas.','Agarra la barra con agarre prono o mixto, manos al ancho de hombros.','Empuja el suelo, extiende caderas y rodillas hasta quedar erguido.','Baja de forma controlada hasta el rack.','Es un peso muerto parcial ideal para trabajar la parte superior del tirón.'],
+  'Sumo Deadlift': ['Coloca los pies más separados que los hombros con las puntas hacia fuera.','Baja la cadera y agarra la barra con las manos dentro de las rodillas.','Empuja el suelo hacia afuera con los pies mientras extiendes caderas y rodillas.','Mantén el pecho alto y la espalda recta durante el levantamiento.','Baja de forma controlada invirtiendo el movimiento.'],
+  // HOMBROS
+  'Overhead Press (Barbell)': ['De pie o sentado, sujeta la barra a la altura de los hombros con agarre prono.','Empuja la barra hacia arriba mientras llevas la cabeza ligeramente hacia atrás.','Extiende los brazos completamente arriba sin bloquear los codos.','Baja de forma controlada hasta la altura de los hombros.','Mantén el core activado para proteger la zona lumbar.'],
+  'Seated Overhead Press (Barbell)': ['Siéntate con la espalda apoyada y la barra a la altura de los hombros.','Empuja la barra hacia arriba hasta extender los brazos.','Baja de forma controlada hasta la altura de los hombros.','Mantén la espalda apoyada en el respaldo durante todo el movimiento.','Evita arquear la espalda baja en exceso.'],
+  'Seated Dumbbell Press': ['Siéntate con la espalda apoyada y una mancuerna en cada mano a la altura de los hombros.','Empuja las mancuernas hacia arriba hasta casi juntarlas en la parte superior.','Baja de forma controlada hasta la altura de los hombros.','Mantén el core activado durante todo el movimiento.','No permitas que los codos bajen por debajo de los hombros.'],
+  'Arnold Press': ['Siéntate con las mancuernas a la altura de los hombros, palmas hacia ti.','Al empujar hacia arriba, gira las palmas hacia adelante.','Sube hasta casi extender los brazos con las palmas mirando al frente.','Baja invirtiendo el giro hasta la posición inicial.','El movimiento rotacional activa más fibras del deltoides.'],
+  'Lateral Raise (Dumbbell)': ['De pie con una mancuerna en cada mano a los lados del cuerpo.','Con codos ligeramente flexionados, eleva los brazos hacia los lados hasta la altura de los hombros.','Pausa 1 segundo en la posición alta apretando el deltoides lateral.','Baja de forma lenta y controlada.','Evita usar impulso del cuerpo o subir más allá de los hombros.'],
+  'Front Raise (Dumbbell)': ['De pie con una mancuerna en cada mano frente a los muslos.','Eleva un brazo o ambos hacia adelante hasta la altura de los hombros.','Mantén el codo ligeramente flexionado durante el movimiento.','Baja de forma controlada.','Evita balancear el cuerpo para generar impulso.'],
+  'Reverse Fly (Dumbbell)': ['Inclínate hacia adelante con la espalda recta, mancuernas colgando.','Con codos ligeramente flexionados, eleva los brazos hacia los lados.','Aprieta los deltoides posteriores y romboides en la posición alta.','Baja de forma lenta y controlada.','Mantén la espalda recta durante todo el movimiento.'],
+  'Upright Row (Barbell)': ['Sujeta la barra frente al cuerpo con agarre prono, manos al ancho de las caderas.','Tira la barra hacia arriba llevando los codos por encima de la barra.','Sube hasta que la barra llegue a la altura del pecho o el cuello.','Baja de forma controlada.','Evita el agarre muy estrecho para proteger los hombros.'],
+  'Shoulder Press (Machine)': ['Ajusta el asiento para que las agarraderas queden a la altura de los hombros.','Empuja hacia arriba hasta casi extender los brazos.','Baja de forma controlada sin dejar que el peso descanse.','Mantén la espalda apoyada en el respaldo.','Evita arquear la espalda baja en exceso.'],
+  'Cable Lateral Raise': ['Coloca la polea en posición baja y sujeta el cable con la mano del lado contrario.','Eleva el brazo hacia el lado hasta la altura del hombro.','Pausa 1 segundo en la posición alta.','Baja de forma lenta y controlada.','El cable mantiene tensión constante a diferencia de las mancuernas.'],
+  // BÍCEPS
+  'Barbell Curl': ['De pie con la barra sujeta en agarre supino al ancho de los hombros.','Con los codos pegados al cuerpo, flexiona los brazos subiendo la barra.','Aprieta el bíceps en la posición alta durante 1 segundo.','Baja de forma lenta y controlada.','Evita balancear el cuerpo para subir más peso.'],
+  'EZ Bar Curl': ['Sujeta la barra EZ en las posiciones anguladas con agarre supino.','Con los codos pegados al cuerpo, flexiona los brazos.','Aprieta el bíceps en la posición alta.','Baja de forma lenta.','La barra EZ reduce el estrés en las muñecas.'],
+  'Alternating Dumbbell Curl': ['De pie con una mancuerna en cada mano en posición neutra.','Flexiona un brazo girando la palma hacia arriba al subir.','Aprieta el bíceps en la posición alta.','Baja de forma controlada y repite con el otro brazo.','Alterna los brazos de forma controlada.'],
+  'Hammer Curl (Dumbbell)': ['De pie con una mancuerna en cada mano, agarre neutro.','Flexiona los brazos manteniendo el agarre neutro durante todo el movimiento.','Aprieta el bíceps y braquial en la posición alta.','Baja de forma lenta y controlada.','El agarre neutro trabaja más el braquial y el braquiorradial.'],
+  'Concentration Curl': ['Siéntate con las piernas separadas, codo apoyado en el muslo interno.','Flexiona el brazo subiendo la mancuerna hacia el hombro.','Aprieta el bíceps en la posición alta.','Baja lentamente manteniendo el codo apoyado.','Ideal para aislar el bíceps evitando compensaciones.'],
+  'Preacher Curl (Barbell)': ['Apoya los brazos en el banco predicador con los codos al borde.','Con agarre supino, flexiona los brazos subiendo la barra.','Baja de forma lenta sin extender completamente para mantener tensión.','Aprieta el bíceps en la posición alta.','El banco predicador elimina el movimiento del cuerpo.'],
+  'Cable Curl': ['De pie frente a la polea baja, agarra la barra con agarre supino.','Con los codos pegados al cuerpo, flexiona los brazos.','Aprieta el bíceps en la posición alta.','Baja de forma lenta manteniendo tensión constante.','El cable mantiene tensión durante todo el rango de movimiento.'],
+  'Incline Dumbbell Curl': ['Siéntate en un banco inclinado con una mancuerna en cada mano.','Deja los brazos colgar completamente para máximo estiramiento.','Flexiona los brazos girando las palmas hacia arriba.','Aprieta el bíceps en la posición alta.','La posición inclinada aumenta el rango de movimiento.'],
+  'Spider Curl': ['Apoya el pecho en un banco inclinado dejando los brazos colgar.','Agarra las mancuernas con agarre supino.','Flexiona los brazos apretando el bíceps en la posición alta.','Baja de forma muy lenta para máxima tensión.','El banco elimina cualquier impulso del cuerpo.'],
+  'Reverse Curl (Barbell)': ['Sujeta la barra con agarre prono al ancho de los hombros.','Con los codos pegados al cuerpo, flexiona los brazos.','Trabaja principalmente el braquiorradial y el braquial.','Baja de forma lenta y controlada.','El agarre prono es más exigente para los antebrazos.'],
+  // TRÍCEPS
+  'Skull Crusher (Barbell)': ['Túmbate en banco plano con la barra sujeta con agarre prono.','Con los brazos extendidos hacia arriba, baja la barra hacia la frente o por detrás.','Mantén los codos fijos apuntando al techo.','Extiende los brazos volviendo a la posición inicial.','Mantén los codos en la misma posición durante todo el movimiento.'],
+  'Skull Crusher (EZ Bar)': ['Túmbate en banco plano con la barra EZ en agarre prono.','Baja la barra hacia la frente manteniendo los codos fijos.','Extiende los brazos volviendo a la posición inicial.','La barra EZ reduce el estrés en las muñecas.','Mantén los codos apuntando al techo durante todo el movimiento.'],
+  'Tricep Pushdown (Rope)': ['De pie frente a la polea alta con la cuerda sujeta con agarre neutro.','Con los codos pegados al cuerpo, extiende los brazos hacia abajo.','Separa los extremos de la cuerda al final del movimiento.','Vuelve lentamente hasta que los antebrazos queden paralelos al suelo.','Mantén los codos fijos durante todo el movimiento.'],
+  'Tricep Pushdown (Bar)': ['De pie frente a la polea alta con la barra sujeta en agarre prono.','Con los codos pegados al cuerpo, extiende los brazos hacia abajo.','Aprieta el tríceps en la posición extendida.','Vuelve lentamente controlando el peso.','Mantén los codos fijos durante todo el movimiento.'],
+  'Bench Dip': ['Coloca las manos en el borde de un banco, piernas extendidas al frente.','Baja doblando los codos hasta que los brazos queden a 90°.','Empuja hacia arriba extendiendo los codos.','Mantén el cuerpo cerca del banco durante el movimiento.','Para más dificultad eleva los pies en otro banco.'],
+  'Close Grip Bench Press': ['Túmbate en banco plano y agarra la barra con las manos al ancho de los hombros.','Baja la barra de forma controlada hasta el pecho inferior.','Empuja hacia arriba manteniendo los codos cerca del cuerpo.','Trabaja principalmente el tríceps con apoyo del pectoral.','Los codos deben apuntar ligeramente hacia afuera, no al cuerpo.'],
+  'Tricep Kickback (Dumbbell)': ['Inclínate con la espalda recta, codo del brazo de trabajo flexionado a 90°.','Extiende el antebrazo hacia atrás hasta quedar en línea con el torso.','Aprieta el tríceps en la posición extendida.','Vuelve lentamente a la posición inicial.','Mantén el codo fijo durante todo el movimiento.'],
+  'Overhead Extension (Dumbbell)': ['De pie o sentado, sujeta una mancuerna con ambas manos por encima de la cabeza.','Baja la mancuerna por detrás de la cabeza doblando los codos.','Extiende los brazos volviendo a la posición inicial.','Mantén los codos apuntando al techo durante el movimiento.','Estira bien el tríceps en la posición baja.'],
+  'Diamond Push Up': ['Colócate en posición de flexión con las manos juntas formando un rombo.','Baja el cuerpo de forma controlada manteniendo los codos cerca del cuerpo.','Empuja hacia arriba extendiendo los brazos.','Enfoca la contracción del tríceps en cada repetición.','El triángulo de manos enfoca el trabajo en el tríceps.'],
+  // PIERNAS
+  'Squat (Barbell)': ['Coloca la barra en la espalda alta, pies al ancho de hombros, puntas ligeramente abiertas.','Con el pecho alto, baja doblando rodillas y caderas simultáneamente.','Baja hasta que los muslos queden paralelos o más abajo al suelo.','Empuja el suelo para subir manteniendo las rodillas alineadas con los pies.','Mantén la espalda recta y el core activado durante todo el movimiento.'],
+  'Front Squat (Barbell)': ['Coloca la barra en la clavícula con los codos elevados al frente.','Baja manteniendo el torso más vertical que en sentadilla trasera.','Baja hasta que los muslos queden paralelos al suelo.','Empuja el suelo para subir manteniendo los codos altos.','El torso vertical exige más movilidad de tobillo.'],
+  'Bulgarian Split Squat (Dumbbell)': ['Coloca el pie trasero elevado en un banco, pie delantero al frente.','Baja la rodilla trasera hacia el suelo manteniendo el torso recto.','Baja hasta que la rodilla trasera casi toque el suelo.','Empuja con el pie delantero para subir.','Activa principalmente el cuádriceps y el glúteo de la pierna delantera.'],
+  'Leg Press': ['Siéntate con la espalda apoyada, pies en la plataforma al ancho de hombros.','Desbloquea la máquina y baja la plataforma hasta que las rodillas formen 90°.','Empuja la plataforma hasta casi extender las piernas.','Mantén siempre la espalda baja apoyada en el respaldo.','No bloquees completamente las rodillas en la posición alta.'],
+  'Hack Squat (Machine)': ['Coloca los hombros bajo los apoyos con la espalda en la plataforma.','Baja de forma controlada hasta que los muslos queden paralelos.','Empuja con los pies para subir sin bloquear las rodillas.','Mantén la espalda apoyada durante todo el movimiento.','La posición de los pies determina el énfasis muscular.'],
+  'Leg Extension (Machine)': ['Ajusta el asiento y el rodillo para que caiga justo sobre los tobillos.','Extiende las piernas hasta quedar casi rectas apretando el cuádriceps.','Pausa 1 segundo en la posición extendida.','Baja lentamente controlando el descenso.','Evita balancear el cuerpo para completar el movimiento.'],
+  'Lying Leg Curl (Machine)': ['Túmbate boca abajo en la máquina con el rodillo sobre los tobillos.','Flexiona las rodillas llevando los talones hacia los glúteos.','Aprieta los isquiotibiales en la posición alta.','Baja de forma lenta y controlada.','Evita elevar las caderas durante el movimiento.'],
+  'Seated Leg Curl (Machine)': ['Siéntate con las piernas extendidas y el rodillo sobre los tobillos.','Flexiona las rodillas apretando los isquiotibiales.','Pausa 1 segundo en la posición de máxima contracción.','Vuelve lentamente a la posición inicial.','La posición sentada estira más el isquiotibial que la versión tumbada.'],
+  'Hip Thrust (Barbell)': ['Apoya la espalda alta en un banco, barra sobre las caderas con protección.','Con los pies apoyados en el suelo, baja la cadera hacia el suelo.','Empuja las caderas hacia arriba apretando glúteos al máximo.','Pausa 1-2 segundos en la posición alta.','Mantén la barbilla metida y el core activado durante el movimiento.'],
+  'Walking Lunge (Dumbbell)': ['De pie con una mancuerna en cada mano, da un paso largo adelante.','Baja la rodilla trasera hacia el suelo manteniendo el torso recto.','Empuja con el pie delantero y da el siguiente paso.','Alterna las piernas avanzando por el espacio.','Mantén el torso erguido y el core activado.'],
+  'Standing Calf Raise (Machine)': ['Coloca los hombros bajo los apoyos con los dedos en el borde de la plataforma.','Eleva los talones lo máximo posible apretando los gemelos.','Pausa 1 segundo en la posición alta.','Baja completamente para estirar el gemelo.','El rango completo de movimiento es clave para los gemelos.'],
+  'Seated Calf Raise (Plate Loaded)': ['Siéntate con las rodillas bajo el apoyo y los dedos en el borde de la plataforma.','Eleva los talones apretando el soleo.','Pausa 1 segundo en la posición alta.','Baja completamente para estirar.','Trabaja principalmente el soleo a diferencia de la versión de pie.'],
+  'Hip Adductor (Machine)': ['Siéntate con los muslos apoyados en las almohadillas exteriores.','Junta las piernas apretando los aductores.','Pausa en la posición cerrada.','Vuelve lentamente controlando el movimiento.','Regula el rango de movimiento según tu movilidad.'],
+  'Hip Abductor (Machine)': ['Siéntate con los muslos apoyados en las almohadillas interiores.','Abre las piernas hacia los lados apretando los abductores.','Pausa en la posición abierta.','Vuelve lentamente a la posición inicial.','Trabaja el glúteo medio y los músculos abductores.'],
+  'Glute Kickback (Cable)': ['Coloca el tobillo en el accesorio de la polea baja.','De pie frente a la máquina, lleva la pierna hacia atrás y arriba.','Aprieta el glúteo en la posición alta.','Vuelve lentamente a la posición inicial.','Mantén el torso estable sujetándote a la máquina.'],
+  'Step Up (Dumbbell)': ['De pie frente a un banco o cajón con una mancuerna en cada mano.','Sube un pie al cajón y empuja para elevar el cuerpo.','Sube completamente con la pierna activa antes de bajar.','Baja de forma controlada.','Alterna las piernas o completa todas las reps de un lado.'],
+  'Goblet Squat': ['Sujeta una mancuerna o kettlebell con ambas manos frente al pecho.','Con los pies al ancho de hombros o más, baja en sentadilla.','Mantén el torso erguido y los codos dentro de las rodillas.','Baja hasta que los muslos queden paralelos o más abajo.','Empuja el suelo para volver a la posición inicial.'],
+  // ABS
+  'Crunch': ['Túmbate boca arriba con las rodillas flexionadas y pies en el suelo.','Coloca las manos detrás de la cabeza sin tirar del cuello.','Eleva los hombros del suelo apretando el abdomen.','Pausa 1 segundo en la posición alta.','Baja de forma controlada sin relajar completamente el abdomen.'],
+  'Cable Crunch': ['Arrodíllate frente a la polea alta con la cuerda sujeta junto a la cabeza.','Flexiona el torso hacia el suelo apretando el abdomen.','Baja hasta que los codos casi toquen las rodillas.','Vuelve lentamente a la posición inicial.','Mantén las caderas fijas durante todo el movimiento.'],
+  'Plank': ['Apoya los antebrazos y los dedos de los pies en el suelo.','Mantén el cuerpo en línea recta desde la cabeza hasta los talones.','Activa el core, glúteos y cuádriceps para mantener la posición.','Respira de forma controlada durante el tiempo de trabajo.','Evita que las caderas suban o bajen durante el ejercicio.'],
+  'Hanging Leg Raise': ['Cuélgate de una barra con agarre prono, brazos extendidos.','Eleva las piernas rectas o con rodillas flexionadas hacia el pecho.','Aprieta el abdomen en la posición alta.','Baja de forma lenta y controlada.','Evita el balanceo para que el trabajo lo haga el core.'],
+  'Ab Rollout': ['Arrodíllate con el rodillo en el suelo frente a ti.','Rueda hacia adelante extendiendo los brazos tanto como puedas.','Activa el core para volver a la posición inicial.','Mantén la espalda recta durante el movimiento.','Para progresar, realiza el movimiento desde posición de pie.'],
+  'Russian Twist (Plate)': ['Siéntate con las rodillas flexionadas y el torso inclinado hacia atrás.','Sujeta un disco o mancuerna con ambas manos frente al pecho.','Gira el torso de lado a lado tocando el suelo con el peso.','Mantén el core activado durante todo el movimiento.','Para más dificultad eleva los pies del suelo.'],
+  'Hanging Knee Raise': ['Cuélgate de una barra con agarre prono.','Eleva las rodillas hacia el pecho apretando el abdomen.','Pausa 1 segundo en la posición alta.','Baja de forma lenta y controlada.','Más sencillo que la elevación de piernas rectas.'],
+  'Bicycle Crunch': ['Túmbate con las manos detrás de la cabeza y las piernas elevadas.','Lleva el codo derecho hacia la rodilla izquierda mientras extiendes la derecha.','Alterna el movimiento de forma fluida.','Aprieta el oblicuo en cada lado durante la rotación.','Mantén la zona lumbar pegada al suelo.'],
+  'Leg Raise (Flat Bench)': ['Siéntate al borde del banco sujetándote con las manos.','Eleva las piernas rectas hasta quedar perpendiculares al torso.','Aprieta el abdomen en la posición alta.','Baja de forma lenta sin llegar a apoyar los talones.','Para más dificultad añade peso entre los tobillos.'],
+  'Mountain Climber': ['Colócate en posición de plancha alta con los brazos extendidos.','Lleva una rodilla hacia el pecho de forma explosiva.','Vuelve a la posición inicial y repite con la otra pierna.','Alterna a ritmo rápido manteniendo el core activado.','Mantén las caderas bajas durante todo el movimiento.'],
+  'Dragon Flag': ['Túmbate en un banco sujetando el respaldo por encima de la cabeza.','Eleva el cuerpo recto hasta quedar vertical apoyado en los hombros.','Baja el cuerpo de forma lenta y controlada manteniendo la línea.','Es uno de los ejercicios de core más exigentes.','Progresa desde la versión con rodillas flexionadas.'],
+  'Decline Crunch': ['Túmbate en el banco declinado con los pies sujetos.','Coloca las manos detrás de la cabeza o cruzadas en el pecho.','Sube el torso hasta unos 45° apretando el abdomen.','Baja de forma controlada sin llegar a apoyar completamente la espalda.','La inclinación aumenta el rango de movimiento respecto al crunch normal.'],
+};
 
 </script>
 </body>
