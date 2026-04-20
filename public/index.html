@@ -951,7 +951,7 @@ async function rbLoadDias(){
         ${d.ejercicios.map(e=>`<div class="ex-row">
           <div class="ex-row-img" style="background:${EX_COLORS[e.musculos?.split(',')[0]?.trim()]||'var(--s3)'}">${EX_EMOJIS[e.musculos?.includes('Cuád')?'Piernas':e.musculos?.includes('Dorsal')?'Espalda':'Pecho']||'💪'}</div>
           <div class="ex-row-info"><div class="ex-row-nombre">${e.nombre}</div><div class="ex-row-detail">${e.series}×${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''} · ${e.descanso}s${e.rir!=null?' · RIR '+e.rir:''}</div>${e.es_principal?`<span style="font-size:10px;color:var(--amb);font-weight:700">⭐ Principal</span>`:''}${e.nota_coach?`<div style="font-size:10px;color:var(--amb);font-weight:600;margin-top:2px">📝 ${e.nota_coach}</div>`:''}</div>
-          <button onclick="rbDelEx(${e.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:16px;padding:4px">✕</button>
+          <div style="display:flex;gap:4px"><button onclick="rbEditEx(${e.id})" style="background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);border-radius:6px;color:var(--blg);cursor:pointer;font-size:12px;padding:4px 8px;font-weight:600">✏️</button><button onclick="rbDelEx(${e.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:16px;padding:4px">✕</button></div>
         </div>`).join('')||'<div style="font-size:12px;color:var(--tx3);padding:8px 0">Sin ejercicios. Pulsa + Ejercicio.</div>'}
       </div>
     </div>`).join('');
@@ -1417,6 +1417,8 @@ function renderKL(){
 // ═══ ENTRENO CLIENTE - ESTILO STRONG ══════════════════
 let activeInput = null; // {ei, si, field} — qué celda está activa
 let runningTimers = {}; // ei_si -> {interval, secs, total, paused}
+let workoutStartTime = null; // timestamp when workout started
+let workoutTimerInt = null; // interval for workout timer display
 
 function hEntreno(){
   if(!CD.dias.length)return`<div style="padding:60px 20px;text-align:center;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">🏋️</div><div style="font-size:16px;font-weight:600;color:var(--sv2)">Tu coach está preparando tu plan</div></div>`;
@@ -1479,9 +1481,20 @@ function hEntreno(){
   }).join('');
 
   return`<div class="hero-day">
-    <div class="hero-day-lbl">Entrenamiento</div>
-    <div class="hero-day-name">${d.nombre}</div>
-    <div class="hero-day-sub">${d.grupo}</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div class="hero-day-lbl">Entrenamiento</div>
+        <div class="hero-day-name">${d.nombre}</div>
+        <div class="hero-day-sub">${d.grupo}</div>
+      </div>
+      <div style="text-align:right">
+        ${workoutStartTime
+          ? `<div id="workout_timer" style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gnb);letter-spacing:.08em">00:00</div>
+             <div style="font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em">En curso</div>`
+          : `<button onclick="iniciarEntreno()" style="background:var(--gn);color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">▶ Iniciar</button>`
+        }
+      </div>
+    </div>
     ${pct>0?`<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.4);font-weight:600;margin-bottom:4px"><span>Progreso</span><span>${doneSeries}/${totalSeries}</span></div><div style="height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--bl);border-radius:2px;transition:.5s"></div></div></div>`:''}
   </div>
   <div class="day-scroll">${pills}</div>
@@ -1599,6 +1612,7 @@ function toggleSerieStrong(ei,si){
   e._series[si].done=!e._series[si].done;
 
   if(e._series[si].done){
+    soundDing();
     // Iniciar timer de descanso para esta serie
     startTimerInline(ei, si, e.descanso||90);
     // Abrir teclado apuntando a esta serie para editar kg si quiere
@@ -1615,7 +1629,9 @@ function toggleSerieStrong(ei,si){
     closeKeyboard();
     guardarSesion();
     setTimeout(()=>{
-      document.getElementById('doneMsg').textContent=`${CD.nombre.split(' ')[0]}, has completado ${CD.dias[activeDia].nombre}. El músculo se construye ahora.`;
+      const durMin=getWorkoutDuration();
+      document.getElementById('doneMsg').textContent=`${CD.nombre.split(' ')[0]}, has completado ${CD.dias[activeDia].nombre} en ${durMin} min. El músculo se construye ahora.`;
+      if(workoutTimerInt){clearInterval(workoutTimerInt);workoutTimerInt=null;}
       document.getElementById('doneOv').classList.add('show');
     },600);
   }
@@ -1638,7 +1654,7 @@ async function guardarSesion(){
     });
     await api('/clientes/'+CD.id+'/sesiones',{
       method:'POST',
-      body:JSON.stringify({dia_nombre:d.nombre,dia_grupo:d.grupo,duracion_min:0,series})
+      body:JSON.stringify({dia_nombre:d.nombre,dia_grupo:d.grupo,duracion_min:getWorkoutDuration(),series})
     });
   }catch(e){console.log('Error guardando sesión:',e);}
 }
@@ -1661,6 +1677,7 @@ function startTimerInline(ei, si, total){
       clearInterval(rt.interval);
       delete runningTimers[key];
       updateTimerBar(ei,si,null);
+      soundBell();
     }
   },1000);
 }
@@ -1738,6 +1755,8 @@ function selDia(i){
   activeDia=i;
   runningTimers={};
   activeInput=null;
+  workoutStartTime=null;
+  if(workoutTimerInt){clearInterval(workoutTimerInt);workoutTimerInt=null;}
   document.getElementById('klContent').innerHTML=hEntreno();
 }
 
@@ -2509,6 +2528,119 @@ if(window.visualViewport){
     kb.style.bottom=(bnavH+urlBarH)+'px';
   });
 }
+
+// ═══ SONIDOS ══════════════════════════════════════════
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let _actx = null;
+function getACtx(){ if(!_actx) _actx = new AudioCtx(); return _actx; }
+
+function soundDing(){ // Serie completada — ding suave
+  try{
+    const ctx=getACtx();
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type='sine'; o.frequency.setValueAtTime(880,ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(1100,ctx.currentTime+0.06);
+    g.gain.setValueAtTime(0.4,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime+0.3);
+  }catch(e){}
+}
+
+function soundBell(){ // Descanso terminado — campanita tabata
+  try{
+    const ctx=getACtx();
+    [0, 0.18, 0.36].forEach((t,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type='sine';
+      o.frequency.setValueAtTime(i===2?1318:1046,ctx.currentTime+t);
+      g.gain.setValueAtTime(0,ctx.currentTime+t);
+      g.gain.linearRampToValueAtTime(0.5,ctx.currentTime+t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.5);
+      o.start(ctx.currentTime+t); o.stop(ctx.currentTime+t+0.5);
+    });
+  }catch(e){}
+}
+
+function iniciarEntreno(){
+  workoutStartTime = Date.now();
+  soundDing();
+  if(workoutTimerInt) clearInterval(workoutTimerInt);
+  workoutTimerInt = setInterval(()=>{
+    const el = document.getElementById('workout_timer');
+    if(!el){ clearInterval(workoutTimerInt); return; }
+    const secs = Math.floor((Date.now()-workoutStartTime)/1000);
+    const m = Math.floor(secs/60), s = secs%60;
+    el.textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }, 1000);
+  // Re-render hero to show timer
+  const hero = document.querySelector('.hero-day');
+  if(hero){
+    const timerDiv = hero.querySelector('[onclick="iniciarEntreno()"]')?.parentElement;
+    if(timerDiv) timerDiv.innerHTML =
+      '<div id="workout_timer" style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--gnb);letter-spacing:.08em">00:00</div>'+
+      '<div style="font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em">En curso</div>';
+  }
+}
+
+function getWorkoutDuration(){
+  if(!workoutStartTime) return 0;
+  return Math.round((Date.now()-workoutStartTime)/60000);
+}
+
+function rbEditEx(exId){
+  // Load exercise data and open edit panel
+  api('/ejercicios/'+exId).then(e=>{
+    const panel = document.getElementById('rb_add_panel');
+    const title = document.getElementById('rb_add_title');
+    if(!panel||!title) return;
+    title.textContent = e.nombre + ' — editando';
+    document.getElementById('rb_add_nombre').value = e.nombre;
+    document.getElementById('rb_add_musculos').value = e.musculos||'';
+    document.getElementById('rb_add_series').value = e.series||3;
+    document.getElementById('rb_add_reps').value = e.reps||'10-12';
+    document.getElementById('rb_add_peso').value = e.peso_objetivo||0;
+    document.getElementById('rb_add_descanso').value = e.descanso||90;
+    document.getElementById('rb_add_rir').value = e.rir!=null?e.rir:2;
+    document.getElementById('rb_add_principal').checked = !!e.es_principal;
+    document.getElementById('rb_add_yt').value = e.youtube_url||'';
+    document.getElementById('rb_add_nota').value = e.nota_coach||'';
+    // Switch button to update mode
+    const btn = document.getElementById('rb_add_btn');
+    btn.innerHTML = '✓ Guardar cambios';
+    btn.onclick = ()=> rbConfirmEdit(exId);
+    panel.style.display = 'flex';
+  }).catch(()=>{
+    // Fallback: just open panel with name prefilled
+    rbAddEx(nombre,'');
+  });
+}
+
+async function rbConfirmEdit(exId){
+  const btn = document.getElementById('rb_add_btn');
+  btn.innerHTML = '⏳ Guardando...'; btn.disabled = true;
+  try{
+    await api('/ejercicios/'+exId,{method:'PUT',body:JSON.stringify({
+      series: parseInt(document.getElementById('rb_add_series').value)||3,
+      reps: document.getElementById('rb_add_reps').value||'10-12',
+      peso_objetivo: parseFloat(document.getElementById('rb_add_peso').value)||0,
+      descanso: parseInt(document.getElementById('rb_add_descanso').value)||90,
+      rir: parseInt(document.getElementById('rb_add_rir').value)||2,
+      es_principal: document.getElementById('rb_add_principal').checked?1:0,
+      youtube_url: document.getElementById('rb_add_yt').value||'',
+      nota_coach: document.getElementById('rb_add_nota').value||''
+    })});
+    btn.innerHTML = '✓ Añadir ejercicio';
+    btn.onclick = rbConfirmAdd;
+    btn.disabled = false;
+    document.getElementById('rb_add_panel').style.display='none';
+    await rbLoadDias();
+  }catch(e){
+    btn.innerHTML = 'Error - reintentar'; btn.disabled = false;
+  }
+}
+
 </script>
 </body>
 </html>
