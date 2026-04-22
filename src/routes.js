@@ -94,6 +94,13 @@ router.post('/dias/:id/ejercicios', coachOnly, (req, res) => {
   res.json({ id: r.lastInsertRowid });
 });
 
+router.delete('/ejercicios-db/:id', (req, res) => {
+  const e = dbGet('SELECT * FROM ejercicios_db WHERE id=?', [req.params.id]);
+  if (!e) return res.status(404).json({ error: 'No encontrado' });
+  dbRun('DELETE FROM ejercicios_db WHERE id=?', [req.params.id]);
+  res.json({ ok: true });
+});
+
 router.get('/ejercicios/:id', (req, res) => {
   const e = dbGet('SELECT * FROM ejercicios_dia WHERE id=?', [req.params.id]);
   if (!e) return res.status(404).json({ error: 'No encontrado' });
