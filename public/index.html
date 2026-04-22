@@ -515,10 +515,8 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
     <div style="position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to bottom,transparent,#0a0d12)"></div>
   </div>
   <!-- Text section -->
-  <div style="padding:0 24px 40px;text-align:center;flex-shrink:0;position:relative;z-index:2">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:.12em;color:#fff;line-height:1;margin-bottom:4px">ENTRENO</div>
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:.12em;color:#f97316;line-height:1;margin-bottom:16px">COMPLETADO</div>
-    <div style="font-size:14px;color:var(--sv3);line-height:1.7;margin-bottom:24px;max-width:300px;margin-left:auto;margin-right:auto" id="doneMsg"></div>
+  <div style="padding:0 24px 36px;text-align:center;flex-shrink:0;position:relative;z-index:2">
+    <div style="font-size:14px;color:var(--sv3);line-height:1.7;margin-bottom:20px;max-width:300px;margin-left:auto;margin-right:auto" id="doneMsg"></div>
     <button class="btn" style="padding:14px 40px;font-size:16px;background:var(--bl2);border-radius:14px" onclick="document.getElementById('doneOv').classList.remove('show')">Cerrar</button>
   </div>
 </div>
@@ -1584,6 +1582,8 @@ function empezarEntreno(i){
   runningTimers = {};
   activeInput = null;
   document.getElementById('klContent').innerHTML = hEntreno();
+  // Start timer automatically
+  setTimeout(()=>iniciarEntreno(), 100);
 }
 
 // Modal descripción ejercicio
@@ -1657,7 +1657,7 @@ function hEntreno(){
     return`<div class="strong-ex-card ${exDone?'done-ex':''}" id="exc_${ei}">
       <div class="strong-ex-header">
         <div class="strong-ex-thumb" style="background:${getExerciseBg(e.nombre)};overflow:hidden">
-          ${imgUrl?`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"/>`:`<span style="font-size:22px">${getExerciseEmoji(e.nombre)}</span>`}
+          <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-family:'Bebas Neue',sans-serif;font-size:14px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.05em;text-align:center;padding:4px;line-height:1.1">${e.nombre.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()}</div>
         </div>
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:6px">
@@ -1685,12 +1685,9 @@ function hEntreno(){
         <div class="hero-day-name">${d.nombre}</div>
         <div class="hero-day-sub">${d.grupo}</div>
       </div>
-      <div style="text-align:right">
-        ${workoutStartTime
-          ? `<div id="workout_timer" style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gnb);letter-spacing:.08em">00:00</div>
-             <div style="font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em">En curso</div>`
-          : `<button onclick="iniciarEntreno()" style="background:var(--gn);color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">▶ Iniciar</button>`
-        }
+      <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        ${workoutStartTime?`<div id="workout_timer" style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gnb);letter-spacing:.08em">00:00</div><div style="font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em">En curso</div>`:''}
+        <button onclick="terminarEntreno()" style="background:rgba(239,68,68,.15);color:#fca5a5;border:0.5px solid rgba(239,68,68,.3);border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">■ Terminar</button>
       </div>
     </div>
     ${pct>0?`<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.4);font-weight:600;margin-bottom:4px"><span>Progreso</span><span>${doneSeries}/${totalSeries}</span></div><div style="height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--bl);border-radius:2px;transition:.5s"></div></div></div>`:''}
@@ -3410,6 +3407,67 @@ function programarRecordatorioFoto(clienteId){
       }, msHasta);
     }
   }
+}
+
+
+function terminarEntreno(){
+  const d = CD.dias[activeDia];
+  const totalSeries = d.ejercicios.reduce((a,e)=>a+e.series,0);
+  const doneSeries = d.ejercicios.reduce((a,e)=>a+(e._series?e._series.filter(s=>s.done).length:0),0);
+  const pendientes = totalSeries - doneSeries;
+
+  if(pendientes > 0){
+    const confirmar = confirm(
+      `Quedan ${pendientes} serie${pendientes>1?'s':''} sin completar.\n\n¿Seguro que quieres terminar el entreno?\n\nTu coach verá las series incompletas.`
+    );
+    if(!confirmar) return;
+  }
+
+  // Guardar lo completado hasta ahora (parcial)
+  guardarSesionParcial();
+  soundComplete();
+
+  setTimeout(()=>{
+    const durMin = getWorkoutDuration();
+    document.getElementById('doneMsg').textContent =
+      `¡Felicidades, ${CD.nombre.split(' ')[0]}! Has completado tu entreno${pendientes>0?' ('+doneSeries+'/'+totalSeries+' series)':''} en ${durMin} min. Tu disciplina te hace más fuerte cada día.`;
+    if(workoutTimerInt){clearInterval(workoutTimerInt);workoutTimerInt=null;}
+    document.getElementById('doneOv').classList.add('show');
+  }, 400);
+}
+
+async function guardarSesionParcial(){
+  try{
+    const d = CD.dias[activeDia];
+    const series = [];
+    d.ejercicios.forEach(e=>{
+      (e._series||[]).forEach((s,si)=>{
+        if(s.done) series.push({
+          ejercicio: e.nombre,
+          serie_num: si+1,
+          peso: s.peso||0,
+          reps: s.reps_real||parseFirstNum(e.reps),
+          rir: s.rir_real!=null?s.rir_real:(e.rir!=null?e.rir:2)
+        });
+      });
+    });
+    // Mark incomplete exercises for coach visibility
+    const incompletas = d.ejercicios
+      .filter(e=>e._series&&e._series.some(s=>!s.done))
+      .map(e=>e.nombre);
+    const notaIncompleta = incompletas.length>0
+      ? ' [INCOMPLETO: '+incompletas.join(', ')+']'
+      : '';
+    await api('/clientes/'+CD.id+'/sesiones',{
+      method:'POST',
+      body:JSON.stringify({
+        dia_nombre: d.nombre + notaIncompleta,
+        dia_grupo: d.grupo,
+        duracion_min: getWorkoutDuration(),
+        series
+      })
+    });
+  }catch(e){ console.log('Error guardando parcial:',e); }
 }
 
 </script>
