@@ -652,6 +652,14 @@ async function doLogin(){
       await loadCD(data.user.clienteId);
       klNav('entreno',document.getElementById('bni0'));
     setTimeout(checkRecordatorios,2000);
+    // Pedir permiso de notificaciones
+    setTimeout(async()=>{
+      const ok = await pedirPermisoNotificaciones();
+      if(ok && CD){
+        programarRecordatorioPeso(CD.id);
+        programarRecordatorioFoto(CD.id);
+      }
+    }, 3000);
     }
   }catch(e){err.textContent=e.error||'Error al conectar';err.style.display='block';}
 }
@@ -1818,6 +1826,11 @@ function toggleSerieStrong(ei,si){
   if(allDone){
     closeKeyboard();
     guardarSesion();
+    soundComplete(); // fanfare de victoria
+    setTimeout(()=>{
+      const durMin2=getWorkoutDuration();
+      notificarEntrenoCompletado(CD.nombre.split(' ')[0], durMin2);
+    },200);
     setTimeout(()=>{
       const durMin=getWorkoutDuration();
       document.getElementById('doneMsg').textContent=`¡Felicidades, ${CD.nombre.split(' ')[0]}! Has completado tu entreno de hoy en ${durMin} min. Tu disciplina te hace más fuerte cada día.`;
@@ -1868,6 +1881,10 @@ function startTimerInline(ei, si, total){
       delete runningTimers[key];
       updateTimerBar(ei,si,null);
       soundBell();
+      vibrate([150,80,150]); // doble vibración al acabar descanso
+      // Notificación push (útil si pantalla bloqueada)
+      const exNow = CD?.dias[activeDia]?.ejercicios[ei];
+      notificarDescansoTerminado(exNow?.nombre||'');
     }
   },1000);
 }
@@ -2730,6 +2747,10 @@ const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let _actx = null;
 function getACtx(){ if(!_actx) _actx = new AudioCtx(); return _actx; }
 
+// ═══ VIBRACIÓN ════════════════════════════════════
+function vibrate(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
+function vibratePattern(pattern){ try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){} }
+
 function soundDing(){ // Serie completada — ding suave
   try{
     const ctx=getACtx();
@@ -2740,6 +2761,34 @@ function soundDing(){ // Serie completada — ding suave
     g.gain.setValueAtTime(0.4,ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);
     o.start(ctx.currentTime); o.stop(ctx.currentTime+0.3);
+  }catch(e){}
+}
+
+function soundComplete(){ // Entreno completado — fanfare épico
+  try{
+    const ctx=getACtx();
+    // Fanfare: acorde ascendente tipo victoria
+    const notes = [
+      {freq:523, t:0,    dur:0.15},  // C5
+      {freq:659, t:0.15, dur:0.15},  // E5
+      {freq:784, t:0.30, dur:0.15},  // G5
+      {freq:1047,t:0.45, dur:0.40},  // C6 largo
+      {freq:784, t:0.50, dur:0.30},  // G5 acorde
+      {freq:659, t:0.55, dur:0.25},  // E5 acorde
+    ];
+    notes.forEach(n=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type='triangle';
+      o.frequency.setValueAtTime(n.freq, ctx.currentTime+n.t);
+      g.gain.setValueAtTime(0, ctx.currentTime+n.t);
+      g.gain.linearRampToValueAtTime(0.35, ctx.currentTime+n.t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+n.t+n.dur);
+      o.start(ctx.currentTime+n.t);
+      o.stop(ctx.currentTime+n.t+n.dur+0.05);
+    });
+    // Vibración larga de celebración
+    vibratePattern([200,100,200,100,400]);
   }catch(e){}
 }
 
@@ -3278,6 +3327,90 @@ const EX_DESCRIPCIONES = {
   'Dragon Flag': ['Túmbate en un banco sujetando el respaldo por encima de la cabeza.','Eleva el cuerpo recto hasta quedar vertical apoyado en los hombros.','Baja el cuerpo de forma lenta y controlada manteniendo la línea.','Es uno de los ejercicios de core más exigentes.','Progresa desde la versión con rodillas flexionadas.'],
   'Decline Crunch': ['Túmbate en el banco declinado con los pies sujetos.','Coloca las manos detrás de la cabeza o cruzadas en el pecho.','Sube el torso hasta unos 45° apretando el abdomen.','Baja de forma controlada sin llegar a apoyar completamente la espalda.','La inclinación aumenta el rango de movimiento respecto al crunch normal.'],
 };
+
+
+// ═══ NOTIFICACIONES PUSH ══════════════════════════
+async function pedirPermisoNotificaciones(){
+  if(!('Notification' in window)) return false;
+  if(Notification.permission === 'granted') return true;
+  if(Notification.permission === 'denied') return false;
+  const perm = await Notification.requestPermission();
+  return perm === 'granted';
+}
+
+function notificarDescansoTerminado(nombreEjercicio){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  try{
+    new Notification('¡A por ello! 💪', {
+      body: nombreEjercicio ? `Siguiente serie de ${nombreEjercicio}` : 'Descanso terminado — siguiente serie',
+      icon: '/logo.png',
+      badge: '/logo.png',
+      silent: false,
+      tag: 'descanso',
+    });
+  }catch(e){}
+}
+
+function notificarEntrenoCompletado(nombre, minutos){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  try{
+    new Notification('🐺 ¡Entreno completado!', {
+      body: `${nombre}, has terminado en ${minutos} min. ¡Bestia!`,
+      icon: '/logo.png',
+      badge: '/logo.png',
+      tag: 'entreno-done',
+      requireInteraction: false,
+    });
+  }catch(e){}
+}
+
+// Programar recordatorio de peso (semanal)
+function programarRecordatorioPeso(clienteId){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  // Guardar timestamp de próximo recordatorio
+  const ultima = CD?.pesos?.length ? new Date(CD.pesos[CD.pesos.length-1].fecha).getTime() : 0;
+  const proxima = ultima + 7*24*60*60*1000;
+  const ahora = Date.now();
+  if(proxima > ahora){
+    const msHasta = proxima - ahora;
+    // Solo programar si es en menos de 24h (visibilidad razonable)
+    if(msHasta < 24*60*60*1000){
+      setTimeout(()=>{
+        if(!('Notification' in window) || Notification.permission !== 'granted') return;
+        new Notification('⚖️ ¡Hora de pesarte!', {
+          body: 'Han pasado 7 días. Pésate en ayunas y registra tu peso.',
+          icon: '/logo.png',
+          tag: 'peso-reminder',
+          requireInteraction: true,
+        });
+        document.getElementById('pesoReminder').style.display='flex';
+      }, msHasta);
+    }
+  }
+}
+
+// Programar recordatorio de foto (mensual)
+function programarRecordatorioFoto(clienteId){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  const ultima = CD?.fotos?.length ? new Date(CD.fotos[CD.fotos.length-1].fecha).getTime() : 0;
+  const proxima = ultima + 28*24*60*60*1000;
+  const ahora = Date.now();
+  if(proxima > ahora){
+    const msHasta = proxima - ahora;
+    if(msHasta < 24*60*60*1000){
+      setTimeout(()=>{
+        if(!('Notification' in window) || Notification.permission !== 'granted') return;
+        new Notification('📸 ¡Foto mensual!', {
+          body: 'Ha pasado un mes. Sube tu foto de progreso.',
+          icon: '/logo.png',
+          tag: 'foto-reminder',
+          requireInteraction: true,
+        });
+        document.getElementById('fotoReminder').style.display='flex';
+      }, msHasta);
+    }
+  }
+}
 
 </script>
 </body>
