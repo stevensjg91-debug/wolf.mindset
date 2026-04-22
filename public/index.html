@@ -1449,8 +1449,9 @@ function renderKL(){
 // ═══ ENTRENO CLIENTE - ESTILO STRONG ══════════════════
 let activeInput = null; // {ei, si, field} — qué celda está activa
 let runningTimers = {}; // ei_si -> {interval, secs, total, paused}
-let workoutStartTime = null; // timestamp when workout started
-let workoutTimerInt = null; // interval for workout timer display
+let workoutStartTime = null;
+let workoutTimerInt = null;
+let doneShown = false;
 
 // ═══ PANTALLA SELECCIÓN DE DÍA (estilo Hevy) ═══════════
 let vistaActual = 'seleccion'; // 'seleccion' | 'preview' | 'entreno'
@@ -1579,6 +1580,7 @@ function empezarEntreno(i){
   if(workoutTimerInt){clearInterval(workoutTimerInt);workoutTimerInt=null;}
   runningTimers = {};
   activeInput = null;
+  doneShown = false;
   document.getElementById('klContent').innerHTML = hEntreno();
   // Start timer automatically
   setTimeout(()=>iniciarEntreno(), 100);
@@ -1815,17 +1817,15 @@ function toggleSerieStrong(ei,si){
   rerenderSerieRow(ei,si);
 
   const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
-  if(allDone){
+  if(allDone && !doneShown){
+    doneShown = true;
     closeKeyboard();
     guardarSesion();
-    soundComplete(); // fanfare de victoria
+    soundComplete();
+    const durFin = getWorkoutDuration();
+    notificarEntrenoCompletado(CD.nombre.split(' ')[0], durFin);
     setTimeout(()=>{
-      const durMin2=getWorkoutDuration();
-      notificarEntrenoCompletado(CD.nombre.split(' ')[0], durMin2);
-    },200);
-    setTimeout(()=>{
-      const durMin=getWorkoutDuration();
-      document.getElementById('doneMsg').textContent=`¡Felicidades, ${CD.nombre.split(' ')[0]}! Has completado tu entreno de hoy en ${durMin} min. Tu disciplina te hace más fuerte cada día.`;
+      document.getElementById('doneMsg').textContent=`¡Felicidades, ${CD.nombre.split(' ')[0]}! Has completado tu entreno en ${durFin} min. Tu disciplina te hace más fuerte cada día.`;
       if(workoutTimerInt){clearInterval(workoutTimerInt);workoutTimerInt=null;}
       document.getElementById('doneOv').classList.add('show');
     },600);
@@ -2531,6 +2531,7 @@ async function filtrarEjerciciosGestor(){
         <div style="display:flex;gap:6px">
           <input id="img_url_${e.id}" value="${imgUrl}" placeholder="URL de imagen o GIF..." style="flex:1;padding:5px 8px;border:0.5px solid var(--br);border-radius:7px;background:var(--s3);color:var(--tx);font-size:12px;font-family:'Inter',sans-serif" onkeydown="if(event.key==='Enter')guardarImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id})"/>
           <button onclick="guardarImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id})" style="padding:5px 10px;background:var(--bl2);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Guardar</button>
+          <button onclick="borrarEjercicioDb(${e.id},'${e.nombre.replace(/'/g,"\'")}')" style="padding:5px 8px;background:rgba(239,68,68,.12);color:#fca5a5;border:0.5px solid rgba(239,68,68,.25);border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit;flex-shrink:0" title="Eliminar ejercicio">✕</button>
         </div>
       </div>
       ${imgUrl ? `<span style="font-size:16px" title="Imagen guardada">✅</span>` : `<span style="font-size:16px;color:var(--tx3)" title="Sin imagen">○</span>`}
@@ -3420,12 +3421,14 @@ function terminarEntreno(){
 
   // Guardar lo completado hasta ahora (parcial)
   guardarSesionParcial();
+  if(doneShown) return;
+  doneShown = true;
   soundComplete();
-
+  const durT = getWorkoutDuration();
+  notificarEntrenoCompletado(CD.nombre.split(' ')[0], durT);
   setTimeout(()=>{
-    const durMin = getWorkoutDuration();
     document.getElementById('doneMsg').textContent =
-      `¡Felicidades, ${CD.nombre.split(' ')[0]}! Has completado tu entreno${pendientes>0?' ('+doneSeries+'/'+totalSeries+' series)':''} en ${durMin} min. Tu disciplina te hace más fuerte cada día.`;
+      `¡Felicidades, ${CD.nombre.split(' ')[0]}! Has completado tu entreno${pendientes>0?' ('+doneSeries+'/'+totalSeries+' series)':''} en ${durT} min. Tu disciplina te hace más fuerte cada día.`;
     if(workoutTimerInt){clearInterval(workoutTimerInt);workoutTimerInt=null;}
     document.getElementById('doneOv').classList.add('show');
   }, 400);
@@ -3463,6 +3466,24 @@ async function guardarSesionParcial(){
       })
     });
   }catch(e){ console.log('Error guardando parcial:',e); }
+}
+
+
+async function borrarEjercicioDb(id, nombre){
+  if(!confirm(`¿Eliminar "${nombre}" de la biblioteca?\n\nSe quitará de la lista de ejercicios disponibles. Los ejercicios ya asignados a rutinas no se verán afectados.`)) return;
+  try{
+    const r = await fetch('/api/ejercicios-db/'+id, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer '+TOKEN }
+    });
+    if(r.ok){
+      await filtrarEjerciciosGestor();
+    } else {
+      alert('Error al eliminar. Inténtalo de nuevo.');
+    }
+  }catch(e){
+    alert('Error de conexión.');
+  }
 }
 
 </script>
