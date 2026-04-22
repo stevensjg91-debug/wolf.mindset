@@ -1533,9 +1533,7 @@ function hPreviewDia(i){
     const imgUrl = e.imagen_url || (window.exConfig&&window.exConfig[e.nombre]?.imagen_url) || '';
     const bg = getExerciseBg(e.nombre);
     return`<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--br)">
-      <div style="width:48px;height:48px;border-radius:10px;overflow:hidden;background:${bg};flex-shrink:0;display:flex;align-items:center;justify-content:center">
-        ${imgUrl?`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/><span style="display:none;font-size:22px">${getExerciseEmoji(e.nombre)}</span>`:`<span style="font-size:22px">${getExerciseEmoji(e.nombre)}</span>`}
-      </div>
+
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:2px">${e.nombre}</div>
         <div style="font-size:12px;color:var(--tx3)">${e.series} × ${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''}</div>
@@ -1656,9 +1654,6 @@ function hEntreno(){
 
     return`<div class="strong-ex-card ${exDone?'done-ex':''}" id="exc_${ei}">
       <div class="strong-ex-header">
-        <div class="strong-ex-thumb" style="background:${getExerciseBg(e.nombre)};overflow:hidden">
-          <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-family:'Bebas Neue',sans-serif;font-size:14px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.05em;text-align:center;padding:4px;line-height:1.1">${e.nombre.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()}</div>
-        </div>
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:6px">
             <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${e.grupo||''}</div>
@@ -1687,7 +1682,7 @@ function hEntreno(){
       </div>
       <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         ${workoutStartTime?`<div id="workout_timer" style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gnb);letter-spacing:.08em">00:00</div><div style="font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em">En curso</div>`:''}
-        <button onclick="terminarEntreno()" style="background:rgba(239,68,68,.15);color:#fca5a5;border:0.5px solid rgba(239,68,68,.3);border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">■ Terminar</button>
+        <button id="btn_terminar" onclick="terminarEntreno()" style="background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:12px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;min-width:100px;min-height:42px;-webkit-tap-highlight-color:transparent;touch-action:manipulation">■ Terminar</button>
       </div>
     </div>
     ${pct>0?`<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.4);font-weight:600;margin-bottom:4px"><span>Progreso</span><span>${doneSeries}/${totalSeries}</span></div><div style="height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--bl);border-radius:2px;transition:.5s"></div></div></div>`:''}
