@@ -1449,7 +1449,17 @@ function klNav(s,btn){
 function renderKL(){
   const el=document.getElementById('klContent');
   if(!CD){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--tx3)">Cargando...</div>';return;}
-  if(klTab==='entreno')el.innerHTML=hSeleccionDia();
+  if(klTab==='entreno'){
+    // Check if coach has pending changes (borrador)
+    api('/clientes/'+CD.id+'/semana-estado').then(estado=>{
+      if(estado.tiene_borrador){
+        el.innerHTML = hProximaSemanaEnPreparacion();
+      } else {
+        el.innerHTML = hSeleccionDia();
+      }
+    }).catch(()=>{ el.innerHTML = hSeleccionDia(); });
+    return;
+  }
   else if(klTab==='dieta')el.innerHTML=hDieta();
   else if(klTab==='asistente'){el.innerHTML=hAsistente();chatH=[{role:'assistant',content:`Hola ${CD.nombre.split(' ')[0]}, aquí para ayudarte. ¿Qué necesitas?`}];}
   else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>cargarGraficasCliente(),100);}
@@ -3073,23 +3083,43 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
         const exId = e.id;
         const inputId = `rev_peso_${exId}`;
 
-        html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid rgba(39,39,42,.4)">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:600;color:var(--sv);margin-bottom:1px">${e.nombre}</div>
-            <div style="font-size:11px;color:var(--tx3)">${e.series}×${e.reps} · obj RIR ${e.rir != null ? e.rir : 2}</div>
-            ${ult ? `<div style="font-size:11px;color:var(--sv3);margin-top:1px">Último: ${ult.peso_real}kg×${ult.reps_real} reps${ult.rir != null ? ' · RIR '+ult.rir : ''}</div>` : '<div style="font-size:11px;color:var(--tx3)">Sin datos aún</div>'}
-            ${notaProg ? `<div style="font-size:11px;color:${colorProg};font-weight:600;margin-top:2px">${iconProg} ${notaProg}</div>` : ''}
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0">
-            <div style="font-size:9px;color:var(--tx3);font-weight:600;text-transform:uppercase">Nuevo obj kg</div>
-            <div style="display:flex;align-items:center;gap:4px">
-              <button onclick="revAjustarPeso('${inputId}', -2.5)" style="width:26px;height:26px;border-radius:6px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:14px;font-weight:700;line-height:1">−</button>
-              <input id="${inputId}" type="number" value="${nuevoPeso}" step="2.5" min="0"
-                style="width:62px;padding:5px;border:0.5px solid ${nuevoPeso !== pesoObj ? 'var(--bl)' : 'var(--br)'};border-radius:8px;background:${nuevoPeso !== pesoObj ? 'rgba(37,99,235,.1)' : 'var(--s2)'};color:${nuevoPeso !== pesoObj ? 'var(--blg)' : 'var(--sv)'};font-size:14px;font-weight:700;text-align:center;font-family:inherit"
-                onchange="revMarcarCambio('${inputId}', ${pesoObj})"/>
-              <button onclick="revAjustarPeso('${inputId}', 2.5)" style="width:26px;height:26px;border-radius:6px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:14px;font-weight:700;line-height:1">+</button>
+        html += `<div style="padding:10px 0;border-bottom:0.5px solid rgba(39,39,42,.4)">
+          <!-- Header -->
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:2px">${e.nombre}</div>
+              ${ult ? `<div style="font-size:11px;color:var(--sv3)">Último: ${ult.peso_real}kg×${ult.reps_real}${ult.rir != null ? ' · RIR '+ult.rir : ''}</div>` : '<div style="font-size:11px;color:var(--tx3)">Sin datos aún</div>'}
+              ${notaProg ? `<div style="font-size:11px;color:${colorProg};font-weight:600;margin-top:1px">${iconProg} ${notaProg}</div>` : ''}
             </div>
-            <div style="font-size:9px;color:var(--tx3)">actual: ${pesoObj}kg</div>
+          </div>
+          <!-- Editable fields grid -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px">
+            <div>
+              <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:3px">Series</div>
+              <input id="rev_series_${exId}" type="number" value="${e.series}" min="1" max="10"
+                style="width:100%;padding:6px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:14px;font-weight:700;text-align:center;font-family:inherit"/>
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:3px">Reps</div>
+              <input id="rev_reps_${exId}" type="text" value="${e.reps}"
+                style="width:100%;padding:6px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:14px;font-weight:700;text-align:center;font-family:inherit"/>
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:3px">Kg obj</div>
+              <div style="display:flex;align-items:center;gap:2px">
+                <button onclick="revAjustarPeso('${inputId}', -2.5)" style="width:22px;height:32px;border-radius:6px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:14px;font-weight:700;flex-shrink:0">−</button>
+                <input id="${inputId}" type="number" value="${nuevoPeso}" step="2.5" min="0"
+                  style="flex:1;min-width:0;padding:6px 2px;border:0.5px solid ${nuevoPeso !== pesoObj ? 'var(--bl)' : 'var(--br)'};border-radius:8px;background:${nuevoPeso !== pesoObj ? 'rgba(37,99,235,.1)' : 'var(--s2)'};color:${nuevoPeso !== pesoObj ? 'var(--blg)' : 'var(--sv)'};font-size:13px;font-weight:700;text-align:center;font-family:inherit"
+                  onchange="revMarcarCambio('${inputId}', ${pesoObj})"/>
+                <button onclick="revAjustarPeso('${inputId}', 2.5)" style="width:22px;height:32px;border-radius:6px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:14px;font-weight:700;flex-shrink:0">+</button>
+              </div>
+            </div>
+          </div>
+          <!-- Nota coach -->
+          <div>
+            <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:3px">Nota para el cliente</div>
+            <input id="rev_nota_${exId}" type="text" value="${e.nota_coach||''}" placeholder="Ej: última serie al fallo, controla la bajada..."
+              style="width:100%;padding:7px 10px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:12px;font-family:inherit"/>
           </div>
         </div>`;
       });
@@ -3097,10 +3127,12 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
       html += `</div>`;
     });
 
-    // Save button
+    // Action buttons
     html += `<div style="display:flex;gap:8px;margin-top:4px">
-      <button class="btn" style="flex:1;padding:11px;background:var(--gn)" onclick="guardarRevisionSemanal(${clienteId})">✓ Guardar objetivos para próxima semana</button>
+      <button class="btn" style="flex:1;padding:11px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="guardarBorrador(${clienteId})">💾 Guardar borrador</button>
+      <button class="btn" style="flex:1;padding:11px;background:var(--gn)" onclick="publicarSemana(${clienteId})">✓ Publicar semana</button>
     </div>
+    <div style="margin-top:8px;font-size:11px;color:var(--tx3);text-align:center">El cliente no verá los cambios hasta que pulses "Publicar semana"</div>
     <div style="margin-top:10px">
       <button style="width:100%;padding:9px;background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;color:var(--blg);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" onclick="sugerirProgresionIA(${clienteId})">🤖 Sugerir progresión con IA</button>
       <div id="ia_progresion_result" style="margin-top:8px"></div>
@@ -3132,43 +3164,59 @@ function revMarcarCambio(inputId, pesoOriginal) {
   input.style.color = changed ? 'var(--blg)' : 'var(--sv)';
 }
 
-async function guardarRevisionSemanal(clienteId) {
-  const btn = event.target;
-  btn.textContent = '⏳ Guardando...';
-  btn.disabled = true;
-
-  try {
-    // Find all rev_peso_ inputs and save changed ones
-    const inputs = document.querySelectorAll('[id^="rev_peso_"]');
-    const promesas = [];
-    
-    inputs.forEach(input => {
-      const exId = input.id.replace('rev_peso_', '');
-      const nuevoPeso = parseFloat(input.value) || 0;
-      promesas.push(
-        api('/ejercicios/' + exId, {
-          method: 'PUT',
-          body: JSON.stringify({ peso_objetivo: nuevoPeso })
-        })
-      );
+function recogerCambiosRevision(){
+  // Collect all editable fields from revision semanal
+  const ejercicios = [];
+  document.querySelectorAll('[id^="rev_peso_"]').forEach(input => {
+    const exId = input.id.replace('rev_peso_', '');
+    ejercicios.push({
+      ejercicio_id: parseInt(exId),
+      peso_objetivo: parseFloat(input.value) || 0,
+      series: parseInt(document.getElementById('rev_series_'+exId)?.value) || 3,
+      reps: document.getElementById('rev_reps_'+exId)?.value || '10-12',
+      nota_coach: document.getElementById('rev_nota_'+exId)?.value || '',
+      descanso: 90 // keep existing, not editing here for now
     });
+  });
+  return ejercicios;
+}
 
-    await Promise.all(promesas);
-    
-    btn.textContent = '✓ Objetivos guardados';
-    btn.style.background = '#166534';
-    btn.style.color = '#86efac';
-    setTimeout(() => {
-      btn.textContent = '✓ Guardar objetivos para próxima semana';
-      btn.style.background = 'var(--gn)';
-      btn.style.color = '#fff';
-      btn.disabled = false;
-    }, 3000);
-    
-  } catch(e) {
-    btn.textContent = 'Error — reintentar';
-    btn.disabled = false;
-  }
+async function guardarBorrador(clienteId) {
+  const btn = event.target;
+  btn.textContent = '⏳ Guardando...'; btn.disabled = true;
+  try {
+    const ejercicios = recogerCambiosRevision();
+    await api('/clientes/'+clienteId+'/borrador', {
+      method: 'POST',
+      body: JSON.stringify({ ejercicios })
+    });
+    btn.textContent = '💾 Borrador guardado';
+    btn.style.background = 'var(--bl2)'; btn.style.color = '#fff';
+    setTimeout(()=>{ btn.textContent='💾 Guardar borrador'; btn.style.background='var(--s2)'; btn.style.color='var(--sv2)'; btn.disabled=false; }, 2500);
+    // Show pending banner
+    const estado = document.getElementById('rev_estado');
+    if(estado) estado.textContent = '· Borrador pendiente de publicar';
+  } catch(e) { btn.textContent='Error'; btn.disabled=false; }
+}
+
+async function publicarSemana(clienteId) {
+  const btn = event.target;
+  if(!confirm('¿Publicar los cambios? El cliente verá la nueva rutina inmediatamente.')) return;
+  btn.textContent = '⏳ Publicando...'; btn.disabled = true;
+  try {
+    // First save current state as borrador, then publish
+    const ejercicios = recogerCambiosRevision();
+    await api('/clientes/'+clienteId+'/borrador', {
+      method: 'POST',
+      body: JSON.stringify({ ejercicios })
+    });
+    const result = await api('/clientes/'+clienteId+'/borrador/publicar', { method: 'POST' });
+    btn.textContent = '✓ Publicado';
+    btn.style.background = '#166534'; btn.style.color = '#86efac';
+    const estado = document.getElementById('rev_estado');
+    if(estado) estado.textContent = `· Publicado (${result.publicados} ejercicios actualizados)`;
+    setTimeout(()=>{ btn.textContent='✓ Publicar semana'; btn.style.background='var(--gn)'; btn.style.color='#fff'; btn.disabled=false; }, 3000);
+  } catch(e) { btn.textContent='Error'; btn.disabled=false; }
 }
 
 async function sugerirProgresionIA(clienteId) {
@@ -3539,6 +3587,19 @@ function toggleRirPanel(checked){
   const wrap = document.getElementById('rb_rir_val_wrap');
   if(wrap) wrap.style.display = checked ? 'block' : 'none';
 }
+
+function hProximaSemanaEnPreparacion(){
+  return`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;text-align:center;min-height:60vh">
+    <div style="font-size:56px;margin-bottom:16px">🐺</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.08em;color:var(--sv);margin-bottom:8px">Tu coach está preparando</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.08em;color:var(--blg);margin-bottom:16px">tu próxima semana</div>
+    <div style="font-size:14px;color:var(--tx3);line-height:1.7;max-width:280px">Tu rutina está siendo actualizada con nuevos objetivos. En breve tendrás los cambios disponibles.</div>
+    <div style="margin-top:24px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:14px 20px;font-size:13px;color:var(--sv3)">
+      Mientras tanto puedes revisar tu <span style="color:var(--blg);font-weight:600">dieta</span>, hablar con el <span style="color:var(--blg);font-weight:600">asistente</span> o ver tu <span style="color:var(--blg);font-weight:600">progreso</span>.
+    </div>
+  </div>`;
+}
+
 </script>
 </body>
 </html>
