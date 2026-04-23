@@ -38,8 +38,10 @@ async function initDB() {
 
   db.run(`CREATE TABLE IF NOT EXISTS dias_entreno (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, nombre TEXT, grupo TEXT, orden INTEGER DEFAULT 0)`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS ejercicios_dia (id INTEGER PRIMARY KEY AUTOINCREMENT, dia_id INTEGER, nombre TEXT, musculos TEXT, series INTEGER DEFAULT 3, reps TEXT DEFAULT '10-12', peso_objetivo REAL DEFAULT 0, descanso INTEGER DEFAULT 90, rir INTEGER DEFAULT 2, es_principal INTEGER DEFAULT 0, orden INTEGER DEFAULT 0, es_pr INTEGER DEFAULT 0, youtube_url TEXT DEFAULT '', imagen_url TEXT DEFAULT '', nota_coach TEXT DEFAULT '')`);
-  try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN rir INTEGER DEFAULT 2"); } catch(e) {}
+  db.run(`CREATE TABLE IF NOT EXISTS ejercicios_dia (id INTEGER PRIMARY KEY AUTOINCREMENT, dia_id INTEGER, nombre TEXT, musculos TEXT, series INTEGER DEFAULT 3, reps TEXT DEFAULT '10-12', peso_objetivo REAL DEFAULT 0, descanso INTEGER DEFAULT 90, rir INTEGER, es_principal INTEGER DEFAULT 0, orden INTEGER DEFAULT 0, es_pr INTEGER DEFAULT 0, youtube_url TEXT DEFAULT '', imagen_url TEXT DEFAULT '', nota_coach TEXT DEFAULT '')`);
+  try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN rir INTEGER"); } catch(e) {}
+  // Migration: reset rir=2 (old default) to NULL so toggle works correctly
+  try { db.run("UPDATE ejercicios_dia SET rir=NULL WHERE rir=2"); } catch(e) {}
   try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN es_principal INTEGER DEFAULT 0"); } catch(e) {};
   try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN youtube_url TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN imagen_url TEXT DEFAULT ''"); } catch(e) {}
