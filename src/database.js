@@ -100,6 +100,26 @@ async function initDB() {
   }
 
   console.log('DB lista');
+
+  // Tablas borradores de semana
+  db.run(`CREATE TABLE IF NOT EXISTS semana_borrador (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER,
+    ejercicio_id INTEGER,
+    series INTEGER,
+    reps TEXT,
+    peso_objetivo REAL,
+    descanso INTEGER,
+    nota_coach TEXT,
+    rir INTEGER,
+    creado DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(cliente_id, ejercicio_id)
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS semana_estado (
+    cliente_id INTEGER PRIMARY KEY,
+    tiene_borrador INTEGER DEFAULT 0,
+    publicado_at DATETIME
+  )`);
 }
 
 function dbRun(sql, params = []) {
@@ -122,26 +142,5 @@ function dbAll(sql, params = []) {
 function dbGet(sql, params = []) {
   return dbAll(sql, params)[0] || null;
 }
-
-  // Tabla borradores de semana (cambios pendientes de publicar)
-  db.run(`CREATE TABLE IF NOT EXISTS semana_borrador (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cliente_id INTEGER,
-    ejercicio_id INTEGER,
-    series INTEGER,
-    reps TEXT,
-    peso_objetivo REAL,
-    descanso INTEGER,
-    nota_coach TEXT,
-    rir INTEGER,
-    creado DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(cliente_id, ejercicio_id)
-  )`);
-  // Estado de publicacion por cliente
-  db.run(`CREATE TABLE IF NOT EXISTS semana_estado (
-    cliente_id INTEGER PRIMARY KEY,
-    tiene_borrador INTEGER DEFAULT 0,
-    publicado_at DATETIME
-  )`);
 
 module.exports = { initDB, dbRun, dbAll, dbGet, saveToDisk };
