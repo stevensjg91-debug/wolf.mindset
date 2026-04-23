@@ -361,4 +361,57 @@ router.post('/auth/registro', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// ═══ BORRADORES DE SEMANA ═══════════════════════════════
+
+// GET borrador de un cliente
+router.get('/clientes/:id/borrador', (req, res) => {
+  const borradores = dbAll(
+    'SELECT b.*, e.nombre, e.musculos, e.grupo FROM semana_borrador b JOIN ejercicios_dia e ON b.ejercicio_id=e.id WHERE b.cliente_id=?',
+    [req.params.id]
+  );
+  const estado = dbGet('SELECT * FROM semana_estado WHERE cliente_id=?', [req.params.id]);
+  res.json({ borradores, tiene_borrador: estado?.tiene_borrador || 0 });
+});
+
+// POST guardar borrador (coach guarda sin publicar)
+router.post('/clientes/:id/borrador', (req, res) => {
+  const { ejercicios } = req.body; // array de {ejercicio_id, series, reps, peso_objetivo, descanso, nota_coach, rir}
+  ejercicios.forEach(e => {
+    dbRun(`INSERT OR REPLACE INTO semana_borrador 
+      (cliente_id, ejercicio_id, series, reps, peso_objetivo, descanso, nota_coach, rir)
+      VALUES (?,?,?,?,?,?,?,?)`,
+      [req.params.id, e.ejercicio_id, e.series, e.reps, e.peso_objetivo, e.descanso, e.nota_coach||'', e.rir!=null?e.rir:null]
+    );
+  });
+  dbRun('INSERT OR REPLACE INTO semana_estado (cliente_id, tiene_borrador) VALUES (?,1)', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// POST publicar borrador → aplica cambios a ejercicios reales
+router.post('/clientes/:id/borrador/publicar', (req, res) => {
+  const borradores = dbAll('SELECT * FROM semana_borrador WHERE cliente_id=?', [req.params.id]);
+  borradores.forEach(b => {
+    dbRun(`UPDATE ejercicios_dia SET series=?, reps=?, peso_objetivo=?, descanso=?, nota_coach=?, rir=? WHERE id=?`,
+      [b.series, b.reps, b.peso_objetivo, b.descanso, b.nota_coach||'', b.rir, b.ejercicio_id]
+    );
+  });
+  dbRun('DELETE FROM semana_borrador WHERE cliente_id=?', [req.params.id]);
+  dbRun('INSERT OR REPLACE INTO semana_estado (cliente_id, tiene_borrador, publicado_at) VALUES (?,0,CURRENT_TIMESTAMP)', [req.params.id]);
+  res.json({ ok: true, publicados: borradores.length });
+});
+
+// DELETE borrador (descartar cambios)
+router.delete('/clientes/:id/borrador', (req, res) => {
+  dbRun('DELETE FROM semana_borrador WHERE cliente_id=?', [req.params.id]);
+  dbRun('INSERT OR REPLACE INTO semana_estado (cliente_id, tiene_borrador) VALUES (?,0)', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// GET check if client has pending borrador (for client view)
+router.get('/clientes/:id/semana-estado', (req, res) => {
+  const estado = dbGet('SELECT * FROM semana_estado WHERE cliente_id=?', [req.params.id]);
+  res.json({ tiene_borrador: estado?.tiene_borrador || 0 });
+});
+
 module.exports = router;
