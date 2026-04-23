@@ -26,6 +26,7 @@ router.get('/clientes/:id', (req, res) => {
   const dias = dbAll('SELECT * FROM dias_entreno WHERE cliente_id=? ORDER BY orden', [id]);
   dias.forEach(d => { d.ejercicios = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=? ORDER BY orden', [d.id]); });
   const comidas = dbAll('SELECT * FROM comidas WHERE cliente_id=? ORDER BY orden', [id]);
+  const planMeta = dbGet('SELECT * FROM plan_meta WHERE cliente_id=?', [id]);
   comidas.forEach(m => { m.items = dbAll('SELECT * FROM alimentos WHERE comida_id=? ORDER BY orden', [m.id]); });
   const recetas = dbAll('SELECT * FROM recetas WHERE cliente_id=? ORDER BY orden', [id]);
   recetas.forEach(r => { r.ingredientes = dbAll('SELECT * FROM receta_ingredientes WHERE receta_id=?', [r.id]); });
@@ -412,6 +413,16 @@ router.delete('/clientes/:id/borrador', (req, res) => {
 router.get('/clientes/:id/semana-estado', (req, res) => {
   const estado = dbGet('SELECT * FROM semana_estado WHERE cliente_id=?', [req.params.id]);
   res.json({ tiene_borrador: estado?.tiene_borrador || 0 });
+});
+
+
+router.post('/clientes/:id/plan-meta', coachOnly, (req, res) => {
+  const { alternativas, ajustes, frase, kcal, prot, carbs, grasas } = req.body;
+  dbRun(`INSERT OR REPLACE INTO plan_meta (cliente_id, alternativas, ajustes, frase, kcal, prot, carbs, grasas)
+    VALUES (?,?,?,?,?,?,?,?)`,
+    [req.params.id, JSON.stringify(alternativas), JSON.stringify(ajustes), frase, kcal, prot, carbs, grasas]
+  );
+  res.json({ ok: true });
 });
 
 module.exports = router;
