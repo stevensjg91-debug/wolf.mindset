@@ -1092,35 +1092,40 @@ function rbAddEx(nombre, musculos){
 }
 
 async function rbConfirmAdd(){
-  const nombre = document.getElementById('rb_add_nombre').value;
-  const musculos = document.getElementById('rb_add_musculos').value;
+  const nombre = document.getElementById('rb_add_nombre').value.trim();
+  const musculos = document.getElementById('rb_add_musculos').value||'';
   const series = parseInt(document.getElementById('rb_add_series').value)||3;
   const reps = document.getElementById('rb_add_reps').value||'10-12';
   const peso = parseFloat(document.getElementById('rb_add_peso').value)||0;
   const descanso = parseInt(document.getElementById('rb_add_descanso').value)||90;
-  const rirOn = document.getElementById('rb_add_rir_on').checked;
+  const rirOn = document.getElementById('rb_add_rir_on')?.checked;
   const rir = rirOn ? (parseInt(document.getElementById('rb_add_rir').value)||2) : null;
-  const esPrincipal = document.getElementById('rb_add_principal').checked ? 1 : 0;
-  const youtube = document.getElementById('rb_add_yt').value||'';
-  const nota = document.getElementById('rb_add_nota').value||'';
+  const esPrincipal = document.getElementById('rb_add_principal')?.checked ? 1 : 0;
+  const youtube = document.getElementById('rb_add_yt')?.value||'';
+  const nota = document.getElementById('rb_add_nota')?.value||'';
   const diaId = rbState.diaId;
-  
+
+  if(!nombre){ alert('Selecciona un ejercicio primero'); return; }
+  if(!diaId){ alert('Error: no se ha seleccionado un día'); return; }
+
   const btn = document.getElementById('rb_add_btn');
+  if(!btn) return;
   btn.innerHTML = '⏳ Guardando...';
   btn.disabled = true;
-  
+
   try {
-    await api('/dias/'+diaId+'/ejercicios',{method:'POST',body:JSON.stringify({
+    const res = await api('/dias/'+diaId+'/ejercicios',{method:'POST',body:JSON.stringify({
       nombre,musculos,series,reps,peso_objetivo:peso,descanso,rir,es_principal:esPrincipal,youtube_url:youtube,nota_coach:nota
     })});
-    // Reset button BEFORE hiding panel
+    if(res && res.error){ throw new Error(res.error); }
     btn.innerHTML = '✓ Añadir ejercicio';
     btn.disabled = false;
     document.getElementById('rb_add_panel').style.display='none';
     rbState.diaOpen[diaId]=true;
     await rbLoadDias();
   } catch(e) {
-    btn.innerHTML = 'Error - reintentar';
+    console.error('rbConfirmAdd error:', e);
+    btn.innerHTML = 'Error: '+e.message.substring(0,30);
     btn.disabled = false;
   }
 }
@@ -1267,6 +1272,7 @@ function hDietaBuilder(){return`
   <div id="db_wrap" style="display:none">
     <div class="sec" style="margin-bottom:12px;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.2)">
       <div class="sec-hdr">🤖 Generar plan de dieta con IA</div>
+      <div id="db_client_hint"></div>
       <div style="font-size:12px;color:var(--tx3);margin-bottom:12px;line-height:1.6">La IA usa automáticamente las kcal, macros, intolerancias y preferencias del cliente. Solo tienes que indicar los alimentos disponibles y el número de comidas.</div>
 
       <div class="form-lbl">Alimentos disponibles</div>
@@ -1320,9 +1326,24 @@ async function initDietaBuilder(){
 }
 
 async function dbSelCliente(id){
-  if(!id)return;dbState.clienteId=id;
+  if(!id)return;
+  dbState.clienteId=id;
   document.getElementById('db_wrap').style.display='block';
-  await dbLoadComidas();
+  // Pre-fill alimentos from client preferences if available
+  try{
+    const c = await api('/clientes/'+id);
+    const notasEl = document.getElementById('db_notas_extra');
+    if(notasEl && c.observaciones && !notasEl.value){
+      notasEl.value = c.observaciones;
+    }
+    // Show client info hint
+    const kcal = c.kcal_internas||2000;
+    const hint = document.getElementById('db_client_hint');
+    if(hint) hint.innerHTML = `<div style="font-size:11px;color:var(--tx3);background:var(--s2);border-radius:8px;padding:8px 10px;margin-bottom:10px">
+      <b style="color:var(--sv2)">${c.nombre}</b> · ${kcal} kcal · ${c.objetivo||'Sin objetivo'} · ${c.dieta_tipo||'Omnívoro'}
+      ${c.alimentos_no?`<br>❌ No puede: ${c.alimentos_no}`:''}
+    </div>`;
+  }catch(e){}
 }
 
 async function dbLoadComidas(){
@@ -2351,8 +2372,24 @@ async function guardarPerfil(){
       observaciones:document.getElementById('pf_obs').value
     })});
     await loadCD(CD.id);
-    msg.style.color='#86efac';msg.textContent='✓ Perfil guardado';
-    setTimeout(()=>{ msg.textContent=''; const el=document.getElementById('klContent'); if(el) el.innerHTML=hPerfil(); },1200);
+    msg.style.color='#86efac';msg.textContent='✓ Perfil guardado ✓';
+    // Switch to view mode immediately
+    const formEl=document.getElementById('pf_form');
+    const btnsEl=document.getElementById('pf_btns');
+    const editBtnWrap=document.getElementById('pf_edit_btn');
+    if(formEl){formEl.style.pointerEvents='none';formEl.style.opacity='.85';}
+    if(btnsEl){btnsEl.style.display='none';}
+    // Add edit button if not there
+    const hdrDiv=editBtnWrap?.parentElement;
+    if(!editBtnWrap && hdrDiv){
+      const eb=document.createElement('button');
+      eb.id='pf_edit_btn';
+      eb.innerHTML='✏️ Editar';
+      eb.style.cssText='padding:7px 16px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit';
+      eb.onclick=perfilModoEditar;
+      hdrDiv.appendChild(eb);
+    }
+    setTimeout(()=>{msg.textContent='';},2000);
   }catch(e){msg.style.color='#f87171';msg.textContent='Error guardando';}
 }
 
@@ -3937,13 +3974,18 @@ RESPONDE EXACTAMENTE en este formato JSON:
 
     let plan;
     try {
-      let clean = d.reply;
-      const jsonMatch = clean.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if(jsonMatch) clean = jsonMatch[1];
-      else { const objMatch = clean.match(/\{[\s\S]*\}/); if(objMatch) clean = objMatch[0]; }
+      let clean = d.reply || '';
+      // Remove markdown code blocks
+      clean = clean.replace(/```json\s*/gi,'').replace(/```\s*/g,'');
+      // Extract JSON object
+      const start = clean.indexOf('{');
+      const end = clean.lastIndexOf('}');
+      if(start>=0 && end>start) clean = clean.slice(start, end+1);
       plan = JSON.parse(clean.trim());
+      if(!plan.comidas || !Array.isArray(plan.comidas)) throw new Error('Sin comidas');
     } catch(e) {
-      res.innerHTML='<div style="color:#f87171;font-size:13px">Error parseando respuesta. Inténtalo de nuevo.</div>';
+      console.error('Parse error:', e, 'Reply:', d.reply?.substring(0,200));
+      res.innerHTML=`<div style="color:#f87171;font-size:13px">Error: ${e.message}. Inténtalo de nuevo.</div>`;
       return;
     }
 
