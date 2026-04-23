@@ -31,7 +31,17 @@ router.get('/clientes/:id', (req, res) => {
   const recetas = dbAll('SELECT * FROM recetas WHERE cliente_id=? ORDER BY orden', [id]);
   recetas.forEach(r => { r.ingredientes = dbAll('SELECT * FROM receta_ingredientes WHERE receta_id=?', [r.id]); });
   const fotos = dbAll('SELECT id, analysis, fecha FROM fotos WHERE cliente_id=? ORDER BY rowid DESC LIMIT 6', [id]);
-  res.json({ ...c, pesos, dias, comidas, recetas, fotos });
+  res.json({
+    ...c,
+    pesos, dias, comidas, recetas, fotos,
+    _planAlternativas: planMeta?.alternativas ? JSON.parse(planMeta.alternativas) : null,
+    _planAjustes: planMeta?.ajustes ? JSON.parse(planMeta.ajustes) : null,
+    _planFrase: planMeta?.frase || null,
+    kcal_internas: planMeta?.kcal || c.kcal_internas || null,
+    prot: planMeta?.prot || c.prot || null,
+    carbs: planMeta?.carbs || c.carbs || null,
+    fat: planMeta?.fat || c.fat || null,
+  });
 });
 
 router.put('/clientes/:id', coachOnly, (req, res) => {
