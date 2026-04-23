@@ -3095,29 +3095,33 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
               ${notaProg ? `<div style="font-size:11px;color:${colorProg};font-weight:600;margin-top:1px">${iconProg} ${notaProg}</div>` : ''}
             </div>
           </div>
-          <!-- Editable fields grid -->
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px">
-            <div>
-              <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:3px">Series</div>
-              <input id="rev_series_${exId}" type="number" value="${e.series}" min="1" max="10"
-                style="width:100%;padding:6px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:14px;font-weight:700;text-align:center;font-family:inherit"/>
+          <!-- Serie-by-serie table -->
+          <div style="margin-bottom:6px">
+            <div style="display:grid;grid-template-columns:28px 1fr 1fr 1fr;gap:4px;padding:4px 0;border-bottom:0.5px solid var(--br);margin-bottom:4px">
+              <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;text-align:center">#</div>
+              <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;text-align:center">Reps</div>
+              <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;text-align:center">Kg obj</div>
+              <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;text-align:center">Anterior</div>
             </div>
-            <div>
-              <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:3px">Reps</div>
-              <input id="rev_reps_${exId}" type="text" value="${e.reps}"
-                style="width:100%;padding:6px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:14px;font-weight:700;text-align:center;font-family:inherit"/>
-            </div>
-            <div>
-              <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:3px">Kg obj</div>
-              <div style="display:flex;align-items:center;gap:2px">
-                <button onclick="revAjustarPeso('${inputId}', -2.5)" style="width:22px;height:32px;border-radius:6px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:14px;font-weight:700;flex-shrink:0">−</button>
-                <input id="${inputId}" type="number" value="${nuevoPeso}" step="2.5" min="0"
-                  style="flex:1;min-width:0;padding:6px 2px;border:0.5px solid ${nuevoPeso !== pesoObj ? 'var(--bl)' : 'var(--br)'};border-radius:8px;background:${nuevoPeso !== pesoObj ? 'rgba(37,99,235,.1)' : 'var(--s2)'};color:${nuevoPeso !== pesoObj ? 'var(--blg)' : 'var(--sv)'};font-size:13px;font-weight:700;text-align:center;font-family:inherit"
-                  onchange="revMarcarCambio('${inputId}', ${pesoObj})"/>
-                <button onclick="revAjustarPeso('${inputId}', 2.5)" style="width:22px;height:32px;border-radius:6px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:14px;font-weight:700;flex-shrink:0">+</button>
-              </div>
-            </div>
+            ${Array.from({length: e.series}, (_,si) => {
+              const ultSerie = ult ? si === e.series-1 ? ult : null : null;
+              const pesoSerie = nuevoPeso;
+              const repsSerie = e.reps;
+              return `<div style="display:grid;grid-template-columns:28px 1fr 1fr 1fr;gap:4px;margin-bottom:4px;align-items:center">
+                <div style="font-size:12px;font-weight:700;color:var(--sv3);text-align:center">${si+1}</div>
+                <input id="rev_reps_${exId}_${si}" type="text" value="${repsSerie}"
+                  style="padding:6px 4px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:13px;font-weight:700;text-align:center;font-family:inherit;width:100%"/>
+                <div style="display:flex;align-items:center;gap:2px">
+                  <button onclick="revAjustarPeso('rev_kg_${exId}_${si}', -2.5)" style="width:20px;height:30px;border-radius:5px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;padding:0">−</button>
+                  <input id="rev_kg_${exId}_${si}" type="number" value="${pesoSerie}" step="2.5" min="0"
+                    style="flex:1;min-width:0;padding:6px 2px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:13px;font-weight:700;text-align:center;font-family:inherit"/>
+                  <button onclick="revAjustarPeso('rev_kg_${exId}_${si}', 2.5)" style="width:20px;height:30px;border-radius:5px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;padding:0">+</button>
+                </div>
+                <div style="font-size:11px;color:var(--tx3);text-align:center">${ult && si===e.series-1 ? ult.peso_real+'kg' : '—'}</div>
+              </div>`;
+            }).join('')}
           </div>
+          <input type="hidden" id="rev_series_${exId}" value="${e.series}"/>
           <!-- Nota coach -->
           <div>
             <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:3px">Nota para el cliente</div>
@@ -3168,17 +3172,28 @@ function revMarcarCambio(inputId, pesoOriginal) {
 }
 
 function recogerCambiosRevision(){
-  // Collect all editable fields from revision semanal
   const ejercicios = [];
-  document.querySelectorAll('[id^="rev_peso_"]').forEach(input => {
-    const exId = input.id.replace('rev_peso_', '');
+  document.querySelectorAll('[id^="rev_series_"]').forEach(input => {
+    const exId = input.id.replace('rev_series_', '');
+    const series = parseInt(input.value) || 3;
+    // Collect per-serie kg and reps
+    const serieData = [];
+    for(let si=0; si<series; si++){
+      const kg = parseFloat(document.getElementById(`rev_kg_${exId}_${si}`)?.value) || 0;
+      const reps = document.getElementById(`rev_reps_${exId}_${si}`)?.value || '10-12';
+      serieData.push({kg, reps});
+    }
+    // Use first serie as peso_objetivo, join reps as string
+    const pesoObj = serieData[0]?.kg || 0;
+    const repsStr = [...new Set(serieData.map(s=>s.reps))].join('/');
     ejercicios.push({
       ejercicio_id: parseInt(exId),
-      peso_objetivo: parseFloat(input.value) || 0,
-      series: parseInt(document.getElementById('rev_series_'+exId)?.value) || 3,
-      reps: document.getElementById('rev_reps_'+exId)?.value || '10-12',
+      peso_objetivo: pesoObj,
+      series,
+      reps: repsStr,
       nota_coach: document.getElementById('rev_nota_'+exId)?.value || '',
-      descanso: 90 // keep existing, not editing here for now
+      descanso: 90,
+      series_data: serieData // full per-serie data for future use
     });
   });
   return ejercicios;
