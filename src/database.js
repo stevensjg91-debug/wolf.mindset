@@ -100,6 +100,17 @@ async function initDB() {
   }
 
   console.log('DB lista');
+  db.run(`CREATE TABLE IF NOT EXISTS plan_meta (
+    cliente_id INTEGER PRIMARY KEY,
+    alternativas TEXT,
+    ajustes TEXT,
+    frase TEXT,
+    kcal INTEGER,
+    prot INTEGER,
+    carbs INTEGER,
+    grasas INTEGER,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 
   // Tablas borradores de semana
   db.run(`CREATE TABLE IF NOT EXISTS semana_borrador (
