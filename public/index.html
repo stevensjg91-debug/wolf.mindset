@@ -1634,9 +1634,10 @@ function abrirDescripcion(nombre){
       <div style="font-size:15px;font-weight:700;color:var(--sv);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nombre}</div>
     </div>
     <div style="flex:1;overflow-y:auto;padding:16px">
-      <div style="width:100%;height:160px;border-radius:14px;overflow:hidden;background:${bg};display:flex;align-items:center;justify-content:center;margin-bottom:16px">
-        ${imgUrl?`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"/>`:``}
-        <span style="${imgUrl?'display:none':''}font-size:64px">${emoji}</span>
+      <div style="position:relative;width:100%;height:160px;border-radius:14px;overflow:hidden;background:${bg};display:flex;align-items:center;justify-content:center;margin-bottom:16px" id="desc_img_wrap">
+        ${imgUrl?`<img id="desc_ex_img" src="${imgUrl}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"/>`:``}
+        <span id="desc_ex_emoji" style="${imgUrl?'display:none':''}font-size:64px">${emoji}</span>
+        <button onclick="editarImagenEjercicio('${nombre.replace(/'/g,"\\'")}','${imgUrl}')" style="position:absolute;bottom:8px;right:8px;background:rgba(9,9,11,.8);border:0.5px solid var(--br2);border-radius:8px;color:var(--sv2);font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer;font-family:inherit;backdrop-filter:blur(8px)">✏️ Editar imagen</button>
       </div>
       <div style="font-size:11px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">Instrucciones</div>
       ${pasos}
@@ -1664,7 +1665,7 @@ function hEntreno(){
       const rt=runningTimers[timerKey];
       const timerPct=rt?Math.round((rt.secs/rt.total)*100):0;
       return`<div class="strong-serie-wrap" id="sw_${ei}_${si}">
-        <div class="strong-serie-row ${s.done?'done':''}" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px auto auto'}">
+        <div class="strong-serie-row ${s.done?'done':''}" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px 80px 70px'}>
           <div class="strong-serie-num">${si+1}</div>
           <div class="strong-serie-prev">${s.peso||0} × ${s.reps_real||s.reps||10}</div>
           <button class="strong-check ${s.done?'done':''}" onclick="toggleSerieStrong(${ei},${si})">
@@ -1942,7 +1943,7 @@ function rerenderSerieRow(ei,si){
   const key=`${ei}_${si}`;
   const rt=runningTimers[key];
   const timerPct=rt?Math.round((rt.secs/rt.total)*100):100;
-  row.innerHTML=`<div class="strong-serie-row ${s.done?'done':''}" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px auto auto'}">
+  row.innerHTML=`<div class="strong-serie-row ${s.done?'done':''}" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px 80px 70px'}>
     <div class="strong-serie-num">${si+1}</div>
     <div class="strong-serie-prev">${s.peso||0} × ${s.reps_real||s.reps||10}</div>
     <button class="strong-check ${s.done?'done':''}" onclick="toggleSerieStrong(${ei},${si})">
@@ -3598,6 +3599,40 @@ function hProximaSemanaEnPreparacion(){
       Mientras tanto puedes revisar tu <span style="color:var(--blg);font-weight:600">dieta</span>, hablar con el <span style="color:var(--blg);font-weight:600">asistente</span> o ver tu <span style="color:var(--blg);font-weight:600">progreso</span>.
     </div>
   </div>`;
+}
+
+
+function editarImagenEjercicio(nombre, urlActual){
+  const nuevaUrl = prompt('URL de la imagen o GIF del ejercicio:', urlActual||'');
+  if(nuevaUrl === null) return; // cancelled
+  api('/ejercicios-config/'+encodeURIComponent(nombre), {
+    method: 'PUT',
+    body: JSON.stringify({ imagen_url: nuevaUrl })
+  }).then(()=>{
+    // Update image in modal
+    const img = document.getElementById('desc_ex_img');
+    const emoji = document.getElementById('desc_ex_emoji');
+    if(nuevaUrl){
+      if(img){ img.src = nuevaUrl; img.style.display='block'; }
+      else {
+        const wrap = document.getElementById('desc_img_wrap');
+        if(wrap){
+          const newImg = document.createElement('img');
+          newImg.id = 'desc_ex_img';
+          newImg.src = nuevaUrl;
+          newImg.style.cssText = 'width:100%;height:100%;object-fit:cover';
+          wrap.insertBefore(newImg, wrap.firstChild);
+        }
+      }
+      if(emoji) emoji.style.display = 'none';
+    } else {
+      if(img) img.style.display = 'none';
+      if(emoji) emoji.style.display = '';
+    }
+    // Also update in workout cards if visible
+    const cards = document.querySelectorAll('.strong-ex-thumb img');
+    cards.forEach(c=>{ if(c.src===urlActual) c.src=nuevaUrl; });
+  }).catch(()=>alert('Error guardando imagen'));
 }
 
 </script>
