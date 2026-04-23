@@ -3932,26 +3932,10 @@ RESPONDE EXACTAMENTE en este formato JSON:
         {"nombre": "Plátano", "cantidad": "1 ud mediano", "detalle": ""}
       ],
       "variaciones": [
-        {
-          "letra": "B",
-          "nombre": "Desayuno rápido",
-          "alimentos": [
-            {"nombre": "Yogur proteico", "cantidad": "200g", "detalle": ""},
-            {"nombre": "Avena", "cantidad": "60g", "detalle": ""},
-            {"nombre": "Miel", "cantidad": "10g", "detalle": ""}
-          ]
-        },
-        {
-          "letra": "C",
-          "nombre": "Desayuno express",
-          "alimentos": [
-            {"nombre": "Pan integral", "cantidad": "80g", "detalle": ""},
-            {"nombre": "Huevos", "cantidad": "3 uds", "detalle": "revueltos"}
-          ]
-        }
+        {"letra":"B","nombre":"Opción rápida","alimentos":[{"nombre":"Yogur proteico","cantidad":"200g","detalle":""},{"nombre":"Avena","cantidad":"60g","detalle":""}]},
+        {"letra":"C","nombre":"Opción express","alimentos":[{"nombre":"Pan integral","cantidad":"80g","detalle":""},{"nombre":"Huevos","cantidad":"3 uds","detalle":""}]}
       ],
-      "nota": "Mismos macros aproximados en todas las opciones",
-      "tipo": "alto_proteina"
+      "nota": "Mismos macros en todas las opciones"
     }
   ],
   "alternativas": {
@@ -3969,7 +3953,7 @@ RESPONDE EXACTAMENTE en este formato JSON:
   try {
     const d = await api('/ia/chat', {method:'POST', body:JSON.stringify({
       messages:[{role:'user', content:prompt}],
-      system:'Eres un nutricionista deportivo experto. Generas planes de dieta precisos en JSON válido. Las cantidades siempre en crudo. Sin texto fuera del JSON.'
+      system:'Nutricionista deportivo. Responde SOLO con JSON válido y compacto. Sin texto adicional. Cantidades en crudo. Máximo 2 variaciones por comida con máximo 3 alimentos cada una.'
     })});
 
     let plan;
