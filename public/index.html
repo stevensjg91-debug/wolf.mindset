@@ -1265,28 +1265,51 @@ function hDietaBuilder(){return`
     <select class="inp" id="db_cl" onchange="dbSelCliente(this.value)" style="margin-bottom:0"><option value="">-- Elige cliente --</option></select>
   </div>
   <div id="db_wrap" style="display:none">
-    <div class="sec" style="margin-bottom:12px">
-      <div class="sec-hdr">2. Comidas <button class="sec-act" onclick="dbAddComida()">+ Añadir comida</button></div>
-      <div id="db_comidas_list"></div>
-    </div>
-    <div id="db_alim_panel" style="display:none">
-      <div class="sec" style="margin-bottom:12px">
-        <div class="sec-hdr">3. Añadir alimento → <span id="db_comida_lbl" style="color:var(--blg);text-transform:none;letter-spacing:0;font-size:13px"></span></div>
-        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-          <select class="inp" id="db_cat" onchange="dbBuscar()" style="flex:1;min-width:130px;margin-bottom:0">
-            <option value="Todos">Todas</option>
-            <option>Proteína</option><option>Carbohidrato</option><option>Verdura</option><option>Grasa saludable</option><option>Lácteo</option>
-          </select>
-          <input class="inp" id="db_buscar" placeholder="Buscar..." style="flex:2;min-width:140px;margin-bottom:0" oninput="dbBuscar()"/>
-        </div>
-        <div id="db_alim_lista" class="alim-lib-grid"></div>
-      </div>
-    </div>
     <div class="sec" style="margin-bottom:12px;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.2)">
-      <div class="sec-hdr">🤖 Generar dieta completa con IA</div>
-      <div><div class="form-lbl">Alimentos disponibles del cliente</div><textarea class="ta" id="db_alimentos_input" placeholder="Ej: pollo, arroz, avena, huevos, brócoli, salmon, patata, aceite de oliva..."></textarea></div>
-      <button class="btn" style="width:100%;padding:12px" onclick="dbGenerarIA()">Generar dieta con IA</button>
-      <div id="db_ia_result" style="margin-top:10px"></div>
+      <div class="sec-hdr">🤖 Generar plan de dieta con IA</div>
+      <div style="font-size:12px;color:var(--tx3);margin-bottom:12px;line-height:1.6">La IA usa automáticamente las kcal, macros, intolerancias y preferencias del cliente. Solo tienes que indicar los alimentos disponibles y el número de comidas.</div>
+
+      <div class="form-lbl">Alimentos disponibles</div>
+      <textarea class="ta" id="db_alimentos_input" placeholder="Ej: pollo, arroz, avena, huevos, brócoli, salmón, patata, aceite de oliva, requesón..." style="min-height:80px"></textarea>
+
+      <div class="g2" style="gap:8px;margin-bottom:10px">
+        <div>
+          <div class="form-lbl">Nº de comidas</div>
+          <select class="inp" id="db_num_comidas" style="margin-bottom:0">
+            <option value="2">2 comidas</option>
+            <option value="3">3 comidas</option>
+            <option value="4" selected>4 comidas</option>
+            <option value="5">5 comidas</option>
+            <option value="6">6 comidas</option>
+          </select>
+        </div>
+        <div>
+          <div class="form-lbl">Objetivo calórico</div>
+          <select class="inp" id="db_objetivo_cal" style="margin-bottom:0">
+            <option value="mantenimiento">Mantenimiento</option>
+            <option value="deficit">Déficit (-300 kcal)</option>
+            <option value="deficit_agresivo">Déficit agresivo (-500 kcal)</option>
+            <option value="superavit">Superávit (+300 kcal)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-lbl">Notas adicionales (opcional)</div>
+      <input class="inp" id="db_notas_extra" placeholder="Ej: prefiere desayunos rápidos, cena antes de las 20h..." style="margin-bottom:12px"/>
+
+      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="dbGenerarIANuevo()">⚡ Generar plan personalizado</button>
+      <div id="db_ia_result" style="margin-top:12px"></div>
+    </div>
+
+    <div id="db_plan_preview" style="display:none">
+      <div class="sec" style="margin-bottom:12px">
+        <div class="sec-hdr">Vista previa del plan</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button class="btn" style="flex:1;padding:10px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);font-size:13px" onclick="dbEditarPlan()">✏️ Editar cantidades</button>
+          <button class="btn" style="flex:1;padding:10px;background:var(--gn);font-size:13px" onclick="dbPublicarPlan()">✓ Publicar al cliente</button>
+        </div>
+        <div id="db_plan_html"></div>
+      </div>
     </div>
   </div>`;}
 
@@ -1464,7 +1487,7 @@ function renderKL(){
   }
   else if(klTab==='dieta')el.innerHTML=hDieta();
   else if(klTab==='asistente'){el.innerHTML=hAsistente();chatH=[{role:'assistant',content:`Hola ${CD.nombre.split(' ')[0]}, aquí para ayudarte. ¿Qué necesitas?`}];}
-  else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>cargarGraficasCliente(),100);}
+  else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();},100);}
   else if(klTab==='perfil')el.innerHTML=hPerfil();
 }
 
@@ -1987,31 +2010,151 @@ function selDia(i){
 
 // DIETA CLIENTE
 function hDieta(){
-  if(!CD.comidas.length)return`<div style="padding:60px 20px;text-align:center;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">🥗</div><div style="font-size:16px;font-weight:600;color:var(--sv2)">Tu coach está preparando tu dieta</div></div>`;
-  const mIcons=['☀️','🕐','🍽️','🌅','🌙'];
-  return`<div class="sec-lbl" style="padding-top:14px">Tu dieta — pesos en crudo</div>
-  ${CD.comidas.map((m,mi)=>`<div class="meal-card">
-    <div class="meal-hdr"><div class="meal-icon">${mIcons[mi]||'🍽️'}</div><div><div class="meal-title">${m.nombre}</div><div class="meal-count">${m.items.length} alimentos</div></div></div>
-    ${m.items.map(it=>`<div class="food-row"><div class="food-emoji">${foodEmoji(it.nombre)}</div><div class="food-info"><div class="food-name">${it.nombre}</div></div><div style="text-align:right"><div class="food-g">${it.gramos}</div><div class="food-unit">gramos</div></div></div>`).join('')}
-  </div>`).join('')}
-  <div class="libre-card"><div style="font-size:28px;margin-right:4px">🎉</div><div><div style="font-size:12px;color:var(--amb);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Comida libre semanal</div><div style="font-size:13px;color:var(--tx2);line-height:1.5">${CD.comida_libre||'Elige lo que más te apetezca. Te lo mereces.'}</div></div></div>
-  ${CD.recetas?.length?`<div class="sec-lbl">Recetas opcionales</div>${CD.recetas.map(r=>`<div class="meal-card"><div class="meal-hdr"><div class="meal-icon">👨‍🍳</div><div><div class="meal-title">${r.nombre}</div></div></div>${r.ingredientes.map(it=>`<div class="food-row"><div class="food-emoji">${foodEmoji(it.nombre)}</div><div class="food-info"><div class="food-name">${it.nombre}</div></div><div style="text-align:right"><div class="food-g">${it.gramos}</div><div class="food-unit">g</div></div></div>`).join('')}${r.pasos?`<div style="padding:10px 14px;font-size:13px;color:var(--tx3);line-height:1.6">${r.pasos}</div>`:''}</div>`).join('')}`:''}
-  <div class="adapt-box">
-    <div style="font-size:12px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">¿No tienes algún alimento?</div>
-    <input class="inp" id="adaptIn" placeholder="Ej: solo tengo huevos, avena y fruta..."/>
-    <button class="btn" style="width:100%;padding:11px" onclick="adaptarComida()">Adaptar mi comida</button>
-    <div id="adaptResult" style="margin-top:10px;display:none" class="ia-chip"></div>
+  const esVeg = CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano';
+  const accent = esVeg ? '#22c55e' : '#3b82f6';
+  const accentLight = esVeg ? '#86efac' : '#93c5fd';
+  const accentBg = esVeg ? 'rgba(34,197,94,.1)' : 'rgba(37,99,235,.1)';
+  const accentBorder = esVeg ? 'rgba(34,197,94,.25)' : 'rgba(59,130,246,.25)';
+  const plan = CD._planDieta || null;
+
+  if(!CD.comidas.length && !plan) return `
+    <div style="padding:60px 20px;text-align:center;color:var(--tx3)">
+      <div style="font-size:48px;margin-bottom:14px">🥗</div>
+      <div style="font-size:16px;font-weight:600;color:var(--sv2)">Tu coach está preparando tu dieta</div>
+    </div>`;
+
+  // Build comidas from CD.comidas if no plan
+  const mealEmojis = ['☀️','🕐','🍽️','🌅','🌙','⭐'];
+  const comidas = CD.comidas.map((m,i)=>({
+    numero: i+1,
+    nombre: m.nombre.replace(/^\d+\.\s*/,''),
+    emoji: mealEmojis[i]||'🍽️',
+    alimentos: m.items.map(it=>({nombre:it.nombre, cantidad:it.gramos+'g', detalle:''})),
+    nota: ''
+  }));
+
+  const kcal = CD.kcal_internas||2000;
+  const prot = CD.prot||150;
+  const carbs = CD.carbs||200;
+  const fat = CD.fat||60;
+
+  const macrosHtml = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px">
+      ${[['Proteína',prot+'g','#3b82f6'],['Carbos',carbs+'g','#a78bfa'],['Grasas',fat+'g','#f97316'],['Kcal',kcal,'#fbbf24']].map(([l,v,col])=>`
+      <div style="background:rgba(0,0,0,.2);border-radius:10px;padding:10px 6px;text-align:center;border:0.5px solid rgba(255,255,255,.06)">
+        <div style="font-size:17px;font-weight:700;color:${col};font-family:'Bebas Neue',sans-serif;letter-spacing:.03em">${v}</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-top:2px">${l}</div>
+      </div>`).join('')}
+    </div>`;
+
+  const alimentosHtml = (alims, light) => alims.map(a=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.04)">
+      <div style="font-size:13px;color:rgba(255,255,255,.85)">${a.nombre}${a.detalle?` <span style="font-size:11px;color:rgba(255,255,255,.4)">(${a.detalle})</span>`:''}</div>
+      <div style="font-size:13px;font-weight:700;color:${light};margin-left:12px;white-space:nowrap">${a.cantidad}</div>
+    </div>`).join('');
+
+  const comidasHtml = comidas.map((m,mi)=>`
+    <div style="background:rgba(255,255,255,.03);border:0.5px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(0,0,0,.2);border-bottom:0.5px solid rgba(255,255,255,.06)">
+        <div style="width:36px;height:36px;border-radius:10px;background:${accentBg};border:1px solid ${accent};display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:20px;color:${accent};font-weight:700;flex-shrink:0">${m.numero}</div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:700;color:#fff;font-family:'Bebas Neue',sans-serif;letter-spacing:.05em">${m.nombre.toUpperCase()}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.4)">${m.alimentos.length} alimentos · ${m.emoji}</div>
+        </div>
+        ${m.variaciones?.length?`<div style="font-size:10px;color:${accent};font-weight:700;background:${accentBg};padding:2px 8px;border-radius:10px;border:0.5px solid ${accent}">${m.variaciones.length+1} opciones</div>`:''}
+      </div>
+      ${m.variaciones?.length?`
+      <div style="display:flex;gap:6px;padding:8px 14px;background:rgba(0,0,0,.1);border-bottom:0.5px solid rgba(255,255,255,.04);overflow-x:auto">
+        <button onclick="clienteVarSelect(${mi},-1,this)" style="padding:4px 12px;border-radius:12px;border:1px solid ${accent};background:${accentBg};color:${accent};font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;touch-action:manipulation">A Principal</button>
+        ${m.variaciones.map((v,vi)=>`<button onclick="clienteVarSelect(${mi},${vi},this)" style="padding:4px 12px;border-radius:12px;border:0.5px solid rgba(255,255,255,.2);background:none;color:rgba(255,255,255,.5);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;touch-action:manipulation">${v.letra||String.fromCharCode(66+vi)} ${v.nombre}</button>`).join('')}
+      </div>`:''}
+      <div id="cl_var_${mi}" style="padding:10px 14px">
+        ${alimentosHtml(m.alimentos, accentLight)}
+        ${m.nota?`<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:8px;font-style:italic">${m.nota}</div>`:''}
+      </div>
+    </div>`).join('');
+
+  const altData = CD._planAlternativas;
+  const altHtml = altData ? `
+    <div style="background:rgba(255,255,255,.03);border:0.5px solid ${accentBorder};border-radius:14px;padding:14px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">Options & Swaps</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        ${[['Proteínas',altData.proteinas||[]],['Carbos',altData.carbos||[]],['Grasas',altData.grasas||[]]].map(([cat,items])=>`
+        <div>
+          <div style="font-size:10px;color:${accent};font-weight:700;margin-bottom:6px;text-transform:uppercase">${cat}</div>
+          ${items.map(it=>`<div style="font-size:11px;color:rgba(255,255,255,.7);padding:2px 0">${it}</div>`).join('')}
+        </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  const ajustesData = CD._planAjustes;
+  const ajustesHtml = ajustesData?.length ? `
+    <div style="background:rgba(255,255,255,.03);border:0.5px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">Adjustments (if needed)</div>
+      <div style="display:grid;grid-template-columns:repeat(${Math.min(ajustesData.length,3)},1fr);gap:8px">
+        ${ajustesData.map(a=>`
+        <div style="background:rgba(0,0,0,.2);border-radius:10px;padding:10px;text-align:center">
+          <div style="width:28px;height:28px;border-radius:50%;background:${accentBg};border:1px solid ${accent};display:flex;align-items:center;justify-content:center;font-size:14px;margin:0 auto 6px">${a.icono}</div>
+          <div style="font-size:11px;font-weight:700;color:#fff;margin-bottom:3px">${a.titulo}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.5);line-height:1.4">${a.texto}</div>
+        </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  const frase = CD._planFrase || 'Consistency fuels results. Discipline builds freedom.';
+
+  return `<div id="dieta_view" style="background:#080c14;min-height:100vh;padding:0 0 100px">
+    <!-- HEADER con logo y lobo -->
+    <div style="background:linear-gradient(180deg,#0d1628 0%,#080c14 100%);padding:20px 16px 16px;text-align:center;position:relative;overflow:hidden">
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 70% 0%,${accentBg},transparent 60%);pointer-events:none"></div>
+      <!-- Logo W -->
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:52px;color:${accent};letter-spacing:-.02em;line-height:1;text-shadow:0 0 30px ${accent}60;position:relative">W</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.25em;text-transform:uppercase;margin-top:-4px">FITNESS & WELLNESS</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#fff;letter-spacing:.1em;margin-top:4px">NUTRITION PLAN</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px">
+        <div style="height:1px;width:30px;background:${accent};opacity:.5"></div>
+        <div style="font-size:10px;color:${accent};letter-spacing:.2em">SIMPLE · BALANCED · EFFECTIVE</div>
+        <div style="height:1px;width:30px;background:${accent};opacity:.5"></div>
+      </div>
+      <!-- Comidas badge -->
+      <div style="display:inline-block;background:${accentBg};border:1px solid ${accent};border-radius:20px;padding:6px 16px;margin-top:12px">
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:${accent};letter-spacing:.1em">${comidas.length} MEALS PER DAY</span>
+      </div>
+    </div>
+
+    <!-- MACROS -->
+    <div style="padding:14px 14px 0">${macrosHtml}</div>
+
+    <!-- COMIDAS -->
+    <div style="padding:0 14px">${comidasHtml}</div>
+
+    <!-- ALTERNATIVAS -->
+    <div style="padding:0 14px">${altHtml}</div>
+
+    <!-- AJUSTES -->
+    <div style="padding:0 14px">${ajustesHtml}</div>
+
+    <!-- FRASE MOTIVADORA -->
+    <div style="margin:0 14px;background:rgba(0,0,0,.3);border-top:2px solid ${accent};border-radius:0 0 14px 14px;padding:16px 14px;text-align:left">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:28px">🐺</div>
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:#fff;letter-spacing:.06em;line-height:1.3">${frase.toUpperCase()}</div>
+        </div>
+        <div style="margin-left:auto;font-family:'Bebas Neue',sans-serif;font-size:13px;color:${accent};letter-spacing:.1em;white-space:nowrap">FITNESS & WELLNESS</div>
+      </div>
+    </div>
+
+    <!-- BOTÓN DESCARGAR -->
+    <div style="padding:16px 14px">
+      <button onclick="descargarDieta()" style="width:100%;padding:14px;background:${accent};color:#000;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Bebas Neue',sans-serif;letter-spacing:.1em;display:flex;align-items:center;justify-content:center;gap:8px;touch-action:manipulation">
+        ⬇ GUARDAR COMO IMAGEN
+      </button>
+    </div>
   </div>`;
 }
 
-async function adaptarComida(){
-  const msg=document.getElementById('adaptIn').value.trim();if(!msg)return;
-  const res=document.getElementById('adaptResult');res.style.display='block';res.textContent='Adaptando...';
-  try{const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:[{role:'user',content:msg}],system:`Asistente nutricional WolfMindset. Cliente: objetivo ${CD.objetivo}, nivel ${CD.nivel}. Dieta flexible. Sugiere alternativa simple con ingredientes disponibles, gramos en crudo, sin mencionar calorías. Lista máx 5 items con gramos. Tono motivador y breve.`})});res.innerHTML=d.reply;}
-  catch(e){res.textContent='Consulta con tu coach directamente.';}
-}
 
-// ASISTENTE CLIENTE
 function hAsistente(){return`<div class="chat-wrap">
   <div style="background:rgba(37,99,235,.06);border-bottom:0.5px solid var(--br);padding:12px 14px;flex-shrink:0;display:flex;align-items:center;gap:10px">
     <div style="width:36px;height:36px;border-radius:50%;background:rgba(37,99,235,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2a6 6 0 016 6c0 3-2 5.3-5 5.9V17H9v-3.1C6 13.3 4 11 4 8a6 6 0 016-6z" stroke="#93c5fd" stroke-width="1.5"/></svg></div>
@@ -2046,13 +2189,22 @@ function hProgreso2(){return`<div style="padding-top:8px">
     <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">Días/sem</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.dias.length}</div></div>
   </div>
   <div id="progreso_graficas_wrap"></div>
-  <div class="sec-lbl">Añadir medición</div>
-  <div style="margin:0 14px 12px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:14px">
-    <div class="g2" style="gap:8px;margin-bottom:10px">
-      <div><div class="form-lbl">Peso (kg)</div><input class="inp" id="np" type="number" step="0.1" placeholder="84.5" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">% Grasa</div><input class="inp" id="ng" type="number" step="0.1" placeholder="16" style="margin-bottom:0"/></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:0 14px 6px">
+    <div class="sec-lbl" style="margin:0">Medición semanal</div>
+    <div id="peso_edit_btn_wrap"></div>
+  </div>
+  <div id="peso_section" style="margin:0 14px 12px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:14px">
+    <div id="peso_guardado_view" style="display:none;margin-bottom:10px">
+      <div style="font-size:13px;color:var(--tx3);margin-bottom:4px">Peso registrado esta semana</div>
+      <div style="font-size:28px;font-weight:700;color:var(--sv);font-family:'Bebas Neue',sans-serif" id="peso_guardado_val">—</div>
     </div>
-    <button class="btn" style="width:100%;padding:11px" onclick="guardarPeso()">Guardar medición</button>
+    <div id="peso_input_wrap">
+      <div style="margin-bottom:10px">
+        <div class="form-lbl">Peso (kg)</div>
+        <input class="inp" id="np" type="number" step="0.1" placeholder="84.5" style="margin-bottom:0"/>
+      </div>
+      <button class="btn" style="width:100%;padding:11px" onclick="guardarPeso()">Guardar peso</button>
+    </div>
   </div>
   <div class="sec-lbl">Foto de progreso</div>
   <label class="ph-upload" for="fUp">
@@ -2067,11 +2219,45 @@ function hProgreso2(){return`<div style="padding-top:8px">
 </div>`;}
 
 async function guardarPeso(){
-  const peso=parseFloat(document.getElementById('np').value),grasa=parseFloat(document.getElementById('ng').value);
+  const peso=parseFloat(document.getElementById('np').value);
   if(!peso)return;
-  await api('/clientes/'+CD.id+'/peso',{method:'POST',body:JSON.stringify({peso,grasa:grasa||null})});
+  await api('/clientes/'+CD.id+'/peso',{method:'POST',body:JSON.stringify({peso,grasa:null})});
   await loadCD(CD.id);
-  alert('Medición guardada');
+  // Store date of last weigh-in
+  localStorage.setItem('wm_ultimo_peso_'+CD.id, Date.now());
+  pesoModoVer(peso);
+}
+
+function pesoModoVer(peso){
+  const inp=document.getElementById('peso_input_wrap');
+  const view=document.getElementById('peso_guardado_view');
+  const val=document.getElementById('peso_guardado_val');
+  const wrap=document.getElementById('peso_edit_btn_wrap');
+  if(inp) inp.style.display='none';
+  if(view){view.style.display='block';}
+  if(val) val.textContent=peso+'kg ✓';
+  if(wrap) wrap.innerHTML=`<button onclick="pesoModoEditar()" style="padding:6px 14px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ Corregir</button>`;
+}
+
+function pesoModoEditar(){
+  const inp=document.getElementById('peso_input_wrap');
+  const view=document.getElementById('peso_guardado_view');
+  const wrap=document.getElementById('peso_edit_btn_wrap');
+  if(inp) inp.style.display='block';
+  if(view) view.style.display='none';
+  if(wrap) wrap.innerHTML='';
+  document.getElementById('np')?.focus();
+}
+
+function initPesoSection(){
+  // Check if already weighed this week
+  const ultima=parseInt(localStorage.getItem('wm_ultimo_peso_'+CD.id)||'0');
+  const SEMANA=7*24*60*60*1000;
+  const yaEsta = ultima && (Date.now()-ultima) < SEMANA;
+  if(yaEsta){
+    const ultimoPeso=CD.pesos?.length?CD.pesos[CD.pesos.length-1].peso:null;
+    if(ultimoPeso) pesoModoVer(ultimoPeso);
+  }
 }
 
 async function uploadFoto(event){
@@ -2166,8 +2352,7 @@ async function guardarPerfil(){
     })});
     await loadCD(CD.id);
     msg.style.color='#86efac';msg.textContent='✓ Perfil guardado';
-    // Re-render to show updated TMB
-    setTimeout(()=>renderKL(),500);
+    setTimeout(()=>{ msg.textContent=''; const el=document.getElementById('klContent'); if(el) el.innerHTML=hPerfil(); },1200);
   }catch(e){msg.style.color='#f87171';msg.textContent='Error guardando';}
 }
 
@@ -3109,7 +3294,7 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
               const repsSerie = e.reps;
               return `<div style="display:grid;grid-template-columns:28px 1fr 1fr 1fr;gap:4px;margin-bottom:4px;align-items:center">
                 <div style="font-size:12px;font-weight:700;color:var(--sv3);text-align:center">${si+1}</div>
-                <input id="rev_reps_${exId}_${si}" type="text" value="${repsSerie}"
+                <input id="rev_reps_${exId}_${si}" type="number" min="1" max="50" value="${parseFirstNum(repsSerie)||10}"
                   style="padding:6px 4px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:13px;font-weight:700;text-align:center;font-family:inherit;width:100%"/>
                 <div style="display:flex;align-items:center;gap:2px">
                   <button onclick="revAjustarPeso('rev_kg_${exId}_${si}', -2.5)" style="width:20px;height:30px;border-radius:5px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;padding:0">−</button>
@@ -3650,6 +3835,392 @@ function editarImagenEjercicio(nombre, urlActual){
     const cards = document.querySelectorAll('.strong-ex-thumb img');
     cards.forEach(c=>{ if(c.src===urlActual) c.src=nuevaUrl; });
   }).catch(()=>alert('Error guardando imagen'));
+}
+
+
+// ═══ DIETA IA NUEVA ════════════════════════════════════════
+
+async function dbGenerarIANuevo(){
+  const res = document.getElementById('db_ia_result');
+  if(!dbState.clienteId){ res.innerHTML='<div style="color:#f87171;font-size:13px">Selecciona un cliente primero</div>'; return; }
+  const alimentos = document.getElementById('db_alimentos_input').value.trim();
+  if(!alimentos){ res.innerHTML='<div style="color:#f87171;font-size:13px">Escribe los alimentos disponibles</div>'; return; }
+  const numComidas = document.getElementById('db_num_comidas').value;
+  const objetivoCal = document.getElementById('db_objetivo_cal').value;
+  const notasExtra = document.getElementById('db_notas_extra').value;
+
+  res.innerHTML='<div class="ia-chip"><div class="ia-chip-title">⚡ Generando plan personalizado...</div></div>';
+
+  const c = await api('/clientes/'+dbState.clienteId);
+  const esVegano = c.dieta_tipo==='Vegano' || c.dieta_tipo==='Vegetariano';
+  const kcalBase = c.kcal_internas || 2000;
+  const kcalMap = {mantenimiento:0, deficit:-300, deficit_agresivo:-500, superavit:300};
+  const kcalObj = kcalBase + (kcalMap[objetivoCal]||0);
+
+  const prompt = `Crea un plan de dieta DETALLADO para este cliente. Responde SOLO en JSON válido sin texto adicional.
+
+DATOS DEL CLIENTE:
+- Nombre: ${c.nombre}
+- Objetivo: ${c.objetivo}
+- Nivel: ${c.nivel}
+- Peso: ${c.peso_actual||'no especificado'}kg
+- Kcal objetivo: ${kcalObj} kcal/día
+- Proteína objetivo: ${c.prot||Math.round((c.peso_actual||75)*2)}g
+- Carbos objetivo: ${c.carbs||200}g
+- Grasas objetivo: ${c.fat||60}g
+- Tipo de dieta: ${c.dieta_tipo||'Omnívoro'}
+- Alimentos que NO puede comer: ${c.alimentos_no||'ninguno'}
+- Intolerancias/alergias: ${c.lesiones||'ninguna'}
+- Observaciones: ${c.observaciones||'ninguna'}
+- Número de comidas: ${numComidas}
+- Ajuste calórico: ${objetivoCal}
+- Notas extra: ${notasExtra||'ninguna'}
+
+ALIMENTOS DISPONIBLES: ${alimentos}
+
+RESPONDE EXACTAMENTE en este formato JSON:
+{
+  "kcal_total": 2000,
+  "prot_total": 160,
+  "carbs_total": 200,
+  "grasas_total": 65,
+  "comidas": [
+    {
+      "numero": 1,
+      "nombre": "Desayuno",
+      "emoji": "☀️",
+      "alimentos": [
+        {"nombre": "Avena", "cantidad": "80g", "detalle": "en crudo"},
+        {"nombre": "Huevos enteros", "cantidad": "3 uds", "detalle": ""},
+        {"nombre": "Plátano", "cantidad": "1 ud mediano", "detalle": ""}
+      ],
+      "variaciones": [
+        {
+          "letra": "B",
+          "nombre": "Desayuno rápido",
+          "alimentos": [
+            {"nombre": "Yogur proteico", "cantidad": "200g", "detalle": ""},
+            {"nombre": "Avena", "cantidad": "60g", "detalle": ""},
+            {"nombre": "Miel", "cantidad": "10g", "detalle": ""}
+          ]
+        },
+        {
+          "letra": "C",
+          "nombre": "Desayuno express",
+          "alimentos": [
+            {"nombre": "Pan integral", "cantidad": "80g", "detalle": ""},
+            {"nombre": "Huevos", "cantidad": "3 uds", "detalle": "revueltos"}
+          ]
+        }
+      ],
+      "nota": "Mismos macros aproximados en todas las opciones",
+      "tipo": "alto_proteina"
+    }
+  ],
+  "alternativas": {
+    "proteinas": ["pollo", "pavo", "atún"],
+    "carbos": ["arroz", "patata", "pan integral"],
+    "grasas": ["aguacate", "nueces", "aceite oliva"]
+  },
+  "ajustes": [
+    {"icono": "↑", "titulo": "¿Más energía?", "texto": "Añade más arroz o patata"},
+    {"icono": "↓", "titulo": "¿Menos grasa?", "texto": "Elige pollo en vez de ternera"}
+  ],
+  "frase_motivadora": "La constancia construye resultados."
+}`;
+
+  try {
+    const d = await api('/ia/chat', {method:'POST', body:JSON.stringify({
+      messages:[{role:'user', content:prompt}],
+      system:'Eres un nutricionista deportivo experto. Generas planes de dieta precisos en JSON válido. Las cantidades siempre en crudo. Sin texto fuera del JSON.'
+    })});
+
+    let plan;
+    try {
+      let clean = d.reply;
+      const jsonMatch = clean.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if(jsonMatch) clean = jsonMatch[1];
+      else { const objMatch = clean.match(/\{[\s\S]*\}/); if(objMatch) clean = objMatch[0]; }
+      plan = JSON.parse(clean.trim());
+    } catch(e) {
+      res.innerHTML='<div style="color:#f87171;font-size:13px">Error parseando respuesta. Inténtalo de nuevo.</div>';
+      return;
+    }
+
+    // Store plan for publishing
+    window._planDietaActual = plan;
+    window._planDietaClienteId = dbState.clienteId;
+    window._planDietaCliente = c;
+
+    // Show preview
+    const preview = document.getElementById('db_plan_preview');
+    const planHtml = document.getElementById('db_plan_html');
+    if(preview && planHtml){
+      planHtml.innerHTML = renderPlanDietaCoach(plan, c);
+      preview.style.display = 'block';
+      preview.scrollIntoView({behavior:'smooth'});
+    }
+
+    res.innerHTML='<div style="background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--gnb)">✓ Plan generado. Revisa la vista previa abajo y publica cuando estés listo.</div>';
+
+  } catch(e) {
+    res.innerHTML='<div style="color:#f87171;font-size:13px">Error generando. Verifica la API key.</div>';
+  }
+}
+
+async function dbPublicarPlan(){
+  if(!window._planDietaActual || !window._planDietaClienteId) return;
+  const btn = event.target;
+  btn.textContent='⏳ Publicando...'; btn.disabled=true;
+  const plan = window._planDietaActual;
+  const clienteId = window._planDietaClienteId;
+
+  try {
+    // Delete existing comidas
+    const c = await api('/clientes/'+clienteId);
+    for(const com of c.comidas){
+      await api('/comidas/'+com.id, {method:'DELETE'});
+    }
+    // Create new comidas from plan
+    for(const comida of plan.comidas){
+      const r = await api('/clientes/'+clienteId+'/comidas', {
+        method:'POST', body:JSON.stringify({nombre: comida.numero+'. '+comida.nombre, orden: comida.numero})
+      });
+      for(const alim of comida.alimentos){
+        const gramos = parseInt(alim.cantidad) || 100;
+        await api('/comidas/'+r.id+'/alimentos', {
+          method:'POST', body:JSON.stringify({nombre: alim.nombre+(alim.detalle?' ('+alim.detalle+')':''), gramos})
+        });
+      }
+    }
+    // Store plan extras (alternativas, ajustes, frase) as metadata
+    await api('/clientes/'+clienteId+'/plan-meta', {
+      method:'POST',
+      body:JSON.stringify({
+        alternativas: plan.alternativas||null,
+        ajustes: plan.ajustes||null,
+        frase: plan.frase_motivadora||null,
+        kcal: plan.kcal_total||null,
+        prot: plan.prot_total||null,
+        carbs: plan.carbs_total||null,
+        grasas: plan.grasas_total||null
+      })
+    });
+    btn.textContent='✓ Publicado';
+    btn.style.color='var(--gnb)';
+    setTimeout(()=>{ btn.textContent='✓ Publicar al cliente'; btn.style.color=''; btn.disabled=false; }, 3000);
+  } catch(e) {
+    btn.textContent='Error'; btn.disabled=false;
+  }
+}
+
+function renderPlanDietaCoach(plan, cliente){
+  const esVeg = cliente.dieta_tipo==='Vegano'||cliente.dieta_tipo==='Vegetariano';
+  const accent = esVeg ? '#22c55e' : '#3b82f6';
+  const accentDark = esVeg ? '#166534' : '#1e3a5f';
+  const accentBg = esVeg ? 'rgba(34,197,94,.08)' : 'rgba(37,99,235,.08)';
+
+  const mealHtml = plan.comidas.map((m,mi)=>{
+    const varBtns = m.variaciones?.length ? `
+      <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">
+        <button style="padding:3px 10px;border-radius:12px;border:0.5px solid ${accent};background:${accentBg};color:${accent};font-size:11px;font-weight:700;cursor:pointer" onclick="dbVarSelect(${mi},-1,this)">A</button>
+        ${m.variaciones.map((v,vi)=>`<button style="padding:3px 10px;border-radius:12px;border:0.5px solid rgba(255,255,255,.15);background:none;color:var(--tx3);font-size:11px;font-weight:700;cursor:pointer" onclick="dbVarSelect(${mi},${vi},this)">${v.letra||String.fromCharCode(66+vi)}</button>`).join('')}
+        <span style="font-size:10px;color:var(--tx3);align-self:center;margin-left:4px">Elige opción</span>
+      </div>` : '';
+    const alimentosHtml = (alims)=>alims.map(a=>`
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0">
+        <span style="color:var(--sv2)">${a.nombre}${a.detalle?' <span style="color:var(--tx3);font-size:11px">('+a.detalle+')</span>':''}</span>
+        <span style="color:${accent};font-weight:700">${a.cantidad}</span>
+      </div>`).join('');
+    return`<div style="padding:12px 0;border-bottom:0.5px solid var(--br)">
+      <div style="display:flex;gap:12px">
+        <div style="width:36px;height:36px;border-radius:10px;background:${accentBg};border:0.5px solid ${accent}40;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:${accent};font-weight:700;flex-shrink:0">${m.numero}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:6px">${m.emoji||'🍽️'} ${m.nombre}</div>
+          ${varBtns}
+          <div id="coach_var_${mi}">${alimentosHtml(m.alimentos)}</div>
+          ${m.nota?`<div style="font-size:11px;color:var(--tx3);margin-top:4px;font-style:italic">${m.nota}</div>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const altHtml = plan.alternativas ? `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
+      <div><div style="font-size:10px;color:${accent};font-weight:700;margin-bottom:4px">PROTEÍNAS</div>${(plan.alternativas.proteinas||[]).map(p=>`<div style="font-size:11px;color:var(--sv3)">${p}</div>`).join('')}</div>
+      <div><div style="font-size:10px;color:${accent};font-weight:700;margin-bottom:4px">CARBOS</div>${(plan.alternativas.carbos||[]).map(p=>`<div style="font-size:11px;color:var(--sv3)">${p}</div>`).join('')}</div>
+      <div><div style="font-size:10px;color:${accent};font-weight:700;margin-bottom:4px">GRASAS</div>${(plan.alternativas.grasas||[]).map(p=>`<div style="font-size:11px;color:var(--sv3)">${p}</div>`).join('')}</div>
+    </div>` : '';
+
+  return `
+    <div style="background:var(--s2);border-radius:12px;padding:14px;margin-bottom:10px">
+      <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px">
+        ${[['P',plan.prot_total+'g','#3b82f6'],['C',plan.carbs_total+'g','#a78bfa'],['G',plan.grasas_total+'g','#f97316'],['kcal',plan.kcal_total,'#fbbf24']].map(([l,v,col])=>`
+        <div style="text-align:center;flex:1;background:rgba(255,255,255,.03);border-radius:8px;padding:8px 4px">
+          <div style="font-size:16px;font-weight:700;color:${col}">${v}</div>
+          <div style="font-size:10px;color:var(--tx3)">${l}</div>
+        </div>`).join('')}
+      </div>
+      ${mealHtml}
+    </div>
+    ${plan.alternativas?`<div style="background:var(--s2);border-radius:12px;padding:14px;margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Alternativas e intercambios</div>${altHtml}</div>`:''}
+    ${plan.ajustes?.length?`<div style="background:var(--s2);border-radius:12px;padding:14px;margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Ajustes si es necesario</div>${plan.ajustes.map(a=>`<div style="display:flex;gap:10px;margin-bottom:8px;align-items:flex-start"><div style="width:28px;height:28px;border-radius:50%;background:${accentBg};border:0.5px solid ${accent}40;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${a.icono}</div><div><div style="font-size:12px;font-weight:700;color:var(--sv)">${a.titulo}</div><div style="font-size:11px;color:var(--tx3)">${a.texto}</div></div></div>`).join('')}</div>`:''}`;
+}
+
+
+async function descargarDieta(){
+  const btn = event.target.closest('button');
+  btn.textContent = '⏳ Generando imagen...';
+  btn.disabled = true;
+  try{
+    // Load html2canvas if not loaded
+    if(!window.html2canvas){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        s.onload=res; s.onerror=rej;
+        document.head.appendChild(s);
+      });
+    }
+    const el = document.getElementById('dieta_view');
+    const canvas = await html2canvas(el, {
+      backgroundColor:'#080c14',
+      scale:2,
+      useCORS:true,
+      allowTaint:true,
+      scrollY:-window.scrollY
+    });
+    const link = document.createElement('a');
+    link.download = 'mi-dieta-wolfmindset.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    btn.textContent = '✓ Imagen guardada';
+    setTimeout(()=>{ btn.textContent='⬇ GUARDAR COMO IMAGEN'; btn.disabled=false; },3000);
+  }catch(e){
+    btn.textContent = '⬇ GUARDAR COMO IMAGEN';
+    btn.disabled = false;
+    alert('Para guardar: mantén pulsada la imagen y selecciona "Guardar"');
+  }
+}
+
+
+function dbEditarPlan(){
+  const plan = window._planDietaActual;
+  if(!plan) return;
+  const planDiv = document.getElementById('db_plan_html');
+  const esVeg = window._planDietaCliente?.dieta_tipo==='Vegano'||window._planDietaCliente?.dieta_tipo==='Vegetariano';
+  const accent = esVeg?'#22c55e':'#3b82f6';
+
+  let html = `<div style="margin-bottom:8px;font-size:12px;color:var(--tx3)">Edita cantidades directamente. Los cambios se guardan al publicar.</div>`;
+
+  plan.comidas.forEach((m,mi)=>{
+    html += `<div style="background:var(--s2);border-radius:12px;padding:12px;margin-bottom:10px;border:0.5px solid var(--br)">
+      <div style="font-size:13px;font-weight:700;color:${accent};margin-bottom:8px">${m.emoji||'🍽️'} ${m.numero}. ${m.nombre}</div>`;
+    m.alimentos.forEach((a,ai)=>{
+      html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <input value="${a.nombre}" style="flex:2;padding:6px 8px;border:0.5px solid var(--br);border-radius:8px;background:var(--s3);color:var(--sv);font-size:12px;font-family:inherit"
+          onchange="dbEditAlimento(${mi},${ai},'nombre',this.value)"/>
+        <input value="${a.cantidad}" style="width:70px;padding:6px 8px;border:0.5px solid var(--br);border-radius:8px;background:var(--s3);color:${accent};font-size:12px;font-weight:700;text-align:center;font-family:inherit"
+          onchange="dbEditAlimento(${mi},${ai},'cantidad',this.value)"/>
+        <button onclick="dbEliminarAlimento(${mi},${ai})" style="width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(239,68,68,.3);background:rgba(239,68,68,.1);color:#fca5a5;cursor:pointer;font-size:14px;flex-shrink:0">✕</button>
+      </div>`;
+    });
+    html += `<button onclick="dbAnadirAlimento(${mi})" style="width:100%;padding:6px;border:0.5px dashed var(--br);border-radius:8px;background:none;color:var(--tx3);font-size:12px;cursor:pointer;font-family:inherit;margin-top:4px">+ Añadir alimento</button>
+    </div>`;
+  });
+
+  html += `<button onclick="dbGuardarEdicion()" class="btn" style="width:100%;padding:11px;background:var(--bl2)">✓ Confirmar cambios</button>`;
+  planDiv.innerHTML = html;
+}
+
+function dbEditAlimento(mi, ai, campo, valor){
+  if(window._planDietaActual?.comidas[mi]?.alimentos[ai])
+    window._planDietaActual.comidas[mi].alimentos[ai][campo] = valor;
+}
+
+function dbEliminarAlimento(mi, ai){
+  if(window._planDietaActual?.comidas[mi]?.alimentos)
+    window._planDietaActual.comidas[mi].alimentos.splice(ai,1);
+  dbEditarPlan();
+}
+
+function dbAnadirAlimento(mi){
+  if(!window._planDietaActual?.comidas[mi]) return;
+  window._planDietaActual.comidas[mi].alimentos.push({nombre:'Nuevo alimento', cantidad:'100g', detalle:''});
+  dbEditarPlan();
+}
+
+function dbGuardarEdicion(){
+  const planDiv = document.getElementById('db_plan_html');
+  planDiv.innerHTML = renderPlanDietaCoach(window._planDietaActual, window._planDietaCliente);
+}
+
+function dbVarSelect(mi, vi, btn){
+  const plan = window._planDietaActual;
+  if(!plan?.comidas[mi]) return;
+  const m = plan.comidas[mi];
+  const alims = vi===-1 ? m.alimentos : m.variaciones?.[vi]?.alimentos || m.alimentos;
+  // Update display
+  const wrap = document.getElementById('coach_var_'+mi);
+  if(wrap) wrap.innerHTML = alims.map(a=>`
+    <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0">
+      <span style="color:var(--sv2)">${a.nombre}${a.detalle?' <span style="color:var(--tx3);font-size:11px">('+a.detalle+')</span>':''}</span>
+      <span style="color:var(--bl2);font-weight:700">${a.cantidad}</span>
+    </div>`).join('');
+  // Update active button style
+  const parent = btn.closest('div');
+  parent.querySelectorAll('button').forEach(b=>{
+    b.style.background='none'; b.style.color='var(--tx3)'; b.style.border='0.5px solid rgba(255,255,255,.15)';
+  });
+  btn.style.background = 'rgba(37,99,235,.15)';
+  btn.style.color = 'var(--bl2)';
+  btn.style.border = '0.5px solid var(--bl2)';
+  // Store selection in plan for publishing
+  plan.comidas[mi]._selectedAlimentos = alims;
+}
+
+
+function clienteVarSelect(mi, vi, btn){
+  const comidas = CD.comidas;
+  if(!comidas[mi]) return;
+  const m = comidas[mi];
+  const rawAlims = vi===-1 ? m.items : m._variaciones?.[vi]?.alimentos || m.items;
+  const accentLight = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? '#86efac' : '#93c5fd';
+  const wrap = document.getElementById('cl_var_'+mi);
+  if(wrap) wrap.innerHTML = rawAlims.map(a=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.04)">
+      <div style="font-size:13px;color:rgba(255,255,255,.85)">${a.nombre||a.nombre}</div>
+      <div style="font-size:13px;font-weight:700;color:${accentLight};margin-left:12px;white-space:nowrap">${a.gramos?a.gramos+'g':a.cantidad||''}</div>
+    </div>`).join('');
+  // Style active button
+  const parent = btn.closest('div');
+  parent.querySelectorAll('button').forEach(b=>{
+    const accent=(CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano')?'#22c55e':'#3b82f6';
+    const accentBg=(CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano')?'rgba(34,197,94,.1)':'rgba(37,99,235,.1)';
+    b.style.background='none'; b.style.color='rgba(255,255,255,.5)'; b.style.border='0.5px solid rgba(255,255,255,.2)';
+  });
+  const accent=(CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano')?'#22c55e':'#3b82f6';
+  const accentBg=(CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano')?'rgba(34,197,94,.1)':'rgba(37,99,235,.1)';
+  btn.style.background=accentBg; btn.style.color=accent; btn.style.border='1px solid '+accent;
+}
+
+
+function perfilModoEditar(){
+  const form=document.getElementById('pf_form');
+  if(form){form.style.pointerEvents='auto';form.style.opacity='1';}
+  const btns=document.getElementById('pf_btns');
+  if(btns) btns.style.display='block';
+  const btn=document.getElementById('pf_edit_btn');
+  if(btn){btn.innerHTML='✕ Cancelar';btn.style.background='rgba(239,68,68,.12)';btn.style.color='#fca5a5';btn.style.border='0.5px solid rgba(239,68,68,.3)';btn.onclick=perfilModoVer;}
+  document.getElementById('pf_peso')?.focus();
+}
+function perfilModoVer(){
+  const form=document.getElementById('pf_form');
+  if(form){form.style.pointerEvents='none';form.style.opacity='.85';}
+  const btns=document.getElementById('pf_btns');
+  if(btns) btns.style.display='none';
+  const btn=document.getElementById('pf_edit_btn');
+  if(btn){btn.innerHTML='✏️ Editar';btn.style.background='var(--bl2)';btn.style.color='#fff';btn.style.border='none';btn.onclick=perfilModoEditar;}
 }
 
 </script>
