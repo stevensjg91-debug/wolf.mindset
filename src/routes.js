@@ -76,7 +76,7 @@ router.delete('/dias/:id', coachOnly, (req, res) => {
 
 router.post('/dias/:id/ejercicios', coachOnly, (req, res) => {
   const { nombre, musculos, series, reps, peso_objetivo, descanso, orden, youtube_url, imagen_url, nota_coach } = req.body;
-  const rir = req.body.rir!=null ? req.body.rir : 2;
+  const rir = req.body.rir!=null ? req.body.rir : null;
   const es_principal = req.body.es_principal!=null ? req.body.es_principal : 0;
   const r = dbRun('INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, rir, es_principal, orden, youtube_url, imagen_url, nota_coach) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [req.params.id, nombre, musculos||'', series||3, reps||'10-12', peso_objetivo||0, descanso||90, rir, es_principal, orden||0, youtube_url||'', imagen_url||'', nota_coach||'']);
@@ -111,7 +111,7 @@ router.put('/ejercicios/:id', (req, res) => {
   const e = dbGet('SELECT * FROM ejercicios_dia WHERE id=?', [req.params.id]);
   if (!e) return res.status(404).json({ error: 'No encontrado' });
   const { series, reps, peso_objetivo, descanso, es_pr, youtube_url, imagen_url, nota_coach } = req.body;
-  const rir_val = req.body.rir!=null ? req.body.rir : (e.rir!=null?e.rir:2);
+  const rir_val = 'rir' in req.body ? req.body.rir : e.rir;
   const esp_val = req.body.es_principal!=null ? req.body.es_principal : (e.es_principal||0);
   dbRun('UPDATE ejercicios_dia SET series=?, reps=?, peso_objetivo=?, descanso=?, rir=?, es_principal=?, es_pr=?, youtube_url=?, imagen_url=?, nota_coach=? WHERE id=?',
     [series||e.series, reps||e.reps, peso_objetivo!=null?peso_objetivo:e.peso_objetivo, descanso||e.descanso, rir_val, esp_val, es_pr!=null?es_pr:e.es_pr, youtube_url!=null?youtube_url:e.youtube_url||'', imagen_url!=null?imagen_url:e.imagen_url||'', nota_coach!=null?nota_coach:e.nota_coach||'', req.params.id]);
