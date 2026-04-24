@@ -40,6 +40,7 @@ async function initDB() {
 
   db.run(`CREATE TABLE IF NOT EXISTS ejercicios_dia (id INTEGER PRIMARY KEY AUTOINCREMENT, dia_id INTEGER, nombre TEXT, musculos TEXT, series INTEGER DEFAULT 3, reps TEXT DEFAULT '10-12', peso_objetivo REAL DEFAULT 0, descanso INTEGER DEFAULT 90, rir INTEGER, es_principal INTEGER DEFAULT 0, orden INTEGER DEFAULT 0, es_pr INTEGER DEFAULT 0, youtube_url TEXT DEFAULT '', imagen_url TEXT DEFAULT '', nota_coach TEXT DEFAULT '')`);
   try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN rir INTEGER"); } catch(e) {}
+  try { db.run("ALTER TABLE clientes ADD COLUMN deficiencias TEXT DEFAULT ''"); } catch(e) {}
   // Migration: reset rir=2 (old default) to NULL so toggle works correctly
   try { db.run("UPDATE ejercicios_dia SET rir=NULL WHERE rir=2"); } catch(e) {}
   try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN es_principal INTEGER DEFAULT 0"); } catch(e) {};
@@ -113,6 +114,8 @@ async function initDB() {
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
   try{ db.run('ALTER TABLE plan_meta ADD COLUMN variaciones TEXT'); }catch(e){}
+  try{ db.run('ALTER TABLE plan_meta ADD COLUMN suplementacion TEXT'); }catch(e){}
+  try{ db.run('ALTER TABLE plan_meta ADD COLUMN alimentos_therapeuticos TEXT'); }catch(e){}
 
   // Tablas borradores de semana
   db.run(`CREATE TABLE IF NOT EXISTS semana_borrador (
