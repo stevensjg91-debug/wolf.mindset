@@ -297,9 +297,8 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
     <div class="login-sub">Fitness &amp; Wellness</div>
   </div>
   <div class="login-card">
-    <div class="ltabs">
-      <button class="ltab on" onclick="setLM('coach',this)">Coach</button>
-      <button class="ltab" onclick="setLM('cliente',this)">Cliente</button>
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.1em;color:var(--sv3)">ACCESO MIEMBROS</div>
     </div>
     <div id="lerr" class="ferr" style="display:none"></div>
     <input class="finp" id="lu" placeholder="Usuario" autocomplete="username"/>
@@ -633,9 +632,7 @@ function getExerciseBg(nombre){ const g=EX_GROUP_MAP[nombre]||'Chest'; return EX
 function getExerciseEmoji(nombre){ const g=EX_GROUP_MAP[nombre]||'Chest'; return EX_GROUP_EMOJI[g]||'💪'; }
 function fetchWgerImg(nombre){ /* images served from /ex/ */ }
 // LOGIN
-function setLM(m,btn){
-  document.querySelectorAll('.ltab').forEach(t=>t.classList.remove('on'));btn.classList.add('on');
-}
+
 async function doLogin(){
   const u=document.getElementById('lu').value.trim(),p=document.getElementById('lp').value;
   const err=document.getElementById('lerr');err.style.display='none';
@@ -750,8 +747,8 @@ async function verCliente(id){
     ${c.alimentos_no?`<div style="background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.2);border-radius:8px;padding:8px 11px;font-size:12px;color:var(--amb);margin-top:6px">🚫 <span style="font-weight:700">No come:</span> ${c.alimentos_no}</div>`:''}
     ${c.observaciones?`<div style="background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.2);border-radius:8px;padding:8px 11px;font-size:12px;color:var(--amb);margin-top:6px">📝 <span style="font-weight:700">Obs:</span> ${c.observaciones}</div>`:''}
   </div>
-  <div class="sec" style="margin-bottom:12px">
-    <div class="sec-hdr">Ajustar datos <button class="btn btn-sm" onclick="guardarDatos(${c.id})">Guardar</button></div>
+  <div class="sec" style="margin-bottom:12px" id="ajustar_datos_form">
+    <div class="sec-hdr">Ajustar datos <button class="btn btn-sm" id="btn_guardar_datos" data-cliente-id="${c.id}" onclick="guardarDatos(${c.id})">Guardar</button></div>
     <div class="g2" style="gap:8px;margin-bottom:10px">
       <div><div class="form-lbl">Objetivo</div><input class="inp" id="obj" value="${c.objetivo}" style="margin-bottom:0"/></div>
       <div><div class="form-lbl">Nivel</div><select class="inp" id="niv" style="margin-bottom:0"><option ${c.nivel==='Principiante'?'selected':''}>Principiante</option><option ${c.nivel==='Intermedio'?'selected':''}>Intermedio</option><option ${c.nivel==='Avanzado'?'selected':''}>Avanzado</option></select></div>
@@ -844,8 +841,50 @@ async function verCliente(id){
 }
 
 async function guardarDatos(id){
-  await api('/clientes/'+id,{method:'PUT',body:JSON.stringify({objetivo:document.getElementById('obj').value,nivel:document.getElementById('niv').value,kcal_internas:parseInt(document.getElementById('kcal').value),prot:parseInt(document.getElementById('prot').value),carbs:parseInt(document.getElementById('carbs').value),fat:parseInt(document.getElementById('fat').value),comida_libre:document.getElementById('clibre').value,mensaje_semana:document.getElementById('msgsem').value,notas_coach:document.getElementById('notasc').value})});
-  const b=event.target;b.textContent='✓ Guardado';b.classList.add('btn-green');setTimeout(()=>{b.textContent='Guardar';b.classList.remove('btn-green');},2000);
+  const btn = event.target;
+  btn.textContent='⏳...'; btn.disabled=true;
+  try{
+    await api('/clientes/'+id,{method:'PUT',body:JSON.stringify({
+      objetivo:document.getElementById('obj').value,
+      nivel:document.getElementById('niv').value,
+      kcal_internas:parseInt(document.getElementById('kcal').value),
+      prot:parseInt(document.getElementById('prot').value),
+      carbs:parseInt(document.getElementById('carbs').value),
+      fat:parseInt(document.getElementById('fat').value),
+      comida_libre:document.getElementById('clibre').value,
+      mensaje_semana:document.getElementById('msgsem').value,
+      notas_coach:document.getElementById('notasc').value
+    })});
+    // Switch to view mode
+    clienteDatosModoVer(btn);
+  } catch(e){
+    btn.textContent='Error'; btn.disabled=false;
+    setTimeout(()=>{btn.textContent='Guardar';},2000);
+  }
+}
+
+function clienteDatosModoVer(btn){
+  // Disable all fields in the ajustar datos section
+  const sec = document.getElementById('ajustar_datos_form');
+  if(sec){ sec.querySelectorAll('input,select,textarea').forEach(el=>{ el.disabled=true; el.style.opacity='.7'; }); }
+  // Change button to Editar
+  if(btn){
+    btn.textContent='✏️ Editar';
+    btn.style.background='var(--bl2)';
+    btn.disabled=false;
+    btn.onclick = function(){ clienteDatosModoEditar(this); };
+  }
+}
+
+function clienteDatosModoEditar(btn){
+  const sec = document.getElementById('ajustar_datos_form');
+  if(sec){ sec.querySelectorAll('input,select,textarea').forEach(el=>{ el.disabled=false; el.style.opacity='1'; }); }
+  if(btn){
+    const clienteId = btn.dataset.clienteId;
+    btn.textContent='Guardar';
+    btn.style.background='';
+    btn.onclick = function(){ guardarDatos(clienteId); };
+  }
 }
 
 function mb2(l,c,a,cal,tot){const p=Math.round((cal/(tot||1))*100)||0;return`<div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--tx3);margin-bottom:3px;font-weight:500"><span>${l}</span><span style="color:var(--sv2)">${a}g·${p}%</span></div><div style="height:3px;background:var(--s3);border-radius:2px;overflow:hidden;margin-bottom:8px"><div style="width:${p}%;height:100%;background:${c};border-radius:2px"></div></div></div>`;}
