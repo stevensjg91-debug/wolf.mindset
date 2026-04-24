@@ -2118,14 +2118,27 @@ function hDieta(){
             ? `<div style="font-size:9px;font-weight:700;color:${accLight};border:0.5px solid ${acc};padding:2px 7px;border-radius:4px;letter-spacing:.08em;background:${accBg}">HIGH PROTEIN</div>`
             : ''}
         </div>
-        ${m.alimentos.map(a=>`
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.05)">
-          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
-            <div style="width:4px;height:4px;border-radius:50%;background:${acc};flex-shrink:0"></div>
-            <div style="font-size:12px;color:rgba(255,255,255,.8);line-height:1.4">${a.nombre}</div>
-          </div>
-          <div style="font-size:13px;font-weight:700;color:${accLight};margin-left:8px;white-space:nowrap;font-family:'Bebas Neue',sans-serif">${a.cantidad}</div>
-        </div>`).join('')}
+        <div id="cl_meal_${mi}" style="display:contents">
+          ${m.alimentos.map(a=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.05)">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+              <div style="width:4px;height:4px;border-radius:50%;background:${acc};flex-shrink:0"></div>
+              <div style="font-size:12px;color:rgba(255,255,255,.8);line-height:1.4">${a.nombre}</div>
+            </div>
+            <div style="font-size:13px;font-weight:700;color:${accLight};margin-left:8px;white-space:nowrap;font-family:'Bebas Neue',sans-serif">${a.cantidad}</div>
+          </div>`).join('')}
+        </div>
+        ${(()=>{
+          const vars = CD._planVariaciones?.[mi];
+          if(!vars?.length) return '';
+          return `<div style="border-top:0.5px solid rgba(255,255,255,.07);margin-top:6px;padding-top:8px">
+            <div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:.08em;margin-bottom:6px">OPCIONES ALTERNATIVAS</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button onclick="clienteVarSelect2(${mi},-1,this)" style="padding:4px 12px;border-radius:10px;border:1px solid ${acc};background:${accBg};color:${accLight};font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation">A</button>
+              ${vars.map((v,vi)=>`<button onclick="clienteVarSelect2(${mi},${vi},this)" style="padding:4px 12px;border-radius:10px;border:0.5px solid rgba(255,255,255,.2);background:none;color:rgba(255,255,255,.45);font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation">${v.letra||String.fromCharCode(66+vi)} · ${v.nombre||''}</button>`).join('')}
+            </div>
+          </div>`;
+        })()}
       </div>
     </div>`).join('');
 
@@ -4057,7 +4070,13 @@ async function dbPublicarPlan(){
         });
       }
     }
-    // Store plan extras (alternativas, ajustes, frase) as metadata
+    // Store plan extras including variaciones per comida
+    const variacionesPorComida = {};
+    plan.comidas.forEach((com,i) => {
+      if(com.variaciones?.length){
+        variacionesPorComida[i] = com.variaciones;
+      }
+    });
     await api('/clientes/'+clienteId+'/plan-meta', {
       method:'POST',
       body:JSON.stringify({
@@ -4067,7 +4086,8 @@ async function dbPublicarPlan(){
         kcal: plan.kcal_total||null,
         prot: plan.prot_total||null,
         carbs: plan.carbs_total||null,
-        grasas: plan.grasas_total||null
+        grasas: plan.grasas_total||null,
+        variaciones: Object.keys(variacionesPorComida).length ? variacionesPorComida : null
       })
     });
     btn.textContent='✓ Publicado';
@@ -4285,6 +4305,35 @@ function perfilModoVer(){
   if(btns) btns.style.display='none';
   const btn=document.getElementById('pf_edit_btn');
   if(btn){btn.innerHTML='✏️ Editar';btn.style.background='var(--bl2)';btn.style.color='#fff';btn.style.border='none';btn.onclick=perfilModoEditar;}
+}
+
+
+function clienteVarSelect2(mi, vi, btn){
+  const vars = CD._planVariaciones?.[mi];
+  const alims = vi===-1
+    ? CD.comidas[mi]?.items || []
+    : vars?.[vi]?.alimentos || [];
+  const acc = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? '#22c55e' : '#3b82f6';
+  const accLight = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? '#86efac' : '#93c5fd';
+  const accBg = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? 'rgba(34,197,94,.12)' : 'rgba(37,99,235,.12)';
+
+  const wrap = document.getElementById('cl_meal_'+mi);
+  if(wrap){
+    wrap.innerHTML = alims.map(a=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.05)">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+          <div style="width:4px;height:4px;border-radius:50%;background:${acc};flex-shrink:0"></div>
+          <div style="font-size:12px;color:rgba(255,255,255,.8);line-height:1.4">${a.nombre||a.nombre}</div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:${accLight};margin-left:8px;white-space:nowrap;font-family:'Bebas Neue',sans-serif">${a.cantidad||a.gramos+'g'}</div>
+      </div>`).join('');
+  }
+  // Style buttons
+  const parent = btn.closest('div');
+  parent.querySelectorAll('button').forEach(b=>{
+    b.style.background='none'; b.style.color='rgba(255,255,255,.45)'; b.style.border='0.5px solid rgba(255,255,255,.2)';
+  });
+  btn.style.background=accBg; btn.style.color=accLight; btn.style.border=`1px solid ${acc}`;
 }
 
 </script>
