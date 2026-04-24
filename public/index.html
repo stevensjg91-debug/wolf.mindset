@@ -560,6 +560,10 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
 
 <script>
 const API='';
+// Register service worker for background notifications
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
 let TOKEN=localStorage.getItem('wm_token');
 let USER=JSON.parse(localStorage.getItem('wm_user')||'null');
 let CD=null,klTab='entreno',activeDia=0,chatH=[],iaH=[],timerInts={},restInt=null,restTotal=0,restSecs=0;
@@ -2351,18 +2355,19 @@ function hPerfil(){
 async function guardarPerfil(){
   const msg=document.getElementById('pf_msg');
   try{
+    const pf = (id) => document.getElementById(id);
     await api('/clientes/'+CD.id+'/perfil',{method:'PUT',body:JSON.stringify({
-      peso_actual:parseFloat(document.getElementById('pf_peso').value)||null,
-      altura:parseInt(document.getElementById('pf_altura').value)||null,
-      edad:parseInt(document.getElementById('pf_edad').value)||null,
-      sexo:document.getElementById('pf_sexo').value,
-      actividad:document.getElementById('pf_actividad').value,
-      cintura_actual:parseFloat(document.getElementById('pf_cintura').value)||null,
-      cadera:parseFloat(document.getElementById('pf_cadera').value)||null,
-      dieta_tipo:document.getElementById('pf_dieta').value,
-      alimentos_no:document.getElementById('pf_alimentos_no').value,
-      lesiones:document.getElementById('pf_lesiones').value,
-      observaciones:document.getElementById('pf_obs').value
+      peso_actual: parseFloat(pf('pf_peso')?.value)||null,
+      altura: parseInt(pf('pf_altura')?.value)||null,
+      edad: parseInt(pf('pf_edad')?.value)||null,
+      sexo: pf('pf_sexo')?.value||'Hombre',
+      actividad: pf('pf_actividad')?.value||'Moderada',
+      cintura_actual: parseFloat(pf('pf_cintura')?.value)||null,
+      cadera: parseFloat(pf('pf_cadera')?.value)||null,
+      dieta_tipo: pf('pf_dieta')?.value||'Omnívoro',
+      alimentos_no: pf('pf_alimentos_no')?.value||'',
+      lesiones: pf('pf_lesiones')?.value||'',
+      observaciones: pf('pf_ob')?.value||''
     })});
     await loadCD(CD.id);
     msg.style.color='#86efac';msg.textContent='✓ Perfil guardado ✓';
@@ -3624,15 +3629,27 @@ async function pedirPermisoNotificaciones(){
 
 function notificarDescansoTerminado(nombreEjercicio){
   if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  const opts = {
+    body: nombreEjercicio ? `Siguiente serie de ${nombreEjercicio}` : 'Descanso terminado — siguiente serie',
+    icon: '/logo.png',
+    badge: '/logo.png',
+    silent: false,
+    tag: 'descanso',
+    requireInteraction: false,
+    vibrate: [150,80,150]
+  };
   try{
-    new Notification('¡A por ello! 💪', {
-      body: nombreEjercicio ? `Siguiente serie de ${nombreEjercicio}` : 'Descanso terminado — siguiente serie',
-      icon: '/logo.png',
-      badge: '/logo.png',
-      silent: false,
-      tag: 'descanso',
-    });
-  }catch(e){}
+    // Use service worker for background notifications (works when phone is locked)
+    if(navigator.serviceWorker?.controller){
+      navigator.serviceWorker.controller.postMessage({
+        type: 'SHOW_NOTIFICATION',
+        title: '¡A por ello! 💪',
+        options: opts
+      });
+    } else {
+      new Notification('¡A por ello! 💪', opts);
+    }
+  }catch(e){ try{ new Notification('¡A por ello! 💪', opts); }catch(e2){} }
 }
 
 function notificarEntrenoCompletado(nombre, minutos){
