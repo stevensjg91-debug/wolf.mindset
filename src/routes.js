@@ -38,6 +38,8 @@ router.get('/clientes/:id', (req, res) => {
     _planAjustes: planMeta?.ajustes ? JSON.parse(planMeta.ajustes) : null,
     _planFrase: planMeta?.frase || null,
     _planVariaciones: planMeta?.variaciones ? JSON.parse(planMeta.variaciones) : null,
+    _planSuplementacion: planMeta?.suplementacion ? JSON.parse(planMeta.suplementacion) : null,
+    _planAlimentosTerapeuticos: planMeta?.alimentos_therapeuticos ? JSON.parse(planMeta.alimentos_therapeuticos) : null,
     kcal_internas: planMeta?.kcal || c.kcal_internas || null,
     prot: planMeta?.prot || c.prot || null,
     carbs: planMeta?.carbs || c.carbs || null,
@@ -60,10 +62,10 @@ router.put('/clientes/:id/perfil', (req, res) => {
     const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
     if (!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
   }
-  const { peso_actual, altura, edad, sexo, actividad, cintura_actual, cadera, observaciones, dieta_tipo, alimentos_no, lesiones } = req.body;
+  const { peso_actual, altura, edad, sexo, actividad, cintura_actual, cadera, observaciones, dieta_tipo, alimentos_no, lesiones, deficiencias } = req.body;
   const c = dbGet('SELECT * FROM clientes WHERE id=?', [id]);
   if (!c) return res.status(404).json({ error: 'No encontrado' });
-  dbRun('UPDATE clientes SET peso_actual=?, altura=?, edad=?, sexo=?, actividad=?, cintura_actual=?, cadera=?, observaciones=?, dieta_tipo=?, alimentos_no=?, lesiones=? WHERE id=?',
+  dbRun('UPDATE clientes SET peso_actual=?, altura=?, edad=?, sexo=?, actividad=?, cintura_actual=?, cadera=?, observaciones=?, dieta_tipo=?, alimentos_no=?, lesiones=?, deficiencias=? WHERE id=?',
     [peso_actual!=null?peso_actual:c.peso_actual, altura||c.altura, edad||c.edad, sexo||c.sexo, actividad||c.actividad, cintura_actual!=null?cintura_actual:c.cintura_actual, cadera!=null?cadera:c.cadera, observaciones||c.observaciones, dieta_tipo||c.dieta_tipo||'Omnivoro', alimentos_no!=null?alimentos_no:c.alimentos_no||'', lesiones!=null?lesiones:c.lesiones||'', id]);
   res.json({ ok: true });
 });
@@ -428,10 +430,10 @@ router.get('/clientes/:id/semana-estado', (req, res) => {
 
 
 router.post('/clientes/:id/plan-meta', coachOnly, (req, res) => {
-  const { alternativas, ajustes, frase, kcal, prot, carbs, grasas, variaciones } = req.body;
-  dbRun(`INSERT OR REPLACE INTO plan_meta (cliente_id, alternativas, ajustes, frase, kcal, prot, carbs, grasas, variaciones)
-    VALUES (?,?,?,?,?,?,?,?,?)`,
-    [req.params.id, JSON.stringify(alternativas), JSON.stringify(ajustes), frase, kcal, prot, carbs, grasas, JSON.stringify(variaciones)]
+  const { alternativas, ajustes, frase, kcal, prot, carbs, grasas, variaciones, suplementacion, alimentos_therapeuticos } = req.body;
+  dbRun(`INSERT OR REPLACE INTO plan_meta (cliente_id, alternativas, ajustes, frase, kcal, prot, carbs, grasas, variaciones, suplementacion, alimentos_therapeuticos)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    [req.params.id, JSON.stringify(alternativas), JSON.stringify(ajustes), frase, kcal, prot, carbs, grasas, JSON.stringify(variaciones), JSON.stringify(suplementacion), JSON.stringify(alimentos_therapeuticos)]
   );
   res.json({ ok: true });
 });
