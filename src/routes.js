@@ -37,6 +37,7 @@ router.get('/clientes/:id', (req, res) => {
     _planAlternativas: planMeta?.alternativas ? JSON.parse(planMeta.alternativas) : null,
     _planAjustes: planMeta?.ajustes ? JSON.parse(planMeta.ajustes) : null,
     _planFrase: planMeta?.frase || null,
+    _planVariaciones: planMeta?.variaciones ? JSON.parse(planMeta.variaciones) : null,
     kcal_internas: planMeta?.kcal || c.kcal_internas || null,
     prot: planMeta?.prot || c.prot || null,
     carbs: planMeta?.carbs || c.carbs || null,
@@ -427,10 +428,10 @@ router.get('/clientes/:id/semana-estado', (req, res) => {
 
 
 router.post('/clientes/:id/plan-meta', coachOnly, (req, res) => {
-  const { alternativas, ajustes, frase, kcal, prot, carbs, grasas } = req.body;
-  dbRun(`INSERT OR REPLACE INTO plan_meta (cliente_id, alternativas, ajustes, frase, kcal, prot, carbs, grasas)
-    VALUES (?,?,?,?,?,?,?,?)`,
-    [req.params.id, JSON.stringify(alternativas), JSON.stringify(ajustes), frase, kcal, prot, carbs, grasas]
+  const { alternativas, ajustes, frase, kcal, prot, carbs, grasas, variaciones } = req.body;
+  dbRun(`INSERT OR REPLACE INTO plan_meta (cliente_id, alternativas, ajustes, frase, kcal, prot, carbs, grasas, variaciones)
+    VALUES (?,?,?,?,?,?,?,?,?)`,
+    [req.params.id, JSON.stringify(alternativas), JSON.stringify(ajustes), frase, kcal, prot, carbs, grasas, JSON.stringify(variaciones)]
   );
   res.json({ ok: true });
 });
