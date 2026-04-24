@@ -109,8 +109,10 @@ async function initDB() {
     prot INTEGER,
     carbs INTEGER,
     grasas INTEGER,
+    variaciones TEXT,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  try{ db.run('ALTER TABLE plan_meta ADD COLUMN variaciones TEXT'); }catch(e){}
 
   // Tablas borradores de semana
   db.run(`CREATE TABLE IF NOT EXISTS semana_borrador (
