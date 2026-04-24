@@ -1344,7 +1344,13 @@ function hDietaBuilder(){return`
       </div>
 
       <div class="form-lbl">Notas adicionales (opcional)</div>
-      <input class="inp" id="db_notas_extra" placeholder="Ej: prefiere desayunos rápidos, cena antes de las 20h..." style="margin-bottom:12px"/>
+      <input class="inp" id="db_notas_extra" placeholder="Ej: prefiere desayunos rápidos, cena antes de las 20h..." style="margin-bottom:10px"/>
+
+      <div class="form-lbl" style="display:flex;align-items:center;gap:6px">
+        🧪 Analíticas / déficits (opcional)
+        <span style="font-size:10px;color:var(--tx3);font-weight:400">La IA recomendará suplementación</span>
+      </div>
+      <textarea class="ta" id="db_analiticas" placeholder="Ej: Vitamina D baja (18 ng/ml), ferritina 12, B12 deficiente, omega-3 bajo..." style="min-height:60px;margin-bottom:12px"></textarea>
 
       <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="dbGenerarIANuevo()">⚡ Generar plan personalizado</button>
       <div id="db_ia_result" style="margin-top:12px"></div>
@@ -1378,6 +1384,11 @@ async function dbSelCliente(id){
     const notasEl = document.getElementById('db_notas_extra');
     if(notasEl && c.observaciones && !notasEl.value){
       notasEl.value = c.observaciones;
+    }
+    // Auto-fill analíticas from client deficiencias field
+    const analiticasEl = document.getElementById('db_analiticas');
+    if(analiticasEl && c.deficiencias && !analiticasEl.value){
+      analiticasEl.value = c.deficiencias;
     }
     // Show client info hint
     const kcal = c.kcal_internas||2000;
@@ -2190,6 +2201,49 @@ function hDieta(){
       </div>
     </div>
 
+    <!-- SUPLEMENTACIÓN -->
+    ${(()=>{
+      const sups = CD._planSuplementacion;
+      const alimTher = CD._planAlimentosTerapeuticos;
+      // Always show — base supplements are always recommended
+      return `<div style="margin:10px 14px 0;background:rgba(168,85,247,.08);border:0.5px solid rgba(168,85,247,.25);border-radius:12px;padding:12px 14px">
+        <div style="font-size:11px;font-weight:700;color:#c084fc;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">🧪 Suplementación recomendada</div>
+        <!-- Base supplements - always recommended -->
+        ${[
+          {nombre:'Omega-3 (forma TG)',dosis:'2-3g EPA+DHA/día',momento:'Con las comidas principales',motivo:'Base para reducir inflamación y mejorar recuperación',icon:'🐟'},
+          {nombre:'Creatina Monohidrato',dosis:'3-5g/día',momento:'Cualquier momento del día — consistencia diaria',motivo:'Aumenta fuerza, potencia y masa muscular. El suplemento más respaldado científicamente',icon:'⚡'},
+          {nombre:'Proteína Whey',dosis:'20-40g según necesidad',momento:'Post-entreno o cuando no llegues a objetivos proteicos',motivo:'Complemento para alcanzar tu objetivo diario de proteína',icon:'🥛'},
+        ].map(s=>`
+        <div style="display:flex;gap:10px;margin-bottom:8px;align-items:flex-start">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(168,85,247,.15);border:0.5px solid rgba(168,85,247,.3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${s.icon}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:#fff">${s.nombre} <span style="font-size:11px;color:#c084fc;font-weight:400">· ${s.dosis}</span></div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">⏰ ${s.momento}</div>
+            <div style="font-size:10px;color:rgba(168,85,247,.7);margin-top:2px">${s.motivo}</div>
+          </div>
+        </div>`).join('')}
+        <!-- Personalised supplements from IA -->
+        ${(sups||[]).map(s=>`
+        <div style="display:flex;gap:10px;margin-bottom:8px;align-items:flex-start">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(168,85,247,.15);border:0.5px solid rgba(168,85,247,.3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">💊</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:#fff">${s.nombre} <span style="font-size:11px;color:#c084fc;font-weight:400">· ${s.dosis}</span></div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">⏰ ${s.momento}</div>
+            ${s.motivo?`<div style="font-size:10px;color:rgba(168,85,247,.7);margin-top:2px">${s.motivo}</div>`:''}
+          </div>
+        </div>`).join('')}
+        ${(alimTher||[]).length?`
+        <div style="border-top:0.5px solid rgba(168,85,247,.15);padding-top:8px;margin-top:4px">
+          <div style="font-size:10px;font-weight:700;color:#c084fc;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">🥩 Alimentos terapéuticos</div>
+          ${(alimTher||[]).map(a=>`
+          <div style="font-size:12px;color:rgba(255,255,255,.75);margin-bottom:4px">
+            <b style="color:#fff">${a.alimento}</b> · ${a.frecuencia}
+            ${a.motivo?`<span style="color:rgba(168,85,247,.7);font-size:11px"> — ${a.motivo}</span>`:''}
+          </div>`).join('')}
+        </div>`:''}
+      </div>`;
+    })()}
+
     <!-- NOTA PESOS EN CRUDO -->
     <div style="margin:10px 14px;background:${accBg};border:0.5px solid ${acc}60;border-radius:12px;padding:11px 14px">
       <div style="font-size:12px;color:rgba(255,255,255,.65);line-height:1.6">📌 Todos los pesos son <b style="color:#fff">en crudo</b>. Bebe 2-3L de agua/día. Dudas → usa el <b style="color:${accLight}">asistente</b>.</div>
@@ -2382,6 +2436,11 @@ function hPerfil(){
     <div><div class="form-lbl">Otras observaciones</div>
       <textarea class="ta" id="pf_ob" placeholder="Cualquier cosa que tu coach deba saber...">${c.observaciones||''}</textarea>
     </div>
+    <div style="margin-top:10px;background:rgba(168,85,247,.06);border:0.5px solid rgba(168,85,247,.2);border-radius:12px;padding:12px">
+      <div class="form-lbl" style="color:#c084fc;margin-bottom:6px">🧪 ¿Has tenido o tienes algún tipo de deficiencia?</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.5">Por ejemplo: anemia, vitamina D baja, ferritina baja, B12, omega-3... Tu coach lo tendrá en cuenta al preparar tu dieta.</div>
+      <textarea class="ta" id="pf_deficiencias" placeholder="Ej: Vitamina D baja en última analítica, tendencia a anemia..." style="margin-bottom:0">${c.deficiencias||''}</textarea>
+    </div>
   </div>
 
   <div style="padding:14px 14px 0">
@@ -2408,7 +2467,8 @@ async function guardarPerfil(){
       dieta_tipo: pf('pf_dieta')?.value||'Omnívoro',
       alimentos_no: pf('pf_alimentos_no')?.value||'',
       lesiones: pf('pf_lesiones')?.value||'',
-      observaciones: pf('pf_ob')?.value||''
+      observaciones: pf('pf_ob')?.value||'',
+      deficiencias: pf('pf_deficiencias')?.value||''
     })});
     await loadCD(CD.id);
     msg.style.color='#86efac';msg.textContent='✓ Perfil guardado ✓';
@@ -3936,6 +3996,7 @@ async function dbGenerarIANuevo(){
   const numComidas = document.getElementById('db_num_comidas').value;
   const objetivoCal = document.getElementById('db_objetivo_cal').value;
   const notasExtra = document.getElementById('db_notas_extra').value;
+  const analiticas = document.getElementById('db_analiticas')?.value||'';
 
   res.innerHTML='<div class="ia-chip"><div class="ia-chip-title">⚡ Generando plan personalizado...</div></div>';
 
@@ -3963,6 +4024,7 @@ DATOS DEL CLIENTE:
 - Número de comidas: ${numComidas}
 - Ajuste calórico: ${objetivoCal}
 - Notas extra: ${notasExtra||'ninguna'}
+- Analíticas / déficits detectados: ${analiticas||'ninguno'}
 
 ALIMENTOS DISPONIBLES: ${alimentos}
 
@@ -3997,6 +4059,13 @@ RESPONDE EXACTAMENTE en este formato JSON:
   "ajustes": [
     {"icono": "↑", "titulo": "¿Más energía?", "texto": "Añade más arroz o patata"},
     {"icono": "↓", "titulo": "¿Menos grasa?", "texto": "Elige pollo en vez de ternera"}
+  ],
+  "suplementacion": [
+    {"nombre": "Vitamina D3", "dosis": "2000 UI/día", "momento": "Con la comida principal", "motivo": "Déficit detectado en analítica"},
+    {"nombre": "Omega-3", "dosis": "2g EPA+DHA/día", "momento": "Con las comidas", "motivo": "Inflamación y recuperación"}
+  ],
+  "alimentos_therapeuticos": [
+    {"alimento": "Hígado de ternera", "frecuencia": "1-2 veces/semana", "motivo": "Ferritina baja — fuente de hierro hemo"}
   ],
   "frase_motivadora": "La constancia construye resultados."
 }`;
@@ -4073,9 +4142,7 @@ async function dbPublicarPlan(){
     // Store plan extras including variaciones per comida
     const variacionesPorComida = {};
     plan.comidas.forEach((com,i) => {
-      if(com.variaciones?.length){
-        variacionesPorComida[i] = com.variaciones;
-      }
+      if(com.variaciones?.length) variacionesPorComida[i] = com.variaciones;
     });
     await api('/clientes/'+clienteId+'/plan-meta', {
       method:'POST',
@@ -4087,7 +4154,9 @@ async function dbPublicarPlan(){
         prot: plan.prot_total||null,
         carbs: plan.carbs_total||null,
         grasas: plan.grasas_total||null,
-        variaciones: Object.keys(variacionesPorComida).length ? variacionesPorComida : null
+        variaciones: Object.keys(variacionesPorComida).length ? variacionesPorComida : null,
+        suplementacion: plan.suplementacion||null,
+        alimentos_therapeuticos: plan.alimentos_therapeuticos||null
       })
     });
     btn.textContent='✓ Publicado';
