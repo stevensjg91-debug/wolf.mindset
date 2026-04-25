@@ -1,5 +1,5 @@
 const express = require('express');
-const { dbGet, dbAll, dbRun, saveToDisk } = require('./database');
+const { dbGet, dbAll, dbRun } = require('./database');
 const { authMiddleware, coachOnly } = require('./auth');
 
 const router = express.Router();
@@ -43,7 +43,7 @@ router.get('/clientes/:id', (req, res) => {
     kcal_internas: planMeta?.kcal || c.kcal_internas || null,
     prot: planMeta?.prot || c.prot || null,
     carbs: planMeta?.carbs || c.carbs || null,
-    fat: planMeta?.grasas || c.fat || null,
+    fat: planMeta?.fat || c.fat || null,
   });
 });
 
@@ -314,6 +314,7 @@ router.post('/reload-ejercicios', (req, res) => {
       [e.grupo,e.nombre,e.musculos,e.tipo,e.dificultad,e.equipo]));
     ALIMENTOS.forEach(a => dbRun('INSERT INTO alimentos_db (categoria,nombre,calorias,proteinas,carbos,grasas) VALUES (?,?,?,?,?,?)',
       [a.categoria,a.nombre,a.calorias,a.proteinas,a.carbos,a.grasas]));
+    const { saveToDisk } = require('./database');
     saveToDisk();
     res.json({ ok: true, ejercicios: EJERCICIOS.length, alimentos: ALIMENTOS.length });
   } catch(e) {
@@ -329,6 +330,7 @@ router.post('/ejercicios-db-add', coachOnly, (req, res) => {
   if(existing) return res.status(400).json({ error: 'Ya existe' });
   const r = dbRun('INSERT INTO ejercicios_db (grupo,nombre,musculos,tipo,dificultad,equipo) VALUES (?,?,?,?,?,?)',
     [grupo, nombre, musculos||'', tipo||'Fuerza', dificultad||'Intermedio', equipo||'']);
+  const { saveToDisk } = require('./database');
   saveToDisk();
   res.json({ ok: true, id: r.lastInsertRowid });
 });
@@ -349,6 +351,7 @@ router.post('/clientes/:id/sesiones', (req, res) => {
       );
     });
   }
+  const { saveToDisk } = require('./database');
   saveToDisk();
   res.json({ ok: true, sesion_id: sesionId });
 });
@@ -401,6 +404,7 @@ router.post('/auth/registro', async (req, res) => {
     const userId = userR.lastInsertRowid;
     dbRun(`INSERT INTO clientes (user_id, objetivo, nivel, peso_actual, altura, edad, sexo, actividad, dieta_tipo, alimentos_no, lesiones, observaciones) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
       [userId, objetivo||'Volumen', nivel||'Intermedio', peso_actual||0, altura||0, edad||0, sexo||'Hombre', actividad||'Moderada', dieta_tipo||'Omnivoro', alimentos_no||'', lesiones||'', observaciones||'']);
+    const { saveToDisk } = require('./database');
     saveToDisk();
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -466,6 +470,7 @@ router.delete('/comidas/:id', coachOnly, (req, res) => {
   try {
     dbRun('DELETE FROM alimentos WHERE comida_id=?', [req.params.id]);
     dbRun('DELETE FROM comidas WHERE id=?', [req.params.id]);
+    const { saveToDisk } = require('./database');
     saveToDisk();
     res.json({ ok: true });
   } catch(e) {
@@ -502,7 +507,7 @@ router.post('/clientes/:id/dieta/publicar', coachOnly, (req, res) => {
       alimentos.forEach((alim, ai) => {
         const nombre = alim.nombre || 'Alimento';
         const cantidad = String(alim.cantidad || alim.gramos || '100');
-        const gramos = parseFloat(cantidad.replace(',', '.')) || Number(alim.gramos) || 100;
+        const gramos = parseInt(cantidad.replace(',', '.')) || Number(alim.gramos) || 100;
         const detalle = alim.detalle ? ` (${alim.detalle})` : '';
 
         dbRun(
@@ -537,6 +542,7 @@ router.post('/clientes/:id/dieta/publicar', coachOnly, (req, res) => {
       ]
     );
 
+    const { saveToDisk } = require('./database');
     saveToDisk();
 
     res.json({ ok: true, comidas: plan.comidas.length });
@@ -552,6 +558,248 @@ router.post('/clientes/:id/plan-meta', coachOnly, (req, res) => {
     [req.params.id, JSON.stringify(alternativas), JSON.stringify(ajustes), frase, kcal, prot, carbs, grasas, JSON.stringify(variaciones), JSON.stringify(suplementacion), JSON.stringify(alimentos_therapeuticos)]
   );
   res.json({ ok: true });
+});
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ═══ SUSCRIPCIONES ═════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+
+// Asegura que existe la tabla (se ejecuta al arrancar)
+// En database.js deberías añadir esto al CREATE TABLE inicial,
+// pero como fallback lo hacemos aquí también:
+try {
+  dbRun(`CREATE TABLE IF NOT EXISTS suscripciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER UNIQUE NOT NULL,
+    estado TEXT DEFAULT 'activa',
+    fecha_inicio TEXT NOT NULL,
+    fecha_fin TEXT NOT NULL,
+    precio REAL DEFAULT 0,
+    notas TEXT DEFAULT '',
+    renovado_at TEXT,
+    FOREIGN KEY(cliente_id) REFERENCES clientes(id)
+  )`);
+  dbRun(`CREATE TABLE IF NOT EXISTS notificaciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    tipo TEXT NOT NULL,
+    mensaje TEXT NOT NULL,
+    leida INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  )`);
+} catch(e) { console.error('Suscripciones table error:', e.message); }
+
+// Helper: calcular días restantes
+function diasRestantes(fecha_fin) {
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  const fin = new Date(fecha_fin);
+  fin.setHours(0,0,0,0);
+  return Math.ceil((fin - hoy) / (1000 * 60 * 60 * 24));
+}
+
+// Helper: crear notificación
+function crearNotificacion(userId, tipo, mensaje) {
+  try {
+    dbRun('INSERT INTO notificaciones (user_id, tipo, mensaje) VALUES (?,?,?)',
+      [userId, tipo, mensaje]);
+  } catch(e) {}
+}
+
+// GET todas las suscripciones (coach)
+router.get('/suscripciones', coachOnly, (req, res) => {
+  const subs = dbAll(`
+    SELECT s.*, c.id as cliente_id, u.nombre, u.email, u.id as user_id
+    FROM suscripciones s
+    JOIN clientes c ON s.cliente_id = c.id
+    JOIN users u ON c.user_id = u.id
+    ORDER BY s.fecha_fin ASC
+  `);
+  const hoy = new Date().toISOString().split('T')[0];
+  const resultado = subs.map(s => ({
+    ...s,
+    dias_restantes: diasRestantes(s.fecha_fin),
+    vencida: s.fecha_fin < hoy,
+    proxima_a_vencer: diasRestantes(s.fecha_fin) <= 5 && diasRestantes(s.fecha_fin) > 0
+  }));
+  res.json(resultado);
+});
+
+// GET suscripción de un cliente específico
+router.get('/clientes/:id/suscripcion', (req, res) => {
+  const id = req.params.id;
+  if(req.user.role === 'cliente') {
+    const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
+    if(!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
+  }
+  const s = dbGet(`
+    SELECT s.* FROM suscripciones s WHERE s.cliente_id=?
+  `, [id]);
+  if(!s) return res.json({ activa: false, dias_restantes: 0 });
+  const dias = diasRestantes(s.fecha_fin);
+  const hoy = new Date().toISOString().split('T')[0];
+  res.json({
+    ...s,
+    dias_restantes: dias,
+    activa: s.estado === 'activa' && s.fecha_fin >= hoy,
+    proxima_a_vencer: dias <= 5 && dias > 0,
+    vencida: s.fecha_fin < hoy
+  });
+});
+
+// POST crear/renovar suscripción (coach)
+router.post('/clientes/:id/suscripcion', coachOnly, (req, res) => {
+  try {
+    const clienteId = req.params.id;
+    const { meses = 1, precio = 0, notas = '' } = req.body;
+
+    const c = dbGet('SELECT c.id, u.id as user_id, u.nombre FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [clienteId]);
+    if(!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+
+    // Calcular fechas
+    const hoy = new Date();
+    const fechaInicio = hoy.toISOString().split('T')[0];
+    const fechaFin = new Date(hoy);
+    fechaFin.setMonth(fechaFin.getMonth() + parseInt(meses));
+    const fechaFinStr = fechaFin.toISOString().split('T')[0];
+
+    // Crear o renovar
+    const existing = dbGet('SELECT id FROM suscripciones WHERE cliente_id=?', [clienteId]);
+    if(existing) {
+      dbRun(`UPDATE suscripciones SET estado='activa', fecha_inicio=?, fecha_fin=?, precio=?, notas=?, renovado_at=CURRENT_TIMESTAMP WHERE cliente_id=?`,
+        [fechaInicio, fechaFinStr, precio, notas, clienteId]);
+    } else {
+      dbRun(`INSERT INTO suscripciones (cliente_id, estado, fecha_inicio, fecha_fin, precio, notas) VALUES (?,?,?,?,?,?)`,
+        [clienteId, 'activa', fechaInicio, fechaFinStr, precio, notas]);
+    }
+
+    // Activar usuario si estaba bloqueado
+    dbRun("UPDATE users SET estado='activo' WHERE id=?", [c.user_id]);
+
+    // Notificar al cliente
+    crearNotificacion(c.user_id, 'suscripcion_renovada',
+      `✅ Tu suscripción ha sido activada hasta el ${fechaFinStr.split('-').reverse().join('/')}. ¡Bienvenido!`);
+
+    saveToDisk();
+    res.json({ ok: true, fecha_fin: fechaFinStr });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT cancelar/suspender suscripción (coach)
+router.put('/clientes/:id/suscripcion/cancelar', coachOnly, (req, res) => {
+  try {
+    const clienteId = req.params.id;
+    const c = dbGet('SELECT c.id, u.id as user_id, u.nombre FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [clienteId]);
+    if(!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+
+    dbRun("UPDATE suscripciones SET estado='cancelada' WHERE cliente_id=?", [clienteId]);
+    dbRun("UPDATE users SET estado='bloqueado' WHERE id=?", [c.user_id]);
+
+    crearNotificacion(c.user_id, 'suscripcion_cancelada',
+      `❌ Tu suscripción ha sido cancelada. Contacta con tu coach para renovarla.`);
+
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST enviar avisos de vencimiento próximo (coach lanza manualmente o cron)
+router.post('/suscripciones/avisar-vencimientos', coachOnly, (req, res) => {
+  try {
+    const subs = dbAll(`
+      SELECT s.*, c.id as cliente_id, u.id as user_id, u.nombre
+      FROM suscripciones s
+      JOIN clientes c ON s.cliente_id = c.id
+      JOIN users u ON c.user_id = u.id
+      WHERE s.estado = 'activa'
+    `);
+
+    let avisados = 0;
+    const hoy = new Date().toISOString().split('T')[0];
+
+    subs.forEach(s => {
+      const dias = diasRestantes(s.fecha_fin);
+
+      // Avisar si quedan 5, 3 o 1 días
+      if([5, 3, 1].includes(dias)) {
+        // Al cliente
+        const yaAviso = dbGet(`SELECT id FROM notificaciones WHERE user_id=? AND tipo='vencimiento_proximo' AND DATE(created_at)=DATE('now')`, [s.user_id]);
+        if(!yaAviso) {
+          crearNotificacion(s.user_id, 'vencimiento_proximo',
+            `⚠️ Tu suscripción vence en ${dias} día${dias>1?'s':''}. Contacta con tu coach para renovar.`);
+          avisados++;
+        }
+      }
+
+      // Bloquear si ya venció
+      if(s.fecha_fin < hoy && s.estado === 'activa') {
+        dbRun("UPDATE suscripciones SET estado='vencida' WHERE cliente_id=?", [s.cliente_id]);
+        dbRun("UPDATE users SET estado='bloqueado' WHERE id=?", [s.user_id]);
+        crearNotificacion(s.user_id, 'suscripcion_vencida',
+          `🔴 Tu suscripción ha vencido. Contacta con tu coach para renovarla y recuperar el acceso.`);
+      }
+    });
+
+    saveToDisk();
+    res.json({ ok: true, avisados });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET notificaciones del usuario logueado
+router.get('/notificaciones', (req, res) => {
+  const notifs = dbAll(`SELECT * FROM notificaciones WHERE user_id=? ORDER BY created_at DESC LIMIT 20`, [req.user.id]);
+  res.json(notifs);
+});
+
+// PUT marcar notificación como leída
+router.put('/notificaciones/:id/leer', (req, res) => {
+  dbRun('UPDATE notificaciones SET leida=1 WHERE id=? AND user_id=?', [req.params.id, req.user.id]);
+  res.json({ ok: true });
+});
+
+// PUT marcar todas como leídas
+router.put('/notificaciones/leer-todas', (req, res) => {
+  dbRun('UPDATE notificaciones SET leida=1 WHERE user_id=?', [req.user.id]);
+  res.json({ ok: true });
+});
+
+// GET resumen para el coach — quién vence pronto o ya venció
+router.get('/suscripciones/alertas', coachOnly, (req, res) => {
+  const hoy = new Date().toISOString().split('T')[0];
+  const en5dias = new Date();
+  en5dias.setDate(en5dias.getDate() + 5);
+  const en5diasStr = en5dias.toISOString().split('T')[0];
+
+  const proximas = dbAll(`
+    SELECT s.*, u.nombre, u.email, c.id as cliente_id
+    FROM suscripciones s
+    JOIN clientes c ON s.cliente_id=c.id
+    JOIN users u ON c.user_id=u.id
+    WHERE s.estado='activa' AND s.fecha_fin <= ? AND s.fecha_fin >= ?
+    ORDER BY s.fecha_fin ASC
+  `, [en5diasStr, hoy]);
+
+  const vencidas = dbAll(`
+    SELECT s.*, u.nombre, u.email, c.id as cliente_id
+    FROM suscripciones s
+    JOIN clientes c ON s.cliente_id=c.id
+    JOIN users u ON c.user_id=u.id
+    WHERE s.fecha_fin < ? OR s.estado IN ('vencida','cancelada')
+    ORDER BY s.fecha_fin DESC
+  `, [hoy]);
+
+  res.json({
+    proximas_a_vencer: proximas.map(s => ({...s, dias_restantes: diasRestantes(s.fecha_fin)})),
+    vencidas
+  });
 });
 
 module.exports = router;
