@@ -30,7 +30,7 @@ router.get('/clientes/:id', (req, res) => {
   comidas.forEach(m => { m.items = dbAll('SELECT * FROM alimentos WHERE comida_id=? ORDER BY orden', [m.id]); });
   const recetas = dbAll('SELECT * FROM recetas WHERE cliente_id=? ORDER BY orden', [id]);
   recetas.forEach(r => { r.ingredientes = dbAll('SELECT * FROM receta_ingredientes WHERE receta_id=?', [r.id]); });
-  const fotos = dbAll('SELECT id, analysis, fecha FROM fotos WHERE cliente_id=? ORDER BY rowid DESC LIMIT 6', [id]);
+  const fotos = dbAll('SELECT id, url, analysis, fecha, tipo FROM fotos WHERE cliente_id=? ORDER BY fecha ASC', [id]);
   res.json({
     ...c,
     pesos, dias, comidas, recetas, fotos,
@@ -183,9 +183,23 @@ router.post('/clientes/:id/recetas', coachOnly, (req, res) => {
 });
 
 router.post('/clientes/:id/fotos', (req, res) => {
-  const { url, analysis } = req.body;
-  const r = dbRun('INSERT INTO fotos (cliente_id, url, analysis) VALUES (?, ?, ?)', [req.params.id, url, analysis||'']);
+  const { url, analysis, tipo } = req.body;
+  // url is full base64 image — store completely
+  const r = dbRun('INSERT INTO fotos (cliente_id, url, analysis, tipo) VALUES (?, ?, ?, ?)',
+    [req.params.id, url||'', analysis||'', tipo||'frente']);
   res.json({ id: r.lastInsertRowid });
+});
+
+// DELETE foto
+router.delete('/fotos/:id', (req, res) => {
+  dbRun('DELETE FROM fotos WHERE id=?', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// Update foto analysis
+router.put('/fotos/:id/analysis', (req, res) => {
+  dbRun('UPDATE fotos SET analysis=? WHERE id=?', [req.body.analysis, req.params.id]);
+  res.json({ ok: true });
 });
 
 router.post('/ia/chat', async (req, res) => {
