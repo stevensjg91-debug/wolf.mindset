@@ -1328,28 +1328,40 @@ function hDietaBuilder(){return`
 
       <div class="form-lbl" style="display:flex;align-items:center;justify-content:space-between">
         Alimentos disponibles
-        <button onclick="dbLimpiarAlimentos()" style="font-size:10px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:0">✕ Limpiar</button>
+        <button onclick="dbLimpiarAlimentos()" style="font-size:11px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation">✕ Limpiar todo</button>
       </div>
 
-      <!-- Categorías de alimentos -->
-      <div style="margin-bottom:8px">
-        <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
-          ${['🥩 Proteínas','🌾 Carbos','🥑 Grasas','🥦 Verduras','🍎 Frutas'].map((cat,i)=>`
-          <button onclick="dbToggleCat(${i},this)" style="padding:4px 10px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--tx3);font-size:11px;font-weight:600;cursor:pointer;touch-action:manipulation" data-cat="${i}">${cat}</button>`).join('')}
+      <!-- Chips seleccionados visibles -->
+      <div id="db_selected_chips" style="display:flex;flex-wrap:wrap;gap:5px;min-height:32px;padding:6px;background:var(--s2);border:0.5px solid var(--br);border-radius:10px;margin-bottom:8px">
+        <span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">Toca una categoría para añadir alimentos →</span>
+      </div>
+
+      <!-- Categorías -->
+      <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
+        <button onclick="dbToggleCat(0,this)" data-cat="0" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥩 Proteínas</button>
+        <button onclick="dbToggleCat(1,this)" data-cat="1" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🌾 Carbos</button>
+        <button onclick="dbToggleCat(2,this)" data-cat="2" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥑 Grasas</button>
+        <button onclick="dbToggleCat(3,this)" data-cat="3" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥦 Verduras</button>
+        <button onclick="dbToggleCat(4,this)" data-cat="4" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🍎 Frutas</button>
+      </div>
+
+      <!-- Lista de alimentos de la categoría activa -->
+      <div id="db_alim_chips" style="display:none;flex-wrap:wrap;gap:5px;padding:8px;background:var(--s2);border:0.5px solid var(--br);border-radius:10px;margin-bottom:8px;max-height:140px;overflow-y:auto"></div>
+
+      <!-- Favoritos guardados -->
+      <div id="db_favoritos_wrap" style="display:none;margin-bottom:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+          <div style="font-size:10px;color:var(--amb);font-weight:700;text-transform:uppercase;letter-spacing:.08em">⭐ Mis favoritos</div>
         </div>
-        <!-- Chips por categoría -->
-        <div id="db_alim_chips" style="display:flex;flex-wrap:wrap;gap:5px;min-height:0;margin-bottom:6px"></div>
-      </div>
-
-      <!-- Favoritos -->
-      <div id="db_favoritos_wrap" style="margin-bottom:6px;display:none">
-        <div style="font-size:10px;color:var(--amb);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">⭐ Favoritos</div>
         <div id="db_favoritos_chips" style="display:flex;flex-wrap:wrap;gap:5px"></div>
       </div>
 
-      <!-- Campo manual -->
-      <textarea class="ta" id="db_alimentos_input" placeholder="Los seleccionados aparecen aquí. También puedes escribir manualmente..." style="min-height:60px"></textarea>
-      <button onclick="dbGuardarFavoritos()" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:2px 0;text-align:left">+ Guardar selección como favorito</button>
+      <!-- Campo manual oculto - sync automático -->
+      <input type="hidden" id="db_alimentos_input"/>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <button onclick="dbGuardarFavoritos()" id="btn_guardar_fav" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;display:none">⭐ Guardar como favorito</button>
+        <div style="font-size:11px;color:var(--tx3)" id="db_count_lbl"></div>
+      </div>
 
       <div class="g2" style="gap:8px;margin-bottom:10px">
         <div>
@@ -4177,7 +4189,7 @@ function editarImagenEjercicio(nombre, urlActual){
 async function dbGenerarIANuevo(){
   const res = document.getElementById('db_ia_result');
   if(!dbState.clienteId){ res.innerHTML='<div style="color:#f87171;font-size:13px">Selecciona un cliente primero</div>'; return; }
-  const alimentos = document.getElementById('db_alimentos_input').value.trim();
+  const alimentos = [..._dbSeleccionados].join(', ') || document.getElementById('db_alimentos_input')?.value?.trim() || '';
   if(!alimentos){ res.innerHTML='<div style="color:#f87171;font-size:13px">Escribe los alimentos disponibles</div>'; return; }
   const numComidas = document.getElementById('db_num_comidas').value;
   const objCalSel = document.getElementById('db_objetivo_cal').value;
@@ -4905,26 +4917,11 @@ function isLegDay(grupo){
 
 // ═══ ALIMENTOS CHIPS ═══════════════════════════════
 const DB_ALIMENTOS = {
-  0: [ // Proteínas
-    'Pollo (pechuga)','Muslo de pollo','Pavo','Salmón','Atún','Merluza','Gambas',
-    'Huevos enteros','Claras de huevo','Ternera (magra)','Cerdo (aguja)',
-    'Whey protein','Caseína','Requesón','Yogur proteico','Jamón cocido 95%'
-  ],
-  1: [ // Carbohidratos
-    'Arroz blanco','Arroz integral','Avena','Patata','Boniato','Pan integral',
-    'Pasta integral','Quinoa','Lentejas','Garbanzos','Maíz'
-  ],
-  2: [ // Grasas
-    'Aceite de oliva','Aguacate','Nueces','Almendras','Anacardos',
-    'Cacahuetes','Mantequilla de cacahuete','Queso gouda','Huevo entero'
-  ],
-  3: [ // Verduras
-    'Brócoli','Espinacas','Lechuga','Tomate','Pepino','Cebolla','Ajo',
-    'Pimiento','Champiñones','Zanahoria','Calabacín','Judías verdes'
-  ],
-  4: [ // Frutas
-    'Plátano','Manzana','Naranja','Fresas','Arándanos','Mango','Piña','Uvas'
-  ]
+  0: ['Pollo (pechuga)','Muslo de pollo','Pavo','Salmón','Atún','Merluza','Gambas','Huevos enteros','Claras de huevo','Ternera magra','Cerdo (aguja)','Whey protein','Caseína','Requesón','Yogur proteico','Jamón cocido 95%','Fiambre pavo 95%','Queso fresco 0%'],
+  1: ['Arroz blanco','Arroz integral','Avena','Patata','Boniato','Pan integral','Pasta integral','Quinoa','Lentejas','Garbanzos','Maíz','Pan de molde integral'],
+  2: ['Aceite de oliva','Aguacate','Guacamole','Nueces','Almendras','Anacardos','Cacahuetes','Crema de cacahuete','Queso gouda','Leche entera'],
+  3: ['Brócoli','Espinacas','Lechuga','Tomate','Pepino','Cebolla','Ajo','Pimiento','Champiñones','Zanahoria','Calabacín','Judías verdes','Ensalada mixta'],
+  4: ['Plátano','Manzana','Naranja','Fresas','Arándanos','Mango','Piña','Piña en lata','Uvas','Melocotón']
 };
 
 let _dbCatActiva = null;
@@ -4933,71 +4930,90 @@ let _dbSeleccionados = new Set();
 function dbToggleCat(catIdx, btn){
   const chips = document.getElementById('db_alim_chips');
   if(!chips) return;
-  // Toggle category
+  // Close if same cat
   if(_dbCatActiva === catIdx){
     _dbCatActiva = null;
-    chips.innerHTML = '';
     chips.style.display = 'none';
-    document.querySelectorAll('[data-cat]').forEach(b=>{ b.style.background='var(--s2)'; b.style.color='var(--tx3)'; b.style.border='0.5px solid var(--br)'; });
+    document.querySelectorAll('[data-cat]').forEach(b=>{ b.style.background='var(--s2)'; b.style.color='var(--sv2)'; b.style.border='0.5px solid var(--br)'; });
     return;
   }
   _dbCatActiva = catIdx;
-  // Style active cat button
-  document.querySelectorAll('[data-cat]').forEach(b=>{ b.style.background='var(--s2)'; b.style.color='var(--tx3)'; b.style.border='0.5px solid var(--br)'; });
-  btn.style.background='var(--bl2)'; btn.style.color='#fff'; btn.style.border='0.5px solid var(--bl2)';
-  // Show chips
+  document.querySelectorAll('[data-cat]').forEach(b=>{ b.style.background='var(--s2)'; b.style.color='var(--sv2)'; b.style.border='0.5px solid var(--br)'; });
+  btn.style.background='var(--bl2)'; btn.style.color='#fff'; btn.style.border='none';
+  // Render chips
   const alims = DB_ALIMENTOS[catIdx]||[];
   chips.style.display = 'flex';
   chips.innerHTML = alims.map(a=>{
     const sel = _dbSeleccionados.has(a);
     return `<button onclick="dbToggleAlim('${a.replace(/'/g,"\'")}',this)"
-      style="padding:4px 10px;border-radius:20px;border:0.5px solid ${sel?'var(--bl2)':'var(--br)'};background:${sel?'rgba(37,99,235,.2)':'var(--s2)'};color:${sel?'var(--blg)':'var(--sv2)'};font-size:11px;cursor:pointer;touch-action:manipulation;white-space:nowrap">${a}</button>`;
+      style="padding:5px 12px;border-radius:20px;border:0.5px solid ${sel?'var(--bl2)':'rgba(255,255,255,.15)'};background:${sel?'rgba(37,99,235,.25)':'rgba(255,255,255,.05)'};color:${sel?'#93c5fd':'var(--sv3)'};font-size:12px;cursor:pointer;touch-action:manipulation;white-space:nowrap;${sel?'font-weight:700':''}">${sel?'✓ ':''} ${a}</button>`;
   }).join('');
 }
 
 function dbToggleAlim(nombre, btn){
   if(_dbSeleccionados.has(nombre)){
     _dbSeleccionados.delete(nombre);
-    btn.style.background='var(--s2)'; btn.style.color='var(--sv2)'; btn.style.border='0.5px solid var(--br)';
   } else {
     _dbSeleccionados.add(nombre);
-    btn.style.background='rgba(37,99,235,.2)'; btn.style.color='var(--blg)'; btn.style.border='0.5px solid var(--bl2)';
   }
-  dbActualizarTextarea();
+  // Re-render category to update button states
+  const activeCatBtn = document.querySelector(`[data-cat="${_dbCatActiva}"]`);
+  if(activeCatBtn) dbToggleCat(_dbCatActiva, activeCatBtn); // close
+  if(activeCatBtn) dbToggleCat(_dbCatActiva, activeCatBtn); // reopen
+  dbActualizarSelected();
 }
 
-function dbActualizarTextarea(){
-  const ta = document.getElementById('db_alimentos_input');
-  if(!ta) return;
-  // Get manual additions (anything not from chips)
-  const chipsArr = [..._dbSeleccionados];
-  // Merge with manual text preserving extra manual entries
-  const manual = ta.value.split(',').map(s=>s.trim()).filter(s=>s && !Object.values(DB_ALIMENTOS).flat().includes(s));
-  const all = [...chipsArr, ...manual];
-  ta.value = all.join(', ');
+function dbActualizarSelected(){
+  const wrap = document.getElementById('db_selected_chips');
+  const hint = document.getElementById('db_empty_hint');
+  const countLbl = document.getElementById('db_count_lbl');
+  const favBtn = document.getElementById('btn_guardar_fav');
+  const inp = document.getElementById('db_alimentos_input');
+  if(!wrap) return;
+  const arr = [..._dbSeleccionados];
+  if(!arr.length){
+    wrap.innerHTML = '<span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">Toca una categoría para añadir alimentos →</span>';
+    if(countLbl) countLbl.textContent = '';
+    if(favBtn) favBtn.style.display = 'none';
+    if(inp) inp.value = '';
+    return;
+  }
+  wrap.innerHTML = arr.map(a=>`
+    <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:rgba(37,99,235,.2);border:0.5px solid var(--bl2);color:#93c5fd;font-size:12px;font-weight:600">
+      ${a}
+      <button onclick="dbQuitarAlim('${a.replace(/'/g,"\'")}',this)" style="background:none;border:none;color:#93c5fd;cursor:pointer;font-size:12px;padding:0;line-height:1;touch-action:manipulation">×</button>
+    </span>`).join('');
+  if(countLbl) countLbl.textContent = arr.length+' alimentos';
+  if(favBtn) favBtn.style.display = 'block';
+  if(inp) inp.value = arr.join(', ');
+}
+
+function dbQuitarAlim(nombre){
+  _dbSeleccionados.delete(nombre);
+  // Update chip in category list if open
+  const activeCatBtn = document.querySelector(`[data-cat="${_dbCatActiva}"]`);
+  if(activeCatBtn && _dbCatActiva!==null){ dbToggleCat(_dbCatActiva,activeCatBtn); dbToggleCat(_dbCatActiva,activeCatBtn); }
+  dbActualizarSelected();
 }
 
 function dbLimpiarAlimentos(){
   _dbSeleccionados.clear();
-  const ta = document.getElementById('db_alimentos_input');
-  if(ta) ta.value = '';
-  const chips = document.getElementById('db_alim_chips');
-  if(chips) chips.innerHTML = '';
-  document.querySelectorAll('[data-cat]').forEach(b=>{ b.style.background='var(--s2)'; b.style.color='var(--tx3)'; b.style.border='0.5px solid var(--br)'; });
   _dbCatActiva = null;
+  document.querySelectorAll('[data-cat]').forEach(b=>{ b.style.background='var(--s2)'; b.style.color='var(--sv2)'; b.style.border='0.5px solid var(--br)'; });
+  const chips = document.getElementById('db_alim_chips');
+  if(chips){ chips.style.display='none'; chips.innerHTML=''; }
+  dbActualizarSelected();
 }
 
 function dbGuardarFavoritos(){
   if(!_dbSeleccionados.size) return;
   const favs = JSON.parse(localStorage.getItem('wm_alim_favs')||'[]');
   const nuevos = [..._dbSeleccionados].filter(a=>!favs.includes(a));
-  if(!nuevos.length){ alert('Todos ya están en favoritos'); return; }
-  const updated = [...favs, ...nuevos];
+  const updated = [...new Set([...favs,..._dbSeleccionados])];
   localStorage.setItem('wm_alim_favs', JSON.stringify(updated));
   dbCargarFavoritos();
-  const btn = event.target;
-  btn.textContent = '✓ Guardado';
-  setTimeout(()=>btn.textContent='+ Guardar selección como favorito', 2000);
+  const btn = document.getElementById('btn_guardar_fav');
+  if(btn){ btn.textContent='✓ Guardado como favorito'; setTimeout(()=>btn.textContent='⭐ Guardar como favorito',2000); }
 }
 
 function dbCargarFavoritos(){
@@ -5007,45 +5023,29 @@ function dbCargarFavoritos(){
   if(!wrap||!chips) return;
   if(!favs.length){ wrap.style.display='none'; return; }
   wrap.style.display = 'block';
-  chips.innerHTML = favs.map(a=>`
-    <button onclick="dbToggleAlimFav('${a.replace(/'/g,"\'")}',this)"
-      style="padding:4px 10px;border-radius:20px;border:0.5px solid rgba(245,158,11,.3);background:rgba(245,158,11,.08);color:var(--amb);font-size:11px;cursor:pointer;touch-action:manipulation;white-space:nowrap">${a}
-      <span onclick="event.stopPropagation();dbEliminarFav('${a.replace(/'/g,"\'")}',this.closest('button'))" style="margin-left:4px;opacity:.5;font-size:10px">✕</span>
-    </button>`).join('');
+  chips.innerHTML = favs.map(a=>{
+    const sel = _dbSeleccionados.has(a);
+    return `<button onclick="dbToggleFav('${a.replace(/'/g,"\'")}',this)"
+      style="padding:4px 10px;border-radius:20px;border:0.5px solid ${sel?'var(--bl2)':'rgba(245,158,11,.3)'};background:${sel?'rgba(37,99,235,.2)':'rgba(245,158,11,.06)'};color:${sel?'#93c5fd':'var(--amb)'};font-size:11px;cursor:pointer;touch-action:manipulation;white-space:nowrap">
+      ${sel?'✓ ':''} ${a}
+      <span onclick="event.stopPropagation();dbEliminarFav('${a.replace(/'/g,"\'")}',this.closest('button'))" style="margin-left:3px;opacity:.5;font-size:10px">✕</span>
+    </button>`;
+  }).join('');
 }
 
-function dbToggleAlimFav(nombre, btn){
-  dbToggleAlim(nombre, btn); // reuse same toggle
-  // Restore fav styling if deselected
-  if(!_dbSeleccionados.has(nombre)){
-    btn.style.background='rgba(245,158,11,.08)'; btn.style.color='var(--amb)'; btn.style.border='0.5px solid rgba(245,158,11,.3)';
-  } else {
-    btn.style.background='rgba(37,99,235,.2)'; btn.style.color='var(--blg)'; btn.style.border='0.5px solid var(--bl2)';
-  }
+function dbToggleFav(nombre, btn){
+  if(_dbSeleccionados.has(nombre)) _dbSeleccionados.delete(nombre);
+  else _dbSeleccionados.add(nombre);
+  dbCargarFavoritos();
+  dbActualizarSelected();
 }
 
 function dbEliminarFav(nombre, btn){
   const favs = JSON.parse(localStorage.getItem('wm_alim_favs')||'[]');
   localStorage.setItem('wm_alim_favs', JSON.stringify(favs.filter(f=>f!==nombre)));
   btn.remove();
-  const chips = document.getElementById('db_favoritos_chips');
-  if(chips && !chips.children.length) document.getElementById('db_favoritos_wrap').style.display='none';
-}
-
-
-async function publicarValoracion(){
-  const texto = document.getElementById('coach_val_draft')?.value?.trim();
-  if(!texto) return;
-  const btn = event.target;
-  btn.textContent = '⏳...'; btn.disabled = true;
-  try{
-    for(const id of (window._lastFotoIds||[])){
-      await api('/fotos/'+id+'/publicar',{method:'POST',body:JSON.stringify({texto})});
-    }
-    await loadCD(CD.id);
-    renderFotosProgreso();
-    document.getElementById('fAn').innerHTML = '<div style="font-size:13px;color:var(--gnb);padding:8px 14px;text-align:center">✓ Valoración publicada — el cliente ya puede verla</div>';
-  }catch(e){ btn.textContent='Error'; btn.disabled=false; }
+  if(!document.getElementById('db_favoritos_chips')?.children.length)
+    document.getElementById('db_favoritos_wrap').style.display='none';
 }
 
 </script>
