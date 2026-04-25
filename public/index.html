@@ -427,7 +427,21 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
           <img class="topbar-logo" src="/logo.png" alt="W" onerror="this.style.display='none'"/>
           <div class="topbar-title" id="cTitle">Clientes</div>
         </div>
-        <div class="topbar-right" id="cRight">WolfMindset · Coach</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="position:relative;cursor:pointer" onclick="toggleNotifCoach()" id="notif_bell_wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tx3)" stroke-width="1.8" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span id="notif_badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;line-height:1">0</span>
+          </div>
+          <div class="topbar-right" id="cRight">WolfMindset · Coach</div>
+        </div>
+      </div>
+      <!-- PANEL NOTIFICACIONES COACH -->
+      <div id="notif_panel_coach" style="display:none;position:absolute;top:48px;right:12px;width:320px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.4);max-height:420px;overflow-y:auto">
+        <div style="padding:12px 14px;border-bottom:0.5px solid var(--br);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;font-weight:700;color:var(--sv)">Notificaciones</span>
+          <button onclick="marcarTodasLeidasCoach()" style="background:none;border:none;color:var(--blg);font-size:11px;cursor:pointer;font-family:'Inter',sans-serif">Marcar todas leídas</button>
+        </div>
+        <div id="notif_list_coach"><div style="padding:16px;font-size:13px;color:var(--tx3);text-align:center">Cargando...</div></div>
       </div>
       <div class="scroll" id="cContent" style="padding:16px"></div>
     </div>
@@ -646,9 +660,14 @@ async function doLogin(){
     if(USER.role==='coach'){
       show('sCoach');renderCoach('clientes');
       if(isMobile())document.getElementById('coachMobileNav').style.display='flex';
+      cargarNotificacionesCoach();
+      // Auto-verificar vencimientos al entrar
+      api('/suscripciones/avisar-vencimientos', {method:'POST'}).catch(()=>{});
     } else {
       show('sCliente');
       await loadCD(data.user.clienteId);
+      // Verificar suscripción antes de mostrar la app
+      await verificarSuscripcionCliente(data.user.clienteId);
       klNav('entreno',document.getElementById('bni0'));
     setTimeout(checkRecordatorios,2000);
     // Pedir permiso de notificaciones
@@ -663,6 +682,72 @@ async function doLogin(){
   }catch(e){err.textContent=e.error||'Error al conectar';err.style.display='block';}
 }
 async function loadCD(id){CD=await api('/clientes/'+id);}
+async function verificarSuscripcionCliente(clienteId) {
+  try {
+    const s = await api('/clientes/'+clienteId+'/suscripcion');
+    if(!s || !s.fecha_fin) return; // Sin suscripción configurada, dejar pasar
+
+    if(s.vencida || s.estado === 'cancelada') {
+      // Bloquear acceso — mostrar pantalla de suscripción vencida
+      const appEl = document.getElementById('sCliente');
+      if(appEl) appEl.innerHTML = `
+        <div style="min-height:100vh;background:var(--b);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;text-align:center">
+          <div style="font-size:56px;margin-bottom:20px">🔒</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--sv);letter-spacing:.08em;margin-bottom:8px">Acceso Suspendido</div>
+          <div style="font-size:14px;color:var(--tx3);max-width:280px;line-height:1.6;margin-bottom:24px">
+            Tu suscripción ${s.estado==='cancelada'?'ha sido cancelada':'venció el '+s.fecha_fin.split('-').reverse().join('/')}.<br>Contacta con tu coach para renovarla.
+          </div>
+          <div style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:16px 20px;margin-bottom:20px;width:100%;max-width:300px">
+            <div style="font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Tu coach</div>
+            <div style="font-size:15px;font-weight:700;color:var(--sv)">WolfMindset</div>
+            <div style="font-size:13px;color:var(--blg);margin-top:4px">@wolfmindset</div>
+          </div>
+          <button onclick="doLogout()" style="background:none;border:0.5px solid var(--br);color:var(--tx3);padding:10px 20px;border-radius:10px;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif">Cerrar sesión</button>
+        </div>`;
+      return;
+    }
+
+    // Aviso si está próxima a vencer (≤5 días)
+    if(s.proxima_a_vencer) {
+      mostrarBannerSub(`⚠️ Tu suscripción vence en ${s.dias_restantes} día${s.dias_restantes>1?'s':''}. Contacta con tu coach para renovarla.`, 'warning');
+    }
+
+    // Cargar notificaciones del cliente
+    cargarNotificacionesCliente();
+
+  } catch(e) {
+    console.error('Error verificando suscripción:', e);
+    // Si falla la verificación, dejar entrar (no bloquear por error de red)
+  }
+}
+
+function mostrarBannerSub(mensaje, tipo) {
+  const banner = document.createElement('div');
+  banner.id = 'sub_banner_cliente';
+  const bg = tipo==='warning' ? 'rgba(245,158,11,.12)' : 'rgba(239,68,68,.12)';
+  const border = tipo==='warning' ? 'rgba(245,158,11,.4)' : 'rgba(239,68,68,.4)';
+  const color = tipo==='warning' ? 'var(--amb)' : '#fca5a5';
+  banner.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:999;background:${bg};border-bottom:0.5px solid ${border};padding:10px 16px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(8px)`;
+  banner.innerHTML = `<span style="font-size:12px;font-weight:600;color:${color}">${mensaje}</span>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:${color};cursor:pointer;font-size:16px;padding:0 0 0 10px">×</button>`;
+  document.body.prepend(banner);
+}
+
+async function cargarNotificacionesCliente() {
+  try {
+    const notifs = await api('/notificaciones');
+    const noLeidas = notifs.filter(n=>!n.leida);
+    // Mostrar la notificación más reciente no leída como banner
+    if(noLeidas.length > 0) {
+      const ultima = noLeidas[0];
+      if(ultima.tipo !== 'vencimiento_proximo') { // el vencimiento ya se muestra aparte
+        // Marcarla como leída automáticamente después de mostrarla
+        setTimeout(()=>api('/notificaciones/'+ultima.id+'/leer',{method:'PUT'}).catch(()=>{}), 5000);
+      }
+    }
+  } catch(e) {}
+}
+
 function doLogout(){TOKEN=null;USER=null;CD=null;localStorage.removeItem('wm_token');localStorage.removeItem('wm_user');show('sLogin');}
 
 // PRE-FILL SAVED CREDENTIALS
@@ -703,7 +788,7 @@ async function renderCoach(s){
   else if(s==='nuevo'){el.innerHTML=hNuevo();}
   else if(s==='rutinas'){el.innerHTML=hRutinas();await initRutinas();}
   else if(s==='dieta-builder'){el.innerHTML=hDietaBuilder();await initDietaBuilder();}
-  else if(s==='progreso'){const cl=await api('/clientes');el.innerHTML=hProgreso(cl);}
+  else if(s==='progreso'){const cl=await api('/clientes');el.innerHTML=hProgreso(cl);cargarProgresoSubs();}
   else if(s==='pendientes'){const p=await api('/clientes-pendientes');el.innerHTML=hPendientes(p);}
   else if(s==='ia'){
   el.innerHTML=hIACoach();
@@ -782,6 +867,33 @@ async function verCliente(id){
     <div class="sec-hdr">Entreno asignado <button class="sec-act" onclick="cNav('rutinas',document.querySelector('#sCoach .sni:nth-child(2)'))">Editar en Rutinas</button></div>
     ${c.dias.length?c.dias.map(d=>`<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:7px"><div style="font-size:13px;font-weight:700;color:var(--sv)">${d.nombre} — ${d.grupo}</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">${d.ejercicios.length} ejercicios</div></div>`).join(''):'<div style="font-size:13px;color:var(--tx3)">Sin días. Ve a Crear rutina.</div>'}
   </div>
+  <div class="sec" style="margin-bottom:12px" id="coach_sub_sec">
+    <div class="sec-hdr">💳 Suscripción <span id="coach_sub_badge"></span></div>
+    <div id="coach_sub_info"><div style="font-size:13px;color:var(--tx3)">Cargando...</div></div>
+    <div id="coach_sub_form" style="display:none;margin-top:12px;padding-top:12px;border-top:0.5px solid var(--br)">
+      <div class="g2" style="gap:8px;margin-bottom:8px">
+        <div>
+          <div class="form-lbl">Duración</div>
+          <select id="sub_meses" class="inp" style="margin-bottom:0">
+            <option value="1">1 mes</option>
+            <option value="2">2 meses</option>
+            <option value="3">3 meses</option>
+            <option value="6">6 meses</option>
+            <option value="12">12 meses</option>
+          </select>
+        </div>
+        <div>
+          <div class="form-lbl">Precio (€)</div>
+          <input type="number" id="sub_precio" class="inp" placeholder="Ej: 80" style="margin-bottom:0"/>
+        </div>
+      </div>
+      <textarea id="sub_notas" class="ta" placeholder="Notas internas (opcional)" style="min-height:50px;margin-bottom:8px"></textarea>
+      <div style="display:flex;gap:8px">
+        <button class="btn" style="flex:1;padding:10px;background:var(--gn)" onclick="renovarSuscripcion(${c.id})">✓ Activar / Renovar</button>
+        <button class="btn" style="padding:10px;background:rgba(239,68,68,.15);color:#fca5a5;border:0.5px solid rgba(239,68,68,.3)" onclick="cancelarSuscripcion(${c.id})">Cancelar</button>
+      </div>
+    </div>
+  </div>
   <div class="sec" style="margin-bottom:12px;border-color:rgba(59,130,246,.2)">
     <div class="sec-hdr">🥗 Dieta asignada
       <div style="display:flex;gap:6px">
@@ -827,6 +939,8 @@ async function verCliente(id){
   cargarRevisionSemanal(id, c);
   // Render coach fotos
   renderCoachFotos(c.fotos);
+  // Cargar suscripción
+  cargarSuscripcionCliente(id);
 
   // Cargar historial
   api('/clientes/'+id+'/sesiones').then(sesiones=>{
@@ -1932,11 +2046,235 @@ async function dbGenerarIA(){
 }
 
 // ═══ PROGRESO COACH ═══════════════════════════════════
-function hProgreso(cl){return`<div class="sec"><div class="sec-hdr">Progreso de clientes</div>
-  <table style="width:100%;border-collapse:collapse">
-    <tr>${['Cliente','Peso','% Grasa','Semana','Fotos'].map(h=>`<th style="text-align:left;padding:5px 8px;font-size:10px;font-weight:700;color:var(--tx3);border-bottom:0.5px solid var(--br);text-transform:uppercase;letter-spacing:.07em">${h}</th>`).join('')}</tr>
-    ${cl.map((c,i)=>{const a=ac(i);return`<tr><td style="padding:9px 8px"><div class="fl"><div class="av" style="width:26px;height:26px;font-size:10px;background:${a.bg};color:${a.tx};border-color:${a.br};margin-right:7px">${ini(c.nombre)}</div>${c.nombre}</div></td><td style="padding:9px 8px;font-weight:700">${c.peso_actual||'—'}</td><td style="padding:9px 8px">${c.grasa_actual?c.grasa_actual+'%':'—'}</td><td style="padding:9px 8px"><span class="badge b-bl">${c.semanas}</span></td><td style="padding:9px 8px"><span class="badge b-am">${c.fotos_count||0}</span></td></tr>`;}).join('')}
-  </table></div>`;}
+function hProgreso(cl){
+  return `
+  <div id="sub_alertas_wrap"></div>
+  <div class="sec">
+    <div class="sec-hdr">Progreso de clientes
+      <button class="btn btn-sm" onclick="enviarAvisosVencimiento()" style="font-size:11px">🔔 Enviar avisos</button>
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      <tr>${['Cliente','Peso','% Grasa','Semana','Fotos','Suscripción'].map(h=>`<th style="text-align:left;padding:5px 8px;font-size:10px;font-weight:700;color:var(--tx3);border-bottom:0.5px solid var(--br);text-transform:uppercase;letter-spacing:.07em">${h}</th>`).join('')}</tr>
+      ${cl.map((c,i)=>{const a=ac(i);return`<tr onclick="verCliente(${c.id})" style="cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.02)'" onmouseout="this.style.background='none'">
+        <td style="padding:9px 8px"><div class="fl"><div class="av" style="width:26px;height:26px;font-size:10px;background:${a.bg};color:${a.tx};border-color:${a.br};margin-right:7px">${ini(c.nombre)}</div>${c.nombre}</div></td>
+        <td style="padding:9px 8px;font-weight:700">${c.peso_actual||'—'}</td>
+        <td style="padding:9px 8px">${c.grasa_actual?c.grasa_actual+'%':'—'}</td>
+        <td style="padding:9px 8px"><span class="badge b-bl">${c.semanas}</span></td>
+        <td style="padding:9px 8px"><span class="badge b-am">${c.fotos_count||0}</span></td>
+        <td style="padding:9px 8px"><span id="sub_estado_${c.id}" class="badge b-sv">...</span></td>
+      </tr>`;}).join('')}
+    </table>
+  </div>`;
+}
+
+async function cargarProgresoSubs() {
+  try {
+    const alertas = await api('/suscripciones/alertas');
+    const wrap = document.getElementById('sub_alertas_wrap');
+
+    let html = '';
+
+    if(alertas.proximas_a_vencer?.length) {
+      html += `<div class="sec" style="margin-bottom:12px;border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.04)">
+        <div class="sec-hdr" style="color:var(--amb)">⚠️ Próximas a vencer (${alertas.proximas_a_vencer.length})</div>
+        ${alertas.proximas_a_vencer.map(s=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--br)">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--sv)">${s.nombre}</div>
+              <div style="font-size:11px;color:var(--tx3)">Vence: ${s.fecha_fin.split('-').reverse().join('/')}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="badge b-am">${s.dias_restantes}d</span>
+              <button class="btn btn-sm" onclick="verCliente(${s.cliente_id})" style="font-size:11px">Ver cliente</button>
+            </div>
+          </div>`).join('')}
+      </div>`;
+    }
+
+    if(alertas.vencidas?.length) {
+      html += `<div class="sec" style="margin-bottom:12px;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.04)">
+        <div class="sec-hdr" style="color:#fca5a5">🔴 Vencidas / Canceladas (${alertas.vencidas.length})</div>
+        ${alertas.vencidas.map(s=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--br)">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--sv)">${s.nombre}</div>
+              <div style="font-size:11px;color:#fca5a5">Venció: ${s.fecha_fin.split('-').reverse().join('/')}</div>
+            </div>
+            <button class="btn btn-sm" onclick="verCliente(${s.cliente_id})" style="font-size:11px">Renovar</button>
+          </div>`).join('')}
+      </div>`;
+    }
+
+    if(wrap) wrap.innerHTML = html || '';
+
+    // Cargar estado de suscripción por cliente en la tabla
+    const subs = await api('/suscripciones');
+    subs.forEach(s => {
+      const el = document.getElementById('sub_estado_'+s.cliente_id);
+      if(!el) return;
+      if(s.vencida || s.estado==='cancelada') {
+        el.className='badge'; el.style.background='rgba(239,68,68,.15)'; el.style.color='#fca5a5'; el.style.border='0.5px solid rgba(239,68,68,.3)';
+        el.textContent = s.estado==='cancelada' ? 'Cancelada' : 'Vencida';
+      } else if(s.proxima_a_vencer) {
+        el.className='badge b-am'; el.textContent = s.dias_restantes+'d';
+      } else {
+        el.className='badge b-gn'; el.textContent = '✓ Activa';
+      }
+    });
+    // Clientes sin suscripción
+    document.querySelectorAll('[id^="sub_estado_"]').forEach(el => {
+      if(el.textContent==='...') { el.className='badge b-sv'; el.textContent='Sin sub'; }
+    });
+
+  } catch(e) { console.error('Error alertas:', e); }
+}
+
+async function enviarAvisosVencimiento() {
+  const btn = event.target;
+  btn.textContent='⏳ Enviando...'; btn.disabled=true;
+  try {
+    const r = await api('/suscripciones/avisar-vencimientos', {method:'POST'});
+    btn.textContent=`✓ ${r.avisados} avisos enviados`;
+    setTimeout(()=>{ btn.textContent='🔔 Enviar avisos'; btn.disabled=false; }, 3000);
+  } catch(e) {
+    btn.textContent='Error'; btn.disabled=false;
+  }
+}
+
+async function cargarSuscripcionCliente(clienteId) {
+  try {
+    const s = await api('/clientes/'+clienteId+'/suscripcion');
+    const info = document.getElementById('coach_sub_info');
+    const badge = document.getElementById('coach_sub_badge');
+    const form = document.getElementById('coach_sub_form');
+    if(!info) return;
+
+    if(!s || !s.fecha_fin) {
+      if(badge) { badge.textContent='Sin suscripción'; badge.style.color='var(--tx3)'; }
+      info.innerHTML = `<div style="font-size:13px;color:var(--tx3);margin-bottom:10px">Este cliente no tiene suscripción activa.</div>
+        <button class="btn btn-sm" onclick="document.getElementById('coach_sub_form').style.display='block'">+ Añadir suscripción</button>`;
+      return;
+    }
+
+    const diasColor = s.vencida ? '#fca5a5' : s.proxima_a_vencer ? 'var(--amb)' : 'var(--gnb)';
+    const estadoTexto = s.vencida ? '🔴 Vencida' : s.proxima_a_vencer ? `⚠️ Vence en ${s.dias_restantes}d` : '✅ Activa';
+
+    if(badge) { badge.textContent=estadoTexto; badge.style.color=diasColor; badge.style.fontWeight='600'; badge.style.fontSize='11px'; badge.style.textTransform='none'; badge.style.letterSpacing='0'; }
+
+    info.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:700;color:${diasColor}">${s.vencida ? '0' : s.dias_restantes}</div>
+          <div style="font-size:10px;color:var(--tx3)">días restantes</div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:12px;font-weight:700;color:var(--sv)">${s.fecha_inicio?.split('-').reverse().join('/') || '—'}</div>
+          <div style="font-size:10px;color:var(--tx3)">inicio</div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:12px;font-weight:700;color:${diasColor}">${s.fecha_fin?.split('-').reverse().join('/') || '—'}</div>
+          <div style="font-size:10px;color:var(--tx3)">vencimiento</div>
+        </div>
+      </div>
+      ${s.precio ? `<div style="font-size:12px;color:var(--tx3);margin-bottom:8px">💶 ${s.precio}€/mes</div>` : ''}
+      ${s.notas ? `<div style="font-size:11px;color:var(--tx3);margin-bottom:8px">📝 ${s.notas}</div>` : ''}
+      <button class="btn btn-sm" onclick="document.getElementById('coach_sub_form').style.display=document.getElementById('coach_sub_form').style.display==='none'?'block':'none'" style="font-size:12px">
+        ${s.vencida ? '🔄 Renovar suscripción' : '✏️ Editar / Renovar'}
+      </button>`;
+
+  } catch(e) { console.error('Error sub:', e); }
+}
+
+async function renovarSuscripcion(clienteId) {
+  const btn = event.target;
+  btn.textContent='⏳...'; btn.disabled=true;
+  try {
+    const meses = document.getElementById('sub_meses')?.value || 1;
+    const precio = document.getElementById('sub_precio')?.value || 0;
+    const notas = document.getElementById('sub_notas')?.value || '';
+    await api('/clientes/'+clienteId+'/suscripcion', {
+      method:'POST', body:JSON.stringify({meses:parseInt(meses), precio:parseFloat(precio), notas})
+    });
+    document.getElementById('coach_sub_form').style.display='none';
+    await cargarSuscripcionCliente(clienteId);
+    btn.textContent='✓ Activar / Renovar'; btn.disabled=false;
+  } catch(e) {
+    alert('Error: '+e.message);
+    btn.textContent='✓ Activar / Renovar'; btn.disabled=false;
+  }
+}
+
+async function cancelarSuscripcion(clienteId) {
+  if(!confirm('¿Cancelar la suscripción? El cliente perderá el acceso.')) return;
+  const btn = event.target;
+  btn.textContent='⏳...'; btn.disabled=true;
+  try {
+    await api('/clientes/'+clienteId+'/suscripcion/cancelar', {method:'PUT'});
+    await cargarSuscripcionCliente(clienteId);
+    btn.textContent='Cancelar suscripción'; btn.disabled=false;
+  } catch(e) {
+    alert('Error: '+e.message);
+    btn.textContent='Cancelar suscripción'; btn.disabled=false;
+  }
+}
+
+// ── NOTIFICACIONES COACH ──────────────────────────────────────────
+async function cargarNotificacionesCoach() {
+  try {
+    const notifs = await api('/notificaciones');
+    const noLeidas = notifs.filter(n=>!n.leida).length;
+    const badge = document.getElementById('notif_badge');
+    if(badge) {
+      if(noLeidas > 0) { badge.style.display='flex'; badge.textContent=noLeidas; }
+      else { badge.style.display='none'; }
+    }
+    window._notifCoach = notifs;
+  } catch(e) {}
+}
+
+function toggleNotifCoach() {
+  const panel = document.getElementById('notif_panel_coach');
+  if(!panel) return;
+  const visible = panel.style.display !== 'none';
+  panel.style.display = visible ? 'none' : 'block';
+  if(!visible) renderNotifCoach();
+}
+
+function renderNotifCoach() {
+  const list = document.getElementById('notif_list_coach');
+  if(!list) return;
+  const notifs = window._notifCoach || [];
+  if(!notifs.length) { list.innerHTML='<div style="padding:16px;font-size:13px;color:var(--tx3);text-align:center">Sin notificaciones</div>'; return; }
+  list.innerHTML = notifs.map(n=>`
+    <div onclick="leerNotifCoach(${n.id},this)" style="padding:12px 14px;border-bottom:0.5px solid var(--br);cursor:pointer;background:${n.leida?'none':'rgba(59,130,246,.04)'}">
+      <div style="font-size:12px;color:${n.leida?'var(--tx3)':'var(--sv)'};line-height:1.5">${n.mensaje}</div>
+      <div style="font-size:10px;color:var(--tx3);margin-top:3px">${new Date(n.created_at).toLocaleDateString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+    </div>`).join('');
+}
+
+async function leerNotifCoach(id, el) {
+  await api('/notificaciones/'+id+'/leer', {method:'PUT'}).catch(()=>{});
+  el.style.background='none';
+  await cargarNotificacionesCoach();
+}
+
+async function marcarTodasLeidasCoach() {
+  await api('/notificaciones/leer-todas', {method:'PUT'}).catch(()=>{});
+  await cargarNotificacionesCoach();
+  renderNotifCoach();
+  document.getElementById('notif_panel_coach').style.display='none';
+}
+
+// Cerrar panel al hacer click fuera
+document.addEventListener('click', e => {
+  const panel = document.getElementById('notif_panel_coach');
+  const bell = document.getElementById('notif_bell_wrap');
+  if(panel && bell && !panel.contains(e.target) && !bell.contains(e.target)) {
+    panel.style.display='none';
+  }
+});
+
+
 
 // ═══ IA COACH ═════════════════════════════════════════
 function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">IA privada del coach</div>Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.</div>
