@@ -464,6 +464,93 @@ router.get('/clientes/:id/semana-estado', (req, res) => {
 });
 
 
+
+// ── BORRAR COMIDA COMPLETA ─────────────────────────────────────────
+router.delete('/comidas/:id', coachOnly, (req, res) => {
+  try {
+    dbRun('DELETE FROM alimentos WHERE comida_id=?', [req.params.id]);
+    dbRun('DELETE FROM comidas WHERE id=?', [req.params.id]);
+    const { saveToDisk } = require('./database');
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── PUBLICAR DIETA COMPLETA AL PERFIL DEL CLIENTE ──────────────────
+router.post('/clientes/:id/dieta/publicar', coachOnly, (req, res) => {
+  try {
+    const clienteId = req.params.id;
+    const { plan } = req.body;
+    if (!plan || !Array.isArray(plan.comidas)) {
+      return res.status(400).json({ error: 'Plan de dieta inválido' });
+    }
+
+    const comidasAntiguas = dbAll('SELECT id FROM comidas WHERE cliente_id=?', [clienteId]);
+    comidasAntiguas.forEach(c => {
+      dbRun('DELETE FROM alimentos WHERE comida_id=?', [c.id]);
+    });
+    dbRun('DELETE FROM comidas WHERE cliente_id=?', [clienteId]);
+
+    plan.comidas.forEach((comida, index) => {
+      const nombreComida = comida.nombre || `Comida ${index + 1}`;
+      const orden = comida.numero || index + 1;
+      const r = dbRun(
+        'INSERT INTO comidas (cliente_id, nombre, orden) VALUES (?, ?, ?)',
+        [clienteId, `${orden}. ${nombreComida}`, orden]
+      );
+
+      const comidaId = r.lastInsertRowid;
+      const alimentos = Array.isArray(comida.alimentos) ? comida.alimentos : [];
+
+      alimentos.forEach((alim, ai) => {
+        const nombre = alim.nombre || 'Alimento';
+        const cantidad = String(alim.cantidad || alim.gramos || '100');
+        const gramos = parseInt(cantidad.replace(',', '.')) || Number(alim.gramos) || 100;
+        const detalle = alim.detalle ? ` (${alim.detalle})` : '';
+
+        dbRun(
+          'INSERT INTO alimentos (comida_id, nombre, gramos, orden) VALUES (?, ?, ?, ?)',
+          [comidaId, `${nombre}${detalle}`, gramos, ai]
+        );
+      });
+    });
+
+    const variacionesPorComida = {};
+    plan.comidas.forEach((comida, i) => {
+      if (Array.isArray(comida.variaciones) && comida.variaciones.length) {
+        variacionesPorComida[i] = comida.variaciones;
+      }
+    });
+
+    dbRun(`INSERT OR REPLACE INTO plan_meta 
+      (cliente_id, alternativas, ajustes, frase, kcal, prot, carbs, grasas, variaciones, suplementacion, alimentos_therapeuticos)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        clienteId,
+        JSON.stringify(plan.alternativas || null),
+        JSON.stringify(plan.ajustes || null),
+        plan.frase_motivadora || null,
+        plan.kcal_total || null,
+        plan.prot_total || null,
+        plan.carbs_total || null,
+        plan.grasas_total || null,
+        JSON.stringify(Object.keys(variacionesPorComida).length ? variacionesPorComida : null),
+        JSON.stringify(plan.suplementacion || null),
+        JSON.stringify(plan.alimentos_therapeuticos || null)
+      ]
+    );
+
+    const { saveToDisk } = require('./database');
+    saveToDisk();
+
+    res.json({ ok: true, comidas: plan.comidas.length });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.post('/clientes/:id/plan-meta', coachOnly, (req, res) => {
   const { alternativas, ajustes, frase, kcal, prot, carbs, grasas, variaciones, suplementacion, alimentos_therapeuticos } = req.body;
   dbRun(`INSERT OR REPLACE INTO plan_meta (cliente_id, alternativas, ajustes, frase, kcal, prot, carbs, grasas, variaciones, suplementacion, alimentos_therapeuticos)
@@ -472,129 +559,5 @@ router.post('/clientes/:id/plan-meta', coachOnly, (req, res) => {
   );
   res.json({ ok: true });
 });
-
-
-// ==============================
-// 🧠 IA DIETA PRO (INTEGRADO)
-// ==============================
-
-function calcularCalorias(cliente) {
-  const peso = Number(cliente.peso_actual || cliente.peso || 70);
-  const altura = Number(cliente.altura || 170);
-  const edad = Number(cliente.edad || 25);
-  const sexo = String(cliente.sexo || 'hombre').toLowerCase();
-  const actividad = String(cliente.actividad || 'moderado').toLowerCase();
-  const objetivo = String(cliente.objetivo || 'mantener').toLowerCase();
-
-  let tmb = sexo.includes('mujer') || sexo.includes('female')
-    ? 10 * peso + 6.25 * altura - 5 * edad - 161
-    : 10 * peso + 6.25 * altura - 5 * edad + 5;
-
-  let factor = 1.55;
-  if (actividad.includes('sedent') || actividad.includes('bajo')) factor = 1.2;
-  else if (actividad.includes('liger')) factor = 1.375;
-  else if (actividad.includes('moder')) factor = 1.55;
-  else if (actividad.includes('alto') || actividad.includes('intens')) factor = 1.725;
-  else if (actividad.includes('muy')) factor = 1.9;
-
-  let kcal = tmb * factor;
-
-  if (objetivo.includes('defin') || objetivo.includes('perder') || objetivo.includes('grasa')) kcal -= 400;
-  else if (objetivo.includes('recomp')) kcal -= 150;
-  else if (objetivo.includes('vol') || objetivo.includes('ganar')) kcal += 300;
-
-  return Math.max(1200, Math.round(kcal));
-}
-
-function ajustarComidasIA(comidas) {
-  return (comidas || []).map(comida => {
-    const alimentos = Array.isArray(comida.alimentos) ? comida.alimentos : [];
-    const nombres = alimentos.map(a => String(a.nombre || '').toLowerCase());
-
-    const tiene = (texto) => nombres.some(n => n.includes(texto));
-
-    // Avena necesita líquido para que la comida tenga sentido
-    if (tiene('avena') && !tiene('leche') && !tiene('yogur') && !tiene('bebida')) {
-      alimentos.push({ nombre: 'leche o bebida vegetal', gramos: 150 });
-    }
-
-    // Café con leche si no hay líquido añadido
-    if ((tiene('cafe') || tiene('café')) && !tiene('leche') && !tiene('bebida')) {
-      alimentos.push({ nombre: 'leche', gramos: 100 });
-    }
-
-    // Pancakes: avena + huevo para que sea una receta lógica
-    if ((tiene('pancake') || tiene('tortita') || tiene('avena')) && !tiene('huevo')) {
-      alimentos.push({ nombre: 'huevo', gramos: 120 });
-    }
-
-    // Batido: proteína necesita agua/leche si no hay líquido
-    if ((tiene('proteina') || tiene('proteína') || tiene('whey')) && !tiene('agua') && !tiene('leche') && !tiene('bebida')) {
-      alimentos.push({ nombre: 'agua o leche', gramos: 250 });
-    }
-
-    return { ...comida, alimentos };
-  });
-}
-
-router.post('/ia/generar-dieta', coachOnly, (req, res) => {
-  try {
-    const cliente = req.body || {};
-    const kcal = calcularCalorias(cliente);
-
-    const peso = Number(cliente.peso_actual || cliente.peso || 70);
-    const proteinas = Math.round(peso * 2);
-    const grasas = Math.round(peso * 0.8);
-    const carbs = Math.round((kcal - (proteinas * 4 + grasas * 9)) / 4);
-
-    let dieta = Array.isArray(cliente.comidas) && cliente.comidas.length
-      ? cliente.comidas
-      : [
-          {
-            nombre: "Desayuno",
-            alimentos: [
-              { nombre: "avena", gramos: 60 },
-              { nombre: "café", gramos: 1 }
-            ]
-          },
-          {
-            nombre: "Comida",
-            alimentos: [
-              { nombre: "pollo", gramos: 200 },
-              { nombre: "arroz", gramos: 100 },
-              { nombre: "aceite de oliva", gramos: 10 }
-            ]
-          },
-          {
-            nombre: "Cena",
-            alimentos: [
-              { nombre: "huevos", gramos: 200 },
-              { nombre: "verduras", gramos: 200 }
-            ]
-          }
-        ];
-
-    dieta = ajustarComidasIA(dieta);
-
-    res.json({
-      ok: true,
-      kcal,
-      macros: {
-        proteinas,
-        grasas,
-        carbs
-      },
-      dieta,
-      notas_ia: [
-        "Calorías calculadas según peso, altura, edad, sexo, actividad y objetivo.",
-        "Comidas ajustadas con lógica básica de combinación de alimentos.",
-        "Endpoint seguro añadido sin modificar las rutas antiguas."
-      ]
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 
 module.exports = router;
