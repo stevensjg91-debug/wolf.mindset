@@ -1346,6 +1346,7 @@ function hDietaBuilder(){return`
         <button onclick="dbToggleCat(2,this)" data-cat="2" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥑 Grasas</button>
         <button onclick="dbToggleCat(3,this)" data-cat="3" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥦 Verduras</button>
         <button onclick="dbToggleCat(4,this)" data-cat="4" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🍎 Frutas</button>
+        <button onclick="dbToggleCat(5,this)" data-cat="5" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">☕ Bebidas</button>
       </div>
 
       <!-- Lista de alimentos de la categoría activa -->
@@ -4922,7 +4923,8 @@ const DB_ALIMENTOS = {
   1: ['Arroz blanco','Arroz integral','Avena','Patata','Boniato','Pan integral','Pasta integral','Quinoa','Lentejas','Garbanzos','Maíz','Pan de molde integral'],
   2: ['Aceite de oliva','Aguacate','Guacamole','Nueces','Almendras','Anacardos','Cacahuetes','Crema de cacahuete','Queso gouda','Leche entera'],
   3: ['Brócoli','Espinacas','Lechuga','Tomate','Pepino','Cebolla','Ajo','Pimiento','Champiñones','Zanahoria','Calabacín','Judías verdes','Ensalada mixta'],
-  4: ['Plátano','Manzana','Naranja','Fresas','Arándanos','Mango','Piña','Piña en lata','Uvas','Melocotón']
+  4: ['Plátano','Manzana','Naranja','Fresas','Arándanos','Mango','Piña','Piña en lata','Uvas','Melocotón'],
+  5: ['Agua','Agua con gas','Café solo','Café americano','Café con leche desnatada','Café con leche semidesnatada','Té verde','Té negro','Infusión','Manzanilla','Poleo menta','Coca-Cola Zero','Pepsi Max','Aquarius Zero','Monster Ultra / Zero','Red Bull Sugarfree','Bebida vegetal sin azúcar']
 };
 
 let _dbCatActiva = null;
@@ -4942,8 +4944,8 @@ dbCargarCustomAlimentos();
 function dbNuevoAlimento(){
   const nombre = prompt("Nombre del alimento nuevo:","");
   if(!nombre || !nombre.trim()) return;
-  const catTxt = prompt("Categoría:\n1 = Proteínas\n2 = Carbos\n3 = Grasas\n4 = Verduras\n5 = Frutas","1");
-  const catMap = {"1":0,"2":1,"3":2,"4":3,"5":4};
+  const catTxt = prompt("Categoría:\n1 = Proteínas\n2 = Carbos\n3 = Grasas\n4 = Verduras\n5 = Frutas\n6 = Bebidas","1");
+  const catMap = {"1":0,"2":1,"3":2,"4":3,"5":4,"6":5};
   const cat = catMap[(catTxt||"1").trim()] ?? 0;
   const alimento = nombre.trim();
 
