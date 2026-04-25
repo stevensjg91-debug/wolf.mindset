@@ -750,16 +750,16 @@ async function verCliente(id){
   <div class="sec" style="margin-bottom:12px" id="ajustar_datos_form">
     <div class="sec-hdr">Ajustar datos <button class="btn btn-sm" id="btn_guardar_datos" data-cliente-id="${c.id}" onclick="guardarDatos(${c.id})">Guardar</button></div>
     <div class="g2" style="gap:8px;margin-bottom:10px">
-      <div><div class="form-lbl">Objetivo</div><input class="inp" id="obj" value="${c.objetivo}" oninput="autoCalcMacros();autoSaveDatosDebounced()" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">Nivel</div><select class="inp" id="niv" onchange="autoSaveDatosDebounced()" style="margin-bottom:0"><option ${c.nivel==='Principiante'?'selected':''}>Principiante</option><option ${c.nivel==='Intermedio'?'selected':''}>Intermedio</option><option ${c.nivel==='Avanzado'?'selected':''}>Avanzado</option></select></div>
+      <div><div class="form-lbl">Objetivo</div><input class="inp" id="obj" value="${c.objetivo}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">Nivel</div><select class="inp" id="niv" style="margin-bottom:0"><option ${c.nivel==='Principiante'?'selected':''}>Principiante</option><option ${c.nivel==='Intermedio'?'selected':''}>Intermedio</option><option ${c.nivel==='Avanzado'?'selected':''}>Avanzado</option></select></div>
     </div>
     <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:12px;margin-bottom:8px">
-      <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Calculadora de macros — ajusta y se guarda solo</div><div id="tmb_wrap_coach" style="margin-bottom:10px"></div>
+      <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Calculadora de macros — ajusta y se recalcula solo</div>
       <div class="g2" style="gap:8px;margin-bottom:10px">
-        <div><div class="form-lbl">Kcal totales</div><input class="inp" id="kcal" type="number" value="${c.kcal_internas}" oninput="recalcMacros('kcal');autoSaveDatosDebounced()" style="margin-bottom:0;color:var(--blg);font-weight:700"/></div>
-        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Proteína (g) <span style="color:var(--sv3);font-weight:400" id="prot_kcal">${c.prot*4} kcal</span></div><input class="inp" id="prot" type="number" value="${c.prot}" oninput="recalcMacros('prot');autoSaveDatosDebounced()" style="margin-bottom:0"/></div>
-        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Grasas (g) <span style="color:var(--sv3);font-weight:400" id="fat_kcal">${c.fat*9} kcal</span></div><input class="inp" id="fat" type="number" value="${c.fat}" oninput="recalcMacros('fat');autoSaveDatosDebounced()" style="margin-bottom:0"/></div>
-        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Carbos (g) <span style="color:var(--sv3);font-weight:400" id="carbs_kcal">${c.carbs*4} kcal</span></div><input class="inp" id="carbs" type="number" value="${c.carbs}" oninput="recalcMacros('carbs');autoSaveDatosDebounced()" style="margin-bottom:0;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.3)"/></div>
+        <div><div class="form-lbl">Kcal totales</div><input class="inp" id="kcal" type="number" value="${c.kcal_internas}" oninput="recalcMacros('kcal')" style="margin-bottom:0;color:var(--blg);font-weight:700"/></div>
+        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Proteína (g) <span style="color:var(--sv3);font-weight:400" id="prot_kcal">${c.prot*4} kcal</span></div><input class="inp" id="prot" type="number" value="${c.prot}" oninput="recalcMacros('prot')" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Grasas (g) <span style="color:var(--sv3);font-weight:400" id="fat_kcal">${c.fat*9} kcal</span></div><input class="inp" id="fat" type="number" value="${c.fat}" oninput="recalcMacros('fat')" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Carbos (g) <span style="color:var(--sv3);font-weight:400" id="carbs_kcal">${c.carbs*4} kcal</span></div><input class="inp" id="carbs" type="number" value="${c.carbs}" oninput="recalcMacros('carbs')" style="margin-bottom:0;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.3)"/></div>
       </div>
       <div style="height:8px;background:var(--s3);border-radius:4px;overflow:hidden;margin-bottom:6px" id="macro_bar">
         <div style="height:100%;display:flex">
@@ -774,9 +774,9 @@ async function verCliente(id){
         <span>🟣 Carbos <span id="carbs_pct">${Math.round(c.carbs*4/c.kcal_internas*100)}%</span></span>
       </div>
     </div>
-    <div class="form-lbl" style="margin-top:8px">Comida libre</div><input class="inp" id="clibre" value="${c.comida_libre||''}" oninput="autoSaveDatosDebounced()"/>
-    <div class="form-lbl">Mensaje motivacional</div><textarea class="ta" id="msgsem" oninput="autoSaveDatosDebounced()">${c.mensaje_semana||''}</textarea>
-    <div class="form-lbl">Notas coach</div><textarea class="ta" id="notasc" oninput="autoSaveDatosDebounced()">${c.notas_coach||''}</textarea>
+    <div class="form-lbl" style="margin-top:8px">Comida libre</div><input class="inp" id="clibre" value="${c.comida_libre||''}"/>
+    <div class="form-lbl">Mensaje motivacional</div><textarea class="ta" id="msgsem">${c.mensaje_semana||''}</textarea>
+    <div class="form-lbl">Notas coach</div><textarea class="ta" id="notasc">${c.notas_coach||''}</textarea>
   </div>
   <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr">Entreno asignado <button class="sec-act" onclick="cNav('rutinas',document.querySelector('#sCoach .sni:nth-child(2)'))">Editar en Rutinas</button></div>
@@ -801,8 +801,6 @@ async function verCliente(id){
     <div id="revision_semanal_content"><div style="font-size:13px;color:var(--tx3)">Cargando...</div></div>
   </div>`;
   window._cid=c.id;
-  window._coachClienteActual=c;
-  setTimeout(()=>{ autoCalcMacros(true); }, 80);
 
   // Revisión semanal
   cargarRevisionSemanal(id, c);
@@ -2691,121 +2689,82 @@ async function guardarPerfil(){
 
 
 
-// ═══ AUTO CALC MACROS PRO + AUTOGUARDADO ═════════════════════════════════
-function getCoachClientBase(){
-  return window._coachClienteActual || CD || {};
-}
-
-function normalizaTexto(v){
-  return String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-}
-
-function calcMacrosObjetivo(cliente){
-  const c = cliente || getCoachClientBase();
-  const p = parseFloat(c.peso_actual || c.peso || 0);
-  const h = parseInt(c.altura || 0);
-  const e = parseInt(c.edad || 0);
-  const sexo = normalizaTexto(c.sexo || 'hombre');
-  const actividad = normalizaTexto(c.actividad || 'moderada');
-  const obj = normalizaTexto(document.getElementById('obj')?.value || c.objetivo || 'recomposicion');
-
-  if(!p || !h || !e) return null;
-
-  const tmb = Math.round(sexo.includes('mujer') || sexo.includes('female')
-    ? 10*p + 6.25*h - 5*e - 161
-    : 10*p + 6.25*h - 5*e + 5);
-
-  let factor = 1.55;
-  if(actividad.includes('sedent') || actividad.includes('bajo')) factor = 1.2;
-  else if(actividad.includes('liger')) factor = 1.375;
-  else if(actividad.includes('moder')) factor = 1.55;
-  else if(actividad.includes('alta') && !actividad.includes('muy')) factor = 1.725;
-  else if(actividad.includes('muy') || actividad.includes('atleta')) factor = 1.9;
-
+// ═══ AUTO CALC MACROS ═════════════════════════════════
+function autoCalcMacros(){
+  const peso = parseFloat(document.getElementById('pf_peso')?.value || document.querySelector('#cContent [id="kcal"]')?.getAttribute('data-peso') || 0);
+  // Get data from client form fields
+  const pesoEl = document.getElementById('pf_peso');
+  const alturaEl = document.getElementById('pf_altura');  
+  const edadEl = document.getElementById('pf_edad');
+  const sexoEl = document.getElementById('pf_sexo');
+  const actividadEl = document.getElementById('pf_actividad');
+  
+  // Use stored CD data as fallback
+  const p = parseFloat(pesoEl?.value) || (window._cid && CD ? CD.peso_actual : 0);
+  const h = parseInt(alturaEl?.value) || (window._cid && CD ? CD.altura : 0);
+  const e = parseInt(edadEl?.value) || (window._cid && CD ? CD.edad : 0);
+  const sexo = sexoEl?.value || (window._cid && CD ? CD.sexo : 'Hombre');
+  const actividad = actividadEl?.value || (window._cid && CD ? CD.actividad : 'Moderada');
+  const obj = document.getElementById('obj')?.value || 'Volumen';
+  
+  if(!p || !h || !e) {
+    alert('Rellena primero: peso, altura y edad del cliente en su perfil');
+    return;
+  }
+  
+  // Mifflin-St Jeor TMB
+  let tmb;
+  if(sexo === 'Hombre') tmb = Math.round(10*p + 6.25*h - 5*e + 5);
+  else tmb = Math.round(10*p + 6.25*h - 5*e - 161);
+  
+  // Activity factor
+  const factores = {
+    'Sedentario':1.2,'Sedentario (poco o nada de ejercicio)':1.2,
+    'Ligera':1.375,'Ligera (1-2 días/semana)':1.375,
+    'Moderada':1.55,'Moderada (3-4 días/semana)':1.55,
+    'Alta':1.725,'Alta (5-6 días/semana)':1.725,
+    'Muy alta':1.9,'Muy alta (atleta, 2x día)':1.9,
+  };
+  const factor = factores[actividad] || 1.55;
   const tdee = Math.round(tmb * factor);
-
-  let kcal = tdee;
-  let protMultiplier = 2.0;
-  let fatMultiplier = 0.8;
-
-  // Déficit moderado: evita que un cliente grande/activo caiga demasiado bajo.
-  if(obj.includes('defin')) { kcal = Math.round(tdee * 0.85); protMultiplier = 2.1; fatMultiplier = 0.8; }
-  else if(obj.includes('perder') || obj.includes('grasa')) { kcal = Math.round(tdee * 0.80); protMultiplier = 2.1; fatMultiplier = 0.75; }
-  else if(obj.includes('recomp')) { kcal = Math.round(tdee * 0.95); protMultiplier = 2.0; fatMultiplier = 0.8; }
-  else if(obj.includes('vol') || obj.includes('ganar')) { kcal = Math.round(tdee * 1.10); protMultiplier = 2.0; fatMultiplier = 0.9; }
-  else if(obj.includes('fuerza')) { kcal = Math.round(tdee * 1.05); protMultiplier = 2.0; fatMultiplier = 0.9; }
-
-  kcal = Math.max(1400, kcal);
+  
+  // Adjust for goal
+  let kcal, protMultiplier;
+  if(obj.includes('Volumen')) { kcal = tdee + 300; protMultiplier = 2.0; }
+  else if(obj.includes('Definición')) { kcal = tdee - 400; protMultiplier = 2.4; }
+  else if(obj.includes('Perder')) { kcal = tdee - 600; protMultiplier = 2.2; }
+  else if(obj.includes('Fuerza')) { kcal = tdee + 200; protMultiplier = 2.2; }
+  else { kcal = tdee; protMultiplier = 2.0; } // Recomposición
+  
+  // Macros
   const prot = Math.round(p * protMultiplier);
-  const fat = Math.round(p * fatMultiplier);
+  const fat = Math.round(p * 1.0);
   const carbs = Math.max(0, Math.round((kcal - prot*4 - fat*9) / 4));
-  const kcalFinal = prot*4 + fat*9 + carbs*4;
-
-  return { tmb, tdee, kcal:kcalFinal, prot, fat, carbs };
-}
-
-function autoCalcMacros(autoSave=false){
-  const datos = calcMacrosObjetivo(getCoachClientBase());
-  if(!datos) return;
-
+  
+  // Update fields
   const kcalEl = document.getElementById('kcal');
   const protEl = document.getElementById('prot');
   const fatEl = document.getElementById('fat');
   const carbsEl = document.getElementById('carbs');
-
-  if(kcalEl) kcalEl.value = datos.kcal;
-  if(protEl) protEl.value = datos.prot;
-  if(fatEl) fatEl.value = datos.fat;
-  if(carbsEl) carbsEl.value = datos.carbs;
-
-  recalcMacros('kcal', true);
-
-  const w=document.getElementById('tmb_wrap_coach');
-  if(w)w.innerHTML=`<div style="display:flex;gap:10px"><div style="flex:1;background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">TMB</div><div style="font-size:18px;font-weight:700;color:var(--sv)">${datos.tmb}</div><div style="font-size:10px;color:var(--tx3)">kcal reposo</div></div><div style="flex:1;background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--gnb);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Gasto total</div><div style="font-size:18px;font-weight:700;color:var(--sv)">${datos.tdee}</div><div style="font-size:10px;color:var(--tx3)">kcal/día</div></div></div>`;
-
-  const btn = event?.target;
-  if(btn && btn.textContent){
-    const orig = btn.textContent;
-    btn.textContent = `✓ ${datos.kcal} kcal · ${datos.prot}g P · ${datos.carbs}g C · ${datos.fat}g G`;
-    btn.style.background = 'rgba(34,197,94,.2)';
-    setTimeout(() => { btn.textContent = orig; btn.style.background = 'rgba(34,197,94,.1)'; }, 3000);
-  }
-
-  if(autoSave) autoSaveDatosDebounced(true);
-}
-
-let _autoSaveDatosTimer=null;
-async function autoSaveDatosDebounced(fast=false){
-  clearTimeout(_autoSaveDatosTimer);
-  _autoSaveDatosTimer=setTimeout(()=>autoSaveDatosCoach(), fast?250:900);
-}
-
-async function autoSaveDatosCoach(){
-  const id = window._cid;
-  if(!id || !document.getElementById('kcal')) return;
-  const btn = document.getElementById('btn_guardar_datos');
-  const oldText = btn ? btn.textContent : '';
-  try{
-    if(btn){ btn.textContent='Guardando...'; btn.disabled=true; }
-    await api('/clientes/'+id,{method:'PUT',body:JSON.stringify({
-      objetivo:document.getElementById('obj')?.value || undefined,
-      nivel:document.getElementById('niv')?.value || undefined,
-      kcal_internas:parseInt(document.getElementById('kcal')?.value)||0,
-      prot:parseInt(document.getElementById('prot')?.value)||0,
-      carbs:parseInt(document.getElementById('carbs')?.value)||0,
-      fat:parseInt(document.getElementById('fat')?.value)||0,
-      comida_libre:document.getElementById('clibre')?.value || '',
-      mensaje_semana:document.getElementById('msgsem')?.value || '',
-      notas_coach:document.getElementById('notasc')?.value || ''
-    })});
-    if(btn){ btn.textContent='✓ Guardado'; btn.disabled=false; setTimeout(()=>{ if(btn.textContent==='✓ Guardado') btn.textContent=oldText || 'Guardar'; },1200); }
-  }catch(e){
-    if(btn){ btn.textContent='Error'; btn.disabled=false; setTimeout(()=>{btn.textContent=oldText || 'Guardar';},1800); }
-  }
+  
+  if(kcalEl) kcalEl.value = kcal;
+  if(protEl) protEl.value = prot;
+  if(fatEl) fatEl.value = fat;
+  if(carbsEl) carbsEl.value = carbs;
+  
+  // Update visual bars
+  recalcMacros('kcal');
+  
+  // Show confirmation
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = `✓ ${kcal} kcal · ${prot}g P · ${carbs}g C · ${fat}g G`;
+  btn.style.background = 'rgba(34,197,94,.2)';
+  setTimeout(() => { btn.textContent = orig; btn.style.background = 'rgba(34,197,94,.1)'; }, 4000);
 }
 
 // ═══ CALCULADORA DE MACROS ════════════════════════════
-function recalcMacros(changed, skipAutoSave=false){
+function recalcMacros(changed){
   const kcal=parseInt(document.getElementById('kcal').value)||0;
   const prot=parseInt(document.getElementById('prot').value)||0;
   const fat=parseInt(document.getElementById('fat').value)||0;
@@ -2851,7 +2810,6 @@ function recalcMacros(changed, skipAutoSave=false){
     if(ef)ef.textContent=fp+'%';
     if(ec)ec.textContent=cp+'%';
   }
-  if(!skipAutoSave) autoSaveDatosDebounced();
 }
 
 function calcTMBCoach(c){
@@ -4278,6 +4236,17 @@ DATOS DEL CLIENTE:
 
 ALIMENTOS DISPONIBLES: ${alimentos}
 
+REGLAS DE COMBINACIÓN OBLIGATORIAS:
+- La dieta debe parecer comida real que un cliente pueda comer sin asco.
+- No hagas mezclas absurdas en una misma comida.
+- Prohibido combinar queso gouda + whey + anacardos en la misma comida.
+- Whey = batido o yogur/avena/fruta. No lo mezcles con queso.
+- Frutos secos = snack con yogur/fruta o complemento pequeño, no plato principal.
+- Queso gouda = pan, tortilla, huevos o bocadillo.
+- Avena = con leche/yogur/bebida vegetal o en tortitas con huevo.
+- Cada comida debe tener una lógica: desayuno, comida, merienda o cena.
+- Usa alimentos repetidos si hace falta antes que inventar combinaciones raras.
+
 RESPONDE EXACTAMENTE en este formato JSON:
 {
   "kcal_total": 2000,
@@ -4323,7 +4292,7 @@ RESPONDE EXACTAMENTE en este formato JSON:
   try {
     const d = await api('/ia/chat', {method:'POST', body:JSON.stringify({
       messages:[{role:'user', content:prompt}],
-      system:'Nutricionista deportivo. Responde SOLO con JSON válido y compacto. Sin texto adicional. Cantidades en crudo. Máximo 2 variaciones por comida con máximo 3 alimentos cada una.'
+      system:'Nutricionista deportivo experto y práctico. Responde SOLO con JSON válido y compacto. Sin texto adicional. Cantidades en crudo. Máximo 2 variaciones por comida con máximo 3 alimentos cada una. REGLAS IMPORTANTES: usa SOLO alimentos disponibles y respeta alimentos prohibidos. Cada comida debe tener sentido real de cocina: no mezcles alimentos incompatibles en el mismo plato. Whey solo como batido con agua/leche o con yogur/fruta/avena. Queso gouda solo en bocadillo, tortilla, huevos o pan; no lo juntes con whey ni frutos secos sin sentido. Anacardos/nueces solo como snack con yogur/fruta o como grasa separada. Si hay avena, añade leche/yogur/bebida vegetal o huevo si son tortitas. Si hay café, añade leche solo si tiene sentido. Prioriza platos simples: proteína + carbohidrato + verdura + grasa. Nada de combinaciones raras tipo 'gouda + anacardos + whey'.'
     })});
 
     let plan;
@@ -4367,53 +4336,38 @@ RESPONDE EXACTAMENTE en este formato JSON:
 async function dbPublicarPlan(){
   if(!window._planDietaActual || !window._planDietaClienteId) return;
   const btn = event.target;
-  btn.textContent='⏳ Publicando...'; btn.disabled=true;
+  btn.textContent='⏳ Publicando...';
+  btn.disabled=true;
+
   const plan = window._planDietaActual;
   const clienteId = window._planDietaClienteId;
 
   try {
-    // Delete existing comidas
-    const c = await api('/clientes/'+clienteId);
-    for(const com of c.comidas){
-      await api('/comidas/'+com.id, {method:'DELETE'});
-    }
-    // Create new comidas from plan
-    for(const comida of plan.comidas){
-      const r = await api('/clientes/'+clienteId+'/comidas', {
-        method:'POST', body:JSON.stringify({nombre: comida.numero+'. '+comida.nombre, orden: comida.numero})
-      });
-      for(const alim of comida.alimentos){
-        const gramos = parseInt(alim.cantidad) || 100;
-        await api('/comidas/'+r.id+'/alimentos', {
-          method:'POST', body:JSON.stringify({nombre: alim.nombre+(alim.detalle?' ('+alim.detalle+')':''), gramos})
-        });
-      }
-    }
-    // Store plan extras including variaciones per comida
-    const variacionesPorComida = {};
-    plan.comidas.forEach((com,i) => {
-      if(com.variaciones?.length) variacionesPorComida[i] = com.variaciones;
-    });
-    await api('/clientes/'+clienteId+'/plan-meta', {
+    await api('/clientes/'+clienteId+'/dieta/publicar', {
       method:'POST',
-      body:JSON.stringify({
-        alternativas: plan.alternativas||null,
-        ajustes: plan.ajustes||null,
-        frase: plan.frase_motivadora||null,
-        kcal: plan.kcal_total||null,
-        prot: plan.prot_total||null,
-        carbs: plan.carbs_total||null,
-        grasas: plan.grasas_total||null,
-        variaciones: Object.keys(variacionesPorComida).length ? variacionesPorComida : null,
-        suplementacion: plan.suplementacion||null,
-        alimentos_therapeuticos: plan.alimentos_therapeuticos||null
-      })
+      body:JSON.stringify({ plan })
     });
-    btn.textContent='✓ Publicado';
+
+    await dbLoadComidas();
+
+    const preview = document.getElementById('db_plan_preview');
+    if(preview) preview.style.display = 'none';
+
+    btn.textContent='✓ Publicado y guardado en el perfil';
     btn.style.color='var(--gnb)';
-    setTimeout(()=>{ btn.textContent='✓ Publicar al cliente'; btn.style.color=''; btn.disabled=false; }, 3000);
+
+    setTimeout(async ()=>{
+      btn.textContent='✓ Publicar al cliente';
+      btn.style.color='';
+      btn.disabled=false;
+      await dbLoadComidas();
+    }, 2500);
+
   } catch(e) {
-    btn.textContent='Error'; btn.disabled=false;
+    console.error(e);
+    btn.textContent='Error al publicar';
+    btn.disabled=false;
+    alert('No se pudo publicar la dieta: ' + (e.error || e.message || 'Error desconocido'));
   }
 }
 
