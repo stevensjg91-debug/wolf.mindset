@@ -4348,38 +4348,72 @@ async function dbGenerarIANuevo(){
   }
   const kcalObj = kcalBase + kcalAdj;
 
-  const prompt = `Crea un plan de dieta DETALLADO para este cliente. Responde SOLO en JSON válido sin texto adicional.
+  const protObj = c.prot||calcCoachIA.prot||Math.round((c.peso_actual||75)*2);
+  const carbsObj = c.carbs||calcCoachIA.carbs||200;
+  const fatObj = c.fat||calcCoachIA.fat||60;
 
-DATOS DEL CLIENTE:
+  // Distribución aproximada de kcal por comida según número
+  const distKcal = {
+    3: [35, 40, 25],
+    4: [25, 35, 20, 20],
+    5: [20, 10, 35, 15, 20],
+    6: [18, 10, 30, 12, 20, 10]
+  };
+  const dist = distKcal[parseInt(numComidas)] || distKcal[5];
+  const kcalPorComida = dist.map(p => Math.round(kcalObj * p / 100));
+
+  const prompt = `Eres un nutricionista deportivo experto. Crea un plan de dieta para este cliente y responde SOLO con JSON válido, sin texto adicional.
+
+═══ DATOS DEL CLIENTE ═══
 - Nombre: ${c.nombre}
-- Objetivo: ${c.objetivo}
-- Nivel: ${c.nivel}
+- Objetivo: ${c.objetivo} (${kcalLabel})
 - Peso: ${c.peso_actual||'no especificado'}kg
-- Kcal objetivo: ${kcalObj} kcal/día
-- Proteína objetivo: ${c.prot||calcCoachIA.prot||Math.round((c.peso_actual||75)*2)}g
-- Carbos objetivo: ${c.carbs||calcCoachIA.carbs||200}g
-- Grasas objetivo: ${c.fat||calcCoachIA.fat||60}g
 - Tipo de dieta: ${c.dieta_tipo||'Omnívoro'}
-- Alimentos que NO puede comer: ${c.alimentos_no||'ninguno'}
+- Alimentos PROHIBIDOS: ${c.alimentos_no||'ninguno'}
 - Intolerancias/alergias: ${c.lesiones||'ninguna'}
-- Observaciones: ${c.observaciones||'ninguna'}
-- Número de comidas: ${numComidas}
-- Ajuste calórico: ${kcalLabel} (${kcalObj} kcal totales)
+- Observaciones del coach: ${c.observaciones||'ninguna'}
 - Notas extra: ${notasExtra||'ninguna'}
-- Analíticas / déficits detectados: ${analiticas||'ninguno'}
+- Analíticas / déficits: ${analiticas||'ninguno'}
 
-ALIMENTOS DISPONIBLES: ${alimentos}
+═══ OBJETIVOS NUTRICIONALES ═══
+- Calorías totales: ${kcalObj} kcal/día
+- Proteína: ${protObj}g | Carbos: ${carbsObj}g | Grasas: ${fatObj}g
+- Número de comidas: ${numComidas}
+- Distribución de calorías por comida: ${kcalPorComida.join(', ')} kcal
 
-REGLAS DE COMBINACIÓN OBLIGATORIAS:
-- La dieta debe parecer comida real que un cliente pueda comer sin asco.
-- No hagas mezclas absurdas en una misma comida.
-- Prohibido combinar queso gouda + whey + anacardos en la misma comida.
-- Whey = batido o yogur/avena/fruta. No lo mezcles con queso.
-- Frutos secos = snack con yogur/fruta o complemento pequeño, no plato principal.
-- Queso gouda = pan, tortilla, huevos o bocadillo.
-- Avena = con leche/yogur/bebida vegetal o en tortitas con huevo.
-- Cada comida debe tener una lógica: desayuno, comida, merienda o cena.
-- Usa alimentos repetidos si hace falta antes que inventar combinaciones raras.
+═══ ALIMENTOS DISPONIBLES ═══
+${alimentos}
+
+USA ÚNICAMENTE estos alimentos. No inventes ni añadas ninguno que no esté en esta lista.
+
+═══ REGLAS DE SENTIDO CULINARIO (OBLIGATORIAS) ═══
+
+Antes de construir cada comida, clasifica internamente cada alimento disponible:
+- PROTEÍNA SÓLIDA: carnes, pescados, huevos, legumbres, tofu, tempeh, queso
+- PROTEÍNA EN POLVO: whey, caseína, proteína vegetal en polvo
+- CARBOHIDRATO BASE: arroz, pasta, patata, avena, pan, tortitas, quinoa
+- FRUTA: plátano, manzana, naranja, frutos rojos, dátiles, etc.
+- LÁCTEO LÍQUIDO/CREMOSO: leche, yogur, kéfir, bebida vegetal
+- GRASA: aceite, aguacate, frutos secos, semillas, mantequilla
+- VERDURA/HORTALIZA: cualquier vegetal
+- BEBIDA: café, té, agua
+
+NORMAS (aplican a cualquier alimento, no solo los ejemplos):
+1. Cada comida debe ser UN PLATO RECONOCIBLE y coherente con el momento del día (desayuno, almuerzo, merienda, cena, pre-entreno, post-entreno).
+2. PROTEÍNA EN POLVO: mezclar SOLO con líquido (agua, leche, bebida vegetal), yogur, avena o fruta. NUNCA junto a proteína sólida principal (pollo+whey en la misma comida = prohibido).
+3. FRUTOS SECOS: complemento de grasa, máximo 30-40g. No son fuente de proteína principal ni plato por sí solos.
+4. AVENA: siempre acompañada de líquido (leche, yogur, bebida vegetal) o en forma de tortitas con huevo. Nunca sola y seca.
+5. QUESO: válido con huevos, pan, pasta o ensalada. No combinar con proteína en polvo.
+6. CAFÉ/TÉ: bebida acompañante. Agregar leche solo si el resto de la comida lo permite (no añadir leche si ya hay yogur abundante).
+7. Máximo 5 alimentos por comida. Más ingredientes no mejora el plan.
+8. Las VARIACIONES deben tener sentido culinario propio con los alimentos que las forman. Si no es posible crear una variación coherente, no la pongas.
+9. Repite alimentos entre comidas si es necesario antes de hacer combinaciones sin sentido.
+10. Respeta estrictamente los alimentos PROHIBIDOS. Si no hay suficiente variedad para una comida, simplifica.
+
+═══ DISTRIBUCIÓN DE MACROS ═══
+- Comidas principales (almuerzo/cena): más proteína sólida y carbohidrato base.
+- Desayuno/merienda: pueden incluir proteína en polvo, lácteos, fruta, grasas.
+- Distribuye las grasas a lo largo del día, no concentres todo en una sola comida.
 
 RESPONDE EXACTAMENTE en este formato JSON:
 {
@@ -4426,7 +4460,7 @@ RESPONDE EXACTAMENTE en este formato JSON:
   try {
     const d = await api('/ia/chat', {method:'POST', body:JSON.stringify({
       messages:[{role:'user', content:prompt}],
-      system:`Nutricionista deportivo experto y práctico. Responde SOLO con JSON válido y compacto. Sin texto adicional. Cantidades en crudo. Máximo 2 variaciones por comida con máximo 3 alimentos cada una. REGLAS IMPORTANTES: usa SOLO alimentos disponibles y respeta alimentos prohibidos. Cada comida debe tener sentido real de cocina: no mezcles alimentos incompatibles en el mismo plato. Whey solo como batido con agua/leche o con yogur/fruta/avena. Queso gouda solo en bocadillo, tortilla, huevos o pan; no lo juntes con whey ni frutos secos sin sentido. Anacardos/nueces solo como snack con yogur/fruta o como grasa separada. Si hay avena, añade leche/yogur/bebida vegetal o huevo si son tortitas. Si hay café, añade leche solo si tiene sentido. Prioriza platos simples: proteína + carbohidrato + verdura + grasa. Nada de combinaciones raras tipo "gouda + anacardos + whey".`
+      system:`Eres un nutricionista deportivo experto. Responde SIEMPRE con JSON válido y compacto, sin texto adicional, sin bloques de código markdown. Todas las cantidades en crudo. Máximo 2 variaciones por comida, máximo 4 alimentos cada una. Clasifica cada alimento antes de combinarlo. Aplica criterio culinario real: cada comida debe ser un plato que existe y tiene sentido. Si no puedes hacer una variación coherente, no la incluyas. Sigue estrictamente las reglas del prompt.`
     })});
 
     let plan;
