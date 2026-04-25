@@ -916,10 +916,74 @@ async function verCliente(id){
 
   <!-- TAB: ENTRENO -->
   <div class="ctab-panel" id="ctab_entreno">
+    <!-- EDITOR INLINE DE RUTINA -->
     <div class="sec" style="margin-bottom:12px">
-    <div class="sec-hdr">Entreno asignado <button class="sec-act" onclick="cNav('rutinas',document.querySelector('#sCoach .sni:nth-child(2)'))">Editar en Rutinas</button></div>
-    ${c.dias.length?c.dias.map(d=>`<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:7px"><div style="font-size:13px;font-weight:700;color:var(--sv)">${d.nombre} — ${d.grupo}</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">${d.ejercicios.length} ejercicios</div></div>`).join(''):'<div style="font-size:13px;color:var(--tx3)">Sin días. Ve a Crear rutina.</div>'}
-  </div>
+      <div class="sec-hdr">🏋️ Rutina asignada
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="tabEntrenoNuevoDia(${c.id})" style="font-size:11px">+ Día</button>
+        </div>
+      </div>
+      <div id="tab_entreno_dias">
+        ${c.dias.length ? c.dias.map((d,di)=>`
+          <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;margin-bottom:8px;overflow:hidden">
+            <div onclick="tabEntrenoToggleDia(${d.id})" style="padding:11px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+              <div>
+                <div style="font-size:13px;font-weight:700;color:var(--sv)">${d.nombre}</div>
+                <div style="font-size:11px;color:var(--tx3);margin-top:1px">${d.grupo} · ${d.ejercicios.length} ejercicios</div>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center">
+                <button onclick="event.stopPropagation();tabEntrenoAddEx(${d.id},'${d.nombre.replace(/'/g,"\'")}')" class="btn btn-sm" style="font-size:11px">+ Ejercicio</button>
+                <button onclick="event.stopPropagation();tabEntrenoDelDia(${d.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:14px;padding:4px">🗑</button>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--tx3);flex-shrink:0"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </div>
+            </div>
+            <div id="tab_dia_body_${d.id}" style="display:none;padding:0 13px 12px">
+              ${d.ejercicios.length ? d.ejercicios.map(e=>`
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--br)">
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:13px;font-weight:700;color:var(--sv)">${e.nombre}</div>
+                    <div style="font-size:11px;color:var(--tx3);margin-top:1px">${e.series}×${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''} · ${e.descanso}s${e.rir!=null?' · RIR'+e.rir:''}${e.es_principal?' ⭐':''}</div>
+                    ${e.nota_coach?`<div style="font-size:10px;color:var(--amb);margin-top:2px">📝 ${e.nota_coach}</div>`:''}
+                  </div>
+                  <button onclick="tabEntrenoEditEx(${e.id})" style="background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);border-radius:6px;color:var(--blg);cursor:pointer;font-size:11px;padding:5px 8px;font-weight:600;white-space:nowrap">✏️ Editar</button>
+                  <button onclick="tabEntrenoDelEx(${e.id},${d.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px;padding:4px">✕</button>
+                </div>`).join('')
+              : '<div style="font-size:12px;color:var(--tx3);padding:8px 0">Sin ejercicios aún.</div>'}
+            </div>
+          </div>`).join('')
+        : '<div style="font-size:13px;color:var(--tx3)">Sin días. Pulsa + Día para empezar.</div>'}
+      </div>
+    </div>
+
+    <!-- PANEL EDITAR EJERCICIO (inline) -->
+    <div id="tab_ex_edit_panel" style="display:none">
+      <div class="sec" style="margin-bottom:12px;border-color:rgba(59,130,246,.25)">
+        <div class="sec-hdr">✏️ Editando ejercicio <button onclick="document.getElementById('tab_ex_edit_panel').style.display='none'" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:13px;font-weight:600">✕ Cerrar</button></div>
+        <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:10px" id="tab_ex_edit_nombre"></div>
+        <div class="g2" style="gap:8px;margin-bottom:8px">
+          <div><div class="form-lbl">Series</div><input type="number" id="tab_ex_series" class="inp" style="margin-bottom:0"/></div>
+          <div><div class="form-lbl">Reps</div><input id="tab_ex_reps" class="inp" style="margin-bottom:0" placeholder="10-12"/></div>
+          <div><div class="form-lbl">Peso obj. (kg)</div><input type="number" id="tab_ex_peso" class="inp" style="margin-bottom:0" step="0.5"/></div>
+          <div><div class="form-lbl">Descanso (s)</div><input type="number" id="tab_ex_descanso" class="inp" style="margin-bottom:0"/></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sv2);cursor:pointer">
+            <input type="checkbox" id="tab_ex_rir_on" onchange="document.getElementById('tab_ex_rir_wrap').style.display=this.checked?'block':'none'"/>
+            Usar RIR
+          </label>
+          <div id="tab_ex_rir_wrap" style="display:none;flex:1">
+            <input type="number" id="tab_ex_rir" class="inp" style="margin-bottom:0;width:80px" min="0" max="5" placeholder="2"/>
+          </div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--amb);cursor:pointer">
+            <input type="checkbox" id="tab_ex_principal"/>
+            ⭐ Principal
+          </label>
+        </div>
+        <div class="form-lbl">Nota al cliente</div>
+        <textarea id="tab_ex_nota" class="ta" placeholder="Ej: Controla la bajada en 3 segundos..." style="min-height:55px;margin-bottom:10px"></textarea>
+        <button onclick="tabEntrenoGuardarEx()" class="btn" style="width:100%;padding:11px;background:var(--bl2)">✓ Guardar cambios</button>
+      </div>
+    </div>
   
     <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr">Historial de entrenos <span id="sesiones_count" style="color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0;font-size:11px"></span></div>
@@ -1025,6 +1089,114 @@ async function verCliente(id){
         '</div>';
     }).join('');
   }
+}
+
+// ═══ EDITOR ENTRENO INLINE (tab Entreno del perfil) ═════════════
+let _tabExEditId = null;
+
+function tabEntrenoToggleDia(diaId) {
+  const body = document.getElementById('tab_dia_body_' + diaId);
+  if(!body) return;
+  body.style.display = body.style.display === 'none' ? 'block' : 'none';
+}
+
+async function tabEntrenoNuevoDia(clienteId) {
+  const nombre = prompt('Nombre del día (ej: Día A, Empuje, Lunes...):');
+  if(!nombre) return;
+  const grupo = prompt('Grupo muscular (ej: Pecho/Hombro/Tríceps, Piernas...):') || 'General';
+  await api('/clientes/'+clienteId+'/dias', {
+    method:'POST', body:JSON.stringify({nombre, grupo, orden: 0})
+  });
+  const c = await api('/clientes/'+clienteId);
+  window._coachClienteActual = c;
+  // Re-renderizar tab
+  switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
+  verCliente(clienteId);
+}
+
+async function tabEntrenoDelDia(diaId) {
+  if(!confirm('¿Eliminar este día y todos sus ejercicios?')) return;
+  await api('/dias/'+diaId, {method:'DELETE'});
+  const clienteId = window._coachClienteId;
+  const c = await api('/clientes/'+clienteId);
+  window._coachClienteActual = c;
+  verCliente(clienteId);
+}
+
+function tabEntrenoAddEx(diaId, diaNombre) {
+  // Reusar el sistema de rutinas existente
+  rbState.clienteId = window._coachClienteId;
+  rbState.diaId = diaId;
+  rbState.diaNombre = diaNombre;
+  // Redirigir a pantalla de rutinas con el cliente ya seleccionado
+  cNav('rutinas', document.querySelector('#sCoach .sni:nth-child(2)'));
+}
+
+function tabEntrenoEditEx(exId) {
+  _tabExEditId = exId;
+  const panel = document.getElementById('tab_ex_edit_panel');
+  if(!panel) return;
+  panel.style.display = 'block';
+  panel.scrollIntoView({behavior:'smooth'});
+
+  api('/ejercicios/'+exId).then(e => {
+    document.getElementById('tab_ex_edit_nombre').textContent = e.nombre;
+    document.getElementById('tab_ex_series').value = e.series || 3;
+    document.getElementById('tab_ex_reps').value = e.reps || '10-12';
+    document.getElementById('tab_ex_peso').value = e.peso_objetivo || 0;
+    document.getElementById('tab_ex_descanso').value = e.descanso || 90;
+    const conRir = e.rir != null;
+    document.getElementById('tab_ex_rir_on').checked = conRir;
+    document.getElementById('tab_ex_rir_wrap').style.display = conRir ? 'block' : 'none';
+    document.getElementById('tab_ex_rir').value = e.rir != null ? e.rir : 2;
+    document.getElementById('tab_ex_principal').checked = !!e.es_principal;
+    document.getElementById('tab_ex_nota').value = e.nota_coach || '';
+  }).catch(e => alert('Error cargando ejercicio: ' + e.message));
+}
+
+async function tabEntrenoGuardarEx() {
+  if(!_tabExEditId) return;
+  const btn = event.target;
+  btn.textContent = '⏳ Guardando...'; btn.disabled = true;
+  try {
+    await api('/ejercicios/'+_tabExEditId, {
+      method: 'PUT',
+      body: JSON.stringify({
+        series:    parseInt(document.getElementById('tab_ex_series').value) || 3,
+        reps:      document.getElementById('tab_ex_reps').value || '10-12',
+        peso_objetivo: parseFloat(document.getElementById('tab_ex_peso').value) || 0,
+        descanso:  parseInt(document.getElementById('tab_ex_descanso').value) || 90,
+        rir:       document.getElementById('tab_ex_rir_on').checked
+                     ? (parseInt(document.getElementById('tab_ex_rir').value) || 2)
+                     : null,
+        es_principal: document.getElementById('tab_ex_principal').checked ? 1 : 0,
+        nota_coach: document.getElementById('tab_ex_nota').value || ''
+      })
+    });
+    // Recargar cliente y re-renderizar tab
+    const c = await api('/clientes/'+window._coachClienteId);
+    window._coachClienteActual = c;
+    btn.textContent = '✓ Guardado';
+    setTimeout(() => {
+      document.getElementById('tab_ex_edit_panel').style.display = 'none';
+      btn.textContent = '✓ Guardar cambios'; btn.disabled = false;
+      _tabExEditId = null;
+      // Actualizar el div del día sin recargar todo
+      const diaId = c.dias.find(d => d.ejercicios.some(e => e.id === parseInt(document.getElementById('tab_ex_edit_nombre').dataset?.exid || _tabExEditId)))?.id;
+      verCliente(window._coachClienteId);
+    }, 800);
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btn.textContent = '✓ Guardar cambios'; btn.disabled = false;
+  }
+}
+
+async function tabEntrenoDelEx(exId, diaId) {
+  if(!confirm('¿Eliminar este ejercicio?')) return;
+  await api('/ejercicios/'+exId, {method:'DELETE'});
+  const c = await api('/clientes/'+window._coachClienteId);
+  window._coachClienteActual = c;
+  verCliente(window._coachClienteId);
 }
 
 // ═══ TABS PERFIL CLIENTE ═════════════════════════════════════════
