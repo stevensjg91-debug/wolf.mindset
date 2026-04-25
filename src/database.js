@@ -138,6 +138,30 @@ async function initDB() {
     tiene_borrador INTEGER DEFAULT 0,
     publicado_at DATETIME
   )`);
+
+  // ── SUSCRIPCIONES ─────────────────────────────────────
+  db.run(`CREATE TABLE IF NOT EXISTS suscripciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER UNIQUE NOT NULL,
+    estado TEXT DEFAULT 'activa',
+    fecha_inicio TEXT NOT NULL,
+    fecha_fin TEXT NOT NULL,
+    precio REAL DEFAULT 0,
+    notas TEXT DEFAULT '',
+    renovado_at TEXT,
+    FOREIGN KEY(cliente_id) REFERENCES clientes(id)
+  )`);
+
+  // ── NOTIFICACIONES ────────────────────────────────────
+  db.run(`CREATE TABLE IF NOT EXISTS notificaciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    tipo TEXT NOT NULL,
+    mensaje TEXT NOT NULL,
+    leida INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  )`);
 }
 
 function dbRun(sql, params = []) {
