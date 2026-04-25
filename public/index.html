@@ -724,7 +724,7 @@ function hClientes(cl){
 }
 
 async function verCliente(id){
-  const c=await api('/clientes/'+id);const a=ac(0);
+  const c=await api('/clientes/'+id); window._coachClienteActual=c; window._coachClienteId=id; window._lastClienteId=id; const a=ac(0);
   document.getElementById('cContent').innerHTML=`
   <div class="back-lnk" onclick="renderCoach('clientes')"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Volver</div>
   <div class="fl" style="margin-bottom:18px"><div class="av" style="width:50px;height:50px;font-size:17px;background:${a.bg};color:${a.tx};border-color:${a.br};margin-right:12px">${ini(c.nombre)}</div><div><div style="font-size:17px;font-weight:700;color:var(--sv)">${c.nombre}</div><div style="font-size:12px;color:var(--tx3);margin-top:2px">${c.objetivo} · ${c.nivel} · Semana ${c.semanas}</div></div></div>
@@ -750,16 +750,16 @@ async function verCliente(id){
   <div class="sec" style="margin-bottom:12px" id="ajustar_datos_form">
     <div class="sec-hdr">Ajustar datos <button class="btn btn-sm" id="btn_guardar_datos" data-cliente-id="${c.id}" onclick="guardarDatos(${c.id})">Guardar</button></div>
     <div class="g2" style="gap:8px;margin-bottom:10px">
-      <div><div class="form-lbl">Objetivo</div><input class="inp" id="obj" value="${c.objetivo}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">Nivel</div><select class="inp" id="niv" style="margin-bottom:0"><option ${c.nivel==='Principiante'?'selected':''}>Principiante</option><option ${c.nivel==='Intermedio'?'selected':''}>Intermedio</option><option ${c.nivel==='Avanzado'?'selected':''}>Avanzado</option></select></div>
+      <div><div class="form-lbl">Objetivo</div><input class="inp" id="obj" value="${c.objetivo}" oninput="recalcularYGuardarCoach()" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">Nivel</div><select class="inp" id="niv" onchange="autoGuardarMacrosCoach()" style="margin-bottom:0"><option ${c.nivel==='Principiante'?'selected':''}>Principiante</option><option ${c.nivel==='Intermedio'?'selected':''}>Intermedio</option><option ${c.nivel==='Avanzado'?'selected':''}>Avanzado</option></select></div>
     </div>
     <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:12px;margin-bottom:8px">
-      <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Calculadora de macros — ajusta y se recalcula solo</div>
+      <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Calculadora de macros — ajusta y se recalcula solo <button type="button" onclick="recalcularYGuardarCoach()" style="float:right;background:rgba(34,197,94,.15);border:0.5px solid rgba(34,197,94,.35);color:var(--gnb);border-radius:8px;padding:5px 9px;font-size:10px;font-weight:800;cursor:pointer">Recalcular</button></div>
       <div class="g2" style="gap:8px;margin-bottom:10px">
-        <div><div class="form-lbl">Kcal totales</div><input class="inp" id="kcal" type="number" value="${c.kcal_internas}" oninput="recalcMacros('kcal')" style="margin-bottom:0;color:var(--blg);font-weight:700"/></div>
-        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Proteína (g) <span style="color:var(--sv3);font-weight:400" id="prot_kcal">${c.prot*4} kcal</span></div><input class="inp" id="prot" type="number" value="${c.prot}" oninput="recalcMacros('prot')" style="margin-bottom:0"/></div>
-        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Grasas (g) <span style="color:var(--sv3);font-weight:400" id="fat_kcal">${c.fat*9} kcal</span></div><input class="inp" id="fat" type="number" value="${c.fat}" oninput="recalcMacros('fat')" style="margin-bottom:0"/></div>
-        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Carbos (g) <span style="color:var(--sv3);font-weight:400" id="carbs_kcal">${c.carbs*4} kcal</span></div><input class="inp" id="carbs" type="number" value="${c.carbs}" oninput="recalcMacros('carbs')" style="margin-bottom:0;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.3)"/></div>
+        <div><div class="form-lbl">Kcal totales</div><input class="inp" id="kcal" type="number" value="${c.kcal_internas}" oninput="recalcMacros('kcal');autoGuardarMacrosCoach()" style="margin-bottom:0;color:var(--blg);font-weight:700"/></div>
+        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Proteína (g) <span style="color:var(--sv3);font-weight:400" id="prot_kcal">${c.prot*4} kcal</span></div><input class="inp" id="prot" type="number" value="${c.prot}" oninput="recalcMacros('prot');autoGuardarMacrosCoach()" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Grasas (g) <span style="color:var(--sv3);font-weight:400" id="fat_kcal">${c.fat*9} kcal</span></div><input class="inp" id="fat" type="number" value="${c.fat}" oninput="recalcMacros('fat');autoGuardarMacrosCoach()" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Carbos (g) <span style="color:var(--sv3);font-weight:400" id="carbs_kcal">${c.carbs*4} kcal</span></div><input class="inp" id="carbs" type="number" value="${c.carbs}" oninput="recalcMacros('carbs');autoGuardarMacrosCoach()" style="margin-bottom:0;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.3)"/></div>
       </div>
       <div style="height:8px;background:var(--s3);border-radius:4px;overflow:hidden;margin-bottom:6px" id="macro_bar">
         <div style="height:100%;display:flex">
@@ -846,6 +846,8 @@ async function verCliente(id){
     const w=document.getElementById('tmb_wrap_coach');
     if(w)w.innerHTML=`<div style="display:flex;gap:10px"><div style="flex:1;background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">TMB</div><div style="font-size:18px;font-weight:700;color:var(--sv)">${tmb}</div><div style="font-size:10px;color:var(--tx3)">kcal reposo</div></div><div style="flex:1;background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--gnb);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Gasto total</div><div style="font-size:18px;font-weight:700;color:var(--sv)">${gasto}</div><div style="font-size:10px;color:var(--tx3)">kcal/día</div></div></div>`;
   }
+  // Recalcula macros reales al abrir cliente y los guarda para que la IA use valores correctos
+  setTimeout(()=>{ aplicarMacrosCoach(c, true); }, 200);
 }
 
 async function guardarDatos(id){
@@ -2731,14 +2733,14 @@ function autoCalcMacros(){
   // Adjust for goal
   let kcal, protMultiplier;
   if(obj.includes('Volumen')) { kcal = tdee + 300; protMultiplier = 2.0; }
-  else if(obj.includes('Definición')) { kcal = tdee - 400; protMultiplier = 2.4; }
-  else if(obj.includes('Perder')) { kcal = tdee - 600; protMultiplier = 2.2; }
+  else if(obj.includes('Definición')) { kcal = Math.round(tdee * 0.85); protMultiplier = 2.1; }
+  else if(obj.includes('Perder')) { kcal = Math.round(tdee * 0.85); protMultiplier = 2.1; }
   else if(obj.includes('Fuerza')) { kcal = tdee + 200; protMultiplier = 2.2; }
   else { kcal = tdee; protMultiplier = 2.0; } // Recomposición
   
   // Macros
   const prot = Math.round(p * protMultiplier);
-  const fat = Math.round(p * 1.0);
+  const fat = Math.round(p * 0.8);
   const carbs = Math.max(0, Math.round((kcal - prot*4 - fat*9) / 4));
   
   // Update fields
@@ -2822,6 +2824,137 @@ function calcGastoCoach(c){
   const tmb=calcTMBCoach(c);if(tmb==='—')return'—';
   const factores={'Sedentario (poco o nada de ejercicio)':1.2,'Ligera (1-2 días/semana)':1.375,'Moderada (3-4 días/semana)':1.55,'Alta (5-6 días/semana)':1.725,'Muy alta (atleta, 2x día)':1.9,'Sedentario':1.2,'Ligera':1.375,'Moderada':1.55,'Alta':1.725,'Muy alta':1.9};
   return Math.round(tmb*(factores[c.actividad]||1.55));
+}
+
+
+
+// ═══ CALCULADORA COACH PRO + AUTOGUARDADO ═══════════════════════════
+function calcularMacrosCoachCliente(c){
+  const peso = parseFloat(c.peso_actual || c.peso || 0);
+  const altura = parseInt(c.altura || 0);
+  const edad = parseInt(c.edad || 0);
+  const sexo = String(c.sexo || 'Hombre').toLowerCase();
+  const actividad = String(c.actividad || 'Moderada').toLowerCase();
+  const objetivo = String(c.objetivo || 'Mantenimiento').toLowerCase();
+
+  if(!peso || !altura || !edad){
+    return {
+      kcal: parseInt(c.kcal_internas || 2000),
+      prot: parseInt(c.prot || Math.round((peso || 75) * 2)),
+      fat: parseInt(c.fat || Math.round((peso || 75) * 0.8)),
+      carbs: parseInt(c.carbs || 200),
+      tmb: 0,
+      gasto: 0
+    };
+  }
+
+  const tmb = Math.round(
+    sexo.includes('mujer') || sexo.includes('female')
+      ? (10 * peso + 6.25 * altura - 5 * edad - 161)
+      : (10 * peso + 6.25 * altura - 5 * edad + 5)
+  );
+
+  let factor = 1.55;
+  if(actividad.includes('sedent') || actividad.includes('bajo')) factor = 1.2;
+  else if(actividad.includes('liger')) factor = 1.375;
+  else if(actividad.includes('moder')) factor = 1.55;
+  else if(actividad.includes('alta') || actividad.includes('activo') || actividad.includes('5-6')) factor = 1.725;
+  else if(actividad.includes('muy') || actividad.includes('atleta')) factor = 1.9;
+
+  const gasto = Math.round(tmb * factor);
+
+  let kcal = gasto;
+  if(objetivo.includes('defin') || objetivo.includes('perder') || objetivo.includes('grasa')){
+    kcal = Math.round(gasto * 0.85); // déficit moderado 15%, no agresivo
+  } else if(objetivo.includes('recomp')){
+    kcal = Math.round(gasto * 0.92);
+  } else if(objetivo.includes('vol') || objetivo.includes('ganar') || objetivo.includes('masa')){
+    kcal = Math.round(gasto * 1.10);
+  } else if(objetivo.includes('fuerza')){
+    kcal = Math.round(gasto * 1.05);
+  }
+
+  const prot = Math.round(peso * 2.1);
+  const fat = Math.round(peso * 0.8);
+  const carbs = Math.max(0, Math.round((kcal - (prot * 4 + fat * 9)) / 4));
+
+  return { kcal, prot, fat, carbs, tmb, gasto };
+}
+
+let _coachMacroSaveTimer = null;
+
+function aplicarMacrosCoach(c, guardar=false){
+  const calc = calcularMacrosCoachCliente(c);
+
+  const kcalEl = document.getElementById('kcal');
+  const protEl = document.getElementById('prot');
+  const fatEl = document.getElementById('fat');
+  const carbsEl = document.getElementById('carbs');
+
+  if(kcalEl) kcalEl.value = calc.kcal;
+  if(protEl) protEl.value = calc.prot;
+  if(fatEl) fatEl.value = calc.fat;
+  if(carbsEl) carbsEl.value = calc.carbs;
+
+  recalcMacros('kcal');
+
+  const w = document.getElementById('tmb_wrap_coach');
+  if(w && calc.tmb && calc.gasto){
+    w.innerHTML = `<div style="display:flex;gap:10px">
+      <div style="flex:1;background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">TMB</div>
+        <div style="font-size:18px;font-weight:700;color:var(--sv)">${calc.tmb}</div>
+        <div style="font-size:10px;color:var(--tx3)">kcal reposo</div>
+      </div>
+      <div style="flex:1;background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--gnb);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Gasto total</div>
+        <div style="font-size:18px;font-weight:700;color:var(--sv)">${calc.gasto}</div>
+        <div style="font-size:10px;color:var(--tx3)">kcal/día</div>
+      </div>
+    </div>`;
+  }
+
+  if(guardar) autoGuardarMacrosCoach();
+}
+
+function autoGuardarMacrosCoach(){
+  const btn = document.getElementById('btn_guardar_datos');
+  const id = btn?.dataset?.clienteId || window._coachClienteId || window._lastClienteId;
+  if(!id) return;
+
+  clearTimeout(_coachMacroSaveTimer);
+  _coachMacroSaveTimer = setTimeout(async ()=>{
+    try{
+      await api('/clientes/'+id,{method:'PUT',body:JSON.stringify({
+        objetivo:document.getElementById('obj')?.value || '',
+        nivel:document.getElementById('niv')?.value || '',
+        kcal_internas:parseInt(document.getElementById('kcal')?.value)||0,
+        prot:parseInt(document.getElementById('prot')?.value)||0,
+        carbs:parseInt(document.getElementById('carbs')?.value)||0,
+        fat:parseInt(document.getElementById('fat')?.value)||0,
+        comida_libre:document.getElementById('clibre')?.value || '',
+        mensaje_semana:document.getElementById('msgsem')?.value || '',
+        notas_coach:document.getElementById('notasc')?.value || ''
+      })});
+      if(btn){
+        const old = btn.textContent;
+        btn.textContent = '✓ Guardado automático';
+        setTimeout(()=>{ btn.textContent = old.includes('Guardado') ? 'Guardar' : old; }, 1200);
+      }
+    }catch(e){
+      console.error('Error autoguardando macros', e);
+    }
+  }, 700);
+}
+
+function recalcularYGuardarCoach(){
+  const base = window._coachClienteActual || {};
+  const c = {
+    ...base,
+    objetivo: document.getElementById('obj')?.value || base.objetivo,
+    nivel: document.getElementById('niv')?.value || base.nivel
+  };
+  aplicarMacrosCoach(c, true);
 }
 
 
@@ -4198,7 +4331,8 @@ async function dbGenerarIANuevo(){
 
   const c = await api('/clientes/'+dbState.clienteId);
   const esVegano = c.dieta_tipo==='Vegano' || c.dieta_tipo==='Vegetariano';
-  const kcalBase = c.kcal_internas || 2000;
+  const calcCoachIA = calcularMacrosCoachCliente(c);
+  const kcalBase = calcCoachIA.kcal || c.kcal_internas || 2000;
   // Determine caloric adjustment from client objetivo if auto
   let kcalAdj = 0;
   let kcalLabel = 'mantenimiento';
@@ -4222,9 +4356,9 @@ DATOS DEL CLIENTE:
 - Nivel: ${c.nivel}
 - Peso: ${c.peso_actual||'no especificado'}kg
 - Kcal objetivo: ${kcalObj} kcal/día
-- Proteína objetivo: ${c.prot||Math.round((c.peso_actual||75)*2)}g
-- Carbos objetivo: ${c.carbs||200}g
-- Grasas objetivo: ${c.fat||60}g
+- Proteína objetivo: ${c.prot||calcCoachIA.prot||Math.round((c.peso_actual||75)*2)}g
+- Carbos objetivo: ${c.carbs||calcCoachIA.carbs||200}g
+- Grasas objetivo: ${c.fat||calcCoachIA.fat||60}g
 - Tipo de dieta: ${c.dieta_tipo||'Omnívoro'}
 - Alimentos que NO puede comer: ${c.alimentos_no||'ninguno'}
 - Intolerancias/alergias: ${c.lesiones||'ninguna'}
