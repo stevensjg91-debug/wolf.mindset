@@ -1333,12 +1333,13 @@ function hDietaBuilder(){return`
           </select>
         </div>
         <div>
-          <div class="form-lbl">Objetivo calórico</div>
+          <div class="form-lbl">Ajuste calórico <span style="font-size:10px;color:var(--tx3);font-weight:400">(opcional — usa el del cliente por defecto)</span></div>
           <select class="inp" id="db_objetivo_cal" style="margin-bottom:0">
-            <option value="mantenimiento">Mantenimiento</option>
-            <option value="deficit">Déficit (-300 kcal)</option>
-            <option value="deficit_agresivo">Déficit agresivo (-500 kcal)</option>
-            <option value="superavit">Superávit (+300 kcal)</option>
+            <option value="auto">Automático según objetivo del cliente</option>
+            <option value="mantenimiento">Forzar mantenimiento</option>
+            <option value="deficit">Forzar déficit (-300 kcal)</option>
+            <option value="deficit_agresivo">Forzar déficit agresivo (-500 kcal)</option>
+            <option value="superavit">Forzar superávit (+300 kcal)</option>
           </select>
         </div>
       </div>
@@ -1393,10 +1394,23 @@ async function dbSelCliente(id){
     // Show client info hint
     const kcal = c.kcal_internas||2000;
     const hint = document.getElementById('db_client_hint');
-    if(hint) hint.innerHTML = `<div style="font-size:11px;color:var(--tx3);background:var(--s2);border-radius:8px;padding:8px 10px;margin-bottom:10px">
-      <b style="color:var(--sv2)">${c.nombre}</b> · ${kcal} kcal · ${c.objetivo||'Sin objetivo'} · ${c.dieta_tipo||'Omnívoro'}
-      ${c.alimentos_no?`<br>❌ No puede: ${c.alimentos_no}`:''}
+    if(hint) hint.innerHTML = `<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:6px">${c.nombre}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:var(--tx3);margin-bottom:6px">
+        <div>⚡ <b style="color:var(--sv2)">${kcal} kcal</b></div>
+        <div>🎯 ${c.objetivo||'Sin objetivo'}</div>
+        <div>🥗 ${c.dieta_tipo||'Omnívoro'}</div>
+        <div>📊 ${c.nivel||'Principiante'}</div>
+        <div>⚖️ ${c.peso_actual||'—'}kg · ${c.altura||'—'}cm</div>
+        <div>🔥 Actividad: ${c.actividad||'—'}</div>
+      </div>
+      ${c.alimentos_no?`<div style="font-size:11px;color:#fca5a5;margin-bottom:4px">❌ No puede: ${c.alimentos_no}</div>`:''}
+      ${c.lesiones?`<div style="font-size:11px;color:#fbbf24;margin-bottom:4px">⚠️ Lesiones: ${c.lesiones}</div>`:''}
+      ${c.deficiencias?`<div style="font-size:11px;color:#c084fc;margin-top:4px">🧪 Deficiencias: ${c.deficiencias}</div>`:''}
     </div>`;
+    // Set to auto — the IA will derive from client objetivo
+    const objCal = document.getElementById('db_objetivo_cal');
+    if(objCal) objCal.value = 'auto';
   }catch(e){}
 }
 
@@ -2247,6 +2261,51 @@ function hDieta(){
     <!-- NOTA PESOS EN CRUDO -->
     <div style="margin:10px 14px;background:${accBg};border:0.5px solid ${acc}60;border-radius:12px;padding:11px 14px">
       <div style="font-size:12px;color:rgba(255,255,255,.65);line-height:1.6">📌 Todos los pesos son <b style="color:#fff">en crudo</b>. Bebe 2-3L de agua/día. Dudas → usa el <b style="color:${accLight}">asistente</b>.</div>
+    </div>
+
+    <!-- CONSEJOS NUTRICIONALES FIJOS -->
+    <div style="margin:10px 14px 0;border:0.5px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden">
+      <div style="background:rgba(255,255,255,.04);padding:10px 14px;border-bottom:0.5px solid rgba(255,255,255,.06)">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:#fff;letter-spacing:.1em">📋 GUÍA NUTRICIONAL</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">Normas base para maximizar tus resultados</div>
+      </div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px">
+
+        <!-- Hidratación -->
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="font-size:20px;flex-shrink:0">💧</div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:2px">Hidratación</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.55);line-height:1.6">Prioriza siempre el <b style="color:#93c5fd">agua</b>. Si tomas café o té, sin azúcar — usa edulcorante si necesitas. Refrescos: siempre versión <b style="color:#93c5fd">zero</b>, nunca normal. Sin zumos de caja. Sin bebidas azucaradas.</div>
+          </div>
+        </div>
+
+        <div style="height:0.5px;background:rgba(255,255,255,.06)"></div>
+
+        <!-- Salsas y condimentos -->
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="font-size:20px;flex-shrink:0">🫙</div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:2px">Salsas y condimentos</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.55);line-height:1.6">
+              ✅ <b style="color:#86efac">Permitido:</b> tomate al natural, especias libres (pimienta, perejil, albahaca, orégano, cúrcuma...), sal, ketchup zero, mostaza, salsa de soja baja en sodio.<br>
+              ❌ <b style="color:#fca5a5">Evitar:</b> salsas comerciales con azúcar, mayonesa en exceso, salsas tipo barbacoa normal, aderezos industriales.
+            </div>
+          </div>
+        </div>
+
+        <div style="height:0.5px;background:rgba(255,255,255,.06)"></div>
+
+        <!-- Azúcares -->
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="font-size:20px;flex-shrink:0">🚫</div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:2px">Azúcares añadidos</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.55);line-height:1.6">Evita azúcar en café, bollería, galletas, refrescos azucarados y zumos de caja. Si necesitas endulzar usa <b style="color:#93c5fd">edulcorante (stevia, eritritol)</b>. Recuerda: las calorías líquidas no sacian.</div>
+          </div>
+        </div>
+
+      </div>
     </div>
 
     <!-- BOTÓN GUARDAR -->
@@ -3994,7 +4053,9 @@ async function dbGenerarIANuevo(){
   const alimentos = document.getElementById('db_alimentos_input').value.trim();
   if(!alimentos){ res.innerHTML='<div style="color:#f87171;font-size:13px">Escribe los alimentos disponibles</div>'; return; }
   const numComidas = document.getElementById('db_num_comidas').value;
-  const objetivoCal = document.getElementById('db_objetivo_cal').value;
+  const objCalSel = document.getElementById('db_objetivo_cal').value;
+  // If auto, derive from client objetivo
+  const objetivoCal = objCalSel === 'auto' ? 'auto' : objCalSel;
   const notasExtra = document.getElementById('db_notas_extra').value;
   const analiticas = document.getElementById('db_analiticas')?.value||'';
 
@@ -4003,8 +4064,20 @@ async function dbGenerarIANuevo(){
   const c = await api('/clientes/'+dbState.clienteId);
   const esVegano = c.dieta_tipo==='Vegano' || c.dieta_tipo==='Vegetariano';
   const kcalBase = c.kcal_internas || 2000;
-  const kcalMap = {mantenimiento:0, deficit:-300, deficit_agresivo:-500, superavit:300};
-  const kcalObj = kcalBase + (kcalMap[objetivoCal]||0);
+  // Determine caloric adjustment from client objetivo if auto
+  let kcalAdj = 0;
+  let kcalLabel = 'mantenimiento';
+  if(objetivoCal === 'auto'){
+    const obj = (c.objetivo||'').toLowerCase();
+    if(obj.includes('definic') || obj.includes('perder') || obj.includes('grasa')){ kcalAdj=-300; kcalLabel='déficit'; }
+    else if(obj.includes('volumen') || obj.includes('ganar') || obj.includes('masa')){ kcalAdj=300; kcalLabel='superávit'; }
+    else { kcalAdj=0; kcalLabel='mantenimiento'; }
+  } else {
+    const kcalMap = {mantenimiento:0, deficit:-300, deficit_agresivo:-500, superavit:300};
+    kcalAdj = kcalMap[objetivoCal]||0;
+    kcalLabel = objetivoCal;
+  }
+  const kcalObj = kcalBase + kcalAdj;
 
   const prompt = `Crea un plan de dieta DETALLADO para este cliente. Responde SOLO en JSON válido sin texto adicional.
 
@@ -4022,7 +4095,7 @@ DATOS DEL CLIENTE:
 - Intolerancias/alergias: ${c.lesiones||'ninguna'}
 - Observaciones: ${c.observaciones||'ninguna'}
 - Número de comidas: ${numComidas}
-- Ajuste calórico: ${objetivoCal}
+- Ajuste calórico: ${kcalLabel} (${kcalObj} kcal totales)
 - Notas extra: ${notasExtra||'ninguna'}
 - Analíticas / déficits detectados: ${analiticas||'ninguno'}
 
