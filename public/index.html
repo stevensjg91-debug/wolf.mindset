@@ -1466,10 +1466,12 @@ async function dbSelCliente(id){
 }
 
 async function dbLoadComidas(){
+  const listEl = document.getElementById('db_comidas_list');
+  if(!listEl) return;
   const c=await api('/clientes/'+dbState.clienteId);
   const mIcons=['☀️','🕐','🍽️','🌅','🌙','🥗'];
   const catColors={'Proteína':'#3b82f6','Carbohidrato':'#a78bfa','Verdura':'#22c55e','Grasa saludable':'#f59e0b','Lácteo':'#ec4899'};
-  document.getElementById('db_comidas_list').innerHTML=c.comidas.length?c.comidas.map((m,mi)=>`
+  listEl.innerHTML=c.comidas.length?c.comidas.map((m,mi)=>`
     <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;margin-bottom:10px;overflow:hidden">
       <div style="padding:11px 13px;display:flex;align-items:center;justify-content:space-between;${m.items.length?'border-bottom:0.5px solid var(--br)':''}">
         <div class="fl"><span style="font-size:20px;margin-right:8px">${mIcons[mi]||'🍽️'}</span><span style="font-size:14px;font-weight:700;color:var(--sv)">${m.nombre}</span></div>
@@ -4524,8 +4526,8 @@ async function dbPublicarPlan(){
       body:JSON.stringify({ plan })
     });
 
-    // Recarga comidas si la vista existe
-    if(typeof dbLoadComidas === 'function'){
+    // Recarga comidas solo si la vista de comidas está visible en el DOM
+    if(typeof dbLoadComidas === 'function' && document.getElementById('db_comidas_list')){
       await dbLoadComidas();
     }
 
