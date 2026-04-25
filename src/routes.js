@@ -1,5 +1,5 @@
 const express = require('express');
-const { dbGet, dbAll, dbRun } = require('./database');
+const { dbGet, dbAll, dbRun, saveToDisk } = require('./database');
 const { authMiddleware, coachOnly } = require('./auth');
 
 const router = express.Router();
@@ -43,7 +43,7 @@ router.get('/clientes/:id', (req, res) => {
     kcal_internas: planMeta?.kcal || c.kcal_internas || null,
     prot: planMeta?.prot || c.prot || null,
     carbs: planMeta?.carbs || c.carbs || null,
-    fat: planMeta?.fat || c.fat || null,
+    fat: planMeta?.grasas || c.fat || null,
   });
 });
 
@@ -314,7 +314,6 @@ router.post('/reload-ejercicios', (req, res) => {
       [e.grupo,e.nombre,e.musculos,e.tipo,e.dificultad,e.equipo]));
     ALIMENTOS.forEach(a => dbRun('INSERT INTO alimentos_db (categoria,nombre,calorias,proteinas,carbos,grasas) VALUES (?,?,?,?,?,?)',
       [a.categoria,a.nombre,a.calorias,a.proteinas,a.carbos,a.grasas]));
-    const { saveToDisk } = require('./database');
     saveToDisk();
     res.json({ ok: true, ejercicios: EJERCICIOS.length, alimentos: ALIMENTOS.length });
   } catch(e) {
@@ -330,7 +329,6 @@ router.post('/ejercicios-db-add', coachOnly, (req, res) => {
   if(existing) return res.status(400).json({ error: 'Ya existe' });
   const r = dbRun('INSERT INTO ejercicios_db (grupo,nombre,musculos,tipo,dificultad,equipo) VALUES (?,?,?,?,?,?)',
     [grupo, nombre, musculos||'', tipo||'Fuerza', dificultad||'Intermedio', equipo||'']);
-  const { saveToDisk } = require('./database');
   saveToDisk();
   res.json({ ok: true, id: r.lastInsertRowid });
 });
@@ -351,7 +349,6 @@ router.post('/clientes/:id/sesiones', (req, res) => {
       );
     });
   }
-  const { saveToDisk } = require('./database');
   saveToDisk();
   res.json({ ok: true, sesion_id: sesionId });
 });
@@ -404,7 +401,6 @@ router.post('/auth/registro', async (req, res) => {
     const userId = userR.lastInsertRowid;
     dbRun(`INSERT INTO clientes (user_id, objetivo, nivel, peso_actual, altura, edad, sexo, actividad, dieta_tipo, alimentos_no, lesiones, observaciones) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
       [userId, objetivo||'Volumen', nivel||'Intermedio', peso_actual||0, altura||0, edad||0, sexo||'Hombre', actividad||'Moderada', dieta_tipo||'Omnivoro', alimentos_no||'', lesiones||'', observaciones||'']);
-    const { saveToDisk } = require('./database');
     saveToDisk();
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -470,7 +466,6 @@ router.delete('/comidas/:id', coachOnly, (req, res) => {
   try {
     dbRun('DELETE FROM alimentos WHERE comida_id=?', [req.params.id]);
     dbRun('DELETE FROM comidas WHERE id=?', [req.params.id]);
-    const { saveToDisk } = require('./database');
     saveToDisk();
     res.json({ ok: true });
   } catch(e) {
@@ -507,7 +502,7 @@ router.post('/clientes/:id/dieta/publicar', coachOnly, (req, res) => {
       alimentos.forEach((alim, ai) => {
         const nombre = alim.nombre || 'Alimento';
         const cantidad = String(alim.cantidad || alim.gramos || '100');
-        const gramos = parseInt(cantidad.replace(',', '.')) || Number(alim.gramos) || 100;
+        const gramos = parseFloat(cantidad.replace(',', '.')) || Number(alim.gramos) || 100;
         const detalle = alim.detalle ? ` (${alim.detalle})` : '';
 
         dbRun(
@@ -542,7 +537,6 @@ router.post('/clientes/:id/dieta/publicar', coachOnly, (req, res) => {
       ]
     );
 
-    const { saveToDisk } = require('./database');
     saveToDisk();
 
     res.json({ ok: true, comidas: plan.comidas.length });
