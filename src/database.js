@@ -115,6 +115,7 @@ async function initDB() {
   )`);
   try{ db.run('ALTER TABLE plan_meta ADD COLUMN variaciones TEXT'); }catch(e){}
   try{ db.run("ALTER TABLE fotos ADD COLUMN tipo TEXT DEFAULT 'frente'"); }catch(e){}
+  try{ db.run('ALTER TABLE fotos ADD COLUMN published_analysis TEXT'); }catch(e){}
   try{ db.run('ALTER TABLE plan_meta ADD COLUMN suplementacion TEXT'); }catch(e){}
   try{ db.run('ALTER TABLE plan_meta ADD COLUMN alimentos_therapeuticos TEXT'); }catch(e){}
 
