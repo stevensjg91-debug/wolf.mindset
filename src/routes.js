@@ -565,32 +565,6 @@ router.post('/clientes/:id/plan-meta', coachOnly, (req, res) => {
 // ═══ SUSCRIPCIONES ═════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════
 
-// Asegura que existe la tabla (se ejecuta al arrancar)
-// En database.js deberías añadir esto al CREATE TABLE inicial,
-// pero como fallback lo hacemos aquí también:
-try {
-  dbRun(`CREATE TABLE IF NOT EXISTS suscripciones (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cliente_id INTEGER UNIQUE NOT NULL,
-    estado TEXT DEFAULT 'activa',
-    fecha_inicio TEXT NOT NULL,
-    fecha_fin TEXT NOT NULL,
-    precio REAL DEFAULT 0,
-    notas TEXT DEFAULT '',
-    renovado_at TEXT,
-    FOREIGN KEY(cliente_id) REFERENCES clientes(id)
-  )`);
-  dbRun(`CREATE TABLE IF NOT EXISTS notificaciones (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    tipo TEXT NOT NULL,
-    mensaje TEXT NOT NULL,
-    leida INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-  )`);
-} catch(e) { console.error('Suscripciones table error:', e.message); }
-
 // Helper: calcular días restantes
 function diasRestantes(fecha_fin) {
   const hoy = new Date();
