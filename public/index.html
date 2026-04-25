@@ -1410,7 +1410,7 @@ function hDietaBuilder(){return`
         <div class="sec-hdr">Vista previa del plan</div>
         <div style="display:flex;gap:8px;margin-bottom:12px">
           <button class="btn" style="flex:1;padding:10px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);font-size:13px" onclick="dbEditarPlan()">✏️ Editar cantidades</button>
-          <button class="btn" style="flex:1;padding:10px;background:var(--gn);font-size:13px" onclick="dbPublicarPlan()">✓ Publicar al cliente</button>
+          <button class="btn" style="flex:1;padding:10px;background:var(--gn);font-size:13px" id="btn_publicar_dieta_ia" onclick="dbPublicarPlan()">✓ Publicar al cliente</button>
         </div>
         <div id="db_plan_html"></div>
       </div>
@@ -4468,39 +4468,62 @@ RESPONDE EXACTAMENTE en este formato JSON:
 }
 
 async function dbPublicarPlan(){
-  if(!window._planDietaActual || !window._planDietaClienteId) return;
-  const btn = event.target;
-  btn.textContent='⏳ Publicando...';
-  btn.disabled=true;
+  if(!window._planDietaActual || !window._planDietaClienteId){
+    alert('No hay una dieta generada para publicar.');
+    return;
+  }
+
+  const btn = document.getElementById('btn_publicar_dieta_ia') || (window.event && window.event.target) || null;
+  const oldText = btn ? btn.textContent : '';
+
+  if(btn){
+    btn.textContent='⏳ Publicando...';
+    btn.disabled=true;
+  }
 
   const plan = window._planDietaActual;
   const clienteId = window._planDietaClienteId;
 
   try {
-    await api('/clientes/'+clienteId+'/dieta/publicar', {
+    const respuesta = await api('/clientes/'+clienteId+'/dieta/publicar', {
       method:'POST',
       body:JSON.stringify({ plan })
     });
 
-    await dbLoadComidas();
+    // Recarga comidas si la vista existe
+    if(typeof dbLoadComidas === 'function'){
+      await dbLoadComidas();
+    }
 
     const preview = document.getElementById('db_plan_preview');
     if(preview) preview.style.display = 'none';
 
-    btn.textContent='✓ Publicado y guardado en el perfil';
-    btn.style.color='var(--gnb)';
+    const result = document.getElementById('db_ia_result');
+    if(result){
+      result.innerHTML = `<div class="ia-chip" style="border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08)">
+        <div class="ia-chip-title" style="color:var(--gnb)">Dieta publicada</div>
+        La dieta se ha guardado en el perfil del cliente. Puedes volver a entrar al cliente y verla en sus comidas.
+      </div>`;
+    }
 
-    setTimeout(async ()=>{
-      btn.textContent='✓ Publicar al cliente';
-      btn.style.color='';
-      btn.disabled=false;
-      await dbLoadComidas();
-    }, 2500);
+    if(btn){
+      btn.textContent='✓ Publicado y guardado';
+      btn.style.color='var(--gnb)';
+      setTimeout(()=>{
+        btn.textContent=oldText || '✓ Publicar al cliente';
+        btn.style.color='';
+        btn.disabled=false;
+      }, 2200);
+    } else {
+      alert('Dieta publicada y guardada en el perfil del cliente.');
+    }
 
   } catch(e) {
     console.error(e);
-    btn.textContent='Error al publicar';
-    btn.disabled=false;
+    if(btn){
+      btn.textContent=oldText || '✓ Publicar al cliente';
+      btn.disabled=false;
+    }
     alert('No se pudo publicar la dieta: ' + (e.error || e.message || 'Error desconocido'));
   }
 }
