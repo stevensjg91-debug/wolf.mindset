@@ -1818,8 +1818,6 @@ function abrirDescripcion(nombre){
              </div>`
         }
       </div>
-      <span style="${imgUrl?'display:none':''}font-size:64px">${emoji}</span>
-        
       </div>
       <div style="font-size:11px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">Instrucciones</div>
       ${pasos}
@@ -1885,7 +1883,7 @@ function hEntreno(){
     </div>`;
   }).join('');
 
-  const wolfSrc = isLegDay(d.grupo) ? WOLF_LOWER_SRC : WOLF_UPPER_SRC;
+  const wolfSrc = WOLF_UPPER_SRC; // mancuerna wolf for all days
   return`<div class="hero-day" style="position:relative;overflow:hidden">
     <img src="${wolfSrc}" style="position:absolute;right:-10px;bottom:-10px;height:120px;width:auto;opacity:.2;mix-blend-mode:screen;pointer-events:none;z-index:0"/>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1">
