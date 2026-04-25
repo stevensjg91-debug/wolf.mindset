@@ -1326,8 +1326,30 @@ function hDietaBuilder(){return`
       <div id="db_client_hint"></div>
       <div style="font-size:12px;color:var(--tx3);margin-bottom:12px;line-height:1.6">La IA usa automáticamente las kcal, macros, intolerancias y preferencias del cliente. Solo tienes que indicar los alimentos disponibles y el número de comidas.</div>
 
-      <div class="form-lbl">Alimentos disponibles</div>
-      <textarea class="ta" id="db_alimentos_input" placeholder="Ej: pollo, arroz, avena, huevos, brócoli, salmón, patata, aceite de oliva, requesón..." style="min-height:80px"></textarea>
+      <div class="form-lbl" style="display:flex;align-items:center;justify-content:space-between">
+        Alimentos disponibles
+        <button onclick="dbLimpiarAlimentos()" style="font-size:10px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:0">✕ Limpiar</button>
+      </div>
+
+      <!-- Categorías de alimentos -->
+      <div style="margin-bottom:8px">
+        <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
+          ${['🥩 Proteínas','🌾 Carbos','🥑 Grasas','🥦 Verduras','🍎 Frutas'].map((cat,i)=>`
+          <button onclick="dbToggleCat(${i},this)" style="padding:4px 10px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--tx3);font-size:11px;font-weight:600;cursor:pointer;touch-action:manipulation" data-cat="${i}">${cat}</button>`).join('')}
+        </div>
+        <!-- Chips por categoría -->
+        <div id="db_alim_chips" style="display:flex;flex-wrap:wrap;gap:5px;min-height:0;margin-bottom:6px"></div>
+      </div>
+
+      <!-- Favoritos -->
+      <div id="db_favoritos_wrap" style="margin-bottom:6px;display:none">
+        <div style="font-size:10px;color:var(--amb);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">⭐ Favoritos</div>
+        <div id="db_favoritos_chips" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+      </div>
+
+      <!-- Campo manual -->
+      <textarea class="ta" id="db_alimentos_input" placeholder="Los seleccionados aparecen aquí. También puedes escribir manualmente..." style="min-height:60px"></textarea>
+      <button onclick="dbGuardarFavoritos()" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:2px 0;text-align:left">+ Guardar selección como favorito</button>
 
       <div class="g2" style="gap:8px;margin-bottom:10px">
         <div>
@@ -1419,6 +1441,9 @@ async function dbSelCliente(id){
     // Set to auto — the IA will derive from client objetivo
     const objCal = document.getElementById('db_objetivo_cal');
     if(objCal) objCal.value = 'auto';
+    // Load favorites
+    dbCargarFavoritos();
+    _dbSeleccionados.clear();
   }catch(e){}
 }
 
@@ -1850,8 +1875,7 @@ function hEntreno(){
 
   const wolfSrc = isLegDay(d.grupo) ? WOLF_LOWER_SRC : WOLF_UPPER_SRC;
   return`<div class="hero-day" style="position:relative;overflow:hidden">
-    <!-- Wolf watermark -->
-    <img src="${wolfSrc}" style="position:absolute;right:-15px;bottom:-15px;height:140px;width:auto;opacity:.25;mix-blend-mode:screen;pointer-events:none;z-index:0"/>
+    <img src="${wolfSrc}" style="position:absolute;right:-10px;bottom:-10px;height:120px;width:auto;opacity:.2;mix-blend-mode:screen;pointer-events:none;z-index:0"/>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1">
       <div>
         <div class="hero-day-lbl">Entrenamiento</div>
@@ -2473,9 +2497,7 @@ function hProgreso2(){return`<div style="padding-top:8px">
       Sube las 3 fotos para que tu coach pueda hacer una valoración completa.<br>
       📏 Posición: de pie, cuerpo entero, buena iluminación.
     </div>
-    <button id="btn_analizar_fotos" onclick="analizarFotos()" style="display:none;width:100%;padding:11px;background:var(--bl2);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
-      🤖 Analizar progreso con IA
-    </button>
+    <!-- Analizar fotos solo disponible para coach desde su panel -->
   </div>
   <input type="file" id="fUp" accept="image/*" style="display:none" onchange="uploadFoto(event)"/>
   <div id="fLoad" style="display:none;padding:0 14px 10px"><div class="ia-chip"><div class="ia-chip-title">Analizando tu progreso...</div></div></div>
@@ -4654,17 +4676,27 @@ async function analizarFotos(){
 
     document.getElementById('fLoad').style.display='none';
 
-    // Save analysis to the most recent foto
-    const recentFotos = CD.fotos?.slice(-3) || [];
+    // Store draft (not visible to client yet)
+    const recentFotos = (CD.fotos||[]).slice(-3);
     for(const f of recentFotos){
       try{ await api('/fotos/'+f.id+'/analysis',{method:'PUT',body:JSON.stringify({analysis:d.reply})}); }catch(e){}
     }
     await loadCD(CD.id);
     renderFotosProgreso();
-
-    document.getElementById('fAn').innerHTML = '';
-    btn.textContent = '✓ Análisis guardado';
-    btn.style.background = 'var(--gn)';
+    const cleanDraft = d.reply.replace(/\*\*([^*]+)\*\*/g,'$1').replace(/##[^\n]+/g,'').replace(/\n{3,}/g,'\n\n').trim();
+    window._lastFotoIds = recentFotos.map(f=>f.id);
+    document.getElementById('fAn').innerHTML = `
+      <div class="sec" style="margin:0 14px">
+        <div class="sec-hdr" style="color:var(--blg)">📝 Revisa y edita antes de publicar</div>
+        <textarea id="coach_val_draft" class="ta" style="min-height:140px;font-size:13px;line-height:1.7">${cleanDraft}</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button onclick="publicarValoracion()" class="btn" style="flex:1;padding:11px;background:var(--gn)">✓ Publicar al cliente</button>
+          <button onclick="document.getElementById('fAn').innerHTML=''" style="padding:11px 14px;border:0.5px solid var(--br);border-radius:10px;background:none;color:var(--tx3);cursor:pointer;font-family:inherit">Descartar</button>
+        </div>
+        <div style="font-size:11px;color:var(--tx3);margin-top:6px;text-align:center">Se publicará como mensaje de tu coach</div>
+      </div>`;
+    btn.textContent = '✓ Borrador listo';
+    btn.style.background = 'var(--bl2)';
   } catch(e){
     document.getElementById('fLoad').style.display='none';
     btn.textContent = 'Error — reintentar';
@@ -4759,13 +4791,13 @@ function renderCoachFotos(fotos){
       }
       return '<div style="aspect-ratio:3/4;border-radius:8px;border:1px dashed rgba(255,255,255,.1);background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--tx3);text-transform:uppercase">'+tipo+'</div>';
     }).join('');
-    const analysis = Object.values(g).find(f=>f.analysis)?.analysis||'';
+    const pubAnalysis = Object.values(g).find(f=>f.published_analysis)?.published_analysis||'';
     return '<div style="margin-bottom:14px">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
       +'<div style="font-size:11px;font-weight:700;color:var(--blg)">📅 '+dateStr+' · Semana '+(fi+1)+'</div>'
       +'<div style="flex:1;height:0.5px;background:var(--br)"></div></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:6px">'+fotosHtml+'</div>'
-      +(analysis?'<div style="background:rgba(37,99,235,.06);border:0.5px solid rgba(59,130,246,.15);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--sv2);line-height:1.6">'+analysis+'</div>':'')
+      +(pubAnalysis?'<div style="background:rgba(37,99,235,.06);border:0.5px solid rgba(59,130,246,.2);border-radius:8px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:var(--blg);margin-bottom:5px">💬 Tu coach</div><div style="font-size:12px;color:var(--sv2);line-height:1.7">'+pubAnalysis+'</div></div>':'')
       +'</div>';
   }).join('');
 }
@@ -4868,6 +4900,152 @@ function isLegDay(grupo){
   return g.includes('pierna') || g.includes('leg') || g.includes('glute') ||
          g.includes('cuádr') || g.includes('isquio') || g.includes('gemelo') ||
          g.includes('squat') || g.includes('inferior');
+}
+
+
+// ═══ ALIMENTOS CHIPS ═══════════════════════════════
+const DB_ALIMENTOS = {
+  0: [ // Proteínas
+    'Pollo (pechuga)','Muslo de pollo','Pavo','Salmón','Atún','Merluza','Gambas',
+    'Huevos enteros','Claras de huevo','Ternera (magra)','Cerdo (aguja)',
+    'Whey protein','Caseína','Requesón','Yogur proteico','Jamón cocido 95%'
+  ],
+  1: [ // Carbohidratos
+    'Arroz blanco','Arroz integral','Avena','Patata','Boniato','Pan integral',
+    'Pasta integral','Quinoa','Lentejas','Garbanzos','Maíz'
+  ],
+  2: [ // Grasas
+    'Aceite de oliva','Aguacate','Nueces','Almendras','Anacardos',
+    'Cacahuetes','Mantequilla de cacahuete','Queso gouda','Huevo entero'
+  ],
+  3: [ // Verduras
+    'Brócoli','Espinacas','Lechuga','Tomate','Pepino','Cebolla','Ajo',
+    'Pimiento','Champiñones','Zanahoria','Calabacín','Judías verdes'
+  ],
+  4: [ // Frutas
+    'Plátano','Manzana','Naranja','Fresas','Arándanos','Mango','Piña','Uvas'
+  ]
+};
+
+let _dbCatActiva = null;
+let _dbSeleccionados = new Set();
+
+function dbToggleCat(catIdx, btn){
+  const chips = document.getElementById('db_alim_chips');
+  if(!chips) return;
+  // Toggle category
+  if(_dbCatActiva === catIdx){
+    _dbCatActiva = null;
+    chips.innerHTML = '';
+    chips.style.display = 'none';
+    document.querySelectorAll('[data-cat]').forEach(b=>{ b.style.background='var(--s2)'; b.style.color='var(--tx3)'; b.style.border='0.5px solid var(--br)'; });
+    return;
+  }
+  _dbCatActiva = catIdx;
+  // Style active cat button
+  document.querySelectorAll('[data-cat]').forEach(b=>{ b.style.background='var(--s2)'; b.style.color='var(--tx3)'; b.style.border='0.5px solid var(--br)'; });
+  btn.style.background='var(--bl2)'; btn.style.color='#fff'; btn.style.border='0.5px solid var(--bl2)';
+  // Show chips
+  const alims = DB_ALIMENTOS[catIdx]||[];
+  chips.style.display = 'flex';
+  chips.innerHTML = alims.map(a=>{
+    const sel = _dbSeleccionados.has(a);
+    return `<button onclick="dbToggleAlim('${a.replace(/'/g,"\'")}',this)"
+      style="padding:4px 10px;border-radius:20px;border:0.5px solid ${sel?'var(--bl2)':'var(--br)'};background:${sel?'rgba(37,99,235,.2)':'var(--s2)'};color:${sel?'var(--blg)':'var(--sv2)'};font-size:11px;cursor:pointer;touch-action:manipulation;white-space:nowrap">${a}</button>`;
+  }).join('');
+}
+
+function dbToggleAlim(nombre, btn){
+  if(_dbSeleccionados.has(nombre)){
+    _dbSeleccionados.delete(nombre);
+    btn.style.background='var(--s2)'; btn.style.color='var(--sv2)'; btn.style.border='0.5px solid var(--br)';
+  } else {
+    _dbSeleccionados.add(nombre);
+    btn.style.background='rgba(37,99,235,.2)'; btn.style.color='var(--blg)'; btn.style.border='0.5px solid var(--bl2)';
+  }
+  dbActualizarTextarea();
+}
+
+function dbActualizarTextarea(){
+  const ta = document.getElementById('db_alimentos_input');
+  if(!ta) return;
+  // Get manual additions (anything not from chips)
+  const chipsArr = [..._dbSeleccionados];
+  // Merge with manual text preserving extra manual entries
+  const manual = ta.value.split(',').map(s=>s.trim()).filter(s=>s && !Object.values(DB_ALIMENTOS).flat().includes(s));
+  const all = [...chipsArr, ...manual];
+  ta.value = all.join(', ');
+}
+
+function dbLimpiarAlimentos(){
+  _dbSeleccionados.clear();
+  const ta = document.getElementById('db_alimentos_input');
+  if(ta) ta.value = '';
+  const chips = document.getElementById('db_alim_chips');
+  if(chips) chips.innerHTML = '';
+  document.querySelectorAll('[data-cat]').forEach(b=>{ b.style.background='var(--s2)'; b.style.color='var(--tx3)'; b.style.border='0.5px solid var(--br)'; });
+  _dbCatActiva = null;
+}
+
+function dbGuardarFavoritos(){
+  if(!_dbSeleccionados.size) return;
+  const favs = JSON.parse(localStorage.getItem('wm_alim_favs')||'[]');
+  const nuevos = [..._dbSeleccionados].filter(a=>!favs.includes(a));
+  if(!nuevos.length){ alert('Todos ya están en favoritos'); return; }
+  const updated = [...favs, ...nuevos];
+  localStorage.setItem('wm_alim_favs', JSON.stringify(updated));
+  dbCargarFavoritos();
+  const btn = event.target;
+  btn.textContent = '✓ Guardado';
+  setTimeout(()=>btn.textContent='+ Guardar selección como favorito', 2000);
+}
+
+function dbCargarFavoritos(){
+  const favs = JSON.parse(localStorage.getItem('wm_alim_favs')||'[]');
+  const wrap = document.getElementById('db_favoritos_wrap');
+  const chips = document.getElementById('db_favoritos_chips');
+  if(!wrap||!chips) return;
+  if(!favs.length){ wrap.style.display='none'; return; }
+  wrap.style.display = 'block';
+  chips.innerHTML = favs.map(a=>`
+    <button onclick="dbToggleAlimFav('${a.replace(/'/g,"\'")}',this)"
+      style="padding:4px 10px;border-radius:20px;border:0.5px solid rgba(245,158,11,.3);background:rgba(245,158,11,.08);color:var(--amb);font-size:11px;cursor:pointer;touch-action:manipulation;white-space:nowrap">${a}
+      <span onclick="event.stopPropagation();dbEliminarFav('${a.replace(/'/g,"\'")}',this.closest('button'))" style="margin-left:4px;opacity:.5;font-size:10px">✕</span>
+    </button>`).join('');
+}
+
+function dbToggleAlimFav(nombre, btn){
+  dbToggleAlim(nombre, btn); // reuse same toggle
+  // Restore fav styling if deselected
+  if(!_dbSeleccionados.has(nombre)){
+    btn.style.background='rgba(245,158,11,.08)'; btn.style.color='var(--amb)'; btn.style.border='0.5px solid rgba(245,158,11,.3)';
+  } else {
+    btn.style.background='rgba(37,99,235,.2)'; btn.style.color='var(--blg)'; btn.style.border='0.5px solid var(--bl2)';
+  }
+}
+
+function dbEliminarFav(nombre, btn){
+  const favs = JSON.parse(localStorage.getItem('wm_alim_favs')||'[]');
+  localStorage.setItem('wm_alim_favs', JSON.stringify(favs.filter(f=>f!==nombre)));
+  btn.remove();
+  const chips = document.getElementById('db_favoritos_chips');
+  if(chips && !chips.children.length) document.getElementById('db_favoritos_wrap').style.display='none';
+}
+
+
+async function publicarValoracion(){
+  const texto = document.getElementById('coach_val_draft')?.value?.trim();
+  if(!texto) return;
+  const btn = event.target;
+  btn.textContent = '⏳...'; btn.disabled = true;
+  try{
+    for(const id of (window._lastFotoIds||[])){
+      await api('/fotos/'+id+'/publicar',{method:'POST',body:JSON.stringify({texto})});
+    }
+    await loadCD(CD.id);
+    renderFotosProgreso();
+    document.getElementById('fAn').innerHTML = '<div style="font-size:13px;color:var(--gnb);padding:8px 14px;text-align:center">✓ Valoración publicada — el cliente ya puede verla</div>';
+  }catch(e){ btn.textContent='Error'; btn.disabled=false; }
 }
 
 </script>
