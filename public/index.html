@@ -2363,6 +2363,17 @@ document.addEventListener('click', e => {
   }
 });
 
+// Enter físico confirma la serie en el teclado virtual del entreno
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter') {
+    const kb = document.getElementById('strong_keyboard');
+    if(kb && kb.style.display !== 'none') {
+      e.preventDefault();
+      kbConfirm();
+    }
+  }
+});
+
 
 
 // ═══ IA COACH ═════════════════════════════════════════
