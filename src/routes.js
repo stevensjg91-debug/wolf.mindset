@@ -66,7 +66,21 @@ router.put('/clientes/:id/perfil', (req, res) => {
   const c = dbGet('SELECT * FROM clientes WHERE id=?', [id]);
   if (!c) return res.status(404).json({ error: 'No encontrado' });
   dbRun('UPDATE clientes SET peso_actual=?, altura=?, edad=?, sexo=?, actividad=?, cintura_actual=?, cadera=?, observaciones=?, dieta_tipo=?, alimentos_no=?, lesiones=?, deficiencias=? WHERE id=?',
-    [peso_actual!=null?peso_actual:c.peso_actual, altura||c.altura, edad||c.edad, sexo||c.sexo, actividad||c.actividad, cintura_actual!=null?cintura_actual:c.cintura_actual, cadera!=null?cadera:c.cadera, observaciones||c.observaciones, dieta_tipo||c.dieta_tipo||'Omnivoro', alimentos_no!=null?alimentos_no:c.alimentos_no||'', lesiones!=null?lesiones:c.lesiones||'', id]);
+    [
+      peso_actual!=null ? peso_actual : c.peso_actual,
+      altura || c.altura,
+      edad || c.edad,
+      sexo || c.sexo,
+      actividad || c.actividad,
+      cintura_actual!=null ? cintura_actual : c.cintura_actual,
+      cadera!=null ? cadera : c.cadera,
+      observaciones!=null ? observaciones : c.observaciones||'',
+      dieta_tipo || c.dieta_tipo || 'Omnívoro',
+      alimentos_no!=null ? alimentos_no : c.alimentos_no||'',
+      lesiones!=null ? lesiones : c.lesiones||'',
+      deficiencias!=null ? deficiencias : c.deficiencias||'',
+      id
+    ]);
   res.json({ ok: true });
 });
 
