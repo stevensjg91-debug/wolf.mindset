@@ -4956,7 +4956,7 @@ function dbNuevoAlimento(){
 
   _dbSeleccionados.add(alimento);
   _dbCatActiva = null;
-  const catBtn = document.querySelector(`[data-cat=""]`);
+  const catBtn = document.querySelector(`[data-cat="${cat}"]`);
   if(catBtn) dbToggleCat(cat,catBtn);
   dbActualizarSelected();
 }
@@ -4990,10 +4990,13 @@ function dbToggleAlim(nombre, btn){
   } else {
     _dbSeleccionados.add(nombre);
   }
-  // Re-render category to update button states
-  const activeCatBtn = document.querySelector(`[data-cat="${_dbCatActiva}"]`);
-  if(activeCatBtn) dbToggleCat(_dbCatActiva, activeCatBtn); // close
-  if(activeCatBtn) dbToggleCat(_dbCatActiva, activeCatBtn); // reopen
+  // Re-render category without closing the menu
+  const cat = _dbCatActiva;
+  const activeCatBtn = document.querySelector(`[data-cat="${cat}"]`);
+  if(activeCatBtn && cat !== null){
+    _dbCatActiva = null;
+    dbToggleCat(cat, activeCatBtn);
+  }
   dbActualizarSelected();
 }
 
@@ -5024,9 +5027,13 @@ function dbActualizarSelected(){
 
 function dbQuitarAlim(nombre){
   _dbSeleccionados.delete(nombre);
-  // Update chip in category list if open
-  const activeCatBtn = document.querySelector(`[data-cat="${_dbCatActiva}"]`);
-  if(activeCatBtn && _dbCatActiva!==null){ dbToggleCat(_dbCatActiva,activeCatBtn); dbToggleCat(_dbCatActiva,activeCatBtn); }
+  // Update chip in category list if open, without closing it
+  const cat = _dbCatActiva;
+  const activeCatBtn = document.querySelector(`[data-cat="${cat}"]`);
+  if(activeCatBtn && cat !== null){
+    _dbCatActiva = null;
+    dbToggleCat(cat,activeCatBtn);
+  }
   dbActualizarSelected();
 }
 
