@@ -30,7 +30,7 @@ router.get('/clientes/:id', (req, res) => {
   comidas.forEach(m => { m.items = dbAll('SELECT * FROM alimentos WHERE comida_id=? ORDER BY orden', [m.id]); });
   const recetas = dbAll('SELECT * FROM recetas WHERE cliente_id=? ORDER BY orden', [id]);
   recetas.forEach(r => { r.ingredientes = dbAll('SELECT * FROM receta_ingredientes WHERE receta_id=?', [r.id]); });
-  const fotos = dbAll('SELECT id, url, analysis, fecha, tipo FROM fotos WHERE cliente_id=? ORDER BY fecha ASC', [id]);
+  const fotos = dbAll('SELECT id, url, analysis, published_analysis, fecha, tipo FROM fotos WHERE cliente_id=? ORDER BY fecha ASC', [id]);
   res.json({
     ...c,
     pesos, dias, comidas, recetas, fotos,
@@ -199,6 +199,13 @@ router.delete('/fotos/:id', (req, res) => {
 // Update foto analysis
 router.put('/fotos/:id/analysis', (req, res) => {
   dbRun('UPDATE fotos SET analysis=? WHERE id=?', [req.body.analysis, req.params.id]);
+  res.json({ ok: true });
+});
+
+// Publish analysis to client (saves as coach message, no IA mention)
+router.post('/fotos/:id/publicar', coachOnly, (req, res) => {
+  const { texto } = req.body;
+  dbRun('UPDATE fotos SET published_analysis=? WHERE id=?', [texto, req.params.id]);
   res.json({ ok: true });
 });
 
