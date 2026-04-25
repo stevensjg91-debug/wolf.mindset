@@ -15,6 +15,11 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--b:#09090b;--s:#111113;--s2:#18181b;--s3:#1f1f23;--br:#27272a;--br2:#3f3f46;--sv:#e4e4e7;--sv2:#a1a1aa;--sv3:#52525b;--bl:#3b82f6;--bl2:#2563eb;--bl3:#1e3a5f;--blg:#93c5fd;--tx:#fafafa;--tx2:#a1a1aa;--tx3:#52525b;--gn:#22c55e;--gnd:rgba(34,197,94,0.1);--gnb:#86efac;--am:#f59e0b;--amd:rgba(245,158,11,0.1);--amb:#fcd34d}
+.ctab-bar{display:flex;gap:3px;background:var(--b);border-radius:10px;padding:3px;border:0.5px solid var(--br);margin-bottom:14px;overflow-x:auto;scrollbar-width:none}
+.ctab-bar::-webkit-scrollbar{display:none}
+.ctab{flex:1;min-width:70px;padding:8px 6px;border:none;border-radius:8px;font-size:12px;cursor:pointer;background:none;color:var(--sv3);font-family:'Inter',sans-serif;font-weight:500;transition:.2s;white-space:nowrap;text-align:center}
+.ctab.on{background:var(--bl2);color:#fff;font-weight:700}
+.ctab-panel{display:none}.ctab-panel.on{display:block}
 html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sans-serif;overflow:hidden}
 #root{height:100%;display:flex;flex-direction:column}
 .screen{display:none;flex-direction:column;height:100%}.screen.on{display:flex}
@@ -812,15 +817,7 @@ async function verCliente(id){
   const c=await api('/clientes/'+id); window._coachClienteActual=c; window._coachClienteId=id; window._lastClienteId=id; const a=ac(0);
   document.getElementById('cContent').innerHTML=`
 
-<style>
-.ctab-bar{display:flex;gap:3px;background:var(--b);border-radius:10px;padding:3px;border:0.5px solid var(--br);margin-bottom:14px;overflow-x:auto;scrollbar-width:none}
-.ctab-bar::-webkit-scrollbar{display:none}
-.ctab{flex:1;min-width:70px;padding:8px 6px;border:none;border-radius:8px;font-size:12px;cursor:pointer;background:none;color:var(--sv3);font-family:'Inter',sans-serif;font-weight:500;transition:.2s;white-space:nowrap;text-align:center}
-.ctab.on{background:var(--bl2);color:#fff;font-weight:700}
-.ctab-panel{display:none}.ctab-panel.on{display:block}
-</style>
 
-document.getElementById('cContent').innerHTML=`
   <div class="back-lnk" onclick="renderCoach('clientes')"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Volver</div>
   <div class="fl" style="margin-bottom:18px"><div class="av" style="width:50px;height:50px;font-size:17px;background:${a.bg};color:${a.tx};border-color:${a.br};margin-right:12px">${ini(c.nombre)}</div><div><div style="font-size:17px;font-weight:700;color:var(--sv)">${c.nombre}</div><div style="font-size:12px;color:var(--tx3);margin-top:2px">${c.objetivo} · ${c.nivel} · Semana ${c.semanas}</div></div></div>
   
@@ -974,33 +971,20 @@ document.getElementById('cContent').innerHTML=`
     <div class="sec" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(37,99,235,.06),rgba(17,17,19,.8));border-color:rgba(59,130,246,.2)">
     <div class="sec-hdr">📋 Revisión semanal <span id="rev_estado" style="font-size:10px;font-weight:500;color:var(--tx3);text-transform:none;letter-spacing:0"></span></div>
     <div id="revision_semanal_content"><div style="font-size:13px;color:var(--tx3)">Cargando...</div></div>
-  </div>`
-    <!-- Peso últimas semanas expandido -->
+  </div>
     <div class="sec" style="margin-bottom:12px">
       <div class="sec-hdr">⚖️ Evolución de peso</div>
-      <div id="coach_peso_evolucion">
-        ${c.pesos.length ? c.pesos.slice(-8).map((p,i)=>
-          `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--br)">
-            <span style="font-size:12px;color:var(--tx3)">Sem ${i+1}</span>
-            ${i>0 && c.pesos[c.pesos.length-(8-i)] ?
-              `<span style="font-size:11px;color:${p.peso > c.pesos[Math.max(0,c.pesos.length-(8-i)-1)]?.peso ? '#f87171' : '#86efac'}">${p.peso > c.pesos[Math.max(0,c.pesos.length-(8-i)-1)]?.peso ? '▲' : '▼'}</span>` : ''
-            }
-            <span style="font-size:14px;font-weight:700;color:var(--sv)">${p.peso}kg</span>
-            ${p.grasa ? `<span style="font-size:11px;color:var(--tx3)">${p.grasa}% grasa</span>` : ''}
-            ${p.cintura ? `<span style="font-size:11px;color:var(--tx3)">${p.cintura}cm</span>` : ''}
-          </div>`
-        ).join('') : '<div style="font-size:13px;color:var(--tx3)">Sin registros de peso aún.</div>'}
-      </div>
+      <div id="coach_peso_evolucion"><div style="font-size:13px;color:var(--tx3)">Sin registros de peso aún.</div></div>
     </div>
-  </div>
+  </div>`;
 
   window._cid=c.id;
 
-  // Tab Resumen carga al abrir (es el tab por defecto)
+  // Tab Resumen: cargar suscripción y macros
   cargarSuscripcionCliente(id);
   setTimeout(()=>{ aplicarMacrosCoach(c, true); }, 200);
 
-  // Historial siempre lo cargamos (tab Entreno lo necesita cuando se abre)
+  // Historial (para tab Entreno)
   api('/clientes/'+id+'/sesiones').then(sesiones=>{
     const wrap=document.getElementById('sesiones_wrap');
     const count=document.getElementById('sesiones_count');
@@ -1025,6 +1009,22 @@ document.getElementById('cContent').innerHTML=`
         ).join('')+'</div>';
     }).join('');
   }).catch(()=>{});
+
+  // Peso evolución (para tab Progreso)
+  const pesoWrap = document.getElementById('coach_peso_evolucion');
+  if(pesoWrap && c.pesos.length) {
+    pesoWrap.innerHTML = c.pesos.slice(-8).map((p,i,arr)=>{
+      const prev = arr[i-1];
+      const tendencia = prev ? (p.peso > prev.peso ? '<span style="color:#f87171">▲</span>' : '<span style="color:#86efac">▼</span>') : '';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--br)">'+
+        '<span style="font-size:12px;color:var(--tx3)">Sem '+(i+1)+'</span>'+
+        tendencia+
+        '<span style="font-size:14px;font-weight:700;color:var(--sv)">'+p.peso+'kg</span>'+
+        (p.grasa ? '<span style="font-size:11px;color:var(--tx3)">'+p.grasa+'% grasa</span>' : '')+
+        (p.cintura ? '<span style="font-size:11px;color:var(--tx3)">'+p.cintura+'cm</span>' : '')+
+        '</div>';
+    }).join('');
+  }
 }
 
 // ═══ TABS PERFIL CLIENTE ═════════════════════════════════════════
