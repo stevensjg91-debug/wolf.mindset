@@ -1576,7 +1576,7 @@ function renderKL(){
   }
   else if(klTab==='dieta')el.innerHTML=hDieta();
   else if(klTab==='asistente'){el.innerHTML=hAsistente();chatH=[{role:'assistant',content:`Hola ${CD.nombre.split(' ')[0]}, aquí para ayudarte. ¿Qué necesitas?`}];}
-  else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();},100);}
+  else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100);}
   else if(klTab==='perfil')el.innerHTML=hPerfil();
 }
 
@@ -2369,14 +2369,63 @@ function hProgreso2(){return`<div style="padding-top:8px">
       <button class="btn" style="width:100%;padding:11px" onclick="guardarPeso()">Guardar peso</button>
     </div>
   </div>
-  <div class="sec-lbl">Foto de progreso</div>
-  <label class="ph-upload" for="fUp">
-    <div style="font-size:38px;margin-bottom:8px">📸</div>
-    <div style="font-size:14px;font-weight:600;color:var(--sv2)">Subir foto</div>
-    <div style="font-size:12px;color:var(--tx3);margin-top:4px">Registra tu progreso semana a semana</div>
-  </label>
+  <div class="sec-lbl">Fotos de progreso</div>
+  <div style="padding:0 14px 12px">
+    <!-- 3 foto slots -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      ${['frente','posterior','costado'].map(tipo=>`
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label for="fUp_${tipo}" style="cursor:pointer;display:block">
+          <!-- Guide grid -->
+          <div style="aspect-ratio:3/4;border:1.5px dashed rgba(59,130,246,.4);border-radius:10px;background:var(--s2);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden">
+            <!-- Human silhouette SVG guide -->
+            <svg viewBox="0 0 60 80" style="width:50%;opacity:.2;position:absolute" fill="none" xmlns="http://www.w3.org/2000/svg">
+              ${tipo==='frente'?`
+              <circle cx="30" cy="10" r="8" fill="#93c5fd"/>
+              <path d="M18 22 Q30 18 42 22 L44 50 H16 Z" fill="#93c5fd"/>
+              <path d="M16 25 L8 45 M44 25 L52 45" stroke="#93c5fd" stroke-width="4" stroke-linecap="round"/>
+              <path d="M20 50 L18 75 M40 50 L42 75" stroke="#93c5fd" stroke-width="5" stroke-linecap="round"/>
+              `:tipo==='posterior'?`
+              <circle cx="30" cy="10" r="8" fill="#93c5fd"/>
+              <path d="M18 22 Q30 18 42 22 L44 50 H16 Z" fill="#93c5fd"/>
+              <path d="M16 25 L8 45 M44 25 L52 45" stroke="#93c5fd" stroke-width="4" stroke-linecap="round"/>
+              <path d="M20 50 L18 75 M40 50 L42 75" stroke="#93c5fd" stroke-width="5" stroke-linecap="round"/>
+              `:`
+              <circle cx="28" cy="10" r="8" fill="#93c5fd"/>
+              <path d="M22 22 Q28 18 36 22 L38 50 H18 Z" fill="#93c5fd"/>
+              <path d="M18 25 L10 45 M38 25 L42 44" stroke="#93c5fd" stroke-width="4" stroke-linecap="round"/>
+              <path d="M20 50 L19 75 M36 50 L37 75" stroke="#93c5fd" stroke-width="5" stroke-linecap="round"/>
+              `}
+            </svg>
+            <!-- Grid lines -->
+            <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(59,130,246,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.08) 1px,transparent 1px);background-size:33% 25%"></div>
+            <!-- Uploaded photo preview -->
+            <div id="foto_preview_${tipo}" style="position:absolute;inset:0;display:none">
+              <img id="foto_img_${tipo}" style="width:100%;height:100%;object-fit:cover"/>
+              <div style="position:absolute;top:4px;right:4px;background:rgba(34,197,94,.9);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px">✓</div>
+            </div>
+            <div style="position:relative;z-index:1;text-align:center;padding:6px">
+              <div style="font-size:18px;margin-bottom:4px">📷</div>
+              <div style="font-size:10px;font-weight:700;color:var(--sv2);text-transform:uppercase;letter-spacing:.05em">${tipo}</div>
+            </div>
+          </div>
+        </label>
+        <input type="file" id="fUp_${tipo}" accept="image/*" capture="user" style="display:none" onchange="uploadFotoTipo(event,'${tipo}')"/>
+      </div>`).join('')}
+    </div>
+    <div style="font-size:11px;color:var(--tx3);text-align:center;margin-bottom:10px;line-height:1.5">
+      Sube las 3 fotos para que tu coach pueda hacer una valoración completa.<br>
+      📏 Posición: de pie, cuerpo entero, buena iluminación.
+    </div>
+    <button id="btn_analizar_fotos" onclick="analizarFotos()" style="display:none;width:100%;padding:11px;background:var(--bl2);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+      🤖 Analizar progreso con IA
+    </button>
+  </div>
   <input type="file" id="fUp" accept="image/*" style="display:none" onchange="uploadFoto(event)"/>
   <div id="fLoad" style="display:none;padding:0 14px 10px"><div class="ia-chip"><div class="ia-chip-title">Analizando tu progreso...</div></div></div>
+  <!-- Fotos timeline -->
+  <div id="fotos_timeline" style="padding:0 14px"></div>
+
   <div id="fAn" style="padding:0 14px 10px"></div>
   ${CD.fotos&&CD.fotos.length?`<div class="sec-lbl">Valoraciones anteriores</div><div style="padding:0 14px">${CD.fotos.map(f=>`<div class="ia-chip" style="margin-bottom:10px"><div class="ia-chip-title">${new Date(f.fecha).toLocaleDateString('es-ES')}</div><div class="ia-result-body">${f.analysis}</div></div>`).join('')}</div>`:''}
 </div>`;}
@@ -4476,6 +4525,152 @@ function clienteVarSelect2(mi, vi, btn){
     b.style.background='none'; b.style.color='rgba(255,255,255,.45)'; b.style.border='0.5px solid rgba(255,255,255,.2)';
   });
   btn.style.background=accBg; btn.style.color=accLight; btn.style.border=`1px solid ${acc}`;
+}
+
+
+// ═══ FOTOS DE PROGRESO 3 ÁNGULOS ═════════════════
+const _fotosSubidas = {}; // {frente: b64, posterior: b64, costado: b64}
+
+async function uploadFotoTipo(event, tipo){
+  const file = event.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    const b64full = e.target.result;
+    const b64 = b64full.split(',')[1];
+    const mt = b64full.split(';')[0].split(':')[1];
+
+    // Show preview
+    const preview = document.getElementById('foto_preview_'+tipo);
+    const img = document.getElementById('foto_img_'+tipo);
+    if(preview && img){ img.src = b64full; preview.style.display='block'; }
+
+    // Store for analysis
+    _fotosSubidas[tipo] = { b64, mt, url: b64full };
+
+    // Save full base64 to server
+    try{
+      await api('/clientes/'+CD.id+'/fotos', {
+        method:'POST',
+        body: JSON.stringify({ url: b64full, analysis:'', tipo })
+      });
+      // Refresh fotos display
+      await loadCD(CD.id);
+      renderFotosProgreso();
+    }catch(e){ console.log('Error guardando foto:', e); }
+
+    // Show analyze button if at least 1 foto
+    const btn = document.getElementById('btn_analizar_fotos');
+    if(btn) btn.style.display = Object.keys(_fotosSubidas).length > 0 ? 'block' : 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analizarFotos(){
+  const btn = document.getElementById('btn_analizar_fotos');
+  const fotos = Object.entries(_fotosSubidas);
+  if(!fotos.length) return;
+
+  btn.textContent = '⏳ Analizando...'; btn.disabled = true;
+
+  document.getElementById('fLoad').style.display='block';
+  document.getElementById('fAn').innerHTML='';
+
+  try{
+    // Build multi-image message
+    const imgContent = fotos.map(([tipo, f])=>([
+      {type:'text', text:`Foto ${tipo}:`},
+      {type:'image', source:{type:'base64', media_type:f.mt, data:f.b64}}
+    ])).flat();
+
+    imgContent.push({type:'text', text:`Analiza estas fotos de progreso del cliente ${CD.nombre}. Objetivo: ${CD.objetivo}. Haz una valoración motivadora pero honesta con: mejoras visibles, puntos fuertes, recomendaciones concretas para su objetivo.`});
+
+    const d = await api('/ia/foto', {
+      method:'POST',
+      body: JSON.stringify({
+        imageBase64: fotos[0][1].b64,
+        mediaType: fotos[0][1].mt,
+        extraImages: fotos.slice(1).map(([t,f])=>({b64:f.b64,mt:f.mt,tipo:t})),
+        system: 'Eres un coach de fitness experto de WolfMindset. Analizas fotos de progreso con ojo clínico y motivador. Responde en español.'
+      })
+    });
+
+    document.getElementById('fLoad').style.display='none';
+
+    // Save analysis to the most recent foto
+    const recentFotos = CD.fotos?.slice(-3) || [];
+    for(const f of recentFotos){
+      try{ await api('/fotos/'+f.id+'/analysis',{method:'PUT',body:JSON.stringify({analysis:d.reply})}); }catch(e){}
+    }
+    await loadCD(CD.id);
+    renderFotosProgreso();
+
+    document.getElementById('fAn').innerHTML = '';
+    btn.textContent = '✓ Análisis guardado';
+    btn.style.background = 'var(--gn)';
+  } catch(e){
+    document.getElementById('fLoad').style.display='none';
+    btn.textContent = 'Error — reintentar';
+    btn.disabled = false;
+  }
+}
+
+
+function renderFotosProgreso(){
+  const fotos = CD.fotos || [];
+  if(!fotos.length) return;
+
+  // Group by fecha (date only)
+  const grupos = {};
+  fotos.forEach(f => {
+    const fecha = f.fecha ? f.fecha.split('T')[0].split(' ')[0] : 'Sin fecha';
+    if(!grupos[fecha]) grupos[fecha] = {};
+    grupos[fecha][f.tipo||'frente'] = f;
+  });
+
+  const timelineEl = document.getElementById('fotos_timeline');
+  if(!timelineEl) return;
+
+  const fechas = Object.keys(grupos).sort();
+
+  timelineEl.innerHTML = fechas.map((fecha, fi) => {
+    const g = grupos[fecha];
+    const dateStr = new Date(fecha+'T12:00:00').toLocaleDateString('es-ES', {day:'numeric', month:'long', year:'numeric'});
+    const tipoOrder = ['frente','posterior','costado'];
+    const hasAnalysis = Object.values(g).some(f=>f.analysis);
+
+    return `<div style="margin-bottom:20px">
+      <!-- Fecha header -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="background:var(--bl2);color:#fff;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;white-space:nowrap">${fi===fechas.length-1?'📅 Última foto':'📅 '+dateStr}</div>
+        ${fi===fechas.length-1?`<div style="font-size:10px;color:var(--tx3)">${dateStr}</div>`:''}
+        <div style="flex:1;height:0.5px;background:var(--br)"></div>
+        ${fi>0?`<div style="font-size:10px;color:var(--gnb);font-weight:600">Semana ${fi+1}</div>`:'<div style="font-size:10px;color:var(--tx3)">Semana 1</div>'}
+      </div>
+      <!-- 3 fotos -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+        ${tipoOrder.map(tipo => {
+          const f = g[tipo];
+          return f ? `
+            <div style="position:relative;aspect-ratio:3/4;border-radius:10px;overflow:hidden;background:var(--s2)">
+              <img src="${f.url}" style="width:100%;height:100%;object-fit:cover"/>
+              <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.7));padding:4px;text-align:center">
+                <div style="font-size:9px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.08em">${tipo}</div>
+              </div>
+            </div>` :
+            `<div style="aspect-ratio:3/4;border-radius:10px;border:1.5px dashed rgba(255,255,255,.1);background:var(--s2);display:flex;align-items:center;justify-content:center">
+              <div style="font-size:10px;color:var(--tx3);text-transform:uppercase">${tipo}</div>
+            </div>`;
+        }).join('')}
+      </div>
+      <!-- Analysis if exists -->
+      ${hasAnalysis ? `<div style="background:rgba(37,99,235,.06);border:0.5px solid rgba(59,130,246,.15);border-radius:10px;padding:10px 12px;margin-top:4px">
+        <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">VALORACIÓN COACH</div>
+        <div style="font-size:12px;color:var(--sv2);line-height:1.7">${Object.values(g).find(f=>f.analysis)?.analysis||''}</div>
+      </div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 </script>
