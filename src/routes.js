@@ -473,4 +473,128 @@ router.post('/clientes/:id/plan-meta', coachOnly, (req, res) => {
   res.json({ ok: true });
 });
 
+
+// ==============================
+// 🧠 IA DIETA PRO (INTEGRADO)
+// ==============================
+
+function calcularCalorias(cliente) {
+  const peso = Number(cliente.peso_actual || cliente.peso || 70);
+  const altura = Number(cliente.altura || 170);
+  const edad = Number(cliente.edad || 25);
+  const sexo = String(cliente.sexo || 'hombre').toLowerCase();
+  const actividad = String(cliente.actividad || 'moderado').toLowerCase();
+  const objetivo = String(cliente.objetivo || 'mantener').toLowerCase();
+
+  let tmb = sexo.includes('mujer') || sexo.includes('female')
+    ? 10 * peso + 6.25 * altura - 5 * edad - 161
+    : 10 * peso + 6.25 * altura - 5 * edad + 5;
+
+  let factor = 1.55;
+  if (actividad.includes('sedent') || actividad.includes('bajo')) factor = 1.2;
+  else if (actividad.includes('liger')) factor = 1.375;
+  else if (actividad.includes('moder')) factor = 1.55;
+  else if (actividad.includes('alto') || actividad.includes('intens')) factor = 1.725;
+  else if (actividad.includes('muy')) factor = 1.9;
+
+  let kcal = tmb * factor;
+
+  if (objetivo.includes('defin') || objetivo.includes('perder') || objetivo.includes('grasa')) kcal -= 400;
+  else if (objetivo.includes('recomp')) kcal -= 150;
+  else if (objetivo.includes('vol') || objetivo.includes('ganar')) kcal += 300;
+
+  return Math.max(1200, Math.round(kcal));
+}
+
+function ajustarComidasIA(comidas) {
+  return (comidas || []).map(comida => {
+    const alimentos = Array.isArray(comida.alimentos) ? comida.alimentos : [];
+    const nombres = alimentos.map(a => String(a.nombre || '').toLowerCase());
+
+    const tiene = (texto) => nombres.some(n => n.includes(texto));
+
+    // Avena necesita líquido para que la comida tenga sentido
+    if (tiene('avena') && !tiene('leche') && !tiene('yogur') && !tiene('bebida')) {
+      alimentos.push({ nombre: 'leche o bebida vegetal', gramos: 150 });
+    }
+
+    // Café con leche si no hay líquido añadido
+    if ((tiene('cafe') || tiene('café')) && !tiene('leche') && !tiene('bebida')) {
+      alimentos.push({ nombre: 'leche', gramos: 100 });
+    }
+
+    // Pancakes: avena + huevo para que sea una receta lógica
+    if ((tiene('pancake') || tiene('tortita') || tiene('avena')) && !tiene('huevo')) {
+      alimentos.push({ nombre: 'huevo', gramos: 120 });
+    }
+
+    // Batido: proteína necesita agua/leche si no hay líquido
+    if ((tiene('proteina') || tiene('proteína') || tiene('whey')) && !tiene('agua') && !tiene('leche') && !tiene('bebida')) {
+      alimentos.push({ nombre: 'agua o leche', gramos: 250 });
+    }
+
+    return { ...comida, alimentos };
+  });
+}
+
+router.post('/ia/generar-dieta', coachOnly, (req, res) => {
+  try {
+    const cliente = req.body || {};
+    const kcal = calcularCalorias(cliente);
+
+    const peso = Number(cliente.peso_actual || cliente.peso || 70);
+    const proteinas = Math.round(peso * 2);
+    const grasas = Math.round(peso * 0.8);
+    const carbs = Math.round((kcal - (proteinas * 4 + grasas * 9)) / 4);
+
+    let dieta = Array.isArray(cliente.comidas) && cliente.comidas.length
+      ? cliente.comidas
+      : [
+          {
+            nombre: "Desayuno",
+            alimentos: [
+              { nombre: "avena", gramos: 60 },
+              { nombre: "café", gramos: 1 }
+            ]
+          },
+          {
+            nombre: "Comida",
+            alimentos: [
+              { nombre: "pollo", gramos: 200 },
+              { nombre: "arroz", gramos: 100 },
+              { nombre: "aceite de oliva", gramos: 10 }
+            ]
+          },
+          {
+            nombre: "Cena",
+            alimentos: [
+              { nombre: "huevos", gramos: 200 },
+              { nombre: "verduras", gramos: 200 }
+            ]
+          }
+        ];
+
+    dieta = ajustarComidasIA(dieta);
+
+    res.json({
+      ok: true,
+      kcal,
+      macros: {
+        proteinas,
+        grasas,
+        carbs
+      },
+      dieta,
+      notas_ia: [
+        "Calorías calculadas según peso, altura, edad, sexo, actividad y objetivo.",
+        "Comidas ajustadas con lógica básica de combinación de alimentos.",
+        "Endpoint seguro añadido sin modificar las rutas antiguas."
+      ]
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
 module.exports = router;
