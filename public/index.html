@@ -1973,30 +1973,31 @@ function kbConfirm(){
   if(!activeInput)return;
   const {ei,si,field}=activeInput;
   const e=CD.dias[activeDia].ejercicios[ei];
+  if(!e._series)e._series=Array.from({length:e.series},(_,i)=>({done:false,peso:e.peso_objetivo,reps:parseFirstNum(e.reps),reps_real:parseFirstNum(e.reps)}));
   const val=parseFloat(kbValue)||0;
+
+  // Guarda el valor que estés editando
   if(field==='peso'){
     e._series[si].peso=val;
-    rerenderSerieRow(ei,si);
-    // Auto-jump to reps
-    setTimeout(()=>openKeyboard(ei,si,'reps'),80);
-  } else {
+  }else if(field==='reps'){
     e._series[si].reps_real=val;
-    closeKeyboard();
-    // Auto-mark serie as done after confirming reps
-    if(!e._series[si].done){
-      e._series[si].done=true;
-      soundDing();
-      rerenderSerieRow(ei,si);
-      // Check if all series done → show completion
-      const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
-      if(allDone && !doneShown){
-        mostrarDoneOverlay('completado', 0);
-      } else {
-        // Start rest timer
-        startTimerInline(ei, si, e.descanso||90);
-      }
-    } else {
-      rerenderSerieRow(ei,si);
+  }else if(field==='rir'){
+    e._series[si].rir_real=val;
+  }
+
+  // Al pulsar ENTER / ✓ del teclado, se completa la serie igual que el botón verde
+  const wasDone = !!e._series[si].done;
+  e._series[si].done = true;
+  closeKeyboard();
+  rerenderSerieRow(ei,si);
+
+  if(!wasDone){
+    soundDing();
+    const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
+    if(allDone && !doneShown){
+      mostrarDoneOverlay('completado', 0);
+    }else{
+      startTimerInline(ei, si, e.descanso||90);
     }
   }
 }
@@ -3256,6 +3257,16 @@ async function cargarGraficasCoach(clienteId, ejerciciosPrincipales){
     wrap.innerHTML += renderGraficaSVG(ejercicio, data);
   }
 }
+
+// Permitir confirmar con Enter físico o del teclado del móvil cuando el teclado numérico está abierto
+window.addEventListener('keydown', function(event){
+  const kb=document.getElementById('strong_keyboard');
+  if(!kb || kb.style.display==='none') return;
+  if(event.key==='Enter'){
+    event.preventDefault();
+    kbConfirm();
+  }
+});
 
 // Reposition keyboard when Safari URL bar shows/hides
 if(window.visualViewport){
