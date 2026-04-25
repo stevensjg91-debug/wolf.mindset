@@ -790,6 +790,12 @@ async function verCliente(id){
     <div class="sec-lbl" style="padding-top:0;padding-bottom:8px">Progreso ejercicios principales</div>
     <div id="graficas_coach_wrap" style="padding:0 0 12px"></div>
   </div>
+  <!-- FOTOS DE PROGRESO DEL CLIENTE -->
+  <div class="sec" style="margin-bottom:12px">
+    <div class="sec-hdr">📸 Fotos de progreso</div>
+    <div id="coach_fotos_timeline">Cargando...</div>
+  </div>
+
   <div class="sec" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(37,99,235,.06),rgba(17,17,19,.8));border-color:rgba(59,130,246,.2)">
     <div class="sec-hdr">📋 Revisión semanal <span id="rev_estado" style="font-size:10px;font-weight:500;color:var(--tx3);text-transform:none;letter-spacing:0"></span></div>
     <div id="revision_semanal_content"><div style="font-size:13px;color:var(--tx3)">Cargando...</div></div>
@@ -798,6 +804,8 @@ async function verCliente(id){
 
   // Revisión semanal
   cargarRevisionSemanal(id, c);
+  // Render coach fotos
+  renderCoachFotos(c.fotos);
 
   // Cargar historial
   api('/clientes/'+id+'/sesiones').then(sesiones=>{
@@ -4662,6 +4670,47 @@ function renderFotosProgreso(){
         <div style="font-size:12px;color:var(--sv2);line-height:1.7">${Object.values(g).find(f=>f.analysis)?.analysis||''}</div>
       </div>` : ''}
     </div>`;
+  }).join('');
+}
+
+
+function renderCoachFotos(fotos){
+  const wrap = document.getElementById('coach_fotos_timeline');
+  if(!wrap) return;
+  if(!fotos||!fotos.length){
+    wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3);padding:4px 0">El cliente aún no ha subido fotos.</div>';
+    return;
+  }
+  // Group by date
+  const grupos = {};
+  fotos.forEach(f=>{
+    const fecha = (f.fecha||'').split('T')[0].split(' ')[0] || 'Sin fecha';
+    if(!grupos[fecha]) grupos[fecha] = {};
+    grupos[fecha][f.tipo||'frente'] = f;
+  });
+  const fechas = Object.keys(grupos).sort();
+  wrap.innerHTML = fechas.map((fecha,fi)=>{
+    const g = grupos[fecha];
+    const dateStr = new Date(fecha+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+    const tipos = ['frente','posterior','costado'];
+    const fotosHtml = tipos.map(tipo=>{
+      const f = g[tipo];
+      if(f&&f.url){
+        return '<div style="position:relative;aspect-ratio:3/4;border-radius:8px;overflow:hidden;background:var(--s2)">'
+          +'<img src="'+f.url+'" style="width:100%;height:100%;object-fit:cover"/>'
+          +'<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.65);padding:3px;text-align:center;font-size:8px;font-weight:700;color:#fff;text-transform:uppercase">'+tipo+'</div>'
+          +'</div>';
+      }
+      return '<div style="aspect-ratio:3/4;border-radius:8px;border:1px dashed rgba(255,255,255,.1);background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--tx3);text-transform:uppercase">'+tipo+'</div>';
+    }).join('');
+    const analysis = Object.values(g).find(f=>f.analysis)?.analysis||'';
+    return '<div style="margin-bottom:14px">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--blg)">📅 '+dateStr+' · Semana '+(fi+1)+'</div>'
+      +'<div style="flex:1;height:0.5px;background:var(--br)"></div></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:6px">'+fotosHtml+'</div>'
+      +(analysis?'<div style="background:rgba(37,99,235,.06);border:0.5px solid rgba(59,130,246,.15);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--sv2);line-height:1.6">'+analysis+'</div>':'')
+      +'</div>';
   }).join('');
 }
 
