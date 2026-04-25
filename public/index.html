@@ -1979,26 +1979,45 @@ function kbConfirm(){
   // Guarda el valor que estés editando
   if(field==='peso'){
     e._series[si].peso=val;
-  }else if(field==='reps'){
+    rerenderSerieRow(ei,si);
+    // ENTER / ✓ en KG NO completa la serie: pasa automáticamente a REP.
+    setTimeout(()=>openKeyboard(ei, si, 'reps'), 30);
+    return;
+  }
+
+  if(field==='reps'){
     e._series[si].reps_real=val;
   }else if(field==='rir'){
     e._series[si].rir_real=val;
   }
 
-  // Al pulsar ENTER / ✓ del teclado, se completa la serie igual que el botón verde
+  // ENTER / ✓ desde REP. sí completa la serie y activa el descanso
   const wasDone = !!e._series[si].done;
   e._series[si].done = true;
-  closeKeyboard();
   rerenderSerieRow(ei,si);
 
   if(!wasDone){
     soundDing();
-    const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
-    if(allDone && !doneShown){
-      mostrarDoneOverlay('completado', 0);
-    }else{
-      startTimerInline(ei, si, e.descanso||90);
-    }
+    startTimerInline(ei, si, e.descanso||90);
+    rerenderSerieRow(ei,si);
+  }
+
+  const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
+  if(allDone && !doneShown){
+    closeKeyboard();
+    mostrarDoneOverlay('completado', 0);
+    return;
+  }
+
+  // Después de completar, deja preparado el KG de la siguiente serie si existe.
+  const nextSi = si + 1;
+  if(nextSi < e._series.length){
+    setTimeout(()=>openKeyboard(ei, nextSi, 'peso'), 60);
+  }else{
+    // Si era la última serie de ese ejercicio, mantiene visible el descanso sin cambiar nada más.
+    activeInput = {ei, si, field:'peso'};
+    const lbl=document.getElementById('kb_label');
+    if(lbl) lbl.textContent='kg';
   }
 }
 function closeKeyboard(){
