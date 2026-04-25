@@ -608,19 +608,41 @@ router.get('/clientes/:id/suscripcion', (req, res) => {
     const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
     if(!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
   }
-  const s = dbGet(`
-    SELECT s.* FROM suscripciones s WHERE s.cliente_id=?
-  `, [id]);
-  if(!s) return res.json({ activa: false, dias_restantes: 0 });
-  const dias = diasRestantes(s.fecha_fin);
-  const hoy = new Date().toISOString().split('T')[0];
-  res.json({
-    ...s,
-    dias_restantes: dias,
-    activa: s.estado === 'activa' && s.fecha_fin >= hoy,
-    proxima_a_vencer: dias <= 5 && dias > 0,
-    vencida: s.fecha_fin < hoy
-  });
+  try {
+    // Crear tabla si no existe (por si el server no se reinició con el nuevo database.js)
+    dbRun(`CREATE TABLE IF NOT EXISTS suscripciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      cliente_id INTEGER UNIQUE NOT NULL,
+      estado TEXT DEFAULT 'activa',
+      fecha_inicio TEXT NOT NULL,
+      fecha_fin TEXT NOT NULL,
+      precio REAL DEFAULT 0,
+      notas TEXT DEFAULT '',
+      renovado_at TEXT
+    )`);
+    dbRun(`CREATE TABLE IF NOT EXISTS notificaciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      tipo TEXT NOT NULL,
+      mensaje TEXT NOT NULL,
+      leida INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`);
+    const s = dbGet('SELECT * FROM suscripciones WHERE cliente_id=?', [id]);
+    if(!s) return res.json({ activa: false, dias_restantes: 0 });
+    const dias = diasRestantes(s.fecha_fin);
+    const hoy = new Date().toISOString().split('T')[0];
+    res.json({
+      ...s,
+      dias_restantes: dias,
+      activa: s.estado === 'activa' && s.fecha_fin >= hoy,
+      proxima_a_vencer: dias <= 5 && dias > 0,
+      vencida: s.fecha_fin < hoy
+    });
+  } catch(e) {
+    console.error('Error suscripcion GET:', e.message);
+    res.json({ activa: false, dias_restantes: 0 });
+  }
 });
 
 // POST crear/renovar suscripción (coach)
@@ -628,6 +650,10 @@ router.post('/clientes/:id/suscripcion', coachOnly, (req, res) => {
   try {
     const clienteId = req.params.id;
     const { meses = 1, precio = 0, notas = '' } = req.body;
+
+    // Garantizar tabla existe
+    dbRun(`CREATE TABLE IF NOT EXISTS suscripciones (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER UNIQUE NOT NULL, estado TEXT DEFAULT 'activa', fecha_inicio TEXT NOT NULL, fecha_fin TEXT NOT NULL, precio REAL DEFAULT 0, notas TEXT DEFAULT '', renovado_at TEXT)`);
+    dbRun(`CREATE TABLE IF NOT EXISTS notificaciones (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, tipo TEXT NOT NULL, mensaje TEXT NOT NULL, leida INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP)`);
 
     const c = dbGet('SELECT c.id, u.id as user_id, u.nombre FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [clienteId]);
     if(!c) return res.status(404).json({ error: 'Cliente no encontrado' });
