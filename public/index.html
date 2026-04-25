@@ -15,11 +15,6 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--b:#09090b;--s:#111113;--s2:#18181b;--s3:#1f1f23;--br:#27272a;--br2:#3f3f46;--sv:#e4e4e7;--sv2:#a1a1aa;--sv3:#52525b;--bl:#3b82f6;--bl2:#2563eb;--bl3:#1e3a5f;--blg:#93c5fd;--tx:#fafafa;--tx2:#a1a1aa;--tx3:#52525b;--gn:#22c55e;--gnd:rgba(34,197,94,0.1);--gnb:#86efac;--am:#f59e0b;--amd:rgba(245,158,11,0.1);--amb:#fcd34d}
-.ctab-bar{display:flex;gap:3px;background:var(--b);border-radius:10px;padding:3px;border:0.5px solid var(--br);margin-bottom:14px;overflow-x:auto;scrollbar-width:none}
-.ctab-bar::-webkit-scrollbar{display:none}
-.ctab{flex:1;min-width:70px;padding:8px 6px;border:none;border-radius:8px;font-size:12px;cursor:pointer;background:none;color:var(--sv3);font-family:'Inter',sans-serif;font-weight:500;transition:.2s;white-space:nowrap;text-align:center}
-.ctab.on{background:var(--bl2);color:#fff;font-weight:700}
-.ctab-panel{display:none}.ctab-panel.on{display:block}
 html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sans-serif;overflow:hidden}
 #root{height:100%;display:flex;flex-direction:column}
 .screen{display:none;flex-direction:column;height:100%}.screen.on{display:flex}
@@ -432,21 +427,7 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
           <img class="topbar-logo" src="/logo.png" alt="W" onerror="this.style.display='none'"/>
           <div class="topbar-title" id="cTitle">Clientes</div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="position:relative;cursor:pointer" onclick="toggleNotifCoach()" id="notif_bell_wrap">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tx3)" stroke-width="1.8" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            <span id="notif_badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;line-height:1">0</span>
-          </div>
-          <div class="topbar-right" id="cRight">WolfMindset · Coach</div>
-        </div>
-      </div>
-      <!-- PANEL NOTIFICACIONES COACH -->
-      <div id="notif_panel_coach" style="display:none;position:absolute;top:48px;right:12px;width:320px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.4);max-height:420px;overflow-y:auto">
-        <div style="padding:12px 14px;border-bottom:0.5px solid var(--br);display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;font-weight:700;color:var(--sv)">Notificaciones</span>
-          <button onclick="marcarTodasLeidasCoach()" style="background:none;border:none;color:var(--blg);font-size:11px;cursor:pointer;font-family:'Inter',sans-serif">Marcar todas leídas</button>
-        </div>
-        <div id="notif_list_coach"><div style="padding:16px;font-size:13px;color:var(--tx3);text-align:center">Cargando...</div></div>
+        <div class="topbar-right" id="cRight">WolfMindset · Coach</div>
       </div>
       <div class="scroll" id="cContent" style="padding:16px"></div>
     </div>
@@ -665,14 +646,9 @@ async function doLogin(){
     if(USER.role==='coach'){
       show('sCoach');renderCoach('clientes');
       if(isMobile())document.getElementById('coachMobileNav').style.display='flex';
-      cargarNotificacionesCoach();
-      // Auto-verificar vencimientos al entrar
-      api('/suscripciones/avisar-vencimientos', {method:'POST'}).catch(()=>{});
     } else {
       show('sCliente');
       await loadCD(data.user.clienteId);
-      // Verificar suscripción antes de mostrar la app
-      await verificarSuscripcionCliente(data.user.clienteId);
       klNav('entreno',document.getElementById('bni0'));
     setTimeout(checkRecordatorios,2000);
     // Pedir permiso de notificaciones
@@ -687,72 +663,6 @@ async function doLogin(){
   }catch(e){err.textContent=e.error||'Error al conectar';err.style.display='block';}
 }
 async function loadCD(id){CD=await api('/clientes/'+id);}
-async function verificarSuscripcionCliente(clienteId) {
-  try {
-    const s = await api('/clientes/'+clienteId+'/suscripcion');
-    if(!s || !s.fecha_fin) return; // Sin suscripción configurada, dejar pasar
-
-    if(s.vencida || s.estado === 'cancelada') {
-      // Bloquear acceso — mostrar pantalla de suscripción vencida
-      const appEl = document.getElementById('sCliente');
-      if(appEl) appEl.innerHTML = `
-        <div style="min-height:100vh;background:var(--b);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;text-align:center">
-          <div style="font-size:56px;margin-bottom:20px">🔒</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--sv);letter-spacing:.08em;margin-bottom:8px">Acceso Suspendido</div>
-          <div style="font-size:14px;color:var(--tx3);max-width:280px;line-height:1.6;margin-bottom:24px">
-            Tu suscripción ${s.estado==='cancelada'?'ha sido cancelada':'venció el '+s.fecha_fin.split('-').reverse().join('/')}.<br>Contacta con tu coach para renovarla.
-          </div>
-          <div style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:16px 20px;margin-bottom:20px;width:100%;max-width:300px">
-            <div style="font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Tu coach</div>
-            <div style="font-size:15px;font-weight:700;color:var(--sv)">WolfMindset</div>
-            <div style="font-size:13px;color:var(--blg);margin-top:4px">@wolfmindset</div>
-          </div>
-          <button onclick="doLogout()" style="background:none;border:0.5px solid var(--br);color:var(--tx3);padding:10px 20px;border-radius:10px;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif">Cerrar sesión</button>
-        </div>`;
-      return;
-    }
-
-    // Aviso si está próxima a vencer (≤5 días)
-    if(s.proxima_a_vencer) {
-      mostrarBannerSub(`⚠️ Tu suscripción vence en ${s.dias_restantes} día${s.dias_restantes>1?'s':''}. Contacta con tu coach para renovarla.`, 'warning');
-    }
-
-    // Cargar notificaciones del cliente
-    cargarNotificacionesCliente();
-
-  } catch(e) {
-    console.error('Error verificando suscripción:', e);
-    // Si falla la verificación, dejar entrar (no bloquear por error de red)
-  }
-}
-
-function mostrarBannerSub(mensaje, tipo) {
-  const banner = document.createElement('div');
-  banner.id = 'sub_banner_cliente';
-  const bg = tipo==='warning' ? 'rgba(245,158,11,.12)' : 'rgba(239,68,68,.12)';
-  const border = tipo==='warning' ? 'rgba(245,158,11,.4)' : 'rgba(239,68,68,.4)';
-  const color = tipo==='warning' ? 'var(--amb)' : '#fca5a5';
-  banner.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:999;background:${bg};border-bottom:0.5px solid ${border};padding:10px 16px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(8px)`;
-  banner.innerHTML = `<span style="font-size:12px;font-weight:600;color:${color}">${mensaje}</span>
-    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:${color};cursor:pointer;font-size:16px;padding:0 0 0 10px">×</button>`;
-  document.body.prepend(banner);
-}
-
-async function cargarNotificacionesCliente() {
-  try {
-    const notifs = await api('/notificaciones');
-    const noLeidas = notifs.filter(n=>!n.leida);
-    // Mostrar la notificación más reciente no leída como banner
-    if(noLeidas.length > 0) {
-      const ultima = noLeidas[0];
-      if(ultima.tipo !== 'vencimiento_proximo') { // el vencimiento ya se muestra aparte
-        // Marcarla como leída automáticamente después de mostrarla
-        setTimeout(()=>api('/notificaciones/'+ultima.id+'/leer',{method:'PUT'}).catch(()=>{}), 5000);
-      }
-    }
-  } catch(e) {}
-}
-
 function doLogout(){TOKEN=null;USER=null;CD=null;localStorage.removeItem('wm_token');localStorage.removeItem('wm_user');show('sLogin');}
 
 // PRE-FILL SAVED CREDENTIALS
@@ -793,7 +703,7 @@ async function renderCoach(s){
   else if(s==='nuevo'){el.innerHTML=hNuevo();}
   else if(s==='rutinas'){el.innerHTML=hRutinas();await initRutinas();}
   else if(s==='dieta-builder'){el.innerHTML=hDietaBuilder();await initDietaBuilder();}
-  else if(s==='progreso'){const cl=await api('/clientes');el.innerHTML=hProgreso(cl);cargarProgresoSubs();}
+  else if(s==='progreso'){const cl=await api('/clientes');el.innerHTML=hProgreso(cl);}
   else if(s==='pendientes'){const p=await api('/clientes-pendientes');el.innerHTML=hPendientes(p);}
   else if(s==='ia'){
   el.innerHTML=hIACoach();
@@ -814,57 +724,15 @@ function hClientes(cl){
 }
 
 async function verCliente(id){
-  const c=await api('/clientes/'+id); window._coachClienteActual=c; window._coachClienteId=id; window._lastClienteId=id; const a=ac(0);
+  const c=await api('/clientes/'+id);const a=ac(0);
   document.getElementById('cContent').innerHTML=`
-
-
   <div class="back-lnk" onclick="renderCoach('clientes')"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Volver</div>
   <div class="fl" style="margin-bottom:18px"><div class="av" style="width:50px;height:50px;font-size:17px;background:${a.bg};color:${a.tx};border-color:${a.br};margin-right:12px">${ini(c.nombre)}</div><div><div style="font-size:17px;font-weight:700;color:var(--sv)">${c.nombre}</div><div style="font-size:12px;color:var(--tx3);margin-top:2px">${c.objetivo} · ${c.nivel} · Semana ${c.semanas}</div></div></div>
-  
-  <!-- TABS NAV -->
-  <div class="ctab-bar">
-    <button class="ctab on" onclick="switchClienteTab('resumen',this)">📋 Resumen</button>
-    <button class="ctab" onclick="switchClienteTab('entreno',this)">🏋️ Entreno</button>
-    <button class="ctab" onclick="switchClienteTab('dieta',this)">🥗 Dieta</button>
-    <button class="ctab" onclick="switchClienteTab('progreso',this)">📈 Progreso</button>
-  </div>
-
-  <!-- TAB: RESUMEN -->
-  <div class="ctab-panel on" id="ctab_resumen">
-    <div class="g2" style="margin-bottom:12px">
+  <div class="g2" style="margin-bottom:12px">
     <div class="sec"><div class="sec-hdr">Macros internos <span style="color:#f87171;font-size:9px">SOLO COACH</span></div>${mb2('Prot','#3b82f6',c.prot,c.prot*4,c.kcal_internas)}${mb2('Carbs','#a78bfa',c.carbs,c.carbs*4,c.kcal_internas)}${mb2('Grasa','#f97316',c.fat,c.fat*9,c.kcal_internas)}<div style="font-size:11px;color:var(--tx3);margin-top:4px">${c.kcal_internas} kcal/día</div></div>
     <div class="sec"><div class="sec-hdr">Peso</div>${c.pesos.slice(-4).map((p,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--br)"><span style="font-size:12px;color:var(--tx3)">Sem ${i+1}</span><span style="font-size:13px;color:var(--sv);font-weight:700">${p.peso}kg</span></div>`).join('')||'<div style="font-size:12px;color:var(--tx3)">Sin registros</div>'}</div>
   </div>
-  
-    <div class="sec" style="margin-bottom:12px" id="coach_sub_sec">
-    <div class="sec-hdr">💳 Suscripción <span id="coach_sub_badge"></span></div>
-    <div id="coach_sub_info"><div style="font-size:13px;color:var(--tx3)">Cargando...</div></div>
-    <div id="coach_sub_form" style="display:none;margin-top:12px;padding-top:12px;border-top:0.5px solid var(--br)">
-      <div class="g2" style="gap:8px;margin-bottom:8px">
-        <div>
-          <div class="form-lbl">Duración</div>
-          <select id="sub_meses" class="inp" style="margin-bottom:0">
-            <option value="1">1 mes</option>
-            <option value="2">2 meses</option>
-            <option value="3">3 meses</option>
-            <option value="6">6 meses</option>
-            <option value="12">12 meses</option>
-          </select>
-        </div>
-        <div>
-          <div class="form-lbl">Precio (€)</div>
-          <input type="number" id="sub_precio" class="inp" placeholder="Ej: 80" style="margin-bottom:0"/>
-        </div>
-      </div>
-      <textarea id="sub_notas" class="ta" placeholder="Notas internas (opcional)" style="min-height:50px;margin-bottom:8px"></textarea>
-      <div style="display:flex;gap:8px">
-        <button class="btn" style="flex:1;padding:10px;background:var(--gn)" onclick="renovarSuscripcion(${c.id})">✓ Activar / Renovar</button>
-        <button class="btn" style="padding:10px;background:rgba(239,68,68,.15);color:#fca5a5;border:0.5px solid rgba(239,68,68,.3)" onclick="cancelarSuscripcion(${c.id})">Cancelar</button>
-      </div>
-    </div>
-  </div>
-  
-    <div class="sec" style="margin-bottom:12px">
+  <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr">Datos personales del cliente</div>
     <div class="g2" style="gap:8px;margin-bottom:8px">
       <div><div class="form-lbl">Peso (kg)</div><div style="font-size:16px;font-weight:700;color:var(--sv)">${c.peso_actual?c.peso_actual+'kg':'Sin datos'}</div></div>
@@ -879,20 +747,19 @@ async function verCliente(id){
     ${c.alimentos_no?`<div style="background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.2);border-radius:8px;padding:8px 11px;font-size:12px;color:var(--amb);margin-top:6px">🚫 <span style="font-weight:700">No come:</span> ${c.alimentos_no}</div>`:''}
     ${c.observaciones?`<div style="background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.2);border-radius:8px;padding:8px 11px;font-size:12px;color:var(--amb);margin-top:6px">📝 <span style="font-weight:700">Obs:</span> ${c.observaciones}</div>`:''}
   </div>
-  <div class="sec" style="margin-botto
-    m:12px" id="ajustar_datos_form">
+  <div class="sec" style="margin-bottom:12px" id="ajustar_datos_form">
     <div class="sec-hdr">Ajustar datos <button class="btn btn-sm" id="btn_guardar_datos" data-cliente-id="${c.id}" onclick="guardarDatos(${c.id})">Guardar</button></div>
     <div class="g2" style="gap:8px;margin-bottom:10px">
-      <div><div class="form-lbl">Objetivo</div><input class="inp" id="obj" value="${c.objetivo}" oninput="recalcularYGuardarCoach()" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">Nivel</div><select class="inp" id="niv" onchange="autoGuardarMacrosCoach()" style="margin-bottom:0"><option ${c.nivel==='Principiante'?'selected':''}>Principiante</option><option ${c.nivel==='Intermedio'?'selected':''}>Intermedio</option><option ${c.nivel==='Avanzado'?'selected':''}>Avanzado</option></select></div>
+      <div><div class="form-lbl">Objetivo</div><input class="inp" id="obj" value="${c.objetivo}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">Nivel</div><select class="inp" id="niv" style="margin-bottom:0"><option ${c.nivel==='Principiante'?'selected':''}>Principiante</option><option ${c.nivel==='Intermedio'?'selected':''}>Intermedio</option><option ${c.nivel==='Avanzado'?'selected':''}>Avanzado</option></select></div>
     </div>
     <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:12px;margin-bottom:8px">
-      <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Calculadora de macros — ajusta y se recalcula solo <button type="button" onclick="recalcularYGuardarCoach()" style="float:right;background:rgba(34,197,94,.15);border:0.5px solid rgba(34,197,94,.35);color:var(--gnb);border-radius:8px;padding:5px 9px;font-size:10px;font-weight:800;cursor:pointer">Recalcular</button></div>
+      <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Calculadora de macros — ajusta y se recalcula solo</div>
       <div class="g2" style="gap:8px;margin-bottom:10px">
-        <div><div class="form-lbl">Kcal totales</div><input class="inp" id="kcal" type="number" value="${c.kcal_internas}" oninput="recalcMacros('kcal');autoGuardarMacrosCoach()" style="margin-bottom:0;color:var(--blg);font-weight:700"/></div>
-        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Proteína (g) <span style="color:var(--sv3);font-weight:400" id="prot_kcal">${c.prot*4} kcal</span></div><input class="inp" id="prot" type="number" value="${c.prot}" oninput="recalcMacros('prot');autoGuardarMacrosCoach()" style="margin-bottom:0"/></div>
-        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Grasas (g) <span style="color:var(--sv3);font-weight:400" id="fat_kcal">${c.fat*9} kcal</span></div><input class="inp" id="fat" type="number" value="${c.fat}" oninput="recalcMacros('fat');autoGuardarMacrosCoach()" style="margin-bottom:0"/></div>
-        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Carbos (g) <span style="color:var(--sv3);font-weight:400" id="carbs_kcal">${c.carbs*4} kcal</span></div><input class="inp" id="carbs" type="number" value="${c.carbs}" oninput="recalcMacros('carbs');autoGuardarMacrosCoach()" style="margin-bottom:0;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.3)"/></div>
+        <div><div class="form-lbl">Kcal totales</div><input class="inp" id="kcal" type="number" value="${c.kcal_internas}" oninput="recalcMacros('kcal')" style="margin-bottom:0;color:var(--blg);font-weight:700"/></div>
+        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Proteína (g) <span style="color:var(--sv3);font-weight:400" id="prot_kcal">${c.prot*4} kcal</span></div><input class="inp" id="prot" type="number" value="${c.prot}" oninput="recalcMacros('prot')" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Grasas (g) <span style="color:var(--sv3);font-weight:400" id="fat_kcal">${c.fat*9} kcal</span></div><input class="inp" id="fat" type="number" value="${c.fat}" oninput="recalcMacros('fat')" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl" style="display:flex;justify-content:space-between">Carbos (g) <span style="color:var(--sv3);font-weight:400" id="carbs_kcal">${c.carbs*4} kcal</span></div><input class="inp" id="carbs" type="number" value="${c.carbs}" oninput="recalcMacros('carbs')" style="margin-bottom:0;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.3)"/></div>
       </div>
       <div style="height:8px;background:var(--s3);border-radius:4px;overflow:hidden;margin-bottom:6px" id="macro_bar">
         <div style="height:100%;display:flex">
@@ -911,144 +778,36 @@ async function verCliente(id){
     <div class="form-lbl">Mensaje motivacional</div><textarea class="ta" id="msgsem">${c.mensaje_semana||''}</textarea>
     <div class="form-lbl">Notas coach</div><textarea class="ta" id="notasc">${c.notas_coach||''}</textarea>
   </div>
-  
+  <div class="sec" style="margin-bottom:12px">
+    <div class="sec-hdr">Entreno asignado <button class="sec-act" onclick="cNav('rutinas',document.querySelector('#sCoach .sni:nth-child(2)'))">Editar en Rutinas</button></div>
+    ${c.dias.length?c.dias.map(d=>`<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:7px"><div style="font-size:13px;font-weight:700;color:var(--sv)">${d.nombre} — ${d.grupo}</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">${d.ejercicios.length} ejercicios</div></div>`).join(''):'<div style="font-size:13px;color:var(--tx3)">Sin días. Ve a Crear rutina.</div>'}
   </div>
-
-  <!-- TAB: ENTRENO -->
-  <div class="ctab-panel" id="ctab_entreno">
-    <!-- EDITOR INLINE DE RUTINA -->
-    <div class="sec" style="margin-bottom:12px">
-      <div class="sec-hdr">🏋️ Rutina asignada
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-sm" onclick="tabEntrenoNuevoDia(${c.id})" style="font-size:11px">+ Día</button>
-        </div>
-      </div>
-      <div id="tab_entreno_dias">
-        ${c.dias.length ? c.dias.map((d,di)=>`
-          <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;margin-bottom:8px;overflow:hidden">
-            <div onclick="tabEntrenoToggleDia(${d.id})" style="padding:11px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
-              <div>
-                <div style="font-size:13px;font-weight:700;color:var(--sv)">${d.nombre}</div>
-                <div style="font-size:11px;color:var(--tx3);margin-top:1px">${d.grupo} · ${d.ejercicios.length} ejercicios</div>
-              </div>
-              <div style="display:flex;gap:6px;align-items:center">
-                <button onclick="event.stopPropagation();tabEntrenoAddEx(${d.id},'${d.nombre.replace(/'/g,"\'")}')" class="btn btn-sm" style="font-size:11px">+ Ejercicio</button>
-                <button onclick="event.stopPropagation();tabEntrenoDelDia(${d.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:14px;padding:4px">🗑</button>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--tx3);flex-shrink:0"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-              </div>
-            </div>
-            <div id="tab_dia_body_${d.id}" style="display:none;padding:0 13px 12px">
-              ${d.ejercicios.length ? d.ejercicios.map(e=>`
-                <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--br)">
-                  <div style="flex:1;min-width:0">
-                    <div style="font-size:13px;font-weight:700;color:var(--sv)">${e.nombre}</div>
-                    <div style="font-size:11px;color:var(--tx3);margin-top:1px">${e.series}×${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''} · ${e.descanso}s${e.rir!=null?' · RIR'+e.rir:''}${e.es_principal?' ⭐':''}</div>
-                    ${e.nota_coach?`<div style="font-size:10px;color:var(--amb);margin-top:2px">📝 ${e.nota_coach}</div>`:''}
-                  </div>
-                  <button onclick="tabEntrenoEditEx(${e.id})" style="background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);border-radius:6px;color:var(--blg);cursor:pointer;font-size:11px;padding:5px 8px;font-weight:600;white-space:nowrap">✏️ Editar</button>
-                  <button onclick="tabEntrenoDelEx(${e.id},${d.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px;padding:4px">✕</button>
-                </div>`).join('')
-              : '<div style="font-size:12px;color:var(--tx3);padding:8px 0">Sin ejercicios aún.</div>'}
-            </div>
-          </div>`).join('')
-        : '<div style="font-size:13px;color:var(--tx3)">Sin días. Pulsa + Día para empezar.</div>'}
-      </div>
-    </div>
-
-    <!-- PANEL EDITAR EJERCICIO (inline) -->
-    <div id="tab_ex_edit_panel" style="display:none">
-      <div class="sec" style="margin-bottom:12px;border-color:rgba(59,130,246,.25)">
-        <div class="sec-hdr">✏️ Editando ejercicio <button onclick="document.getElementById('tab_ex_edit_panel').style.display='none'" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:13px;font-weight:600">✕ Cerrar</button></div>
-        <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:10px" id="tab_ex_edit_nombre"></div>
-        <div class="g2" style="gap:8px;margin-bottom:8px">
-          <div><div class="form-lbl">Series</div><input type="number" id="tab_ex_series" class="inp" style="margin-bottom:0"/></div>
-          <div><div class="form-lbl">Reps</div><input id="tab_ex_reps" class="inp" style="margin-bottom:0" placeholder="10-12"/></div>
-          <div><div class="form-lbl">Peso obj. (kg)</div><input type="number" id="tab_ex_peso" class="inp" style="margin-bottom:0" step="0.5"/></div>
-          <div><div class="form-lbl">Descanso (s)</div><input type="number" id="tab_ex_descanso" class="inp" style="margin-bottom:0"/></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sv2);cursor:pointer">
-            <input type="checkbox" id="tab_ex_rir_on" onchange="document.getElementById('tab_ex_rir_wrap').style.display=this.checked?'block':'none'"/>
-            Usar RIR
-          </label>
-          <div id="tab_ex_rir_wrap" style="display:none;flex:1">
-            <input type="number" id="tab_ex_rir" class="inp" style="margin-bottom:0;width:80px" min="0" max="5" placeholder="2"/>
-          </div>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--amb);cursor:pointer">
-            <input type="checkbox" id="tab_ex_principal"/>
-            ⭐ Principal
-          </label>
-        </div>
-        <div class="form-lbl">Nota al cliente</div>
-        <textarea id="tab_ex_nota" class="ta" placeholder="Ej: Controla la bajada en 3 segundos..." style="min-height:55px;margin-bottom:10px"></textarea>
-        <button onclick="tabEntrenoGuardarEx()" class="btn" style="width:100%;padding:11px;background:var(--bl2)">✓ Guardar cambios</button>
-      </div>
-    </div>
-  
-    <div class="sec" style="margin-bottom:12px">
+  <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr">Historial de entrenos <span id="sesiones_count" style="color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0;font-size:11px"></span></div>
     <div id="sesiones_wrap"><div style="font-size:13px;color:var(--tx3)">Cargando...</div></div>
   </div>
-  
-    <div id="graficas_coach_sec" style="display:none">
+  <div id="graficas_coach_sec" style="display:none">
     <div class="sec-lbl" style="padding-top:0;padding-bottom:8px">Progreso ejercicios principales</div>
     <div id="graficas_coach_wrap" style="padding:0 0 12px"></div>
   </div>
-  
-  </div>
-
-  <!-- TAB: DIETA -->
-  <div class="ctab-panel" id="ctab_dieta">
-    <div class="sec" style="margin-bottom:12px;border-color:rgba(59,130,246,.2)">
-    <div class="sec-hdr">🥗 Dieta asignada
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-sm" id="btn_editar_dieta_coach" onclick="toggleEditarDietaCoach()">✏️ Editar</button>
-        <button class="btn btn-sm" style="background:rgba(239,68,68,.15);color:#fca5a5;border:0.5px solid rgba(239,68,68,.3)" onclick="borrarDietaCoach()">🗑</button>
-      </div>
-    </div>
-    <div id="coach_dieta_view">
-      ${c.comidas.length ? c.comidas.map((m,mi)=>`
-        <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:7px">
-          <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:6px">${['☀️','🕐','🍽️','🌅','🌙','🥗'][mi]||'🍽️'} ${m.nombre}</div>
-          ${m.items.map(it=>`
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:0.5px solid rgba(39,39,42,.4)">
-              <span style="font-size:12px;color:var(--sv2)">${it.nombre}</span>
-              <span style="font-size:12px;font-weight:700;color:var(--blg)">${it.gramos}g</span>
-            </div>`).join('')}
-        </div>`).join('')
-      : '<div style="font-size:13px;color:var(--tx3)">Sin dieta asignada. Usa el Creador de Dieta IA.</div>'}
-    </div>
-    <div id="coach_dieta_edit" style="display:none"></div>
-  </div>
-  
-  </div>
-
-  <!-- TAB: PROGRESO -->
-  <div class="ctab-panel" id="ctab_progreso">
-    <!-- FOTOS DE PROGRESO DEL CLIENTE -->
+  <!-- FOTOS DE PROGRESO DEL CLIENTE -->
   <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr">📸 Fotos de progreso</div>
     <div id="coach_fotos_timeline">Cargando...</div>
   </div>
 
-  
-    <div class="sec" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(37,99,235,.06),rgba(17,17,19,.8));border-color:rgba(59,130,246,.2)">
+  <div class="sec" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(37,99,235,.06),rgba(17,17,19,.8));border-color:rgba(59,130,246,.2)">
     <div class="sec-hdr">📋 Revisión semanal <span id="rev_estado" style="font-size:10px;font-weight:500;color:var(--tx3);text-transform:none;letter-spacing:0"></span></div>
     <div id="revision_semanal_content"><div style="font-size:13px;color:var(--tx3)">Cargando...</div></div>
-  </div>
-    <div class="sec" style="margin-bottom:12px">
-      <div class="sec-hdr">⚖️ Evolución de peso</div>
-      <div id="coach_peso_evolucion"><div style="font-size:13px;color:var(--tx3)">Sin registros de peso aún.</div></div>
-    </div>
   </div>`;
-
   window._cid=c.id;
 
-  // Tab Resumen: cargar suscripción y macros
-  cargarSuscripcionCliente(id);
-  setTimeout(()=>{ aplicarMacrosCoach(c, true); }, 200);
+  // Revisión semanal
+  cargarRevisionSemanal(id, c);
+  // Render coach fotos
+  renderCoachFotos(c.fotos);
 
-  // Historial (para tab Entreno)
+  // Cargar historial
   api('/clientes/'+id+'/sesiones').then(sesiones=>{
     const wrap=document.getElementById('sesiones_wrap');
     const count=document.getElementById('sesiones_count');
@@ -1074,175 +833,18 @@ async function verCliente(id){
     }).join('');
   }).catch(()=>{});
 
-  // Peso evolución (para tab Progreso)
-  const pesoWrap = document.getElementById('coach_peso_evolucion');
-  if(pesoWrap && c.pesos.length) {
-    pesoWrap.innerHTML = c.pesos.slice(-8).map((p,i,arr)=>{
-      const prev = arr[i-1];
-      const tendencia = prev ? (p.peso > prev.peso ? '<span style="color:#f87171">▲</span>' : '<span style="color:#86efac">▼</span>') : '';
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--br)">'+
-        '<span style="font-size:12px;color:var(--tx3)">Sem '+(i+1)+'</span>'+
-        tendencia+
-        '<span style="font-size:14px;font-weight:700;color:var(--sv)">'+p.peso+'kg</span>'+
-        (p.grasa ? '<span style="font-size:11px;color:var(--tx3)">'+p.grasa+'% grasa</span>' : '')+
-        (p.cintura ? '<span style="font-size:11px;color:var(--tx3)">'+p.cintura+'cm</span>' : '')+
-        '</div>';
-    }).join('');
+  // Gráficas principales
+  const principales=c.dias.flatMap(d=>(d.ejercicios||[]).filter(e=>e.es_principal).map(e=>e.nombre)).filter((n,i,a)=>a.indexOf(n)===i);
+  if(principales.length){
+    const sec=document.getElementById('graficas_coach_sec');
+    if(sec)sec.style.display='block';
+    cargarGraficasCoach(id,principales);
   }
-}
 
-// ═══ EDITOR ENTRENO INLINE (tab Entreno del perfil) ═════════════
-let _tabExEditId = null;
-
-function tabEntrenoToggleDia(diaId) {
-  const body = document.getElementById('tab_dia_body_' + diaId);
-  if(!body) return;
-  body.style.display = body.style.display === 'none' ? 'block' : 'none';
-}
-
-async function tabEntrenoNuevoDia(clienteId) {
-  const nombre = prompt('Nombre del día (ej: Día A, Empuje, Lunes...):');
-  if(!nombre) return;
-  const grupo = prompt('Grupo muscular (ej: Pecho/Hombro/Tríceps, Piernas...):') || 'General';
-  await api('/clientes/'+clienteId+'/dias', {
-    method:'POST', body:JSON.stringify({nombre, grupo, orden: 0})
-  });
-  const c = await api('/clientes/'+clienteId);
-  window._coachClienteActual = c;
-  // Re-renderizar tab
-  switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
-  verCliente(clienteId);
-}
-
-async function tabEntrenoDelDia(diaId) {
-  if(!confirm('¿Eliminar este día y todos sus ejercicios?')) return;
-  await api('/dias/'+diaId, {method:'DELETE'});
-  const clienteId = window._coachClienteId;
-  const c = await api('/clientes/'+clienteId);
-  window._coachClienteActual = c;
-  verCliente(clienteId);
-}
-
-function tabEntrenoAddEx(diaId, diaNombre) {
-  // Reusar el sistema de rutinas existente
-  rbState.clienteId = window._coachClienteId;
-  rbState.diaId = diaId;
-  rbState.diaNombre = diaNombre;
-  // Redirigir a pantalla de rutinas con el cliente ya seleccionado
-  cNav('rutinas', document.querySelector('#sCoach .sni:nth-child(2)'));
-}
-
-function tabEntrenoEditEx(exId) {
-  _tabExEditId = exId;
-  const panel = document.getElementById('tab_ex_edit_panel');
-  if(!panel) return;
-  panel.style.display = 'block';
-  panel.scrollIntoView({behavior:'smooth'});
-
-  api('/ejercicios/'+exId).then(e => {
-    document.getElementById('tab_ex_edit_nombre').textContent = e.nombre;
-    document.getElementById('tab_ex_series').value = e.series || 3;
-    document.getElementById('tab_ex_reps').value = e.reps || '10-12';
-    document.getElementById('tab_ex_peso').value = e.peso_objetivo || 0;
-    document.getElementById('tab_ex_descanso').value = e.descanso || 90;
-    const conRir = e.rir != null;
-    document.getElementById('tab_ex_rir_on').checked = conRir;
-    document.getElementById('tab_ex_rir_wrap').style.display = conRir ? 'block' : 'none';
-    document.getElementById('tab_ex_rir').value = e.rir != null ? e.rir : 2;
-    document.getElementById('tab_ex_principal').checked = !!e.es_principal;
-    document.getElementById('tab_ex_nota').value = e.nota_coach || '';
-  }).catch(e => alert('Error cargando ejercicio: ' + e.message));
-}
-
-async function tabEntrenoGuardarEx() {
-  if(!_tabExEditId) return;
-  const btn = event.target;
-  btn.textContent = '⏳ Guardando...'; btn.disabled = true;
-  try {
-    await api('/ejercicios/'+_tabExEditId, {
-      method: 'PUT',
-      body: JSON.stringify({
-        series:    parseInt(document.getElementById('tab_ex_series').value) || 3,
-        reps:      document.getElementById('tab_ex_reps').value || '10-12',
-        peso_objetivo: parseFloat(document.getElementById('tab_ex_peso').value) || 0,
-        descanso:  parseInt(document.getElementById('tab_ex_descanso').value) || 90,
-        rir:       document.getElementById('tab_ex_rir_on').checked
-                     ? (parseInt(document.getElementById('tab_ex_rir').value) || 2)
-                     : null,
-        es_principal: document.getElementById('tab_ex_principal').checked ? 1 : 0,
-        nota_coach: document.getElementById('tab_ex_nota').value || ''
-      })
-    });
-    // Recargar cliente y re-renderizar tab
-    const c = await api('/clientes/'+window._coachClienteId);
-    window._coachClienteActual = c;
-    btn.textContent = '✓ Guardado';
-    setTimeout(() => {
-      document.getElementById('tab_ex_edit_panel').style.display = 'none';
-      btn.textContent = '✓ Guardar cambios'; btn.disabled = false;
-      _tabExEditId = null;
-      // Actualizar el div del día sin recargar todo
-      const diaId = c.dias.find(d => d.ejercicios.some(e => e.id === parseInt(document.getElementById('tab_ex_edit_nombre').dataset?.exid || _tabExEditId)))?.id;
-      verCliente(window._coachClienteId);
-    }, 800);
-  } catch(e) {
-    alert('Error: ' + e.message);
-    btn.textContent = '✓ Guardar cambios'; btn.disabled = false;
-  }
-}
-
-async function tabEntrenoDelEx(exId, diaId) {
-  if(!confirm('¿Eliminar este ejercicio?')) return;
-  await api('/ejercicios/'+exId, {method:'DELETE'});
-  const c = await api('/clientes/'+window._coachClienteId);
-  window._coachClienteActual = c;
-  verCliente(window._coachClienteId);
-}
-
-// ═══ TABS PERFIL CLIENTE ═════════════════════════════════════════
-function switchClienteTab(tab, btn) {
-  // Activar botón
-  document.querySelectorAll('.ctab').forEach(b => b.classList.remove('on'));
-  if(btn) btn.classList.add('on');
-
-  // Mostrar panel
-  document.querySelectorAll('.ctab-panel').forEach(p => p.classList.remove('on'));
-  const panel = document.getElementById('ctab_' + tab);
-  if(panel) panel.classList.add('on');
-
-  // Lazy load por tab
-  const id = window._coachClienteId;
-  if(tab === 'entreno') {
-    // Cargar gráficas si no están cargadas
-    const c = window._coachClienteActual;
-    if(c) {
-      const principales = c.dias.flatMap(d=>(d.ejercicios||[]).filter(e=>e.es_principal).map(e=>e.nombre)).filter((n,i,a)=>a.indexOf(n)===i);
-      if(principales.length) {
-        const sec = document.getElementById('graficas_coach_sec');
-        if(sec) sec.style.display = 'block';
-        cargarGraficasCoach(id, principales);
-      }
-    }
-  }
-  if(tab === 'progreso') {
-    const c = window._coachClienteActual;
-    if(c) renderCoachFotos(c.fotos);
-    cargarRevisionSemanal(id, window._coachClienteActual);
-  }
-  if(tab === 'resumen') {
-    cargarSuscripcionCliente(id);
-    setTimeout(() => {
-      const c = window._coachClienteActual;
-      if(c) aplicarMacrosCoach(c, false);
-    }, 100);
-  }
-  if(tab === 'dieta') {
-    // Si hay dieta en edición, asegurarse de estar en vista
-    const edit = document.getElementById('coach_dieta_edit');
-    const view = document.getElementById('coach_dieta_view');
-    if(edit && edit.style.display !== 'none') {
-      // ya está en modo edición, ok
-    }
+  if(c.peso_actual&&c.altura&&c.edad){
+    const tmb=calcTMBCoach(c),gasto=calcGastoCoach(c);
+    const w=document.getElementById('tmb_wrap_coach');
+    if(w)w.innerHTML=`<div style="display:flex;gap:10px"><div style="flex:1;background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">TMB</div><div style="font-size:18px;font-weight:700;color:var(--sv)">${tmb}</div><div style="font-size:10px;color:var(--tx3)">kcal reposo</div></div><div style="flex:1;background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--gnb);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Gasto total</div><div style="font-size:18px;font-weight:700;color:var(--sv)">${gasto}</div><div style="font-size:10px;color:var(--tx3)">kcal/día</div></div></div>`;
   }
 }
 
@@ -1291,378 +893,6 @@ function clienteDatosModoEditar(btn){
     btn.style.background='';
     btn.onclick = function(){ guardarDatos(clienteId); };
   }
-}
-
-// ═══ MACROS DE BASE DE DATOS (tabla alimentos_db) ═══
-// Proteínas: ~4 kcal/g | Carbos: ~4 kcal/g | Grasas: ~9 kcal/g
-// Estimación por nombre de alimento cuando no hay BD
-function estimarMacrosPor100g(nombre) {
-  const n = nombre.toLowerCase();
-  // Proteínas principales
-  if(/pollo|pechuga|pavo|atún|merluza|salmón|bacalao|gambas|ternera|cerdo|lomo|pavo/.test(n))
-    return {p:22, c:0, g:3};
-  if(/huevo/.test(n)) return {p:13, c:1, g:11};
-  if(/whey|proteína en polvo|caseína/.test(n)) return {p:75, c:8, g:5};
-  if(/yogur proteico/.test(n)) return {p:10, c:4, g:0};
-  if(/yogur/.test(n)) return {p:5, c:5, g:3};
-  if(/queso/.test(n)) return {p:25, c:1, g:28};
-  if(/leche entera/.test(n)) return {p:3, c:5, g:4};
-  if(/leche/.test(n)) return {p:3, c:5, g:2};
-  if(/legumbre|lenteja|garbanzo|judía/.test(n)) return {p:9, c:20, g:1};
-  if(/tofu/.test(n)) return {p:8, c:2, g:4};
-  // Carbos
-  if(/arroz/.test(n)) return {p:7, c:77, g:1};
-  if(/avena/.test(n)) return {p:13, c:66, g:7};
-  if(/pasta/.test(n)) return {p:13, c:70, g:2};
-  if(/pan integral/.test(n)) return {p:9, c:41, g:3};
-  if(/pan/.test(n)) return {p:8, c:48, g:2};
-  if(/patata/.test(n)) return {p:2, c:17, g:0};
-  if(/plátano/.test(n)) return {p:1, c:23, g:0};
-  if(/manzana|naranja|fruta/.test(n)) return {p:0, c:12, g:0};
-  if(/frutos rojos|fresa|arándano/.test(n)) return {p:1, c:8, g:0};
-  // Grasas
-  if(/aceite/.test(n)) return {p:0, c:0, g:100};
-  if(/aguacate/.test(n)) return {p:2, c:2, g:15};
-  if(/anacardo|nuez|almendra|cacahuete|fruto seco/.test(n)) return {p:18, c:22, g:50};
-  if(/mantequilla/.test(n)) return {p:1, c:0, g:80};
-  // Verduras (casi sin macros)
-  if(/verdura|espinaca|lechuga|tomate|pepino|pimiento|brócoli|zanahoria|cebolla|ajo/.test(n))
-    return {p:2, c:5, g:0};
-  // Default
-  return {p:5, c:15, g:5};
-}
-
-function calcMacrosDieta(comidas) {
-  let totalP=0, totalC=0, totalG=0, totalKcal=0;
-  comidas.forEach(m => {
-    m.items.forEach(it => {
-      const macro = estimarMacrosPor100g(it.nombre);
-      const factor = (it.gramos||100) / 100;
-      totalP += macro.p * factor;
-      totalC += macro.c * factor;
-      totalG += macro.g * factor;
-    });
-  });
-  totalP = Math.round(totalP);
-  totalC = Math.round(totalC);
-  totalG = Math.round(totalG);
-  totalKcal = Math.round(totalP*4 + totalC*4 + totalG*9);
-  return {p:totalP, c:totalC, g:totalG, kcal:totalKcal};
-}
-
-function renderMacrosBarra(macros, objetivos) {
-  const pPct = Math.min(Math.round(macros.p/Math.max(objetivos.p,1)*100),150);
-  const cPct = Math.min(Math.round(macros.c/Math.max(objetivos.c,1)*100),150);
-  const gPct = Math.min(Math.round(macros.g/Math.max(objetivos.g,1)*100),150);
-  const kPct = Math.min(Math.round(macros.kcal/Math.max(objetivos.kcal,1)*100),150);
-  const col = (pct) => pct > 110 ? '#f87171' : pct >= 90 ? '#22c55e' : '#f59e0b';
-  return `<div style="background:var(--s3);border-radius:10px;padding:10px 12px;margin-bottom:10px">
-    <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Macros actuales del plan</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">
-      ${[['P',macros.p+'g',objetivos.p+'g',pPct,'#3b82f6'],['C',macros.c+'g',objetivos.c+'g',cPct,'#a78bfa'],['G',macros.g+'g',objetivos.g+'g',gPct,'#f97316'],['kcal',macros.kcal,objetivos.kcal,kPct,'#fbbf24']].map(([l,v,obj,pct,color])=>`
-      <div style="text-align:center;background:var(--s2);border-radius:8px;padding:6px 4px;border:0.5px solid ${col(pct)}40">
-        <div style="font-size:14px;font-weight:700;color:${col(pct)}">${v}</div>
-        <div style="font-size:9px;color:var(--tx3)">${l} / ${obj}</div>
-        <div style="font-size:9px;color:${col(pct)};font-weight:700">${pct}%</div>
-      </div>`).join('')}
-    </div>
-  </div>`;
-}
-
-function toggleEditarDietaCoach(){
-  const view = document.getElementById('coach_dieta_view');
-  const edit = document.getElementById('coach_dieta_edit');
-  const btn = document.getElementById('btn_editar_dieta_coach');
-  const c = window._coachClienteActual;
-  if(!c || !view || !edit) return;
-
-  const isEditing = edit.style.display !== 'none';
-  if(isEditing){
-    edit.style.display = 'none';
-    view.style.display = 'block';
-    btn.textContent = '✏️ Editar';
-  } else {
-    view.style.display = 'none';
-    edit.style.display = 'block';
-    btn.textContent = '✕ Cancelar';
-    renderEditarDietaCoach(c);
-  }
-}
-
-function renderEditarDietaCoach(c){
-  const edit = document.getElementById('coach_dieta_edit');
-  if(!edit) return;
-  if(!c.comidas.length){
-    edit.innerHTML = '<div style="font-size:13px;color:var(--tx3)">Sin comidas. Publica una dieta primero desde el Creador IA.</div>';
-    return;
-  }
-
-  const obj = {
-    p: c.prot || 160,
-    c: c.carbs || 200,
-    g: c.fat || 60,
-    kcal: c.kcal_internas || 2000
-  };
-  const macros = calcMacrosDieta(c.comidas);
-
-  // ─── BARRA DE MACROS ───
-  let html = renderMacrosBarra(macros, obj);
-
-  // ─── OPCIÓN B: Rebalanceo IA ───
-  html += `<div style="background:linear-gradient(135deg,rgba(37,99,235,.08),rgba(17,17,19,.9));border:0.5px solid rgba(59,130,246,.25);border-radius:10px;padding:12px;margin-bottom:10px">
-    <div style="font-size:11px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">⚡ Rebalanceo IA</div>
-    <div style="font-size:12px;color:var(--sv3);margin-bottom:8px">Describe el ajuste y la IA redistribuye todo el plan</div>
-    <textarea id="coach_ia_ajuste" style="width:100%;padding:9px 11px;border:0.5px solid var(--br);border-radius:8px;background:var(--b);color:var(--tx);font-size:13px;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px;box-sizing:border-box"
-      placeholder="Ej: Baja 200 kcal quitándolas de los carbos · Sube proteína 20g repartida en comida y cena · Elimina las grasas del desayuno..."></textarea>
-    <button onclick="rebalancearConIA()" class="btn" style="width:100%;padding:10px;font-size:13px">⚡ Rebalancear con IA</button>
-  </div>`;
-
-  // ─── OPCIÓN A: Rebalanceo automático ───
-  html += `<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px;margin-bottom:10px">
-    <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">🔧 Ajuste automático</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-      <div>
-        <div style="font-size:10px;color:var(--tx3);margin-bottom:4px">Macro a ajustar</div>
-        <select id="auto_macro" style="width:100%;padding:8px;border:0.5px solid var(--br);border-radius:8px;background:var(--b);color:var(--tx);font-size:13px;font-family:'Inter',sans-serif">
-          <option value="p">Proteína</option>
-          <option value="c">Carbos</option>
-          <option value="g">Grasas</option>
-          <option value="kcal">Calorías totales</option>
-        </select>
-      </div>
-      <div>
-        <div style="font-size:10px;color:var(--tx3);margin-bottom:4px">Cambio (+ subir / - bajar)</div>
-        <input type="number" id="auto_delta" placeholder="Ej: -200 o +30" style="width:100%;padding:8px;border:0.5px solid var(--br);border-radius:8px;background:var(--b);color:var(--tx);font-size:13px;font-family:'Inter',sans-serif;box-sizing:border-box"/>
-      </div>
-    </div>
-    <button onclick="rebalancearAutomatico()" class="btn btn-sm" style="width:100%;padding:9px;background:var(--s3);color:var(--sv2);border:0.5px solid var(--br)">🔧 Aplicar ajuste</button>
-  </div>`;
-
-  // ─── EDICIÓN MANUAL POR COMIDA ───
-  html += `<div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Edición manual</div>`;
-  c.comidas.forEach((m, mi) => {
-    html += `<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:8px">
-      <div style="font-size:12px;font-weight:700;color:var(--blg);margin-bottom:8px">${['☀️','🕐','🍽️','🌅','🌙','🥗'][mi]||'🍽️'} ${m.nombre}</div>`;
-    m.items.forEach(it => {
-      html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="flex:1;font-size:12px;color:var(--sv2)">${it.nombre}</span>
-        <input type="number" value="${it.gramos}" min="1" data-alim-id="${it.id}"
-          style="width:65px;padding:5px 7px;border:0.5px solid var(--br);border-radius:7px;background:var(--b);color:var(--blg);font-size:13px;font-weight:700;text-align:center;font-family:'Inter',sans-serif"
-          onchange="dbEditG(${it.id}, this.value); actualizarBarraMacros()"/>
-        <span style="font-size:11px;color:var(--tx3)">g</span>
-        <button onclick="coachBorrarAlimento(${it.id}, this)" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px;flex-shrink:0">✕</button>
-      </div>`;
-    });
-    html += `<button onclick="coachAnadirAlimento(${m.id}, '${m.nombre}', this)"
-      style="width:100%;padding:6px;border:0.5px dashed var(--br);border-radius:8px;background:none;color:var(--tx3);font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;margin-top:2px">+ Añadir alimento</button>
-    </div>`;
-  });
-
-  html += `<button onclick="guardarDietaCoach()" class="btn" style="width:100%;padding:11px;background:var(--gn);margin-top:4px">✓ Guardar y cerrar</button>`;
-  edit.innerHTML = html;
-}
-
-function actualizarBarraMacros(){
-  const c = window._coachClienteActual;
-  if(!c) return;
-  // Leer gramos actuales desde los inputs del DOM
-  document.querySelectorAll('[data-alim-id]').forEach(inp => {
-    const id = parseInt(inp.dataset.alimentId || inp.dataset.alimentoId || inp.getAttribute('data-alim-id'));
-    const gramos = parseInt(inp.value)||0;
-    c.comidas.forEach(m => m.items.forEach(it => { if(it.id===id) it.gramos=gramos; }));
-  });
-  const obj = {p: c.prot||160, c: c.carbs||200, g: c.fat||60, kcal: c.kcal_internas||2000};
-  const macros = calcMacrosDieta(c.comidas);
-  const barraWrap = document.querySelector('#coach_dieta_edit > div:first-child');
-  if(barraWrap) barraWrap.outerHTML = renderMacrosBarra(macros, obj);
-}
-
-async function rebalancearAutomatico(){
-  const macro = document.getElementById('auto_macro')?.value;
-  const delta = parseFloat(document.getElementById('auto_delta')?.value||'0');
-  if(!delta){ alert('Escribe un valor de cambio (ej: -200 o +30)'); return; }
-  const c = window._coachClienteActual;
-  if(!c || !c.comidas.length) return;
-
-  const btn = event.target;
-  btn.textContent='⏳ Calculando...'; btn.disabled=true;
-
-  // Calcular factor de ajuste proporcional
-  // Para cada alimento, identificar si es del tipo de macro a ajustar
-  // y escalar sus gramos proporcionalmente
-  const macrosActuales = calcMacrosDieta(c.comidas);
-
-  // Qué macro en gramos tenemos ahora
-  const macroActual = macro==='kcal'
-    ? macrosActuales.kcal
-    : macrosActuales[macro];
-
-  // Qué queremos tener
-  const macroObjetivo = macroActual + delta;
-  if(macroObjetivo <= 0){ alert('El ajuste dejaría el plan sin ese macro. Reduce el cambio.'); btn.textContent='🔧 Aplicar ajuste'; btn.disabled=false; return; }
-
-  const factor = macroObjetivo / Math.max(macroActual, 1);
-
-  // Filtrar alimentos del tipo correcto y escalarlos
-  const promesas = [];
-  c.comidas.forEach(m => {
-    m.items.forEach(it => {
-      const macroAlim = estimarMacrosPor100g(it.nombre);
-      let esDeTipo = false;
-      if(macro==='p') esDeTipo = macroAlim.p > 10; // proteínas
-      if(macro==='c') esDeTipo = macroAlim.c > 15 && macroAlim.p < 15; // carbos
-      if(macro==='g') esDeTipo = macroAlim.g > 10 && macroAlim.c < 10; // grasas
-      if(macro==='kcal') esDeTipo = true; // todos
-
-      if(esDeTipo){
-        const nuevosGramos = Math.max(Math.round(it.gramos * factor), 10);
-        const diff = nuevosGramos - it.gramos;
-        if(Math.abs(diff) >= 2){ // solo si cambia al menos 2g
-          it.gramos = nuevosGramos;
-          promesas.push(api('/alimentos/'+it.id, {
-            method:'PUT', body:JSON.stringify({gramos: nuevosGramos})
-          }));
-        }
-      }
-    });
-  });
-
-  await Promise.all(promesas);
-  renderEditarDietaCoach(c);
-  btn.textContent='✓ Aplicado'; btn.disabled=false;
-  setTimeout(()=>{ btn.textContent='🔧 Aplicar ajuste'; }, 1500);
-}
-
-async function rebalancearConIA(){
-  const instruccion = document.getElementById('coach_ia_ajuste')?.value?.trim();
-  if(!instruccion){ alert('Escribe qué ajuste quieres hacer'); return; }
-  const c = window._coachClienteActual;
-  if(!c || !c.comidas.length) return;
-
-  const btn = event.target;
-  btn.textContent='⏳ Rebalanceando...'; btn.disabled=true;
-
-  const planActual = c.comidas.map(m=>({
-    nombre: m.nombre,
-    alimentos: m.items.map(it=>({ id: it.id, nombre: it.nombre, gramos: it.gramos }))
-  }));
-
-  const prompt = `Eres un nutricionista deportivo experto. Tienes este plan de dieta de un cliente y debes ajustarlo según la instrucción del coach.
-
-OBJETIVO DEL CLIENTE:
-- Proteína: ${c.prot||160}g | Carbos: ${c.carbs||200}g | Grasas: ${c.fat||60}g | Kcal: ${c.kcal_internas||2000}
-
-PLAN ACTUAL:
-${JSON.stringify(planActual, null, 2)}
-
-INSTRUCCIÓN DEL COACH:
-${instruccion}
-
-REGLAS:
-1. Devuelve SOLO JSON válido, sin texto adicional.
-2. Mantén los mismos alimentos y sus IDs. Solo cambia los gramos.
-3. Aplica la instrucción del coach de forma inteligente y distribuida.
-4. No bajes ningún alimento por debajo de 10g.
-5. Mantén coherencia culinaria (no pongas 5g de arroz).
-6. Responde con este formato exacto:
-{"ajustes":[{"id":123,"gramos":150},{"id":456,"gramos":80}],"resumen":"Frase corta explicando qué se hizo"}`;
-
-  try {
-    const d = await api('/ia/chat', {
-      method:'POST',
-      body:JSON.stringify({
-        messages:[{role:'user', content:prompt}],
-        system:'Nutricionista experto. Responde SOLO con JSON válido y compacto. Sin texto extra.'
-      })
-    });
-
-    let result;
-    try {
-      let clean = (d.reply||'').replace(/```json\s*/gi,'').replace(/```\s*/g,'');
-      const s = clean.indexOf('{'), e = clean.lastIndexOf('}');
-      if(s>=0 && e>s) clean = clean.slice(s, e+1);
-      result = JSON.parse(clean.trim());
-    } catch(e){
-      throw new Error('La IA no devolvió JSON válido. Intenta de nuevo.');
-    }
-
-    if(!result.ajustes?.length) throw new Error('Sin ajustes en la respuesta.');
-
-    // Aplicar cambios
-    const promesas = result.ajustes.map(aj => {
-      c.comidas.forEach(m => m.items.forEach(it => { if(it.id===aj.id) it.gramos=aj.gramos; }));
-      return api('/alimentos/'+aj.id, {method:'PUT', body:JSON.stringify({gramos: aj.gramos})});
-    });
-    await Promise.all(promesas);
-
-    // Mostrar resumen
-    if(result.resumen){
-      const ta = document.getElementById('coach_ia_ajuste');
-      if(ta){ ta.value=''; ta.placeholder='✓ '+result.resumen; }
-    }
-
-    renderEditarDietaCoach(c);
-    btn.textContent='✓ Rebalanceado';
-    setTimeout(()=>{ btn.textContent='⚡ Rebalancear con IA'; btn.disabled=false; }, 2000);
-
-  } catch(e){
-    alert('Error: '+e.message);
-    btn.textContent='⚡ Rebalancear con IA'; btn.disabled=false;
-  }
-}
-
-async function coachBorrarAlimento(id, btn){
-  btn.closest('div').remove();
-  await api('/alimentos/'+id, {method:'DELETE'}).catch(()=>{});
-  const c = window._coachClienteActual;
-  if(c){ c.comidas.forEach(m=>{ m.items=m.items.filter(it=>it.id!==id); }); }
-  actualizarBarraMacros();
-}
-
-async function coachAnadirAlimento(comidaId, nombreComida, btn){
-  const nombre = prompt('Nombre del alimento:');
-  if(!nombre) return;
-  const gramos = parseInt(prompt('Gramos (en crudo):', '100') || '100');
-  if(!gramos) return;
-  await api('/comidas/'+comidaId+'/alimentos', {
-    method:'POST', body:JSON.stringify({nombre, gramos})
-  });
-  const c = await api('/clientes/'+window._coachClienteId);
-  window._coachClienteActual = c;
-  renderEditarDietaCoach(c);
-}
-
-async function guardarDietaCoach(){
-  const btn = document.querySelector('#coach_dieta_edit .btn[onclick="guardarDietaCoach()"]');
-  if(btn){ btn.textContent='⏳ Guardando...'; btn.disabled=true; }
-  const c = await api('/clientes/'+window._coachClienteId);
-  window._coachClienteActual = c;
-  const view = document.getElementById('coach_dieta_view');
-  const edit = document.getElementById('coach_dieta_edit');
-  const btnEditar = document.getElementById('btn_editar_dieta_coach');
-  if(view) view.innerHTML = c.comidas.length ? c.comidas.map((m,mi)=>`
-    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:7px">
-      <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:6px">${['☀️','🕐','🍽️','🌅','🌙','🥗'][mi]||'🍽️'} ${m.nombre}</div>
-      ${m.items.map(it=>`
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:0.5px solid rgba(39,39,42,.4)">
-          <span style="font-size:12px;color:var(--sv2)">${it.nombre}</span>
-          <span style="font-size:12px;font-weight:700;color:var(--blg)">${it.gramos}g</span>
-        </div>`).join('')}
-    </div>`).join('')
-    : '<div style="font-size:13px;color:var(--tx3)">Sin dieta asignada.</div>';
-  if(edit){ edit.style.display='none'; edit.innerHTML=''; }
-  if(view) view.style.display='block';
-  if(btnEditar){ btnEditar.textContent='✏️ Editar'; }
-}
-
-async function borrarDietaCoach(){
-  if(!confirm('¿Borrar toda la dieta de este cliente?')) return;
-  const c = window._coachClienteActual;
-  if(!c) return;
-  for(const m of c.comidas) await api('/comidas/'+m.id, {method:'DELETE'});
-  const view = document.getElementById('coach_dieta_view');
-  if(view) view.innerHTML = '<div style="font-size:13px;color:var(--tx3)">Sin dieta asignada. Usa el Creador de Dieta IA.</div>';
-  window._coachClienteActual.comidas = [];
 }
 
 function mb2(l,c,a,cal,tot){const p=Math.round((cal/(tot||1))*100)||0;return`<div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--tx3);margin-bottom:3px;font-weight:500"><span>${l}</span><span style="color:var(--sv2)">${a}g·${p}%</span></div><div style="height:3px;background:var(--s3);border-radius:2px;overflow:hidden;margin-bottom:8px"><div style="width:${p}%;height:100%;background:${c};border-radius:2px"></div></div></div>`;}
@@ -2178,7 +1408,7 @@ function hDietaBuilder(){return`
         <div class="sec-hdr">Vista previa del plan</div>
         <div style="display:flex;gap:8px;margin-bottom:12px">
           <button class="btn" style="flex:1;padding:10px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);font-size:13px" onclick="dbEditarPlan()">✏️ Editar cantidades</button>
-          <button class="btn" style="flex:1;padding:10px;background:var(--gn);font-size:13px" id="btn_publicar_dieta_ia" onclick="dbPublicarPlan()">✓ Publicar al cliente</button>
+          <button class="btn" style="flex:1;padding:10px;background:var(--gn);font-size:13px" onclick="dbPublicarPlan()">✓ Publicar al cliente</button>
         </div>
         <div id="db_plan_html"></div>
       </div>
@@ -2234,12 +1464,10 @@ async function dbSelCliente(id){
 }
 
 async function dbLoadComidas(){
-  const listEl = document.getElementById('db_comidas_list');
-  if(!listEl) return;
   const c=await api('/clientes/'+dbState.clienteId);
   const mIcons=['☀️','🕐','🍽️','🌅','🌙','🥗'];
   const catColors={'Proteína':'#3b82f6','Carbohidrato':'#a78bfa','Verdura':'#22c55e','Grasa saludable':'#f59e0b','Lácteo':'#ec4899'};
-  listEl.innerHTML=c.comidas.length?c.comidas.map((m,mi)=>`
+  document.getElementById('db_comidas_list').innerHTML=c.comidas.length?c.comidas.map((m,mi)=>`
     <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;margin-bottom:10px;overflow:hidden">
       <div style="padding:11px 13px;display:flex;align-items:center;justify-content:space-between;${m.items.length?'border-bottom:0.5px solid var(--br)':''}">
         <div class="fl"><span style="font-size:20px;margin-right:8px">${mIcons[mi]||'🍽️'}</span><span style="font-size:14px;font-weight:700;color:var(--sv)">${m.nombre}</span></div>
@@ -2307,246 +1535,11 @@ async function dbGenerarIA(){
 }
 
 // ═══ PROGRESO COACH ═══════════════════════════════════
-function hProgreso(cl){
-  return `
-  <div id="sub_alertas_wrap"></div>
-  <div class="sec">
-    <div class="sec-hdr">Progreso de clientes
-      <button class="btn btn-sm" onclick="enviarAvisosVencimiento()" style="font-size:11px">🔔 Enviar avisos</button>
-    </div>
-    <table style="width:100%;border-collapse:collapse">
-      <tr>${['Cliente','Peso','% Grasa','Semana','Fotos','Suscripción'].map(h=>`<th style="text-align:left;padding:5px 8px;font-size:10px;font-weight:700;color:var(--tx3);border-bottom:0.5px solid var(--br);text-transform:uppercase;letter-spacing:.07em">${h}</th>`).join('')}</tr>
-      ${cl.map((c,i)=>{const a=ac(i);return`<tr onclick="verCliente(${c.id})" style="cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.02)'" onmouseout="this.style.background='none'">
-        <td style="padding:9px 8px"><div class="fl"><div class="av" style="width:26px;height:26px;font-size:10px;background:${a.bg};color:${a.tx};border-color:${a.br};margin-right:7px">${ini(c.nombre)}</div>${c.nombre}</div></td>
-        <td style="padding:9px 8px;font-weight:700">${c.peso_actual||'—'}</td>
-        <td style="padding:9px 8px">${c.grasa_actual?c.grasa_actual+'%':'—'}</td>
-        <td style="padding:9px 8px"><span class="badge b-bl">${c.semanas}</span></td>
-        <td style="padding:9px 8px"><span class="badge b-am">${c.fotos_count||0}</span></td>
-        <td style="padding:9px 8px"><span id="sub_estado_${c.id}" class="badge b-sv">...</span></td>
-      </tr>`;}).join('')}
-    </table>
-  </div>`;
-}
-
-async function cargarProgresoSubs() {
-  try {
-    const alertas = await api('/suscripciones/alertas');
-    const wrap = document.getElementById('sub_alertas_wrap');
-
-    let html = '';
-
-    if(alertas.proximas_a_vencer?.length) {
-      html += `<div class="sec" style="margin-bottom:12px;border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.04)">
-        <div class="sec-hdr" style="color:var(--amb)">⚠️ Próximas a vencer (${alertas.proximas_a_vencer.length})</div>
-        ${alertas.proximas_a_vencer.map(s=>`
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--br)">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--sv)">${s.nombre}</div>
-              <div style="font-size:11px;color:var(--tx3)">Vence: ${s.fecha_fin.split('-').reverse().join('/')}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="badge b-am">${s.dias_restantes}d</span>
-              <button class="btn btn-sm" onclick="verCliente(${s.cliente_id})" style="font-size:11px">Ver cliente</button>
-            </div>
-          </div>`).join('')}
-      </div>`;
-    }
-
-    if(alertas.vencidas?.length) {
-      html += `<div class="sec" style="margin-bottom:12px;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.04)">
-        <div class="sec-hdr" style="color:#fca5a5">🔴 Vencidas / Canceladas (${alertas.vencidas.length})</div>
-        ${alertas.vencidas.map(s=>`
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--br)">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--sv)">${s.nombre}</div>
-              <div style="font-size:11px;color:#fca5a5">Venció: ${s.fecha_fin.split('-').reverse().join('/')}</div>
-            </div>
-            <button class="btn btn-sm" onclick="verCliente(${s.cliente_id})" style="font-size:11px">Renovar</button>
-          </div>`).join('')}
-      </div>`;
-    }
-
-    if(wrap) wrap.innerHTML = html || '';
-
-    // Cargar estado de suscripción por cliente en la tabla
-    const subs = await api('/suscripciones');
-    subs.forEach(s => {
-      const el = document.getElementById('sub_estado_'+s.cliente_id);
-      if(!el) return;
-      if(s.vencida || s.estado==='cancelada') {
-        el.className='badge'; el.style.background='rgba(239,68,68,.15)'; el.style.color='#fca5a5'; el.style.border='0.5px solid rgba(239,68,68,.3)';
-        el.textContent = s.estado==='cancelada' ? 'Cancelada' : 'Vencida';
-      } else if(s.proxima_a_vencer) {
-        el.className='badge b-am'; el.textContent = s.dias_restantes+'d';
-      } else {
-        el.className='badge b-gn'; el.textContent = '✓ Activa';
-      }
-    });
-    // Clientes sin suscripción
-    document.querySelectorAll('[id^="sub_estado_"]').forEach(el => {
-      if(el.textContent==='...') { el.className='badge b-sv'; el.textContent='Sin sub'; }
-    });
-
-  } catch(e) { console.error('Error alertas:', e); }
-}
-
-async function enviarAvisosVencimiento() {
-  const btn = event.target;
-  btn.textContent='⏳ Enviando...'; btn.disabled=true;
-  try {
-    const r = await api('/suscripciones/avisar-vencimientos', {method:'POST'});
-    btn.textContent=`✓ ${r.avisados} avisos enviados`;
-    setTimeout(()=>{ btn.textContent='🔔 Enviar avisos'; btn.disabled=false; }, 3000);
-  } catch(e) {
-    btn.textContent='Error'; btn.disabled=false;
-  }
-}
-
-async function cargarSuscripcionCliente(clienteId) {
-  try {
-    const s = await api('/clientes/'+clienteId+'/suscripcion');
-    const info = document.getElementById('coach_sub_info');
-    const badge = document.getElementById('coach_sub_badge');
-    const form = document.getElementById('coach_sub_form');
-    if(!info) return;
-
-    if(!s || !s.fecha_fin) {
-      if(badge) { badge.textContent='Sin suscripción'; badge.style.color='var(--tx3)'; }
-      info.innerHTML = `<div style="font-size:13px;color:var(--tx3);margin-bottom:10px">Este cliente no tiene suscripción activa.</div>
-        <button class="btn btn-sm" onclick="document.getElementById('coach_sub_form').style.display='block'">+ Añadir suscripción</button>`;
-      return;
-    }
-
-    const diasColor = s.vencida ? '#fca5a5' : s.proxima_a_vencer ? 'var(--amb)' : 'var(--gnb)';
-    const estadoTexto = s.vencida ? '🔴 Vencida' : s.proxima_a_vencer ? `⚠️ Vence en ${s.dias_restantes}d` : '✅ Activa';
-
-    if(badge) { badge.textContent=estadoTexto; badge.style.color=diasColor; badge.style.fontWeight='600'; badge.style.fontSize='11px'; badge.style.textTransform='none'; badge.style.letterSpacing='0'; }
-
-    info.innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
-          <div style="font-size:18px;font-weight:700;color:${diasColor}">${s.vencida ? '0' : s.dias_restantes}</div>
-          <div style="font-size:10px;color:var(--tx3)">días restantes</div>
-        </div>
-        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
-          <div style="font-size:12px;font-weight:700;color:var(--sv)">${s.fecha_inicio?.split('-').reverse().join('/') || '—'}</div>
-          <div style="font-size:10px;color:var(--tx3)">inicio</div>
-        </div>
-        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
-          <div style="font-size:12px;font-weight:700;color:${diasColor}">${s.fecha_fin?.split('-').reverse().join('/') || '—'}</div>
-          <div style="font-size:10px;color:var(--tx3)">vencimiento</div>
-        </div>
-      </div>
-      ${s.precio ? `<div style="font-size:12px;color:var(--tx3);margin-bottom:8px">💶 ${s.precio}€/mes</div>` : ''}
-      ${s.notas ? `<div style="font-size:11px;color:var(--tx3);margin-bottom:8px">📝 ${s.notas}</div>` : ''}
-      <button class="btn btn-sm" onclick="document.getElementById('coach_sub_form').style.display=document.getElementById('coach_sub_form').style.display==='none'?'block':'none'" style="font-size:12px">
-        ${s.vencida ? '🔄 Renovar suscripción' : '✏️ Editar / Renovar'}
-      </button>`;
-
-  } catch(e) { console.error('Error sub:', e); }
-}
-
-async function renovarSuscripcion(clienteId) {
-  const btn = event.target;
-  btn.textContent='⏳...'; btn.disabled=true;
-  try {
-    const meses = document.getElementById('sub_meses')?.value || 1;
-    const precio = document.getElementById('sub_precio')?.value || 0;
-    const notas = document.getElementById('sub_notas')?.value || '';
-    await api('/clientes/'+clienteId+'/suscripcion', {
-      method:'POST', body:JSON.stringify({meses:parseInt(meses), precio:parseFloat(precio), notas})
-    });
-    document.getElementById('coach_sub_form').style.display='none';
-    await cargarSuscripcionCliente(clienteId);
-    btn.textContent='✓ Activar / Renovar'; btn.disabled=false;
-  } catch(e) {
-    alert('Error: '+e.message);
-    btn.textContent='✓ Activar / Renovar'; btn.disabled=false;
-  }
-}
-
-async function cancelarSuscripcion(clienteId) {
-  if(!confirm('¿Cancelar la suscripción? El cliente perderá el acceso.')) return;
-  const btn = event.target;
-  btn.textContent='⏳...'; btn.disabled=true;
-  try {
-    await api('/clientes/'+clienteId+'/suscripcion/cancelar', {method:'PUT'});
-    await cargarSuscripcionCliente(clienteId);
-    btn.textContent='Cancelar suscripción'; btn.disabled=false;
-  } catch(e) {
-    alert('Error: '+e.message);
-    btn.textContent='Cancelar suscripción'; btn.disabled=false;
-  }
-}
-
-// ── NOTIFICACIONES COACH ──────────────────────────────────────────
-async function cargarNotificacionesCoach() {
-  try {
-    const notifs = await api('/notificaciones');
-    const noLeidas = notifs.filter(n=>!n.leida).length;
-    const badge = document.getElementById('notif_badge');
-    if(badge) {
-      if(noLeidas > 0) { badge.style.display='flex'; badge.textContent=noLeidas; }
-      else { badge.style.display='none'; }
-    }
-    window._notifCoach = notifs;
-  } catch(e) {}
-}
-
-function toggleNotifCoach() {
-  const panel = document.getElementById('notif_panel_coach');
-  if(!panel) return;
-  const visible = panel.style.display !== 'none';
-  panel.style.display = visible ? 'none' : 'block';
-  if(!visible) renderNotifCoach();
-}
-
-function renderNotifCoach() {
-  const list = document.getElementById('notif_list_coach');
-  if(!list) return;
-  const notifs = window._notifCoach || [];
-  if(!notifs.length) { list.innerHTML='<div style="padding:16px;font-size:13px;color:var(--tx3);text-align:center">Sin notificaciones</div>'; return; }
-  list.innerHTML = notifs.map(n=>`
-    <div onclick="leerNotifCoach(${n.id},this)" style="padding:12px 14px;border-bottom:0.5px solid var(--br);cursor:pointer;background:${n.leida?'none':'rgba(59,130,246,.04)'}">
-      <div style="font-size:12px;color:${n.leida?'var(--tx3)':'var(--sv)'};line-height:1.5">${n.mensaje}</div>
-      <div style="font-size:10px;color:var(--tx3);margin-top:3px">${new Date(n.created_at).toLocaleDateString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
-    </div>`).join('');
-}
-
-async function leerNotifCoach(id, el) {
-  await api('/notificaciones/'+id+'/leer', {method:'PUT'}).catch(()=>{});
-  el.style.background='none';
-  await cargarNotificacionesCoach();
-}
-
-async function marcarTodasLeidasCoach() {
-  await api('/notificaciones/leer-todas', {method:'PUT'}).catch(()=>{});
-  await cargarNotificacionesCoach();
-  renderNotifCoach();
-  document.getElementById('notif_panel_coach').style.display='none';
-}
-
-// Cerrar panel al hacer click fuera
-document.addEventListener('click', e => {
-  const panel = document.getElementById('notif_panel_coach');
-  const bell = document.getElementById('notif_bell_wrap');
-  if(panel && bell && !panel.contains(e.target) && !bell.contains(e.target)) {
-    panel.style.display='none';
-  }
-});
-
-// Enter físico confirma la serie en el teclado virtual del entreno
-document.addEventListener('keydown', e => {
-  if(e.key === 'Enter') {
-    const kb = document.getElementById('strong_keyboard');
-    if(kb && kb.style.display !== 'none') {
-      e.preventDefault();
-      kbConfirm();
-    }
-  }
-});
-
-
+function hProgreso(cl){return`<div class="sec"><div class="sec-hdr">Progreso de clientes</div>
+  <table style="width:100%;border-collapse:collapse">
+    <tr>${['Cliente','Peso','% Grasa','Semana','Fotos'].map(h=>`<th style="text-align:left;padding:5px 8px;font-size:10px;font-weight:700;color:var(--tx3);border-bottom:0.5px solid var(--br);text-transform:uppercase;letter-spacing:.07em">${h}</th>`).join('')}</tr>
+    ${cl.map((c,i)=>{const a=ac(i);return`<tr><td style="padding:9px 8px"><div class="fl"><div class="av" style="width:26px;height:26px;font-size:10px;background:${a.bg};color:${a.tx};border-color:${a.br};margin-right:7px">${ini(c.nombre)}</div>${c.nombre}</div></td><td style="padding:9px 8px;font-weight:700">${c.peso_actual||'—'}</td><td style="padding:9px 8px">${c.grasa_actual?c.grasa_actual+'%':'—'}</td><td style="padding:9px 8px"><span class="badge b-bl">${c.semanas}</span></td><td style="padding:9px 8px"><span class="badge b-am">${c.fotos_count||0}</span></td></tr>`;}).join('')}
+  </table></div>`;}
 
 // ═══ IA COACH ═════════════════════════════════════════
 function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">IA privada del coach</div>Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.</div>
@@ -3147,10 +2140,17 @@ function updateTimerBar(ei,si,rt){
   const label=document.getElementById(`tl_${ei}_${si}`);
   const bar=document.getElementById(`tb_${ei}_${si}`);
   if(!fill||!label)return;
+
   if(!rt){
     if(bar)bar.style.display='none';
     return;
   }
+
+  // FIX: si completas la serie con Enter desde el teclado numérico,
+  // la barra del descanso podía quedarse oculta. Al mostrarla aquí,
+  // funciona igual que cuando pulsas el botón verde directamente.
+  if(bar)bar.style.display='block';
+
   const pct=Math.round((rt.secs/rt.total)*100);
   fill.style.width=pct+'%';
   fill.className='strong-timer-fill'+(rt.secs<=10?' urg':'');
@@ -3738,14 +2738,14 @@ function autoCalcMacros(){
   // Adjust for goal
   let kcal, protMultiplier;
   if(obj.includes('Volumen')) { kcal = tdee + 300; protMultiplier = 2.0; }
-  else if(obj.includes('Definición')) { kcal = Math.round(tdee * 0.85); protMultiplier = 2.1; }
-  else if(obj.includes('Perder')) { kcal = Math.round(tdee * 0.85); protMultiplier = 2.1; }
+  else if(obj.includes('Definición')) { kcal = tdee - 400; protMultiplier = 2.4; }
+  else if(obj.includes('Perder')) { kcal = tdee - 600; protMultiplier = 2.2; }
   else if(obj.includes('Fuerza')) { kcal = tdee + 200; protMultiplier = 2.2; }
   else { kcal = tdee; protMultiplier = 2.0; } // Recomposición
   
   // Macros
   const prot = Math.round(p * protMultiplier);
-  const fat = Math.round(p * 0.8);
+  const fat = Math.round(p * 1.0);
   const carbs = Math.max(0, Math.round((kcal - prot*4 - fat*9) / 4));
   
   // Update fields
@@ -3829,137 +2829,6 @@ function calcGastoCoach(c){
   const tmb=calcTMBCoach(c);if(tmb==='—')return'—';
   const factores={'Sedentario (poco o nada de ejercicio)':1.2,'Ligera (1-2 días/semana)':1.375,'Moderada (3-4 días/semana)':1.55,'Alta (5-6 días/semana)':1.725,'Muy alta (atleta, 2x día)':1.9,'Sedentario':1.2,'Ligera':1.375,'Moderada':1.55,'Alta':1.725,'Muy alta':1.9};
   return Math.round(tmb*(factores[c.actividad]||1.55));
-}
-
-
-
-// ═══ CALCULADORA COACH PRO + AUTOGUARDADO ═══════════════════════════
-function calcularMacrosCoachCliente(c){
-  const peso = parseFloat(c.peso_actual || c.peso || 0);
-  const altura = parseInt(c.altura || 0);
-  const edad = parseInt(c.edad || 0);
-  const sexo = String(c.sexo || 'Hombre').toLowerCase();
-  const actividad = String(c.actividad || 'Moderada').toLowerCase();
-  const objetivo = String(c.objetivo || 'Mantenimiento').toLowerCase();
-
-  if(!peso || !altura || !edad){
-    return {
-      kcal: parseInt(c.kcal_internas || 2000),
-      prot: parseInt(c.prot || Math.round((peso || 75) * 2)),
-      fat: parseInt(c.fat || Math.round((peso || 75) * 0.8)),
-      carbs: parseInt(c.carbs || 200),
-      tmb: 0,
-      gasto: 0
-    };
-  }
-
-  const tmb = Math.round(
-    sexo.includes('mujer') || sexo.includes('female')
-      ? (10 * peso + 6.25 * altura - 5 * edad - 161)
-      : (10 * peso + 6.25 * altura - 5 * edad + 5)
-  );
-
-  let factor = 1.55;
-  if(actividad.includes('sedent') || actividad.includes('bajo')) factor = 1.2;
-  else if(actividad.includes('liger')) factor = 1.375;
-  else if(actividad.includes('moder')) factor = 1.55;
-  else if(actividad.includes('alta') || actividad.includes('activo') || actividad.includes('5-6')) factor = 1.725;
-  else if(actividad.includes('muy') || actividad.includes('atleta')) factor = 1.9;
-
-  const gasto = Math.round(tmb * factor);
-
-  let kcal = gasto;
-  if(objetivo.includes('defin') || objetivo.includes('perder') || objetivo.includes('grasa')){
-    kcal = Math.round(gasto * 0.85); // déficit moderado 15%, no agresivo
-  } else if(objetivo.includes('recomp')){
-    kcal = Math.round(gasto * 0.92);
-  } else if(objetivo.includes('vol') || objetivo.includes('ganar') || objetivo.includes('masa')){
-    kcal = Math.round(gasto * 1.10);
-  } else if(objetivo.includes('fuerza')){
-    kcal = Math.round(gasto * 1.05);
-  }
-
-  const prot = Math.round(peso * 2.1);
-  const fat = Math.round(peso * 0.8);
-  const carbs = Math.max(0, Math.round((kcal - (prot * 4 + fat * 9)) / 4));
-
-  return { kcal, prot, fat, carbs, tmb, gasto };
-}
-
-let _coachMacroSaveTimer = null;
-
-function aplicarMacrosCoach(c, guardar=false){
-  const calc = calcularMacrosCoachCliente(c);
-
-  const kcalEl = document.getElementById('kcal');
-  const protEl = document.getElementById('prot');
-  const fatEl = document.getElementById('fat');
-  const carbsEl = document.getElementById('carbs');
-
-  if(kcalEl) kcalEl.value = calc.kcal;
-  if(protEl) protEl.value = calc.prot;
-  if(fatEl) fatEl.value = calc.fat;
-  if(carbsEl) carbsEl.value = calc.carbs;
-
-  recalcMacros('kcal');
-
-  const w = document.getElementById('tmb_wrap_coach');
-  if(w && calc.tmb && calc.gasto){
-    w.innerHTML = `<div style="display:flex;gap:10px">
-      <div style="flex:1;background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;padding:10px;text-align:center">
-        <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">TMB</div>
-        <div style="font-size:18px;font-weight:700;color:var(--sv)">${calc.tmb}</div>
-        <div style="font-size:10px;color:var(--tx3)">kcal reposo</div>
-      </div>
-      <div style="flex:1;background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:10px;padding:10px;text-align:center">
-        <div style="font-size:10px;color:var(--gnb);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Gasto total</div>
-        <div style="font-size:18px;font-weight:700;color:var(--sv)">${calc.gasto}</div>
-        <div style="font-size:10px;color:var(--tx3)">kcal/día</div>
-      </div>
-    </div>`;
-  }
-
-  if(guardar) autoGuardarMacrosCoach();
-}
-
-function autoGuardarMacrosCoach(){
-  const btn = document.getElementById('btn_guardar_datos');
-  const id = btn?.dataset?.clienteId || window._coachClienteId || window._lastClienteId;
-  if(!id) return;
-
-  clearTimeout(_coachMacroSaveTimer);
-  _coachMacroSaveTimer = setTimeout(async ()=>{
-    try{
-      await api('/clientes/'+id,{method:'PUT',body:JSON.stringify({
-        objetivo:document.getElementById('obj')?.value || '',
-        nivel:document.getElementById('niv')?.value || '',
-        kcal_internas:parseInt(document.getElementById('kcal')?.value)||0,
-        prot:parseInt(document.getElementById('prot')?.value)||0,
-        carbs:parseInt(document.getElementById('carbs')?.value)||0,
-        fat:parseInt(document.getElementById('fat')?.value)||0,
-        comida_libre:document.getElementById('clibre')?.value || '',
-        mensaje_semana:document.getElementById('msgsem')?.value || '',
-        notas_coach:document.getElementById('notasc')?.value || ''
-      })});
-      if(btn){
-        const old = btn.textContent;
-        btn.textContent = '✓ Guardado automático';
-        setTimeout(()=>{ btn.textContent = old.includes('Guardado') ? 'Guardar' : old; }, 1200);
-      }
-    }catch(e){
-      console.error('Error autoguardando macros', e);
-    }
-  }, 700);
-}
-
-function recalcularYGuardarCoach(){
-  const base = window._coachClienteActual || {};
-  const c = {
-    ...base,
-    objetivo: document.getElementById('obj')?.value || base.objetivo,
-    nivel: document.getElementById('niv')?.value || base.nivel
-  };
-  aplicarMacrosCoach(c, true);
 }
 
 
@@ -5336,8 +4205,7 @@ async function dbGenerarIANuevo(){
 
   const c = await api('/clientes/'+dbState.clienteId);
   const esVegano = c.dieta_tipo==='Vegano' || c.dieta_tipo==='Vegetariano';
-  const calcCoachIA = calcularMacrosCoachCliente(c);
-  const kcalBase = calcCoachIA.kcal || c.kcal_internas || 2000;
+  const kcalBase = c.kcal_internas || 2000;
   // Determine caloric adjustment from client objetivo if auto
   let kcalAdj = 0;
   let kcalLabel = 'mantenimiento';
@@ -5353,72 +4221,27 @@ async function dbGenerarIANuevo(){
   }
   const kcalObj = kcalBase + kcalAdj;
 
-  const protObj = c.prot||calcCoachIA.prot||Math.round((c.peso_actual||75)*2);
-  const carbsObj = c.carbs||calcCoachIA.carbs||200;
-  const fatObj = c.fat||calcCoachIA.fat||60;
+  const prompt = `Crea un plan de dieta DETALLADO para este cliente. Responde SOLO en JSON válido sin texto adicional.
 
-  // Distribución aproximada de kcal por comida según número
-  const distKcal = {
-    3: [35, 40, 25],
-    4: [25, 35, 20, 20],
-    5: [20, 10, 35, 15, 20],
-    6: [18, 10, 30, 12, 20, 10]
-  };
-  const dist = distKcal[parseInt(numComidas)] || distKcal[5];
-  const kcalPorComida = dist.map(p => Math.round(kcalObj * p / 100));
-
-  const prompt = `Eres un nutricionista deportivo experto. Crea un plan de dieta para este cliente y responde SOLO con JSON válido, sin texto adicional.
-
-═══ DATOS DEL CLIENTE ═══
+DATOS DEL CLIENTE:
 - Nombre: ${c.nombre}
-- Objetivo: ${c.objetivo} (${kcalLabel})
+- Objetivo: ${c.objetivo}
+- Nivel: ${c.nivel}
 - Peso: ${c.peso_actual||'no especificado'}kg
+- Kcal objetivo: ${kcalObj} kcal/día
+- Proteína objetivo: ${c.prot||Math.round((c.peso_actual||75)*2)}g
+- Carbos objetivo: ${c.carbs||200}g
+- Grasas objetivo: ${c.fat||60}g
 - Tipo de dieta: ${c.dieta_tipo||'Omnívoro'}
-- Alimentos PROHIBIDOS: ${c.alimentos_no||'ninguno'}
+- Alimentos que NO puede comer: ${c.alimentos_no||'ninguno'}
 - Intolerancias/alergias: ${c.lesiones||'ninguna'}
-- Observaciones del coach: ${c.observaciones||'ninguna'}
-- Notas extra: ${notasExtra||'ninguna'}
-- Analíticas / déficits: ${analiticas||'ninguno'}
-
-═══ OBJETIVOS NUTRICIONALES ═══
-- Calorías totales: ${kcalObj} kcal/día
-- Proteína: ${protObj}g | Carbos: ${carbsObj}g | Grasas: ${fatObj}g
+- Observaciones: ${c.observaciones||'ninguna'}
 - Número de comidas: ${numComidas}
-- Distribución de calorías por comida: ${kcalPorComida.join(', ')} kcal
+- Ajuste calórico: ${kcalLabel} (${kcalObj} kcal totales)
+- Notas extra: ${notasExtra||'ninguna'}
+- Analíticas / déficits detectados: ${analiticas||'ninguno'}
 
-═══ ALIMENTOS DISPONIBLES ═══
-${alimentos}
-
-USA ÚNICAMENTE estos alimentos. No inventes ni añadas ninguno que no esté en esta lista.
-
-═══ REGLAS DE SENTIDO CULINARIO (OBLIGATORIAS) ═══
-
-Antes de construir cada comida, clasifica internamente cada alimento disponible:
-- PROTEÍNA SÓLIDA: carnes, pescados, huevos, legumbres, tofu, tempeh, queso
-- PROTEÍNA EN POLVO: whey, caseína, proteína vegetal en polvo
-- CARBOHIDRATO BASE: arroz, pasta, patata, avena, pan, tortitas, quinoa
-- FRUTA: plátano, manzana, naranja, frutos rojos, dátiles, etc.
-- LÁCTEO LÍQUIDO/CREMOSO: leche, yogur, kéfir, bebida vegetal
-- GRASA: aceite, aguacate, frutos secos, semillas, mantequilla
-- VERDURA/HORTALIZA: cualquier vegetal
-- BEBIDA: café, té, agua
-
-NORMAS (aplican a cualquier alimento, no solo los ejemplos):
-1. Cada comida debe ser UN PLATO RECONOCIBLE y coherente con el momento del día (desayuno, almuerzo, merienda, cena, pre-entreno, post-entreno).
-2. PROTEÍNA EN POLVO: mezclar SOLO con líquido (agua, leche, bebida vegetal), yogur, avena o fruta. NUNCA junto a proteína sólida principal (pollo+whey en la misma comida = prohibido).
-3. FRUTOS SECOS: complemento de grasa, máximo 30-40g. No son fuente de proteína principal ni plato por sí solos.
-4. AVENA: siempre acompañada de líquido (leche, yogur, bebida vegetal) o en forma de tortitas con huevo. Nunca sola y seca.
-5. QUESO: válido con huevos, pan, pasta o ensalada. No combinar con proteína en polvo.
-6. CAFÉ/TÉ: bebida acompañante. Agregar leche solo si el resto de la comida lo permite (no añadir leche si ya hay yogur abundante).
-7. Máximo 5 alimentos por comida. Más ingredientes no mejora el plan.
-8. Las VARIACIONES deben tener sentido culinario propio con los alimentos que las forman. Si no es posible crear una variación coherente, no la pongas.
-9. Repite alimentos entre comidas si es necesario antes de hacer combinaciones sin sentido.
-10. Respeta estrictamente los alimentos PROHIBIDOS. Si no hay suficiente variedad para una comida, simplifica.
-
-═══ DISTRIBUCIÓN DE MACROS ═══
-- Comidas principales (almuerzo/cena): más proteína sólida y carbohidrato base.
-- Desayuno/merienda: pueden incluir proteína en polvo, lácteos, fruta, grasas.
-- Distribuye las grasas a lo largo del día, no concentres todo en una sola comida.
+ALIMENTOS DISPONIBLES: ${alimentos}
 
 RESPONDE EXACTAMENTE en este formato JSON:
 {
@@ -5465,7 +4288,7 @@ RESPONDE EXACTAMENTE en este formato JSON:
   try {
     const d = await api('/ia/chat', {method:'POST', body:JSON.stringify({
       messages:[{role:'user', content:prompt}],
-      system:`Eres un nutricionista deportivo experto. Responde SIEMPRE con JSON válido y compacto, sin texto adicional, sin bloques de código markdown. Todas las cantidades en crudo. Máximo 2 variaciones por comida, máximo 4 alimentos cada una. Clasifica cada alimento antes de combinarlo. Aplica criterio culinario real: cada comida debe ser un plato que existe y tiene sentido. Si no puedes hacer una variación coherente, no la incluyas. Sigue estrictamente las reglas del prompt.`
+      system:'Nutricionista deportivo. Responde SOLO con JSON válido y compacto. Sin texto adicional. Cantidades en crudo. Máximo 2 variaciones por comida con máximo 3 alimentos cada una.'
     })});
 
     let plan;
@@ -5507,63 +4330,55 @@ RESPONDE EXACTAMENTE en este formato JSON:
 }
 
 async function dbPublicarPlan(){
-  if(!window._planDietaActual || !window._planDietaClienteId){
-    alert('No hay una dieta generada para publicar.');
-    return;
-  }
-
-  const btn = document.getElementById('btn_publicar_dieta_ia') || (window.event && window.event.target) || null;
-  const oldText = btn ? btn.textContent : '';
-
-  if(btn){
-    btn.textContent='⏳ Publicando...';
-    btn.disabled=true;
-  }
-
+  if(!window._planDietaActual || !window._planDietaClienteId) return;
+  const btn = event.target;
+  btn.textContent='⏳ Publicando...'; btn.disabled=true;
   const plan = window._planDietaActual;
   const clienteId = window._planDietaClienteId;
 
   try {
-    const respuesta = await api('/clientes/'+clienteId+'/dieta/publicar', {
-      method:'POST',
-      body:JSON.stringify({ plan })
+    // Delete existing comidas
+    const c = await api('/clientes/'+clienteId);
+    for(const com of c.comidas){
+      await api('/comidas/'+com.id, {method:'DELETE'});
+    }
+    // Create new comidas from plan
+    for(const comida of plan.comidas){
+      const r = await api('/clientes/'+clienteId+'/comidas', {
+        method:'POST', body:JSON.stringify({nombre: comida.numero+'. '+comida.nombre, orden: comida.numero})
+      });
+      for(const alim of comida.alimentos){
+        const gramos = parseInt(alim.cantidad) || 100;
+        await api('/comidas/'+r.id+'/alimentos', {
+          method:'POST', body:JSON.stringify({nombre: alim.nombre+(alim.detalle?' ('+alim.detalle+')':''), gramos})
+        });
+      }
+    }
+    // Store plan extras including variaciones per comida
+    const variacionesPorComida = {};
+    plan.comidas.forEach((com,i) => {
+      if(com.variaciones?.length) variacionesPorComida[i] = com.variaciones;
     });
-
-    // Recarga comidas solo si la vista de comidas está visible en el DOM
-    if(typeof dbLoadComidas === 'function' && document.getElementById('db_comidas_list')){
-      await dbLoadComidas();
-    }
-
-    const preview = document.getElementById('db_plan_preview');
-    if(preview) preview.style.display = 'none';
-
-    const result = document.getElementById('db_ia_result');
-    if(result){
-      result.innerHTML = `<div class="ia-chip" style="border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08)">
-        <div class="ia-chip-title" style="color:var(--gnb)">Dieta publicada</div>
-        La dieta se ha guardado en el perfil del cliente. Puedes volver a entrar al cliente y verla en sus comidas.
-      </div>`;
-    }
-
-    if(btn){
-      btn.textContent='✓ Publicado y guardado';
-      btn.style.color='var(--gnb)';
-      setTimeout(()=>{
-        btn.textContent=oldText || '✓ Publicar al cliente';
-        btn.style.color='';
-        btn.disabled=false;
-      }, 2200);
-    } else {
-      alert('Dieta publicada y guardada en el perfil del cliente.');
-    }
-
+    await api('/clientes/'+clienteId+'/plan-meta', {
+      method:'POST',
+      body:JSON.stringify({
+        alternativas: plan.alternativas||null,
+        ajustes: plan.ajustes||null,
+        frase: plan.frase_motivadora||null,
+        kcal: plan.kcal_total||null,
+        prot: plan.prot_total||null,
+        carbs: plan.carbs_total||null,
+        grasas: plan.grasas_total||null,
+        variaciones: Object.keys(variacionesPorComida).length ? variacionesPorComida : null,
+        suplementacion: plan.suplementacion||null,
+        alimentos_therapeuticos: plan.alimentos_therapeuticos||null
+      })
+    });
+    btn.textContent='✓ Publicado';
+    btn.style.color='var(--gnb)';
+    setTimeout(()=>{ btn.textContent='✓ Publicar al cliente'; btn.style.color=''; btn.disabled=false; }, 3000);
   } catch(e) {
-    console.error(e);
-    if(btn){
-      btn.textContent=oldText || '✓ Publicar al cliente';
-      btn.disabled=false;
-    }
-    alert('No se pudo publicar la dieta: ' + (e.error || e.message || 'Error desconocido'));
+    btn.textContent='Error'; btn.disabled=false;
   }
 }
 
