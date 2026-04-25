@@ -1328,7 +1328,10 @@ function hDietaBuilder(){return`
 
       <div class="form-lbl" style="display:flex;align-items:center;justify-content:space-between">
         Alimentos disponibles
-        <button onclick="dbLimpiarAlimentos()" style="font-size:11px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation">✕ Limpiar todo</button>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button onclick="dbNuevoAlimento()" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;font-weight:700">+ Nuevo alimento</button>
+          <button onclick="dbLimpiarAlimentos()" style="font-size:11px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation">✕ Limpiar todo</button>
+        </div>
       </div>
 
       <!-- Chips seleccionados visibles -->
@@ -2281,6 +2284,12 @@ function hDieta(){
           style="width:100%;display:block;mix-blend-mode:screen;filter:brightness(1.05)"/>
       </div>
 
+      <!-- Badge -->
+      <div style="position:relative;z-index:2;padding:10px 14px 16px">
+        <div style="display:inline-block;background:rgba(20,40,90,.85);border:1.5px solid ${acc};border-radius:22px;padding:7px 20px;backdrop-filter:blur(8px)">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:17px;color:${accLight};letter-spacing:.15em">${comidas.length} MEALS PER DAY</div>
+        </div>
+      </div>
     </div>
     <!-- MEALS LIST -->
     <div style="padding:14px 14px 0">${comidasHtml}</div>
@@ -4918,6 +4927,39 @@ const DB_ALIMENTOS = {
 
 let _dbCatActiva = null;
 let _dbSeleccionados = new Set();
+
+function dbCargarCustomAlimentos(){
+  try{
+    const custom = JSON.parse(localStorage.getItem("wm_custom_alimentos")||"{}");
+    Object.entries(custom).forEach(([cat,lista])=>{
+      if(!DB_ALIMENTOS[cat]) DB_ALIMENTOS[cat]=[];
+      (lista||[]).forEach(a=>{ if(a && !DB_ALIMENTOS[cat].includes(a)) DB_ALIMENTOS[cat].push(a); });
+    });
+  }catch(e){}
+}
+dbCargarCustomAlimentos();
+
+function dbNuevoAlimento(){
+  const nombre = prompt("Nombre del alimento nuevo:","");
+  if(!nombre || !nombre.trim()) return;
+  const catTxt = prompt("Categoría:\n1 = Proteínas\n2 = Carbos\n3 = Grasas\n4 = Verduras\n5 = Frutas","1");
+  const catMap = {"1":0,"2":1,"3":2,"4":3,"5":4};
+  const cat = catMap[(catTxt||"1").trim()] ?? 0;
+  const alimento = nombre.trim();
+
+  if(!DB_ALIMENTOS[cat].includes(alimento)) DB_ALIMENTOS[cat].push(alimento);
+
+  const custom = JSON.parse(localStorage.getItem("wm_custom_alimentos")||"{}");
+  custom[cat] = custom[cat] || [];
+  if(!custom[cat].includes(alimento)) custom[cat].push(alimento);
+  localStorage.setItem("wm_custom_alimentos", JSON.stringify(custom));
+
+  _dbSeleccionados.add(alimento);
+  _dbCatActiva = null;
+  const catBtn = document.querySelector(`[data-cat=""]`);
+  if(catBtn) dbToggleCat(cat,catBtn);
+  dbActualizarSelected();
+}
 
 function dbToggleCat(catIdx, btn){
   const chips = document.getElementById('db_alim_chips');
