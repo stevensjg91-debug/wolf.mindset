@@ -617,6 +617,161 @@ let TOKEN=localStorage.getItem('wm_token');
 let USER=JSON.parse(localStorage.getItem('wm_user')||'null');
 let CD=null,klTab='entreno',activeDia=0,chatH=[],iaH=[],timerInts={},restInt=null,restTotal=0,restSecs=0;
 
+// ── SISTEMA DE IDIOMA ─────────────────────────────────────────────
+let LANG = localStorage.getItem('wm_lang') || 'es';
+
+const TRANSLATIONS = {
+  // Navegación
+  'Entrenar':'Train', 'Entreno':'Workout', 'Dieta':'Diet', 'Asistente':'Assistant',
+  'Progreso':'Progress', 'Logros':'Achievements', 'Perfil':'Profile', 'Salir':'Logout',
+  'Cerrar sesión':'Logout',
+
+  // Pantalla de entreno
+  'Semana':'Week', 'Sin realizar':'Not done', 'series':'sets', 'ejerc.':'ex.',
+  'Completado hoy':'Completed today', 'Incompleto hoy':'Incomplete today',
+  'Tu coach está preparando tu plan':'Your coach is preparing your plan',
+  '✓ Completado hoy':'✓ Completed today', '⚠ Incompleto hoy':'⚠ Incomplete today',
+  'Nota para el coach (sensaciones, dolor, etc.)':'Note for coach (feelings, pain, etc.)',
+  'Ej: Sentí el peso muy pesado, me dolió el hombro...':'E.g. Weight felt heavy, shoulder pain...',
+
+  // Timer y series
+  'Descanso':'Rest', 'Pausar':'Pause', 'Reanudar':'Resume', 'Skip →':'Skip →',
+  'Serie':'Set', 'Anterior':'Previous', 'kg':'kg', 'Rep.':'Reps',
+  '¿Cuántas reps más podrías haber hecho? (RIR = Reps In Reserve)':'How many more reps could you have done? (RIR = Reps In Reserve)',
+  '0 = al fallo · 1 = casi al límite · 2-3 = cómodo · 4+ = fácil':'0 = failure · 1 = near limit · 2-3 = comfortable · 4+ = easy',
+
+  // Done overlay
+  '¿Cómo fue el entreno?':'How was the workout?',
+  'Cansado':'Tired', 'Normal':'Normal', 'Bien':'Good', 'En llamas':'On fire', 'Lesión/dolor':'Injury/pain',
+  'Cerrar':'Close',
+  '¡Logro desbloqueado!':'Achievement unlocked!',
+  '¡A por más!':'Keep going!',
+
+  // Streak y check-in
+  'día seguido':'day streak', 'días seguidos':'day streak',
+  '¡Primer día!':'First day!', '¡Sigue así!':'Keep it up!',
+  '¡Una semana de fuego!':'One week on fire!',
+  '¡Dos semanas seguidas!':'Two weeks straight!',
+  '¡Bestia imparable!':'Unstoppable beast!',
+  'Mensaje de tu coach':'Message from your coach',
+  '📋 Check-in semanal':'📋 Weekly check-in',
+  '😴 ¿Cómo dormiste?':'😴 How did you sleep?',
+  '⚡ Energía hoy':'⚡ Energy today',
+  '⚖️ Peso hoy (kg)':'⚖️ Weight today (kg)',
+  'Ej: 78.5':'E.g. 78.5', 'Guardar':'Save',
+  '🔔 Activa las notificaciones':'🔔 Enable notifications',
+  'Para que suene el timer aunque la pantalla esté bloqueada':'So the timer rings even when your screen is locked',
+  'Activar':'Enable',
+
+  // Progreso cliente
+  '📈 Tendencia de peso':'📈 Weight trend',
+  'registros reales':'real records', 'Línea':'Line',
+  'tendencia suavizada':'smoothed trend',
+  'Tu progreso':'Your progress', 'semana':'week', 'semanas':'weeks',
+  'ANTES · Sem.':'BEFORE · Wk.', 'AHORA · Sem.':'NOW · Wk.',
+  '🏆 Mis marcas personales':'🏆 My personal records',
+  '1RM est.':'1RM est.',
+  'Progreso ejercicios principales':'Main exercise progress',
+
+  // Badges
+  'Mis Logros':'My Achievements', 'de':'of', 'desbloqueados':'unlocked',
+  '✓ Desbloqueado':'✓ Unlocked',
+  '¡Primera vez!':'First time!', '5 Sesiones':'5 Sessions',
+  '10 Sesiones':'10 Sessions', '25 Sesiones':'25 Sessions',
+  '50 Sesiones':'50 Sessions', '100 Sesiones':'100 Sessions',
+  '7 días en racha':'7 day streak', '14 días en racha':'14 day streak',
+  '30 días en racha':'30 day streak', 'Mes perfecto':'Perfect month',
+  '¡100 kg!':'100 kg!', '¡150 kg!':'150 kg!', '¡200 kg!':'200 kg!',
+  '1.000 kg movidos':'1,000 kg moved', '10.000 kg movidos':'10,000 kg moved',
+  '50.000 kg movidos':'50,000 kg moved',
+
+  // Dieta
+  'Sin dieta asignada':'No diet assigned',
+  'Tu plan de alimentación':'Your nutrition plan',
+  'Comida libre':'Free meal',
+  'kcal':'kcal', 'Proteína':'Protein', 'Carbos':'Carbs', 'Grasas':'Fats',
+
+  // Perfil
+  'Mi perfil':'My profile', 'Tus datos personales.':'Your personal data.',
+  'Datos personales':'Personal data',
+  'Peso (kg)':'Weight (kg)', 'Altura (cm)':'Height (cm)',
+  'Edad':'Age', 'Sexo':'Sex', 'Hombre':'Male', 'Mujer':'Female',
+  'Cintura (cm)':'Waist (cm)', 'Cadera (cm)':'Hip (cm)',
+  'Nivel de actividad':'Activity level',
+  'Sedentario (poco o nada de ejercicio)':'Sedentary (little or no exercise)',
+  'Ligero (1-2 días/semana)':'Light (1-2 days/week)',
+  'Moderada (3-4 días/semana)':'Moderate (3-4 days/week)',
+  'Activo (5-6 días/semana)':'Active (5-6 days/week)',
+  '✏️ Editar':'✏️ Edit', '✓ Guardar cambios':'✓ Save changes',
+  'Cancelar':'Cancel', 'Guardado':'Saved',
+  'Idioma / Language':'Idioma / Language',
+
+  // Asistente
+  'Escribe tu pregunta...':'Ask me anything...',
+  'Enviar':'Send',
+
+  // Notificaciones timer
+  '💪 ¡A por ello!':'💪 Go for it!',
+  'Siguiente serie de':'Next set of',
+  'Descanso terminado — siguiente serie':'Rest done — next set',
+  '🐺 ¡Entreno completado!':'🐺 Workout complete!',
+  'has terminado en':'finished in', 'min.':'min.',
+  '💪 Entreno registrado':'💪 Workout saved',
+  'has guardado tu sesión. Quedan':'saved your session. Remaining',
+  '¡Mañana lo rematas!':'Finish it tomorrow!',
+};
+
+function t(text) {
+  if(LANG === 'es') return text;
+  return TRANSLATIONS[text] || text;
+}
+
+// Aplicar traducción al contenido renderizado
+function applyLang(el) {
+  if(LANG === 'es' || !el) return;
+  // Traducir nodos de texto directamente
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+  const nodes = [];
+  while(walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(node => {
+    const trimmed = node.textContent.trim();
+    if(trimmed && TRANSLATIONS[trimmed]) {
+      node.textContent = node.textContent.replace(trimmed, TRANSLATIONS[trimmed]);
+    }
+  });
+  // Traducir placeholders e inputs
+  el.querySelectorAll('[placeholder]').forEach(inp => {
+    const p = inp.getAttribute('placeholder');
+    if(TRANSLATIONS[p]) inp.setAttribute('placeholder', TRANSLATIONS[p]);
+  });
+}
+
+// Parchear klNav para aplicar traducción después de renderizar
+const _klNavOrig = klNav;
+function klNavLang(s, btn) {
+  // se llama después de definir klNav
+}
+
+function setLang(lang) {
+  LANG = lang;
+  localStorage.setItem('wm_lang', lang);
+  // Re-renderizar pantalla actual
+  const el = document.getElementById('klContent');
+  if(el) {
+    // Re-ejecutar el render del tab actual
+    if(klTab === 'entreno' && vistaActual === 'seleccion') el.innerHTML = hSeleccionDia();
+    else if(klTab === 'dieta') el.innerHTML = hDieta();
+    else if(klTab === 'progreso') { el.innerHTML = hProgreso2(); setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100); }
+    else if(klTab === 'logros') el.innerHTML = hBadgesCliente();
+    else if(klTab === 'perfil') el.innerHTML = hPerfil();
+    else if(klTab === 'asistente') { el.innerHTML = hAsistente(); }
+    applyLang(el);
+  }
+  // Traducir barra de navegación
+  applyLang(document.querySelector('#sCliente .bnav-bar'));
+}
+
+
 // EMOJIS Y COLORES
 const FOOD_EMOJIS={'pollo':'🍗','pechuga':'🍗','pavo':'🦃','ternera':'🥩','carne':'🥩','salmon':'🐟','salmón':'🐟','merluza':'🐟','bacalao':'🐟','atun':'🐟','atún':'🐟','gambas':'🦐','huevo':'🥚','claras':'🥚','arroz':'🍚','avena':'🥣','patata':'🥔','boniato':'🍠','pasta':'🍝','pan':'🍞','leche':'🥛','yogur':'🥛','queso':'🧀','tomate':'🍅','brocoli':'🥦','brócoli':'🥦','espinaca':'🥬','ensalada':'🥗','platano':'🍌','plátano':'🍌','manzana':'🍎','naranja':'🍊','fresa':'🍓','aceite':'🫒','almendra':'🥜','nuez':'🥜','whey':'💪','proteina':'💪','proteína':'💪','aguacate':'🥑','pepino':'🥒','zanahoria':'🥕','quinoa':'🌾','requesón':'🥗','requesón':'🥗'};
 const EX_COLORS={'Chest':'rgba(59,130,246,0.15)','Back':'rgba(168,85,247,0.15)','Shoulders':'rgba(245,158,11,0.15)','Biceps':'rgba(34,197,94,0.15)','Triceps':'rgba(239,68,68,0.15)','Legs':'rgba(6,182,212,0.15)','Abs':'rgba(251,146,60,0.15)'};
@@ -750,6 +905,8 @@ async function verificarSuscripcionCliente(clienteId) {
 
     // Cargar notificaciones del cliente
     cargarNotificacionesCliente();
+    // Aplicar idioma a la barra de navegación
+    setTimeout(()=>applyLang(document.querySelector('#sCliente .bnav-bar')), 200);
 
   } catch(e) {
     console.error('Error verificando suscripción:', e);
@@ -3050,14 +3207,16 @@ function renderKL(){
       } else {
         el.innerHTML = hSeleccionDia();
       }
-    }).catch(()=>{ el.innerHTML = hSeleccionDia(); });
+    }).catch(()=>{ el.innerHTML = hSeleccionDia(); applyLang(el); });
     return;
   }
   else if(klTab==='dieta')el.innerHTML=hDieta();
-  else if(klTab==='asistente'){el.innerHTML=hAsistente();chatH=[{role:'assistant',content:`Hola ${CD.nombre.split(' ')[0]}, aquí para ayudarte. ¿Qué necesitas?`}];}
+  else if(klTab==='asistente'){el.innerHTML=hAsistente();chatH=[{role:'assistant',content:`${LANG==='en'?'Hi':'Hola'} ${CD.nombre.split(' ')[0]}, ${LANG==='en'?'here to help. What do you need?':'aquí para ayudarte. ¿Qué necesitas?'}`}];}
   else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100);}
   else if(klTab==='logros')el.innerHTML=hBadgesCliente();
   else if(klTab==='perfil')el.innerHTML=hPerfil();
+  // Aplicar traducción si idioma es inglés
+  setTimeout(()=>applyLang(el), 50);
 }
 
 // ENTRENO CLIENTE (estilo Strong)
@@ -4354,6 +4513,19 @@ function hPerfil(){
       <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarPerfil()">Guardar perfil</button>
     </div>
     <div id="pf_msg" style="font-size:13px;text-align:center;margin-top:8px;height:20px"></div>
+  </div>
+
+  <!-- Selector de idioma -->
+  <div style="margin:14px 14px 20px;background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px">
+    <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🌐 Idioma / Language</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button onclick="setLang('es')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='es'?'var(--bl2)':'var(--br)'};background:${LANG==='es'?'rgba(59,130,246,.12)':'none'};color:${LANG==='es'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+        🇪🇸 Español
+      </button>
+      <button onclick="setLang('en')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='en'?'var(--bl2)':'var(--br)'};background:${LANG==='en'?'rgba(59,130,246,.12)':'none'};color:${LANG==='en'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+        🇬🇧 English
+      </button>
+    </div>
   </div>`;
 }
 
@@ -5829,12 +6001,11 @@ function swMsg(data){
 
 function notificarDescansoTerminado(nombreEjercicio){
   if(!('Notification' in window) || Notification.permission !== 'granted') return;
-  const title = '💪 ¡A por ello!';
-  const opts = {
-    body: nombreEjercicio ? `Siguiente serie de ${nombreEjercicio}` : 'Descanso terminado — siguiente serie',
-    icon: '/logo.png', badge: '/logo.png', silent: false,
-    tag: 'descanso', requireInteraction: false, vibrate: [150,80,150]
-  };
+  const title = LANG==='en' ? '💪 Go for it!' : '💪 ¡A por ello!';
+  const body = nombreEjercicio
+    ? (LANG==='en' ? `Next set of ${nombreEjercicio}` : `Siguiente serie de ${nombreEjercicio}`)
+    : (LANG==='en' ? 'Rest done — next set' : 'Descanso terminado — siguiente serie');
+  const opts = { body, icon: '/logo.png', badge: '/logo.png', silent: false, tag: 'descanso', requireInteraction: false, vibrate: [150,80,150] };
   if(!swMsg({ type: 'SHOW_NOTIFICATION', title, options: opts })){
     try { new Notification(title, opts); } catch(e){}
   }
@@ -5842,10 +6013,11 @@ function notificarDescansoTerminado(nombreEjercicio){
 
 function programarNotificacionDescanso(nombreEjercicio, segundos, timerId){
   if(!('Notification' in window) || Notification.permission !== 'granted') return;
-  swMsg({ type: 'SCHEDULE_NOTIFICATION',
-    title: '💪 ¡A por ello!',
-    options: { body: nombreEjercicio ? `Siguiente serie de ${nombreEjercicio}` : 'Descanso terminado' },
-    delay: segundos*1000, timerId });
+  const title = LANG==='en' ? '💪 Go for it!' : '💪 ¡A por ello!';
+  const body = nombreEjercicio
+    ? (LANG==='en' ? `Next set of ${nombreEjercicio}` : `Siguiente serie de ${nombreEjercicio}`)
+    : (LANG==='en' ? 'Rest done' : 'Descanso terminado');
+  swMsg({ type: 'SCHEDULE_NOTIFICATION', title, options: { body }, delay: segundos*1000, timerId });
 }
 
 function cancelarNotificacionDescanso(timerId){
