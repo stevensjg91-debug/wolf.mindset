@@ -366,14 +366,22 @@ router.get('/clientes/:id/sesiones', (req, res) => {
     const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
     if (!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
   }
-  const sesiones = dbAll(
-    'SELECT * FROM sesiones_entreno WHERE cliente_id=? ORDER BY fecha DESC LIMIT 30',
-    [id]
-  );
-  sesiones.forEach(s => {
-    s.series = dbAll('SELECT * FROM series_log WHERE sesion_id=? ORDER BY ejercicio_nombre, serie_num', [s.id]);
-  });
-  res.json(sesiones);
+  try {
+    const sesiones = dbAll(
+      'SELECT * FROM sesiones_entreno WHERE cliente_id=? ORDER BY fecha DESC LIMIT 30',
+      [id]
+    );
+    sesiones.forEach(s => {
+      if(!s.estado) s.estado = 'completado'; // fallback si columna no existe
+      try {
+        s.series = dbAll('SELECT * FROM series_log WHERE sesion_id=? ORDER BY ejercicio_nombre, serie_num', [s.id]);
+        s.series.forEach(sr => { if(!sr.nota_cliente) sr.nota_cliente = ''; });
+      } catch(e) { s.series = []; }
+    });
+    res.json(sesiones);
+  } catch(e) {
+    res.json([]);
+  }
 });
 
 router.get('/clientes/:id/progreso-ejercicio', (req, res) => {
