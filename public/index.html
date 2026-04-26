@@ -1060,18 +1060,27 @@ async function verCliente(id){
     wrap.innerHTML=sesiones.map(s=>{
       const byEx={};
       s.series.forEach(sr=>{if(!byEx[sr.ejercicio_nombre])byEx[sr.ejercicio_nombre]=[];byEx[sr.ejercicio_nombre].push(sr);});
-      return '<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px;margin-bottom:8px">'+
+      const incompleto = s.estado === 'incompleto';
+      // Recoger notas del cliente (una por ejercicio, la de la primera serie con nota)
+      const notasCliente = {};
+      s.series.forEach(sr=>{ if(sr.nota_cliente && !notasCliente[sr.ejercicio_nombre]) notasCliente[sr.ejercicio_nombre]=sr.nota_cliente; });
+
+      return '<div style="background:var(--s2);border:0.5px solid '+(incompleto?'rgba(245,158,11,.4)':'var(--br)')+';border-radius:10px;padding:12px;margin-bottom:8px">'+
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
           '<div><div style="font-size:14px;font-weight:700;color:var(--sv)">'+s.dia_nombre+' — '+s.dia_grupo+'</div>'+
           '<div style="font-size:11px;color:var(--tx3)">'+new Date(s.fecha).toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div>'+
-          '<span class="badge b-gn">✓</span>'+
+          (incompleto
+            ? '<span class="badge" style="background:rgba(245,158,11,.15);color:var(--amb);border:0.5px solid rgba(245,158,11,.3)">⚠ Incompleto</span>'
+            : '<span class="badge b-gn">✓</span>')+
         '</div>'+
         Object.entries(byEx).map(([nom,srs])=>
           '<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:700;color:var(--sv2);margin-bottom:3px">'+nom+'</div>'+
           '<div style="display:flex;gap:5px;flex-wrap:wrap">'+srs.map(sr=>
             '<span style="background:var(--s3);border:0.5px solid var(--br);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--sv3);font-weight:600">'+
             sr.peso_real+'kg×'+sr.reps_real+(sr.rir!=null?' RIR'+sr.rir:'')+
-            '</span>').join('')+'</div></div>'
+            '</span>').join('')+'</div>'+
+          (notasCliente[nom] ? '<div style="font-size:10px;color:var(--blg);margin-top:3px;font-style:italic">💬 '+notasCliente[nom]+'</div>' : '')+
+          '</div>'
         ).join('')+'</div>';
     }).join('');
   }).catch(()=>{});
@@ -2450,20 +2459,23 @@ async function cargarDashboard() {
       });
 
       // ── Semáforo ────────────────────────────────
-      // 🟢 Activo (≤5 días), 🟡 Semana sin entreno (6-10), 🔴 Inactivo (>10)
+      const ultimaSesion = sesiones[0];
+      const ultimoEstado = ultimaSesion?.estado || 'completado';
+
       let emoji = '🟢', estado = 'Activo';
       if(diasSinEntreno === 999) { emoji = '⚪'; estado = 'Sin sesiones'; }
       else if(diasSinEntreno > 10) { emoji = '🔴'; estado = `${diasSinEntreno}d sin entreno`; atencion++; }
       else if(diasSinEntreno > 5)  { emoji = '🟡'; estado = `${diasSinEntreno}d sin entreno`; atencion++; }
+      else if(ultimoEstado === 'incompleto') { emoji = '🟠'; estado = 'Incompleto'; atencion++; }
       else { activos++; }
 
       // ── Última sesión ────────────────────────────
       let ultimaTexto = 'Sin sesiones';
       if(sesiones.length) {
-        const fecha = new Date(sesiones[0].fecha);
-        ultimaTexto = diasSinEntreno === 0 ? 'Hoy' :
-                      diasSinEntreno === 1 ? 'Ayer' :
-                      `Hace ${diasSinEntreno}d`;
+        const sufijo = ultimoEstado === 'incompleto' ? ' ⚠' : '';
+        ultimaTexto = (diasSinEntreno === 0 ? 'Hoy' :
+                       diasSinEntreno === 1 ? 'Ayer' :
+                       `Hace ${diasSinEntreno}d`) + sufijo;
       }
 
       // ── Progreso peso ─────────────────────────────
@@ -3191,6 +3203,13 @@ function hEntreno(){
         <span>Serie</span><span>Anterior</span><span>✓</span><span>kg</span><span>Rep.</span>${e.rir!=null?'<span>RIR</span>':''}
       </div>
       ${seriesRows}
+      <!-- Nota del cliente para el coach -->
+      <div style="padding:8px 14px 12px">
+        <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">💬 Nota para el coach (sensaciones, dolor, etc.)</div>
+        <input id="nota_cliente_${ei}" type="text" placeholder="Ej: Sentí el peso muy pesado, me dolió el hombro..." value="${e._nota_cliente||''}"
+          style="width:100%;padding:8px 10px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:12px;font-family:inherit;box-sizing:border-box"
+          onchange="CD.dias[activeDia].ejercicios[${ei}]._nota_cliente=this.value"/>
+      </div>
     </div>`;
   }).join('');
 
@@ -3369,20 +3388,22 @@ async function guardarSesion(){
   try{
     const d=CD.dias[activeDia];
     const series=[];
-    d.ejercicios.forEach(e=>{
+    d.ejercicios.forEach((e,ei)=>{
+      const notaCliente = e._nota_cliente || document.getElementById('nota_cliente_'+ei)?.value || '';
       (e._series||[]).forEach((s,si)=>{
         if(s.done)series.push({
           ejercicio:e.nombre,
           serie_num:si+1,
           peso:s.peso||0,
           reps:s.reps_real||parseFirstNum(e.reps),
-          rir:s.rir_real!=null?s.rir_real:(e.rir!=null?e.rir:2)
+          rir:s.rir_real!=null?s.rir_real:(e.rir!=null?e.rir:2),
+          nota_cliente: notaCliente
         });
       });
     });
     await api('/clientes/'+CD.id+'/sesiones',{
       method:'POST',
-      body:JSON.stringify({dia_nombre:d.nombre,dia_grupo:d.grupo,duracion_min:getWorkoutDuration(),series})
+      body:JSON.stringify({dia_nombre:d.nombre,dia_grupo:d.grupo,duracion_min:getWorkoutDuration(),series,estado:'completado'})
     });
   }catch(e){console.log('Error guardando sesión:',e);}
 }
@@ -5498,31 +5519,27 @@ async function guardarSesionParcial(){
   try{
     const d = CD.dias[activeDia];
     const series = [];
-    d.ejercicios.forEach(e=>{
+    d.ejercicios.forEach((e,ei)=>{
+      const notaCliente = e._nota_cliente || document.getElementById('nota_cliente_'+ei)?.value || '';
       (e._series||[]).forEach((s,si)=>{
         if(s.done) series.push({
           ejercicio: e.nombre,
           serie_num: si+1,
           peso: s.peso||0,
           reps: s.reps_real||parseFirstNum(e.reps),
-          rir: s.rir_real!=null?s.rir_real:(e.rir!=null?e.rir:2)
+          rir: s.rir_real!=null?s.rir_real:(e.rir!=null?e.rir:2),
+          nota_cliente: notaCliente
         });
       });
     });
-    // Mark incomplete exercises for coach visibility
-    const incompletas = d.ejercicios
-      .filter(e=>e._series&&e._series.some(s=>!s.done))
-      .map(e=>e.nombre);
-    const notaIncompleta = incompletas.length>0
-      ? ' [INCOMPLETO: '+incompletas.join(', ')+']'
-      : '';
     await api('/clientes/'+CD.id+'/sesiones',{
       method:'POST',
       body:JSON.stringify({
-        dia_nombre: d.nombre + notaIncompleta,
+        dia_nombre: d.nombre,
         dia_grupo: d.grupo,
         duracion_min: getWorkoutDuration(),
-        series
+        series,
+        estado: 'incompleto'
       })
     });
   }catch(e){ console.log('Error guardando parcial:',e); }
