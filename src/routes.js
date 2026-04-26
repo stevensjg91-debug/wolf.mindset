@@ -336,22 +336,26 @@ router.post('/ejercicios-db-add', coachOnly, (req, res) => {
 });
 
 // ── SESIONES ENTRENO ───────────────────────────────────────────────
+// Migración defensiva: añadir columnas si no existen
+try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN estado TEXT DEFAULT 'completado'"); } catch(e) {}
+try { dbRun("ALTER TABLE series_log ADD COLUMN nota_cliente TEXT DEFAULT ''"); } catch(e) {}
+
 router.post('/clientes/:id/sesiones', (req, res) => {
-  const { dia_nombre, dia_grupo, duracion_min, series } = req.body;
+  const { dia_nombre, dia_grupo, duracion_min, series, estado } = req.body;
+  const estadoFinal = estado || 'completado';
   const r = dbRun(
-    'INSERT INTO sesiones_entreno (cliente_id, dia_nombre, dia_grupo, duracion_min) VALUES (?,?,?,?)',
-    [req.params.id, dia_nombre, dia_grupo, duracion_min||0]
+    'INSERT INTO sesiones_entreno (cliente_id, dia_nombre, dia_grupo, duracion_min, estado) VALUES (?,?,?,?,?)',
+    [req.params.id, dia_nombre, dia_grupo, duracion_min||0, estadoFinal]
   );
   const sesionId = r.lastInsertRowid;
   if(series && series.length) {
     series.forEach(s => {
       dbRun(
-        'INSERT INTO series_log (sesion_id, ejercicio_nombre, serie_num, peso_real, reps_real, rir) VALUES (?,?,?,?,?,?)',
-        [sesionId, s.ejercicio, s.serie_num, s.peso, s.reps, s.rir!=null?s.rir:null]
+        'INSERT INTO series_log (sesion_id, ejercicio_nombre, serie_num, peso_real, reps_real, rir, nota_cliente) VALUES (?,?,?,?,?,?,?)',
+        [sesionId, s.ejercicio, s.serie_num, s.peso, s.reps, s.rir!=null?s.rir:null, s.nota_cliente||'']
       );
     });
   }
-  const { saveToDisk } = require('./database');
   saveToDisk();
   res.json({ ok: true, sesion_id: sesionId });
 });
