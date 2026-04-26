@@ -2460,7 +2460,7 @@ async function cargarDashboard() {
 
       // ── Semáforo ────────────────────────────────
       const ultimaSesion = sesiones[0];
-      const ultimoEstado = ultimaSesion?.estado || 'completado';
+      const ultimoEstado = ultimaSesion?.estado || 'completado'; // fallback si columna no existe aún
 
       let emoji = '🟢', estado = 'Activo';
       if(diasSinEntreno === 999) { emoji = '⚪'; estado = 'Sin sesiones'; }
@@ -2499,7 +2499,12 @@ async function cargarDashboard() {
       if(progEl) progEl.innerHTML = pesoTexto + (tonelaje > 0 ? ` <span style="font-size:10px;color:var(--tx3)">${Math.round(tonelaje/1000)}t</span>` : '');
       if(sesEl) sesEl.textContent = ultimaTexto;
 
-    } catch(e) { /* silencioso */ }
+    } catch(e) { 
+      console.warn('Dashboard error cliente', c?.id, e?.message);
+      // Marcar como sin datos en lugar de silencio total
+      const semEl = document.getElementById('semaforo_'+c?.id);
+      if(semEl) { semEl.textContent = '❓'; semEl.title = 'Error cargando'; }
+    }
   });
 
   await Promise.all(promesas);
