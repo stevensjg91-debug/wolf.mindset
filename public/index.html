@@ -3294,14 +3294,15 @@ function kbConfirm(){
     if(!e._series[si].done){
       e._series[si].done=true;
       soundDing();
-      rerenderSerieRow(ei,si);
       // Check if all series done → show completion
       const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
       if(allDone && !doneShown){
+        rerenderSerieRow(ei,si);
         mostrarDoneOverlay('completado', 0);
       } else {
-        // Start rest timer
+        // Start rest timer BEFORE re-render so bar is visible when rendered
         startTimerInline(ei, si, e.descanso||90);
+        rerenderSerieRow(ei,si);
       }
     } else {
       rerenderSerieRow(ei,si);
@@ -3451,6 +3452,8 @@ function updateTimerBar(ei,si,rt){
     if(bar)bar.style.display='none';
     return;
   }
+  // Asegurar que la barra es visible
+  if(bar)bar.style.display='flex';
   const pct=Math.round((rt.secs/rt.total)*100);
   fill.style.width=pct+'%';
   fill.className='strong-timer-fill'+(rt.secs<=10?' urg':'');
