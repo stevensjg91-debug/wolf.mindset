@@ -2854,10 +2854,7 @@ document.addEventListener('keydown', e => {
     const kb = document.getElementById('strong_keyboard');
     if(kb && kb.style.display !== 'none' && activeInput) {
       e.preventDefault();
-      if(activeInput.field === 'reps') {
-        // En reps: confirmar directamente (activa el timer)
-        kbConfirm();
-      } else if(activeInput.field === 'peso') {
+      if(activeInput.field === 'peso') {
         // En peso: guardar y saltar a reps inmediatamente
         const {ei, si} = activeInput;
         const ex = CD.dias[activeDia]?.ejercicios[ei];
@@ -2865,6 +2862,7 @@ document.addEventListener('keydown', e => {
         rerenderSerieRow(ei, si);
         openKeyboard(ei, si, 'reps');
       } else {
+        // En reps o rir: confirmar (kbConfirm maneja el flujo)
         kbConfirm();
       }
     }
@@ -3252,6 +3250,10 @@ function parseFirstNum(r){const m=String(r||10).match(/\d+/);return m?parseInt(m
 
 function renderKeyboard(){
   return`<div id="strong_keyboard" style="display:none;position:fixed;bottom:60px;left:0;right:0;z-index:400;background:var(--s2);border-top:1.5px solid var(--br2);padding:10px 14px 16px;box-shadow:0 -8px 32px rgba(0,0,0,.7)">
+    <div id="kb_rir_hint" style="display:none;background:rgba(37,99,235,.1);border:0.5px solid rgba(59,130,246,.3);border-radius:8px;padding:6px 10px;margin-bottom:8px;font-size:11px;color:var(--blg);text-align:center">
+      💪 ¿Cuántas reps más podrías haber hecho? (RIR = Reps In Reserve)<br>
+      <span style="color:var(--tx3)">0 = al fallo · 1 = casi al límite · 2-3 = cómodo · 4+ = fácil</span>
+    </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 4px">
       <div style="font-size:11px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.06em" id="kb_label">kg</div>
       <div style="font-size:22px;font-weight:700;color:var(--sv)" id="kb_display">0</div>
@@ -3276,13 +3278,25 @@ let kbValue = '';
 function openKeyboard(ei, si, field){
   activeInput = {ei, si, field};
   const e = CD.dias[activeDia].ejercicios[ei];
-  kbValue = String(field==='peso' ? (e._series[si].peso||0) : (e._series[si].reps_real||e._series[si].reps||10));
+  if(field === 'peso') kbValue = String(e._series[si].peso || 0);
+  else if(field === 'reps') kbValue = String(e._series[si].reps_real || e._series[si].reps || 10);
+  else kbValue = String(e._series[si].rir_real != null ? e._series[si].rir_real : (e.rir != null ? e.rir : 2));
   const kb = document.getElementById('strong_keyboard');
   const lbl = document.getElementById('kb_label');
   const disp = document.getElementById('kb_display');
   if(kb){ kb.style.display='block'; }
-  if(lbl) lbl.textContent = field==='peso' ? 'kg' : field==='reps' ? 'reps' : 'RIR';
-  if(disp) disp.textContent = kbValue;
+  if(lbl) {
+    lbl.textContent = field==='peso' ? 'kg' : field==='reps' ? 'reps' : 'RIR';
+    // Hint especial para RIR
+    lbl.style.color = field==='rir' ? 'var(--blg)' : '';
+  }
+  if(disp) {
+    disp.textContent = kbValue;
+    disp.style.color = field==='rir' ? 'var(--blg)' : '';
+  }
+  // Mostrar hint de RIR
+  const hint = document.getElementById('kb_rir_hint');
+  if(hint) hint.style.display = field==='rir' ? 'block' : 'none';
   // Padding + scroll so active row is visible above keyboard
   const bnav=document.querySelector('#sCliente .bnav-bar');
   const bnavH=bnav?bnav.offsetHeight:60;
@@ -3293,7 +3307,6 @@ function openKeyboard(ei, si, field){
     const rowEl=document.getElementById('sw_'+ei+'_'+si);
     if(rowEl)rowEl.scrollIntoView({behavior:'smooth',block:'center'});
   },80);
-  // update active cell highlight
   rerenderSerieHeaders();
 }
 
@@ -3318,20 +3331,43 @@ function kbConfirm(){
     rerenderSerieRow(ei,si);
     // Auto-jump to reps
     setTimeout(()=>openKeyboard(ei,si,'reps'),80);
-  } else {
+  } else if(field==='reps') {
     e._series[si].reps_real=val;
+    // Si es la última serie Y el ejercicio tiene RIR → pedir RIR antes de confirmar
+    const esUltimaSerie = si === e._series.length - 1;
+    if(esUltimaSerie && e.rir != null && e._series[si].rir_real == null) {
+      closeKeyboard();
+      rerenderSerieRow(ei,si);
+      setTimeout(()=>openKeyboard(ei,si,'rir'),80);
+    } else {
+      closeKeyboard();
+      if(!e._series[si].done){
+        e._series[si].done=true;
+        soundDing();
+        const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
+        if(allDone && !doneShown){
+          rerenderSerieRow(ei,si);
+          mostrarDoneOverlay('completado', 0);
+        } else {
+          startTimerInline(ei, si, e.descanso||90);
+          rerenderSerieRow(ei,si);
+        }
+      } else {
+        rerenderSerieRow(ei,si);
+      }
+    }
+  } else {
+    // field === 'rir'
+    e._series[si].rir_real=val;
     closeKeyboard();
-    // Auto-mark serie as done after confirming reps
     if(!e._series[si].done){
       e._series[si].done=true;
       soundDing();
-      // Check if all series done → show completion
       const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
       if(allDone && !doneShown){
         rerenderSerieRow(ei,si);
         mostrarDoneOverlay('completado', 0);
       } else {
-        // Start rest timer BEFORE re-render so bar is visible when rendered
         startTimerInline(ei, si, e.descanso||90);
         rerenderSerieRow(ei,si);
       }
@@ -3449,11 +3485,13 @@ function startTimerInline(ei, si, total){
       clearInterval(rt.interval);
       delete runningTimers[key];
       updateTimerBar(ei,si,null);
-      soundBell();
-      vibrate([150,80,150]); // doble vibración al acabar descanso
-      // Notificación push (útil si pantalla bloqueada)
-      const exNow = CD?.dias[activeDia]?.ejercicios[ei];
-      notificarDescansoTerminado(exNow?.nombre||'');
+      // Solo notificar si el entreno NO ha terminado aún
+      if(!doneShown) {
+        soundBell();
+        vibrate([150,80,150]);
+        const exNow = CD?.dias[activeDia]?.ejercicios[ei];
+        notificarDescansoTerminado(exNow?.nombre||'');
+      }
     }
   },1000);
 }
@@ -5600,9 +5638,23 @@ function cerrarDoneOverlay(){
 function mostrarDoneOverlay(estado, pendientes){
   if(doneShown) return;
   doneShown = true;
+
+  // ── Parar TODO lo que esté corriendo ──────────────────
+  // 1. Timers de descanso entre series
+  Object.keys(runningTimers).forEach(k => {
+    if(runningTimers[k]?.interval) clearInterval(runningTimers[k].interval);
+  });
+  runningTimers = {};
+
+  // 2. Timer del workout (cronómetro global)
+  if(workoutTimerInt){ clearInterval(workoutTimerInt); workoutTimerInt = null; }
+
+  // 3. Cerrar teclado
+  closeKeyboard();
+  // ─────────────────────────────────────────────────────
+
   const d = CD.dias[activeDia];
   marcarSesionHecha(d.nombre, estado);
-  closeKeyboard();
   if(estado === 'completado') guardarSesion();
   else guardarSesionParcial();
   soundComplete();
@@ -5613,13 +5665,10 @@ function mostrarDoneOverlay(estado, pendientes){
   if(estado === 'completado') {
     notificarEntrenoCompletado(nombre, dur);
   } else {
-    // Entreno incompleto — notificación diferente al cliente
     notificarEntrenoIncompleto(nombre, pendientes);
-    // Avisar al coach
     avisarCoachEntrenoIncompleto(pendientes);
   }
 
-  if(workoutTimerInt){clearInterval(workoutTimerInt);workoutTimerInt=null;}
   // Swap wolf image based on estado
   const wolfImg = document.getElementById('done_wolf_img');
   if(wolfImg && estado !== 'completado') wolfImg.src = WOLF_INCOMPLETE_SRC;
