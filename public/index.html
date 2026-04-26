@@ -1007,15 +1007,18 @@ async function verCliente(id){
       </div>
     </div>
     <div id="coach_dieta_view">
-      ${c.comidas.length ? c.comidas.map((m,mi)=>`
-        <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:7px">
-          <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:6px">${['☀️','🕐','🍽️','🌅','🌙','🥗'][mi]||'🍽️'} ${m.nombre}</div>
-          ${m.items.map(it=>`
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:0.5px solid rgba(39,39,42,.4)">
-              <span style="font-size:12px;color:var(--sv2)">${it.nombre}</span>
-              <span style="font-size:12px;font-weight:700;color:var(--blg)">${it.gramos}g</span>
-            </div>`).join('')}
-        </div>`).join('')
+      ${c.comidas.length ? c.comidas.map((m,mi)=>{
+        const itemsHtml = (m.items||[]).map(it=>
+          '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:0.5px solid rgba(39,39,42,.4)">'+
+          '<span style="font-size:12px;color:var(--sv2)">'+it.nombre+'</span>'+
+          '<span style="font-size:12px;font-weight:700;color:var(--blg)">'+(it.gramos||0)+'g</span>'+
+          '</div>'
+        ).join('');
+        return '<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:7px">'+
+          '<div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:6px">'+(['☀️','🕐','🍽️','🌅','🌙','🥗'][mi]||'🍽️')+' '+m.nombre+'</div>'+
+          itemsHtml+
+          '</div>';
+      }).join('')
       : '<div style="font-size:13px;color:var(--tx3)">Sin dieta asignada. Usa el Creador de Dieta IA.</div>'}
     </div>
     <div id="coach_dieta_edit" style="display:none"></div>
@@ -1346,8 +1349,8 @@ function estimarMacrosPor100g(nombre) {
 
 function calcMacrosDieta(comidas) {
   let totalP=0, totalC=0, totalG=0, totalKcal=0;
-  comidas.forEach(m => {
-    m.items.forEach(it => {
+  (comidas||[]).forEach(m => {
+    (m.items||[]).forEach(it => {
       const macro = estimarMacrosPor100g(it.nombre);
       const factor = (it.gramos||100) / 100;
       totalP += macro.p * factor;
@@ -1453,19 +1456,21 @@ function renderEditarDietaCoach(c){
   // ─── EDICIÓN MANUAL POR COMIDA ───
   html += `<div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Edición manual</div>`;
   c.comidas.forEach((m, mi) => {
+    const nombreEsc = (m.nombre||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     html += `<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:8px">
       <div style="font-size:12px;font-weight:700;color:var(--blg);margin-bottom:8px">${['☀️','🕐','🍽️','🌅','🌙','🥗'][mi]||'🍽️'} ${m.nombre}</div>`;
-    m.items.forEach(it => {
+    (m.items||[]).forEach(it => {
+      const itNombreEsc = (it.nombre||'').replace(/"/g,'&quot;');
       html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span style="flex:1;font-size:12px;color:var(--sv2)">${it.nombre}</span>
-        <input type="number" value="${it.gramos}" min="1" data-alim-id="${it.id}"
+        <input type="number" value="${it.gramos||0}" min="1" data-alim-id="${it.id}"
           style="width:65px;padding:5px 7px;border:0.5px solid var(--br);border-radius:7px;background:var(--b);color:var(--blg);font-size:13px;font-weight:700;text-align:center;font-family:'Inter',sans-serif"
           onchange="dbEditG(${it.id}, this.value); actualizarBarraMacros()"/>
         <span style="font-size:11px;color:var(--tx3)">g</span>
         <button onclick="coachBorrarAlimento(${it.id}, this)" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px;flex-shrink:0">✕</button>
       </div>`;
     });
-    html += `<button onclick="coachAnadirAlimento(${m.id}, '${m.nombre}', this)"
+    html += `<button onclick="coachAnadirAlimento(${m.id}, '${nombreEsc}', this)"
       style="width:100%;padding:6px;border:0.5px dashed var(--br);border-radius:8px;background:none;color:var(--tx3);font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;margin-top:2px">+ Añadir alimento</button>
     </div>`;
   });
@@ -1652,15 +1657,17 @@ async function guardarDietaCoach(){
   const view = document.getElementById('coach_dieta_view');
   const edit = document.getElementById('coach_dieta_edit');
   const btnEditar = document.getElementById('btn_editar_dieta_coach');
-  if(view) view.innerHTML = c.comidas.length ? c.comidas.map((m,mi)=>`
-    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:7px">
-      <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:6px">${['☀️','🕐','🍽️','🌅','🌙','🥗'][mi]||'🍽️'} ${m.nombre}</div>
-      ${m.items.map(it=>`
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:0.5px solid rgba(39,39,42,.4)">
-          <span style="font-size:12px;color:var(--sv2)">${it.nombre}</span>
-          <span style="font-size:12px;font-weight:700;color:var(--blg)">${it.gramos}g</span>
-        </div>`).join('')}
-    </div>`).join('')
+  if(view) view.innerHTML = c.comidas.length ? c.comidas.map((m,mi)=>{
+    const itemsHtml = (m.items||[]).map(it=>
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:0.5px solid rgba(39,39,42,.4)">'+
+      '<span style="font-size:12px;color:var(--sv2)">'+it.nombre+'</span>'+
+      '<span style="font-size:12px;font-weight:700;color:var(--blg)">'+(it.gramos||0)+'g</span>'+
+      '</div>'
+    ).join('');
+    return '<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:7px">'+
+      '<div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:6px">'+(['☀️','🕐','🍽️','🌅','🌙','🥗'][mi]||'🍽️')+' '+m.nombre+'</div>'+
+      itemsHtml+'</div>';
+  }).join('')
     : '<div style="font-size:13px;color:var(--tx3)">Sin dieta asignada.</div>';
   if(edit){ edit.style.display='none'; edit.innerHTML=''; }
   if(view) view.style.display='block';
