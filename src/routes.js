@@ -341,23 +341,36 @@ try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN estado TEXT DEFAULT 'comple
 try { dbRun("ALTER TABLE series_log ADD COLUMN nota_cliente TEXT DEFAULT ''"); } catch(e) {}
 
 router.post('/clientes/:id/sesiones', (req, res) => {
-  const { dia_nombre, dia_grupo, duracion_min, series, estado } = req.body;
-  const estadoFinal = estado || 'completado';
-  const r = dbRun(
-    'INSERT INTO sesiones_entreno (cliente_id, dia_nombre, dia_grupo, duracion_min, estado) VALUES (?,?,?,?,?)',
-    [req.params.id, dia_nombre, dia_grupo, duracion_min||0, estadoFinal]
-  );
-  const sesionId = r.lastInsertRowid;
-  if(series && series.length) {
-    series.forEach(s => {
-      dbRun(
-        'INSERT INTO series_log (sesion_id, ejercicio_nombre, serie_num, peso_real, reps_real, rir, nota_cliente) VALUES (?,?,?,?,?,?,?)',
-        [sesionId, s.ejercicio, s.serie_num, s.peso, s.reps, s.rir!=null?s.rir:null, s.nota_cliente||'']
-      );
-    });
+  try {
+    const { dia_nombre, dia_grupo, duracion_min, series, estado } = req.body;
+    const estadoFinal = estado || 'completado';
+    const r = dbRun(
+      'INSERT INTO sesiones_entreno (cliente_id, dia_nombre, dia_grupo, duracion_min, estado) VALUES (?,?,?,?,?)',
+      [req.params.id, dia_nombre, dia_grupo, duracion_min||0, estadoFinal]
+    );
+    const sesionId = r.lastInsertRowid;
+    if(series && series.length) {
+      series.forEach(s => {
+        try {
+          dbRun(
+            'INSERT INTO series_log (sesion_id, ejercicio_nombre, serie_num, peso_real, reps_real, rir, nota_cliente) VALUES (?,?,?,?,?,?,?)',
+            [sesionId, s.ejercicio, s.serie_num, s.peso, s.reps, s.rir!=null?s.rir:null, s.nota_cliente||'']
+          );
+        } catch(e2) {
+          // Fallback sin nota_cliente por si la columna no existe aún
+          dbRun(
+            'INSERT INTO series_log (sesion_id, ejercicio_nombre, serie_num, peso_real, reps_real, rir) VALUES (?,?,?,?,?,?)',
+            [sesionId, s.ejercicio, s.serie_num, s.peso, s.reps, s.rir!=null?s.rir:null]
+          );
+        }
+      });
+    }
+    saveToDisk();
+    res.json({ ok: true, sesion_id: sesionId });
+  } catch(e) {
+    console.error('Error guardando sesión:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
   }
-  saveToDisk();
-  res.json({ ok: true, sesion_id: sesionId });
 });
 
 router.get('/clientes/:id/sesiones', (req, res) => {
