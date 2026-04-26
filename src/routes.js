@@ -827,6 +827,50 @@ router.get('/suscripciones/alertas', coachOnly, (req, res) => {
   });
 });
 
+// POST valoración de sesión del cliente
+// ── CHECK-IN SEMANAL ──────────────────────────────────────────────
+router.post('/clientes/:id/checkin', (req, res) => {
+  try {
+    const { sueno, energia, peso, semana } = req.body;
+    try { dbRun(`CREATE TABLE IF NOT EXISTS checkins (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, semana TEXT, sueno INTEGER, energia INTEGER, peso REAL, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)`); } catch(e){}
+    try { dbRun("ALTER TABLE checkins ADD COLUMN peso REAL"); } catch(e){}
+    // Upsert por semana
+    const existing = dbGet('SELECT id FROM checkins WHERE cliente_id=? AND semana=?', [req.params.id, semana]);
+    if(existing) {
+      dbRun('UPDATE checkins SET sueno=?, energia=?, peso=? WHERE id=?', [sueno, energia, peso||0, existing.id]);
+    } else {
+      dbRun('INSERT INTO checkins (cliente_id, semana, sueno, energia, peso) VALUES (?,?,?,?,?)', [req.params.id, semana, sueno, energia, peso||0]);
+    }
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.json({ ok: false }); }
+});
+
+router.get('/clientes/:id/checkins', (req, res) => {
+  try {
+    try { dbRun(`CREATE TABLE IF NOT EXISTS checkins (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, semana TEXT, sueno INTEGER, energia INTEGER, peso REAL, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)`); } catch(e){}
+    const checkins = dbAll('SELECT * FROM checkins WHERE cliente_id=? ORDER BY fecha DESC LIMIT 8', [req.params.id]);
+    res.json(checkins);
+  } catch(e) { res.json([]); }
+});
+
+router.post('/clientes/:id/valoracion-sesion', (req, res) => {
+  try {
+    const { valoracion } = req.body;
+    // Actualizar la sesión más reciente del cliente con la valoración
+    const ultima = dbGet(
+      'SELECT id FROM sesiones_entreno WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1',
+      [req.params.id]
+    );
+    if(ultima) {
+      try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN valoracion TEXT DEFAULT ''"); } catch(e) {}
+      dbRun('UPDATE sesiones_entreno SET valoracion=? WHERE id=?', [valoracion||'', ultima.id]);
+      saveToDisk();
+    }
+    res.json({ ok: true });
+  } catch(e) { res.json({ ok: false }); }
+});
+
 // POST notificación al coach (desde el cliente)
 router.post('/notificaciones/coach', (req, res) => {
   try {
