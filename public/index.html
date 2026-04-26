@@ -541,7 +541,11 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
     <div id="valoracion_wrap" style="margin-bottom:18px">
       <div style="font-size:11px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">¿Cómo fue el entreno?</div>
       <div style="display:flex;justify-content:center;gap:12px">
-        ${['😴','😐','💪','🔥','🤕'].map((e,i)=>`<button onclick="valorarEntreno('${e}',this)" style="font-size:28px;background:none;border:0.5px solid var(--br);border-radius:12px;padding:8px 10px;cursor:pointer;transition:.15s" title="${['Cansado','Normal','Bien','En llamas','Lesión/dolor'][i]}">${e}</button>`).join('')}
+        <button onclick="valorarEntreno('😴',this)" title="Cansado" style="font-size:28px;background:none;border:0.5px solid var(--br);border-radius:12px;padding:8px 10px;cursor:pointer;transition:.15s">😴</button>
+        <button onclick="valorarEntreno('😐',this)" title="Normal" style="font-size:28px;background:none;border:0.5px solid var(--br);border-radius:12px;padding:8px 10px;cursor:pointer;transition:.15s">😐</button>
+        <button onclick="valorarEntreno('💪',this)" title="Bien" style="font-size:28px;background:none;border:0.5px solid var(--br);border-radius:12px;padding:8px 10px;cursor:pointer;transition:.15s">💪</button>
+        <button onclick="valorarEntreno('🔥',this)" title="En llamas" style="font-size:28px;background:none;border:0.5px solid var(--br);border-radius:12px;padding:8px 10px;cursor:pointer;transition:.15s">🔥</button>
+        <button onclick="valorarEntreno('🤕',this)" title="Lesión/dolor" style="font-size:28px;background:none;border:0.5px solid var(--br);border-radius:12px;padding:8px 10px;cursor:pointer;transition:.15s">🤕</button>
       </div>
     </div>
     <button class="btn" style="padding:14px 40px;font-size:16px;background:var(--bl2);border-radius:14px" onclick="cerrarDoneOverlay()">Cerrar</button>
