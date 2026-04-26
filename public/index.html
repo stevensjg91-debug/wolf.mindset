@@ -302,24 +302,57 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
     <div class="login-brand">WOLFMINDSET</div>
     <div class="login-sub">Fitness &amp; Wellness</div>
   </div>
+  <!-- Selector de idioma — banderas -->
+  <div style="display:flex;gap:12px;margin-bottom:16px;justify-content:center">
+    <button id="lang_es" onclick="setLangLogin('es')" style="width:52px;height:52px;border-radius:50%;border:2.5px solid rgba(255,255,255,.6);background:rgba(255,255,255,.1);font-size:28px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;line-height:1" title="Español">🇪🇸</button>
+    <button id="lang_en" onclick="setLangLogin('en')" style="width:52px;height:52px;border-radius:50%;border:2.5px solid rgba(255,255,255,.1);background:none;font-size:28px;cursor:pointer;transition:.15s;opacity:.4;display:flex;align-items:center;justify-content:center;line-height:1" title="English">🇬🇧</button>
+  </div>
   <div class="login-card">
     <div style="text-align:center;margin-bottom:16px">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.1em;color:var(--sv3)">ACCESO MIEMBROS</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.1em;color:var(--sv3)" id="login_titulo">ACCESO MIEMBROS</div>
     </div>
     <div id="lerr" class="ferr" style="display:none"></div>
     <input class="finp" id="lu" placeholder="Usuario" autocomplete="username"/>
     <input class="finp" id="lp" placeholder="Contraseña" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;font-size:13px;color:var(--tx3)"><input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer" checked/> Recordar contraseña</label>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;font-size:13px;color:var(--tx3)"><input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer" checked/> <span id="login_recordar">Recordar contraseña</span></label>
 
-    <button class="fbtn" onclick="doLogin()">Entrar</button>
-    <div style="text-align:center;margin-top:14px">
-      <span style="font-size:13px;color:var(--tx3)">¿Nuevo cliente? </span>
-      <button onclick="showRegistro()" style="background:none;border:none;color:var(--blg);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Solicitar acceso →</button>
+    <button class="fbtn" id="login_btn" onclick="doLogin()">Entrar</button>
+    <div style="text-align:center;margin-top:10px">
+      <button onclick="mostrarOlvideContrasena()" style="background:none;border:none;color:var(--tx3);font-size:12px;cursor:pointer;font-family:inherit;padding:4px" id="login_olvide">¿Olvidaste tu contraseña?</button>
+    </div>
+    <div style="text-align:center;margin-top:6px">
+      <span style="font-size:13px;color:var(--tx3)" id="login_nuevo_txt">¿Nuevo cliente? </span>
+      <button onclick="showRegistro()" style="background:none;border:none;color:var(--blg);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" id="login_solicitar">Solicitar acceso →</button>
     </div>
   </div>
 </div>
 
-<!-- REGISTRO -->
+<!-- OLVIDE CONTRASEÑA -->
+<div class="screen login-bg" id="sOlvide">
+  <div class="login-logo">
+    <img class="logo-img" src="/logo.png" alt="WolfMindset" onerror="this.style.display='none'"/>
+    <div class="login-brand">WOLFMINDSET</div>
+    <div class="login-sub">Recuperar acceso</div>
+  </div>
+  <div class="login-card">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:40px;margin-bottom:10px">🔑</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.1em;color:var(--sv3)">¿OLVIDASTE TU CONTRASEÑA?</div>
+    </div>
+    <div style="background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:13px;color:var(--sv2);line-height:1.7">
+        Escribe tu nombre de usuario y tu coach recibirá una solicitud de reseteo. Te enviará tu nueva contraseña por el canal habitual (WhatsApp, email, etc.)
+      </div>
+    </div>
+    <div id="olvide_err" class="ferr" style="display:none"></div>
+    <div id="olvide_ok" style="display:none;background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.3);border-radius:10px;padding:12px;text-align:center;font-size:13px;color:var(--gnb);margin-bottom:12px">
+      ✓ Solicitud enviada. Tu coach te contactará pronto.
+    </div>
+    <input class="finp" id="olvide_user" placeholder="Tu nombre de usuario" autocomplete="username"/>
+    <button class="fbtn" onclick="solicitarReseteo()">Enviar solicitud al coach</button>
+    <button onclick="show('sLogin')" style="width:100%;margin-top:10px;background:none;border:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:inherit;padding:8px">← Volver al login</button>
+  </div>
+</div>
 <div class="screen login-bg" id="sRegistro">
   <div class="login-logo">
     <img class="logo-img" src="/logo.png" alt="WolfMindset" onerror="this.style.display='none'"/>
@@ -756,6 +789,53 @@ function klNavLang(s, btn) {
   // se llama después de definir klNav
 }
 
+function setLangLogin(lang) {
+  LANG = lang;
+  localStorage.setItem('wm_lang', lang);
+
+  // Actualizar botones de idioma
+  const esBtn = document.getElementById('lang_es');
+  const enBtn = document.getElementById('lang_en');
+  if(esBtn) {
+    esBtn.style.border = lang==='es' ? '2.5px solid rgba(255,255,255,.9)' : '2.5px solid rgba(255,255,255,.1)';
+    esBtn.style.background = lang==='es' ? 'rgba(255,255,255,.15)' : 'none';
+    esBtn.style.opacity = lang==='es' ? '1' : '0.35';
+  }
+  if(enBtn) {
+    enBtn.style.border = lang==='en' ? '2.5px solid rgba(255,255,255,.9)' : '2.5px solid rgba(255,255,255,.1)';
+    enBtn.style.background = lang==='en' ? 'rgba(255,255,255,.15)' : 'none';
+    enBtn.style.opacity = lang==='en' ? '1' : '0.35';
+  }
+
+  // Traducir textos del login al instante
+  const es = lang === 'es';
+  const lu = document.getElementById('lu');
+  const lp = document.getElementById('lp');
+  if(lu) lu.placeholder = es ? 'Usuario' : 'Username';
+  if(lp) lp.placeholder = es ? 'Contraseña' : 'Password';
+  const rec = document.getElementById('login_recordar');
+  if(rec) rec.textContent = es ? 'Recordar contraseña' : 'Remember me';
+  const btn = document.getElementById('login_btn');
+  if(btn) btn.textContent = es ? 'Entrar' : 'Log in';
+  const olvide = document.getElementById('login_olvide');
+  if(olvide) olvide.textContent = es ? '¿Olvidaste tu contraseña?' : 'Forgot your password?';
+  const nuevoTxt = document.getElementById('login_nuevo_txt');
+  if(nuevoTxt) nuevoTxt.textContent = es ? '¿Nuevo cliente? ' : 'New member? ';
+  const solicitar = document.getElementById('login_solicitar');
+  if(solicitar) solicitar.textContent = es ? 'Solicitar acceso →' : 'Request access →';
+  const titulo = document.getElementById('login_titulo');
+  if(titulo) titulo.textContent = es ? 'ACCESO MIEMBROS' : 'MEMBER LOGIN';
+
+  // Traducir pantalla de olvide contraseña si está visible
+  applyLang(document.getElementById('sOlvide'));
+}
+
+// Aplicar idioma guardado al cargar la app
+document.addEventListener('DOMContentLoaded', () => {
+  if(LANG !== 'es') setLangLogin(LANG);
+  else setLangLogin('es'); // asegurar botones correctos
+});
+
 function setLang(lang) {
   LANG = lang;
   localStorage.setItem('wm_lang', lang);
@@ -1102,8 +1182,16 @@ async function verCliente(id){
     <div class="form-lbl" style="margin-top:8px">Comida libre</div><input class="inp" id="clibre" value="${c.comida_libre||''}"/>
     <div class="form-lbl">Mensaje motivacional</div><textarea class="ta" id="msgsem">${c.mensaje_semana||''}</textarea>
     <div class="form-lbl">Notas coach</div><textarea class="ta" id="notasc">${c.notas_coach||''}</textarea>
+    <!-- Reseteo de contraseña -->
+    <div style="margin-top:14px;padding-top:14px;border-top:0.5px solid var(--br)">
+      <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">🔑 Contraseña del cliente</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="inp" id="nueva_pass_${c.id}" type="text" placeholder="Nueva contraseña" style="margin-bottom:0;flex:1"/>
+        <button onclick="resetearContrasena(${c.id})" class="btn btn-sm" style="flex-shrink:0;white-space:nowrap">Resetear</button>
+      </div>
+      <div id="reset_msg_${c.id}" style="font-size:11px;margin-top:6px;height:16px"></div>
+    </div>
   </div>
-  
   </div>
 
   <!-- TAB: ENTRENO -->
@@ -4519,17 +4607,18 @@ function hPerfil(){
     <div id="pf_msg" style="font-size:13px;text-align:center;margin-top:8px;height:20px"></div>
   </div>
 
-  <!-- Selector de idioma -->
+  <!-- Selector de idioma movido al login -->
   <div style="margin:14px 14px 20px;background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px">
     <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🌐 Idioma / Language</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <button onclick="setLang('es')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='es'?'var(--bl2)':'var(--br)'};background:${LANG==='es'?'rgba(59,130,246,.12)':'none'};color:${LANG==='es'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+      <button onclick="setLangLogin('es');setLang('es')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='es'?'var(--bl2)':'var(--br)'};background:${LANG==='es'?'rgba(59,130,246,.12)':'none'};color:${LANG==='es'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
         🇪🇸 Español
       </button>
-      <button onclick="setLang('en')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='en'?'var(--bl2)':'var(--br)'};background:${LANG==='en'?'rgba(59,130,246,.12)':'none'};color:${LANG==='en'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+      <button onclick="setLangLogin('en');setLang('en')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='en'?'var(--bl2)':'var(--br)'};background:${LANG==='en'?'rgba(59,130,246,.12)':'none'};color:${LANG==='en'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
         🇬🇧 English
       </button>
     </div>
+    <div style="font-size:10px;color:var(--tx3);margin-top:8px;text-align:center">También puedes cambiarlo en la pantalla de inicio de sesión</div>
   </div>`;
 }
 
@@ -4948,7 +5037,45 @@ function closeVideo(){
 
 
 // REGISTRO PÚBLICO
+async function resetearContrasena(userId){
+  const inp = document.getElementById('nueva_pass_'+userId);
+  const msg = document.getElementById('reset_msg_'+userId);
+  const pass = inp?.value?.trim();
+  if(!pass || pass.length < 4){ msg.style.color='#fca5a5'; msg.textContent='Mínimo 4 caracteres'; return; }
+  try {
+    const r = await api('/auth/reset-password', { method:'POST', body: JSON.stringify({ userId, newPassword: pass }) });
+    if(r.ok){ msg.style.color='var(--gnb)'; msg.textContent='✓ Contraseña actualizada'; inp.value=''; }
+    else { msg.style.color='#fca5a5'; msg.textContent = r.error || 'Error'; }
+  } catch(e){ msg.style.color='#fca5a5'; msg.textContent='Error de conexión'; }
+  setTimeout(()=>{ if(msg) msg.textContent=''; }, 3000);
+}
+
 function showRegistro(){show('sRegistro');}
+
+function mostrarOlvideContrasena(){
+  document.getElementById('olvide_user').value = document.getElementById('lu')?.value || '';
+  document.getElementById('olvide_err').style.display = 'none';
+  document.getElementById('olvide_ok').style.display = 'none';
+  show('sOlvide');
+}
+
+async function solicitarReseteo(){
+  const username = document.getElementById('olvide_user').value.trim();
+  const errEl = document.getElementById('olvide_err');
+  const okEl = document.getElementById('olvide_ok');
+  errEl.style.display = 'none';
+  okEl.style.display = 'none';
+  if(!username){ errEl.textContent = 'Escribe tu nombre de usuario'; errEl.style.display='block'; return; }
+  try {
+    const r = await fetch('/api/auth/solicitar-reset', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username })
+    });
+    const d = await r.json();
+    if(d.ok) { okEl.style.display='block'; }
+    else { errEl.textContent = d.error || 'Error. Contacta con tu coach directamente.'; errEl.style.display='block'; }
+  } catch(e) { errEl.textContent = 'Error de conexión.'; errEl.style.display='block'; }
+}
 
 async function doRegistro(){
   const nombre=document.getElementById('reg_nombre').value.trim();
