@@ -658,106 +658,168 @@ let CD=null,klTab='entreno',activeDia=0,chatH=[],iaH=[],timerInts={},restInt=nul
 let LANG = localStorage.getItem('wm_lang') || 'es';
 
 const TRANSLATIONS = {
-  // Navegación
-  'Entrenar':'Train', 'Entreno':'Workout', 'Dieta':'Diet', 'Asistente':'Assistant',
-  'Progreso':'Progress', 'Logros':'Achievements', 'Perfil':'Profile', 'Salir':'Logout',
-  'Cerrar sesión':'Logout',
+  // ── Navegación ──
+  'Entrenar':'Train','Entreno':'Workout','Dieta':'Diet','Asistente':'Assistant',
+  'Progreso':'Progress','Logros':'Achievements','Perfil':'Profile','Salir':'Logout',
+  'Cerrar sesión':'Logout','ACCESO MIEMBROS':'MEMBER LOGIN',
 
-  // Pantalla de entreno
-  'Semana':'Week', 'Sin realizar':'Not done', 'series':'sets', 'ejerc.':'ex.',
-  'Completado hoy':'Completed today', 'Incompleto hoy':'Incomplete today',
+  // ── hSeleccionDia ──
   'Tu coach está preparando tu plan':'Your coach is preparing your plan',
-  '✓ Completado hoy':'✓ Completed today', '⚠ Incompleto hoy':'⚠ Incomplete today',
-  'Nota para el coach (sensaciones, dolor, etc.)':'Note for coach (feelings, pain, etc.)',
-  'Ej: Sentí el peso muy pesado, me dolió el hombro...':'E.g. Weight felt heavy, shoulder pain...',
+  'Semana':'Week','Sin realizar':'Not done','ejerc.':'ex.',
+  '✓ Completado hoy':'✓ Completed today','⚠ Incompleto hoy':'⚠ Incomplete today',
+  'Completado hoy':'Completed today','Incompleto hoy':'Incomplete today',
+  'series':'sets',
 
-  // Timer y series
-  'Descanso':'Rest', 'Pausar':'Pause', 'Reanudar':'Resume', 'Skip →':'Skip →',
-  'Serie':'Set', 'Anterior':'Previous', 'kg':'kg', 'Rep.':'Reps',
-  '¿Cuántas reps más podrías haber hecho? (RIR = Reps In Reserve)':'How many more reps could you have done? (RIR = Reps In Reserve)',
-  '0 = al fallo · 1 = casi al límite · 2-3 = cómodo · 4+ = fácil':'0 = failure · 1 = near limit · 2-3 = comfortable · 4+ = easy',
-
-  // Done overlay
-  '¿Cómo fue el entreno?':'How was the workout?',
-  'Cansado':'Tired', 'Normal':'Normal', 'Bien':'Good', 'En llamas':'On fire', 'Lesión/dolor':'Injury/pain',
-  'Cerrar':'Close',
-  '¡Logro desbloqueado!':'Achievement unlocked!',
-  '¡A por más!':'Keep going!',
-
-  // Streak y check-in
-  'día seguido':'day streak', 'días seguidos':'day streak',
-  '¡Primer día!':'First day!', '¡Sigue así!':'Keep it up!',
+  // ── Streak ──
+  'día seguido':'day streak','días seguidos':'day streak',
+  '¡Primer día!':'First day!','¡Sigue así!':'Keep it up!',
   '¡Una semana de fuego!':'One week on fire!',
   '¡Dos semanas seguidas!':'Two weeks straight!',
   '¡Bestia imparable!':'Unstoppable beast!',
+
+  // ── Mensaje coach ──
   'Mensaje de tu coach':'Message from your coach',
+
+  // ── Check-in ──
   '📋 Check-in semanal':'📋 Weekly check-in',
   '😴 ¿Cómo dormiste?':'😴 How did you sleep?',
   '⚡ Energía hoy':'⚡ Energy today',
   '⚖️ Peso hoy (kg)':'⚖️ Weight today (kg)',
-  'Ej: 78.5':'E.g. 78.5', 'Guardar':'Save',
-  '🔔 Activa las notificaciones':'🔔 Enable notifications',
+  'Ej: 78.5':'E.g. 78.5','Guardar':'Save',
+
+  // ── Notif banner ──
+  'Activa las notificaciones':'Enable notifications',
   'Para que suene el timer aunque la pantalla esté bloqueada':'So the timer rings even when your screen is locked',
   'Activar':'Enable',
 
-  // Progreso cliente
-  '📈 Tendencia de peso':'📈 Weight trend',
-  'registros reales':'real records', 'Línea':'Line',
-  'tendencia suavizada':'smoothed trend',
-  'Tu progreso':'Your progress', 'semana':'week', 'semanas':'weeks',
-  'ANTES · Sem.':'BEFORE · Wk.', 'AHORA · Sem.':'NOW · Wk.',
-  '🏆 Mis marcas personales':'🏆 My personal records',
-  '1RM est.':'1RM est.',
-  'Progreso ejercicios principales':'Main exercise progress',
+  // ── Timer / Series ──
+  'Descanso':'Rest','Pausar':'Pause','Reanudar':'Resume',
+  'Serie':'Set','Anterior':'Previous','Rep.':'Reps',
+  'Nota para el coach (sensaciones, dolor, etc.)':'Note for coach (feelings, pain, etc.)',
+  'Ej: Sentí el peso muy pesado, me dolió el hombro...':'E.g. Weight felt heavy, shoulder pain...',
+  '¿Cuántas reps más podrías haber hecho? (RIR = Reps In Reserve)':'How many more reps could you have done? (RIR = Reps In Reserve)',
+  '0 = al fallo · 1 = casi al límite · 2-3 = cómodo · 4+ = fácil':'0 = failure · 1 = near limit · 2-3 = comfortable · 4+ = easy',
+  'INSTRUCCIONES':'INSTRUCTIONS','Nota del coach':'Coach note',
+  'COACH DICE':'COACH SAYS',
 
-  // Badges
-  'Mis Logros':'My Achievements', 'de':'of', 'desbloqueados':'unlocked',
-  '✓ Desbloqueado':'✓ Unlocked',
-  '¡Primera vez!':'First time!', '5 Sesiones':'5 Sessions',
-  '10 Sesiones':'10 Sessions', '25 Sesiones':'25 Sessions',
-  '50 Sesiones':'50 Sessions', '100 Sesiones':'100 Sessions',
-  '7 días en racha':'7 day streak', '14 días en racha':'14 day streak',
-  '30 días en racha':'30 day streak', 'Mes perfecto':'Perfect month',
-  '¡100 kg!':'100 kg!', '¡150 kg!':'150 kg!', '¡200 kg!':'200 kg!',
-  '1.000 kg movidos':'1,000 kg moved', '10.000 kg movidos':'10,000 kg moved',
-  '50.000 kg movidos':'50,000 kg moved',
+  // ── Done overlay ──
+  '¿CÓMO FUE EL ENTRENO?':'HOW WAS THE WORKOUT?',
+  '¿Cómo fue el entreno?':'How was the workout?',
+  'Cansado':'Tired','Normal':'Normal','Bien':'Good','En llamas':'On fire','Lesión/dolor':'Injury/pain',
+  'Cerrar':'Close',
+  '¡Logro desbloqueado!':'Achievement unlocked!','¡A por más!':'Keep going!',
 
-  // Dieta
-  'Sin dieta asignada':'No diet assigned',
+  // ── Preview día ──
+  'Comenzar entreno':'Start workout',
+  'ejercicios':'exercises','series totales':'total sets',
+  'Última sesión':'Last session','Sin historial':'No history',
+  'Volver':'Back',
+
+  // ── Entreno en curso ──
+  'Finalizar entreno':'Finish workout',
+  'Quedan':'Remaining','serie sin completar':'incomplete set',
+  'series sin completar':'incomplete sets',
+  '¿Seguro que quieres terminar el entreno?':'Are you sure you want to finish?',
+  'Tu coach verá las series incompletas.':'Your coach will see the incomplete sets.',
+
+  // ── Dieta ──
   'Tu plan de alimentación':'Your nutrition plan',
-  'Comida libre':'Free meal',
-  'kcal':'kcal', 'Proteína':'Protein', 'Carbos':'Carbs', 'Grasas':'Fats',
+  'Sin dieta asignada':'No diet assigned',
+  'Usa el Creador de Dieta IA.':'Use the AI Diet Creator.',
+  'Comida libre':'Free meal','kcal':'kcal',
+  'Proteína':'Protein','Carbos':'Carbs','Grasas':'Fats',
+  'Recetas':'Recipes','Sin recetas':'No recipes',
+  'Ingredientes':'Ingredients','Preparación':'Preparation',
+  'Macros del plan':'Plan macros',
 
-  // Perfil
-  'Mi perfil':'My profile', 'Tus datos personales.':'Your personal data.',
+  // ── Asistente ──
+  'Escribe tu pregunta...':'Ask me anything...','Enviar':'Send',
+  'Escribiendo...':'Typing...','Error al enviar':'Send error',
+
+  // ── Progreso ──
+  'Registrar peso':'Log weight','Peso actual':'Current weight',
+  'Tu peso esta semana':'Your weight this week',
+  'Historial de peso':'Weight history',
+  'Subir foto de progreso':'Upload progress photo',
+  '📏 Posición: de pie, cuerpo entero, buena iluminación.':'📏 Stand upright, full body, good lighting.',
+  'Analizando tu progreso...':'Analyzing your progress...',
+  'Valoraciones anteriores':'Previous assessments',
+  '📈 Tendencia de peso':'📈 Weight trend',
+  'registros':'records','Línea':'Line',
+  'tendencia suavizada':'smoothed trend',
+  'Tu progreso':'Your progress',
+  'semana':'week','semanas':'weeks',
+  'ANTES · Sem.':'BEFORE · Wk.','AHORA · Sem.':'NOW · Wk.',
+  'Progreso ejercicios principales':'Main exercise progress',
+  '🏆 Mis marcas personales':'🏆 My personal records',
+  '1RM est.':'1RM est.','Hace':'Ago',
+  'reps':'reps',
+
+  // ── Logros ──
+  'Mis Logros':'My Achievements','de':'of','desbloqueados':'unlocked',
+  '✓ Desbloqueado':'✓ Unlocked',
+  '¡Primera vez!':'First time!',
+  'Completaste tu primera sesión. El viaje ha comenzado.':'First session complete. The journey begins.',
+  '5 Sesiones':'5 Sessions','5 entrenos completados. Ya estás cogiendo el hábito.':'5 workouts done. The habit is forming.',
+  '10 Sesiones':'10 Sessions','10 entrenos completados. Eres constante.':'10 workouts done. You are consistent.',
+  '25 Sesiones':'25 Sessions','25 entrenos. Estás construyendo algo serio.':'25 workouts. You are building something serious.',
+  '50 Sesiones':'50 Sessions','50 sesiones completadas. Eres de los que no paran.':'50 sessions done. You never stop.',
+  '100 Sesiones':'100 Sessions','100 entrenos. Eres una máquina.':'100 workouts. You are a machine.',
+  '7 días en racha':'7 day streak','Una semana seguida entrenando. ¡Fuego!':'One full week training. Fire!',
+  '14 días en racha':'14 day streak','Dos semanas sin parar. Nada te detiene.':'Two weeks non-stop. Nothing stops you.',
+  '30 días en racha':'30 day streak','Un mes entero. Eres un auténtico Wolf.':'A full month. You are a true Wolf.',
+  'Mes perfecto':'Perfect month','Todos los días del mes con al menos un entreno. Épico.':'Every day this month with a workout. Epic.',
+  '¡100 kg!':'100 kg!','Has levantado 100 kg en un ejercicio. Brutal.':'You lifted 100 kg in one exercise. Brutal.',
+  '¡150 kg!':'150 kg!','150 kg. Estás en otra liga.':'150 kg. You are in another league.',
+  '¡200 kg!':'200 kg!','200 kg. Eres una leyenda.':'200 kg. You are a legend.',
+  '1.000 kg movidos':'1,000 kg moved','Has movido una tonelada en total. Literal.':'You moved one full ton. Literally.',
+  '10.000 kg movidos':'10,000 kg moved','10 toneladas. Un camión entero. Increíble.':'10 tons. A full truck. Incredible.',
+  '50.000 kg movidos':'50,000 kg moved','50 toneladas acumuladas. Eres pura fuerza.':'50 tons accumulated. You are pure strength.',
+
+  // ── Perfil ──
+  'Mi perfil':'My profile',
+  'Tus datos personales.':'Your personal data.',
+  'Rellena tus datos para que tu coach pueda personalizar tu plan al máximo.':'Fill in your data so your coach can fully personalize your plan.',
   'Datos personales':'Personal data',
-  'Peso (kg)':'Weight (kg)', 'Altura (cm)':'Height (cm)',
-  'Edad':'Age', 'Sexo':'Sex', 'Hombre':'Male', 'Mujer':'Female',
-  'Cintura (cm)':'Waist (cm)', 'Cadera (cm)':'Hip (cm)',
+  'Peso (kg)':'Weight (kg)','Altura (cm)':'Height (cm)',
+  'Edad':'Age','Sexo':'Sex','Hombre':'Male','Mujer':'Female',
+  'Cintura (cm)':'Waist (cm)','Cadera (cm)':'Hip (cm)',
   'Nivel de actividad':'Activity level',
   'Sedentario (poco o nada de ejercicio)':'Sedentary (little or no exercise)',
   'Ligero (1-2 días/semana)':'Light (1-2 days/week)',
   'Moderada (3-4 días/semana)':'Moderate (3-4 days/week)',
   'Activo (5-6 días/semana)':'Active (5-6 days/week)',
-  '✏️ Editar':'✏️ Edit', '✓ Guardar cambios':'✓ Save changes',
-  'Cancelar':'Cancel', 'Guardado':'Saved',
-  'Idioma / Language':'Idioma / Language',
+  '✏️ Editar':'✏️ Edit','✓ Guardar cambios':'✓ Save changes',
+  'Cancelar':'Cancel','Guardado':'Saved',
+  'Guardar perfil':'Save profile',
+  'Idioma / Language':'Language / Idioma',
+  'También puedes cambiarlo en la pantalla de inicio de sesión':'You can also change it on the login screen',
 
-  // Asistente
-  'Escribe tu pregunta...':'Ask me anything...',
-  'Enviar':'Send',
-
-  // Notificaciones timer
+  // ── Notificaciones push ──
   '💪 ¡A por ello!':'💪 Go for it!',
   'Siguiente serie de':'Next set of',
   'Descanso terminado — siguiente serie':'Rest done — next set',
   '🐺 ¡Entreno completado!':'🐺 Workout complete!',
-  'has terminado en':'finished in', 'min.':'min.',
+  'has terminado en':'finished in','min.':'min.',
   '💪 Entreno registrado':'💪 Workout saved',
   'has guardado tu sesión. Quedan':'saved your session. Remaining',
   '¡Mañana lo rematas!':'Finish it tomorrow!',
-};
 
+  // ── Olvide contraseña ──
+  '¿Olvidaste tu contraseña?':'Forgot your password?',
+  '¿OLVIDASTE TU CONTRASEÑA?':'FORGOT YOUR PASSWORD?',
+  'Escribe tu nombre de usuario y tu coach recibirá una solicitud de reseteo. Te enviará tu nueva contraseña por el canal habitual (WhatsApp, email, etc.)':'Enter your username and your coach will receive a reset request. They will send your new password through the usual channel (WhatsApp, email, etc.)',
+  'Tu nombre de usuario':'Your username',
+  'Enviar solicitud al coach':'Send request to coach',
+  '← Volver al login':'← Back to login',
+  '✓ Solicitud enviada. Tu coach te contactará pronto.':'✓ Request sent. Your coach will contact you soon.',
+  'Escribe tu nombre de usuario':'Enter your username',
+  'Recuperar acceso':'Recover access',
+  '¿Nuevo cliente? ':'New member? ',
+  'Solicitar acceso →':'Request access →',
+  'Recordar contraseña':'Remember me',
+  'Entrar':'Log in',
+}
 function t(text) {
   if(LANG === 'es') return text;
   return TRANSLATIONS[text] || text;
@@ -766,20 +828,58 @@ function t(text) {
 // Aplicar traducción al contenido renderizado
 function applyLang(el) {
   if(LANG === 'es' || !el) return;
-  // Traducir nodos de texto directamente
+
+  // 1. Nodos de texto — exact match primero, luego fragmentos
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
   const nodes = [];
   while(walker.nextNode()) nodes.push(walker.currentNode);
   nodes.forEach(node => {
-    const trimmed = node.textContent.trim();
+    let text = node.textContent;
+    const trimmed = text.trim();
+    // Exact match
     if(trimmed && TRANSLATIONS[trimmed]) {
-      node.textContent = node.textContent.replace(trimmed, TRANSLATIONS[trimmed]);
+      node.textContent = text.replace(trimmed, TRANSLATIONS[trimmed]);
+      return;
     }
+    // Fragment match — replace all known strings within the text
+    let changed = false;
+    // Sort by length desc so longer matches win
+    const keys = Object.keys(TRANSLATIONS).sort((a,b) => b.length - a.length);
+    for(const k of keys) {
+      if(k.length > 2 && text.includes(k)) {
+        text = text.split(k).join(TRANSLATIONS[k]);
+        changed = true;
+      }
+    }
+    if(changed) node.textContent = text;
   });
-  // Traducir placeholders e inputs
+
+  // 2. Placeholders
   el.querySelectorAll('[placeholder]').forEach(inp => {
     const p = inp.getAttribute('placeholder');
     if(TRANSLATIONS[p]) inp.setAttribute('placeholder', TRANSLATIONS[p]);
+    else {
+      // Fragment match for placeholder
+      let text = p;
+      Object.keys(TRANSLATIONS).sort((a,b)=>b.length-a.length).forEach(k => {
+        if(k.length > 3 && text.includes(k)) text = text.split(k).join(TRANSLATIONS[k]);
+      });
+      if(text !== p) inp.setAttribute('placeholder', text);
+    }
+  });
+
+  // 3. Atributos title y aria-label
+  el.querySelectorAll('[title],[aria-label]').forEach(el2 => {
+    ['title','aria-label'].forEach(attr => {
+      const v = el2.getAttribute(attr);
+      if(v && TRANSLATIONS[v]) el2.setAttribute(attr, TRANSLATIONS[v]);
+    });
+  });
+
+  // 4. Botones y selects — valor/texto directo
+  el.querySelectorAll('option').forEach(opt => {
+    const t2 = opt.textContent.trim();
+    if(TRANSLATIONS[t2]) opt.textContent = TRANSLATIONS[t2];
   });
 }
 
@@ -3521,12 +3621,13 @@ function diasDesde(fecha){
 async function abrirPreviewDia(i){
   activeDia = i;
   vistaActual = 'preview';
-  // Load last session data for this day for "anterior" display
   try {
     const sesiones = await api('/clientes/'+CD.id+'/sesiones');
     window._sesionesCache = sesiones;
   } catch(e) { window._sesionesCache = []; }
-  document.getElementById('klContent').innerHTML = hPreviewDia(i);
+  const el = document.getElementById('klContent');
+  el.innerHTML = hPreviewDia(i);
+  setTimeout(()=>applyLang(el), 30);
 }
 
 function hPreviewDia(i){
@@ -3600,9 +3701,9 @@ function empezarEntreno(i){
   runningTimers = {};
   activeInput = null;
   doneShown = false;
-  document.getElementById('klContent').innerHTML = hEntreno();
-  // Start timer automatically
-  setTimeout(()=>iniciarEntreno(), 100);
+  const klEl = document.getElementById('klContent');
+  klEl.innerHTML = hEntreno();
+  setTimeout(()=>{ applyLang(klEl); iniciarEntreno(); }, 100);
 }
 
 // Modal descripción ejercicio
@@ -6436,6 +6537,7 @@ function mostrarBadgesEnCadena(lista, i){
 
   const ov = document.getElementById('badgeOv');
   ov.style.display = 'flex';
+  applyLang(ov);
   _badgeQueue.length = 0;
   _badgeQueue.push({ lista, next: i+1 });
 
@@ -6532,6 +6634,7 @@ function mostrarDoneOverlay(estado, pendientes){
       : `${pendientes} serie${pendientes>1?'s':''} sin completar. La constancia es lo que separa a los fuertes del resto.`;
     document.getElementById('doneMsg').textContent = msg;
     document.getElementById('doneOv').classList.add('show');
+    applyLang(document.getElementById('doneOv'));
   }, 400);
 }
 
