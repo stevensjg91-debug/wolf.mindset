@@ -802,4 +802,19 @@ router.get('/suscripciones/alertas', coachOnly, (req, res) => {
   });
 });
 
+// POST notificación al coach (desde el cliente)
+router.post('/notificaciones/coach', (req, res) => {
+  try {
+    const { tipo, mensaje } = req.body;
+    // Buscar al coach (role='coach')
+    const coach = dbGet("SELECT id FROM users WHERE role='coach' LIMIT 1");
+    if(!coach) return res.json({ ok: false });
+    crearNotificacion(coach.id, tipo || 'sistema', mensaje || '');
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) {
+    res.json({ ok: false });
+  }
+});
+
 module.exports = router;
