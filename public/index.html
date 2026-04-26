@@ -28,11 +28,7 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
 .login-bg{
   position:relative;flex-direction:column;align-items:center;justify-content:flex-start;
   min-height:100%;padding:0;overflow-y:auto;overflow-x:hidden;
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(15,30,60,.9) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(10,20,50,.8) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(5,10,30,.95) 0%, transparent 60%),
-    linear-gradient(160deg, #060c1a 0%, #0a0f1e 30%, #060810 60%, #03050c 100%);
+  background:linear-gradient(160deg,#060c1a 0%,#0a0f1e 35%,#060810 65%,#03050c 100%);
 }
 .login-bg-img{
   position:fixed;inset:0;width:100%;height:100%;object-fit:cover;
@@ -40,31 +36,48 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
 }
 .login-bg-overlay{
   position:fixed;inset:0;z-index:1;pointer-events:none;
-  background:linear-gradient(to bottom,
-    rgba(6,8,16,.2) 0%,
-    rgba(6,8,16,.0) 25%,
-    rgba(6,8,16,.3) 60%,
-    rgba(6,8,16,.95) 100%);
+  background:linear-gradient(to bottom,rgba(4,6,14,.4) 0%,rgba(4,6,14,.1) 30%,rgba(4,6,14,.55) 65%,rgba(4,6,14,.97) 100%);
 }
-/* Partículas de luz azul para dar profundidad */
 .login-bg::before{
   content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
   background:
-    radial-gradient(circle at 15% 25%, rgba(37,99,235,.12) 0%, transparent 35%),
-    radial-gradient(circle at 85% 70%, rgba(37,99,235,.08) 0%, transparent 30%),
-    radial-gradient(circle at 50% 10%, rgba(99,179,237,.06) 0%, transparent 40%);
+    radial-gradient(circle at 15% 25%,rgba(37,99,235,.1) 0%,transparent 35%),
+    radial-gradient(circle at 85% 70%,rgba(37,99,235,.07) 0%,transparent 30%);
 }
 .login-content{
   position:relative;z-index:2;display:flex;flex-direction:column;
-  align-items:center;width:100%;min-height:100%;padding:48px 20px 40px;
+  align-items:center;width:100%;min-height:100%;padding:24px 20px 40px;
 }
-/* Palabras flotantes */
+.logo-img{
+  width:240px;height:240px;object-fit:contain;display:block;margin:0 auto -16px;
+  mix-blend-mode:lighten;filter:brightness(1.05) contrast(1.08);
+}
+.login-logo{text-align:center;margin-bottom:14px}
+.login-brand{font-family:'Bebas Neue',sans-serif;font-size:38px;letter-spacing:.15em;color:#fff}
+.login-sub{font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.25em;text-transform:uppercase;margin-top:3px}
+.login-card{
+  background:rgba(8,10,22,.78);
+  backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+  border:0.5px solid rgba(255,255,255,.08);
+  border-top:0.5px solid rgba(255,255,255,.13);
+  border-radius:28px;padding:28px 22px 22px;width:100%;max-width:400px;box-sizing:border-box;
+  box-shadow:0 8px 60px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.05);
+}
+.ltabs{display:flex;gap:3px;background:var(--b);border-radius:10px;padding:3px;border:0.5px solid var(--br);margin-bottom:18px}
+.ltab{flex:1;padding:9px;border:none;border-radius:8px;font-size:14px;cursor:pointer;background:none;color:var(--sv3);font-family:'Inter',sans-serif;transition:.2s}
+.ltab.on{background:var(--bl2);color:#fff;font-weight:600}
+.finp{width:100%;padding:14px 16px;border:0.5px solid rgba(255,255,255,.1);border-radius:14px;background:rgba(255,255,255,.05);color:#fff;font-size:15px;margin-bottom:10px;font-family:'Inter',sans-serif;box-sizing:border-box;transition:.2s}
+.finp:focus{outline:none;border-color:rgba(99,179,237,.4);background:rgba(255,255,255,.08)}
+.finp::placeholder{color:rgba(255,255,255,.28)}
+.finp option{background:var(--s)}
+.fbtn{width:100%;padding:15px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 4px 24px rgba(37,99,235,.45);transition:.15s}
+.fbtn:active{transform:scale(.98)}
 .floating-word{
   position:fixed;font-family:'Bebas Neue',sans-serif;
-  font-size:11px;letter-spacing:.22em;color:rgba(255,255,255,.35);
+  font-size:10px;letter-spacing:.22em;color:rgba(255,255,255,.2);
   z-index:2;pointer-events:none;display:flex;align-items:center;gap:6px;
 }
-.floating-word::before{content:'•';color:rgba(99,179,237,.7);font-size:8px}
+.floating-word::before{content:'•';color:rgba(99,179,237,.45);font-size:7px}
 .login-logo{text-align:center;margin-bottom:20px}
 .logo-img{width:200px;height:200px;object-fit:contain;margin:0 auto 2px;display:block;mix-blend-mode:screen;filter:drop-shadow(0 0 40px rgba(200,200,220,.25));}
 .login-brand{font-family:'Bebas Neue',sans-serif;font-size:38px;letter-spacing:.15em;color:#fff;text-shadow:0 2px 30px rgba(59,130,246,.3)}
@@ -362,9 +375,17 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
     </div>
 
     <!-- Selector de idioma — banderas -->
-    <div style="display:flex;gap:12px;margin-bottom:20px;justify-content:center">
-      <button id="lang_es" onclick="setLangLogin('es')" style="width:52px;height:52px;border-radius:50%;border:2.5px solid rgba(255,255,255,.6);background:rgba(255,255,255,.1);font-size:28px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;line-height:1" title="Español">🇪🇸</button>
-      <button id="lang_en" onclick="setLangLogin('en')" style="width:52px;height:52px;border-radius:50%;border:2.5px solid rgba(255,255,255,.1);background:none;font-size:28px;cursor:pointer;transition:.15s;opacity:.4;display:flex;align-items:center;justify-content:center;line-height:1" title="English">🇬🇧</button>
+    <div style="display:flex;gap:16px;margin-bottom:22px;justify-content:center">
+      <button id="lang_es" onclick="setLangLogin('es')" style="display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:0;opacity:1">
+        <span style="font-size:36px;line-height:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))">🇪🇸</span>
+        <span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.9);font-family:'Inter',sans-serif">ES</span>
+        <div id="lang_es_bar" style="width:24px;height:2px;background:var(--bl2);border-radius:2px;margin-top:1px"></div>
+      </button>
+      <button id="lang_en" onclick="setLangLogin('en')" style="display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:0;opacity:.4">
+        <span style="font-size:36px;line-height:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))">🇬🇧</span>
+        <span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.9);font-family:'Inter',sans-serif">EN</span>
+        <div id="lang_en_bar" style="width:24px;height:2px;background:transparent;border-radius:2px;margin-top:1px"></div>
+      </button>
     </div>
 
     <!-- Card -->
@@ -963,15 +984,15 @@ function setLangLogin(lang) {
   const esBtn = document.getElementById('lang_es');
   const enBtn = document.getElementById('lang_en');
   if(esBtn) {
-    esBtn.style.border = lang==='es' ? '2.5px solid rgba(255,255,255,.9)' : '2.5px solid rgba(255,255,255,.1)';
-    esBtn.style.background = lang==='es' ? 'rgba(255,255,255,.15)' : 'none';
     esBtn.style.opacity = lang==='es' ? '1' : '0.35';
   }
   if(enBtn) {
-    enBtn.style.border = lang==='en' ? '2.5px solid rgba(255,255,255,.9)' : '2.5px solid rgba(255,255,255,.1)';
-    enBtn.style.background = lang==='en' ? 'rgba(255,255,255,.15)' : 'none';
     enBtn.style.opacity = lang==='en' ? '1' : '0.35';
   }
+  const esBar = document.getElementById('lang_es_bar');
+  const enBar = document.getElementById('lang_en_bar');
+  if(esBar) esBar.style.background = lang==='es' ? 'var(--bl2)' : 'transparent';
+  if(enBar) enBar.style.background = lang==='en' ? 'var(--bl2)' : 'transparent';
 
   // Traducir textos del login al instante
   const es = lang === 'es';
