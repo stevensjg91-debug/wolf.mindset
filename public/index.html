@@ -5402,6 +5402,31 @@ function notificarEntrenoCompletado(nombre, minutos){
   }catch(e){}
 }
 
+function notificarEntrenoIncompleto(nombre, series){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  try{
+    new Notification('💪 Entreno registrado', {
+      body: `${nombre}, has guardado tu sesión. Quedan ${series} serie${series>1?'s':''}. ¡Mañana lo rematas!`,
+      icon: '/logo.png',
+      badge: '/logo.png',
+      tag: 'entreno-incompleto',
+      requireInteraction: false,
+    });
+  }catch(e){}
+}
+
+async function avisarCoachEntrenoIncompleto(pendientes){
+  // Crear notificación al coach en la BD para que la vea en su panel
+  try {
+    const dia = CD.dias[activeDia];
+    const mensaje = `⚠️ ${CD.nombre} dejó el entreno incompleto (${pendientes} serie${pendientes>1?'s':''} sin completar) — ${dia.nombre} ${dia.grupo}.`;
+    await api('/notificaciones/coach', {
+      method: 'POST',
+      body: JSON.stringify({ tipo: 'entreno_incompleto', mensaje })
+    }).catch(()=>{}); // silencioso si el endpoint no existe aún
+  } catch(e) {}
+}
+
 // Programar recordatorio de peso (semanal)
 function programarRecordatorioPeso(clienteId){
   if(!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -5553,14 +5578,25 @@ function mostrarDoneOverlay(estado, pendientes){
   else guardarSesionParcial();
   soundComplete();
   const dur = getWorkoutDuration();
-  notificarEntrenoCompletado(CD.nombre.split(' ')[0], dur);
+  const nombre = CD.nombre.split(' ')[0];
+
+  // Notificación coherente con el estado real
+  if(estado === 'completado') {
+    notificarEntrenoCompletado(nombre, dur);
+  } else {
+    // Entreno incompleto — notificación diferente al cliente
+    notificarEntrenoIncompleto(nombre, pendientes);
+    // Avisar al coach
+    avisarCoachEntrenoIncompleto(pendientes);
+  }
+
   if(workoutTimerInt){clearInterval(workoutTimerInt);workoutTimerInt=null;}
   // Swap wolf image based on estado
   const wolfImg = document.getElementById('done_wolf_img');
   if(wolfImg && estado !== 'completado') wolfImg.src = WOLF_INCOMPLETE_SRC;
   setTimeout(()=>{
     const msg = estado === 'completado'
-      ? `¡Felicidades, ${CD.nombre.split(' ')[0]}! Has completado tu entreno en ${dur} min. Tu disciplina te hace más fuerte cada día.`
+      ? `¡Felicidades, ${nombre}! Has completado tu entreno en ${dur} min. Tu disciplina te hace más fuerte cada día.`
       : `${pendientes} serie${pendientes>1?'s':''} sin completar. La constancia es lo que separa a los fuertes del resto.`;
     document.getElementById('doneMsg').textContent = msg;
     document.getElementById('doneOv').classList.add('show');
