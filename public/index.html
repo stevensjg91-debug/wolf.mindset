@@ -600,7 +600,18 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
 const API='';
 // Register service worker for background notifications
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  navigator.serviceWorker.register('/sw.js').then(reg => {
+    // Forzar activación inmediata si hay nueva versión
+    if(reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing;
+      if(nw) nw.addEventListener('statechange', () => {
+        if(nw.state === 'installed' && navigator.serviceWorker.controller) {
+          nw.postMessage({ type: 'SKIP_WAITING' });
+        }
+      });
+    });
+  }).catch(()=>{});
 }
 let TOKEN=localStorage.getItem('wm_token');
 let USER=JSON.parse(localStorage.getItem('wm_user')||'null');
@@ -3100,6 +3111,34 @@ function hMensajeCoach(){
   </div>`;
 }
 
+function hNotifBanner(){
+  if(!('Notification' in window)) return '';
+  if(Notification.permission === 'granted') return '';
+  if(Notification.permission === 'denied') return ''; // ya rechazó, no molestar
+  return`<div style="background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.3);border-radius:14px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+    <span style="font-size:22px;flex-shrink:0">🔔</span>
+    <div style="flex:1">
+      <div style="font-size:12px;font-weight:700;color:var(--amb);margin-bottom:2px">Activa las notificaciones</div>
+      <div style="font-size:11px;color:var(--tx3)">Para que suene el timer aunque la pantalla esté bloqueada</div>
+    </div>
+    <button onclick="activarNotificaciones(this)" style="padding:6px 12px;background:var(--amb);border:none;border-radius:8px;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Activar</button>
+  </div>`;
+}
+
+async function activarNotificaciones(btn){
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  const ok = await pedirPermisosNotificacion();
+  // Recargar pantalla para que desaparezca el banner
+  document.getElementById('klContent').innerHTML = hSeleccionDia();
+  if(ok) {
+    // Confirmar que funcionó
+    setTimeout(()=>{
+      try { new Notification('🐺 WolfMindset', { body: '¡Notificaciones activadas! Te avisaremos cuando termine el descanso.', icon:'/logo.png' }); } catch(e){}
+    }, 500);
+  }
+}
+
 function getISOWeek(){
   const d = new Date();
   const day = d.getDay() || 7;
@@ -3217,6 +3256,7 @@ function hSeleccionDia(){
     ${hStreakBanner()}
     ${hMensajeCoach()}
     ${hCheckinBanner()}
+    ${hNotifBanner()}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${cards}</div>
   </div>`;
 }
@@ -3669,7 +3709,8 @@ function startTimerInline(ei, si, total){
   Object.keys(runningTimers).forEach(k=>{
     if(k!==`${ei}_${si}` && runningTimers[k]){
       clearInterval(runningTimers[k].interval);
-      // Hide that timer bar visually
+      // Cancelar notificación programada del timer anterior
+      cancelarNotificacionDescanso(k);
       const [oei,osi] = k.split('_');
       const tb = document.getElementById('tb_'+oei+'_'+osi);
       if(tb) tb.style.display='none';
@@ -3679,16 +3720,16 @@ function startTimerInline(ei, si, total){
   const key=`${ei}_${si}`;
   if(runningTimers[key])clearInterval(runningTimers[key].interval);
   runningTimers[key]={secs:total, total, paused:false, interval:null};
+
+  // Programar notificación desde el SW (funciona con pantalla bloqueada)
+  const exNow = CD?.dias[activeDia]?.ejercicios[ei];
+  if(!doneShown) programarNotificacionDescanso(exNow?.nombre||'', total, key);
+
   runningTimers[key].interval=setInterval(()=>{
     const rt=runningTimers[key];
     if(rt.paused)return;
     rt.secs--;
     updateTimerBar(ei,si,rt);
-    // Update kb display if this is active
-    if(activeInput&&activeInput.ei===ei&&activeInput.si===si){
-      const disp=document.getElementById('kb_display');
-      // don't override kb display — it shows the value being edited
-    }
     if(rt.secs<=0){
       clearInterval(rt.interval);
       delete runningTimers[key];
@@ -3697,8 +3738,8 @@ function startTimerInline(ei, si, total){
       if(!doneShown) {
         soundBell();
         vibrate([150,80,150]);
-        const exNow = CD?.dias[activeDia]?.ejercicios[ei];
-        notificarDescansoTerminado(exNow?.nombre||'');
+        const exNow2 = CD?.dias[activeDia]?.ejercicios[ei];
+        notificarDescansoTerminado(exNow2?.nombre||'');
       }
     }
   },1000);
@@ -5769,29 +5810,50 @@ async function pedirPermisoNotificaciones(){
   return perm === 'granted';
 }
 
+// ── NOTIFICACIONES ────────────────────────────────────────────────
+async function pedirPermisosNotificacion(){
+  if(!('Notification' in window)) return false;
+  if(Notification.permission === 'granted') return true;
+  if(Notification.permission === 'denied') return false;
+  const perm = await Notification.requestPermission();
+  return perm === 'granted';
+}
+
+function swMsg(data){
+  if(navigator.serviceWorker?.controller){
+    navigator.serviceWorker.controller.postMessage(data);
+    return true;
+  }
+  return false;
+}
+
 function notificarDescansoTerminado(nombreEjercicio){
   if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  const title = '💪 ¡A por ello!';
   const opts = {
     body: nombreEjercicio ? `Siguiente serie de ${nombreEjercicio}` : 'Descanso terminado — siguiente serie',
-    icon: '/logo.png',
-    badge: '/logo.png',
-    silent: false,
-    tag: 'descanso',
-    requireInteraction: false,
-    vibrate: [150,80,150]
+    icon: '/logo.png', badge: '/logo.png', silent: false,
+    tag: 'descanso', requireInteraction: false, vibrate: [150,80,150]
   };
-  try{
-    // Use service worker for background notifications (works when phone is locked)
-    if(navigator.serviceWorker?.controller){
-      navigator.serviceWorker.controller.postMessage({
-        type: 'SHOW_NOTIFICATION',
-        title: '¡A por ello! 💪',
-        options: opts
-      });
-    } else {
-      new Notification('¡A por ello! 💪', opts);
-    }
-  }catch(e){ try{ new Notification('¡A por ello! 💪', opts); }catch(e2){} }
+  if(!swMsg({ type: 'SHOW_NOTIFICATION', title, options: opts })){
+    try { new Notification(title, opts); } catch(e){}
+  }
+}
+
+function programarNotificacionDescanso(nombreEjercicio, segundos, timerId){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  swMsg({ type: 'SCHEDULE_NOTIFICATION',
+    title: '💪 ¡A por ello!',
+    options: { body: nombreEjercicio ? `Siguiente serie de ${nombreEjercicio}` : 'Descanso terminado' },
+    delay: segundos*1000, timerId });
+}
+
+function cancelarNotificacionDescanso(timerId){
+  swMsg({ type: 'CANCEL_NOTIFICATION', timerId });
+}
+
+function cancelarTodasNotificaciones(){
+  swMsg({ type: 'CANCEL_ALL' });
 }
 
 function valorarEntreno(emoji, btn){
@@ -6128,8 +6190,10 @@ function mostrarDoneOverlay(estado, pendientes){
   // 1. Timers de descanso entre series
   Object.keys(runningTimers).forEach(k => {
     if(runningTimers[k]?.interval) clearInterval(runningTimers[k].interval);
+    cancelarNotificacionDescanso(k); // cancelar notificación programada en SW
   });
   runningTimers = {};
+  cancelarTodasNotificaciones(); // asegurar limpieza total en SW
 
   // 2. Timer del workout (cronómetro global)
   if(workoutTimerInt){ clearInterval(workoutTimerInt); workoutTimerInt = null; }
