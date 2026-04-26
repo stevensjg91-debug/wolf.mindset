@@ -223,6 +223,7 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
 
 /* DONE OVERLAY */
 .done-ov{display:none;position:fixed;inset:0;background:rgba(9,9,11,.97);z-index:300;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center}
+@keyframes badgePop{0%{transform:scale(0) rotate(-15deg);opacity:0}70%{transform:scale(1.15) rotate(5deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
 .done-ov.show{display:flex}
 
 /* DIETA CLIENTE */
@@ -472,6 +473,7 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
         <button class="bni" id="bni1" onclick="klNav('dieta',this)"><svg viewBox="0 0 20 20" fill="none"><path d="M10 3v4M7 5c0 3 1 5 3 5s3-2 3-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5 10h10l-1.5 7h-7L5 10z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span class="bni-lbl">Dieta</span></button>
         <button class="bni" id="bni2" onclick="klNav('asistente',this)"><svg viewBox="0 0 20 20" fill="none"><path d="M3 4h14a1 1 0 011 1v8a1 1 0 01-1 1H6l-3 2V5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/></svg><span class="bni-lbl">Asistente</span></button>
         <button class="bni" id="bni3" onclick="klNav('progreso',this)"><svg viewBox="0 0 20 20" fill="none"><path d="M3 15l4-5 3 3 4-6 3 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="bni-lbl">Progreso</span></button>
+        <button class="bni" id="bni_logros" onclick="klNav('logros',this)" style="position:relative"><svg viewBox="0 0 20 20" fill="none"><path d="M10 2l2.4 4.8 5.3.8-3.85 3.75.91 5.3L10 14.1l-4.76 2.55.91-5.3L2.3 7.6l5.3-.8L10 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span class="bni-lbl">Logros</span></button>
         <button class="bni" id="bni4" onclick="klNav('perfil',this)"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M3 18c0-3.87 3.13-7 7-7s7 3.13 7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="bni-lbl">Perfil</span></button>
         <button class="bni" onclick="doLogout()"><svg viewBox="0 0 20 20" fill="none"><path d="M8 3H5a1 1 0 00-1 1v12a1 1 0 001 1h3M13 14l3-4-3-4M16 10H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="bni-lbl">Salir</span></button>
       </div>
@@ -534,8 +536,26 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
   </div>
   <!-- Text section -->
   <div style="padding:0 24px 36px;text-align:center;flex-shrink:0;position:relative;z-index:2">
-    <div style="font-size:14px;color:var(--sv3);line-height:1.7;margin-bottom:20px;max-width:300px;margin-left:auto;margin-right:auto" id="doneMsg"></div>
+    <div style="font-size:14px;color:var(--sv3);line-height:1.7;margin-bottom:16px;max-width:300px;margin-left:auto;margin-right:auto" id="doneMsg"></div>
+    <!-- Valoración del entreno -->
+    <div id="valoracion_wrap" style="margin-bottom:18px">
+      <div style="font-size:11px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">¿Cómo fue el entreno?</div>
+      <div style="display:flex;justify-content:center;gap:12px">
+        ${['😴','😐','💪','🔥','🤕'].map((e,i)=>`<button onclick="valorarEntreno('${e}',this)" style="font-size:28px;background:none;border:0.5px solid var(--br);border-radius:12px;padding:8px 10px;cursor:pointer;transition:.15s" title="${['Cansado','Normal','Bien','En llamas','Lesión/dolor'][i]}">${e}</button>`).join('')}
+      </div>
+    </div>
     <button class="btn" style="padding:14px 40px;font-size:16px;background:var(--bl2);border-radius:14px" onclick="cerrarDoneOverlay()">Cerrar</button>
+  </div>
+</div>
+
+<!-- BADGE DE LOGRO -->
+<div id="badgeOv" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(9,9,11,.92);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px">
+  <div style="font-size:80px;line-height:1;margin-bottom:16px;animation:badgePop .5s cubic-bezier(.34,1.56,.64,1)" id="badgeEmoji">🏆</div>
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:.15em;color:var(--amb);margin-bottom:8px;text-transform:uppercase">¡Logro desbloqueado!</div>
+  <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:8px" id="badgeTitulo">Primer Entreno</div>
+  <div style="font-size:14px;color:var(--sv3);margin-bottom:28px;max-width:280px;line-height:1.5" id="badgeDesc">Has completado tu primera sesión. ¡El viaje ha comenzado!</div>
+  <div style="display:flex;gap:10px">
+    <button onclick="cerrarBadge()" style="padding:12px 28px;background:var(--bl2);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">¡A por más!</button>
   </div>
 </div>
 
@@ -1064,6 +1084,7 @@ async function verCliente(id){
       const byEx={};
       s.series.forEach(sr=>{if(!byEx[sr.ejercicio_nombre])byEx[sr.ejercicio_nombre]=[];byEx[sr.ejercicio_nombre].push(sr);});
       const incompleto = s.estado === 'incompleto';
+      const valoracion = s.valoracion || '';
       // Recoger notas del cliente (una por ejercicio, la de la primera serie con nota)
       const notasCliente = {};
       s.series.forEach(sr=>{ if(sr.nota_cliente && !notasCliente[sr.ejercicio_nombre]) notasCliente[sr.ejercicio_nombre]=sr.nota_cliente; });
@@ -1075,6 +1096,7 @@ async function verCliente(id){
           (incompleto
             ? '<span class="badge" style="background:rgba(245,158,11,.15);color:var(--amb);border:0.5px solid rgba(245,158,11,.3)">⚠ Incompleto</span>'
             : '<span class="badge b-gn">✓</span>')+
+          (valoracion ? '<span style="font-size:18px;margin-left:8px" title="'+valoracion+'">'+valoracion.split(' ')[0]+'</span>' : '')+
         '</div>'+
         Object.entries(byEx).map(([nom,srs])=>
           '<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:700;color:var(--sv2);margin-bottom:3px">'+nom+'</div>'+
@@ -2698,6 +2720,73 @@ async function cargarMetricasAvanzadas(clienteId) {
       </div>`;
     }
 
+    // ── COMPARATIVA SEMANA vs SEMANA ANTERIOR ─────────────────────
+    const ahora = Date.now();
+    const semActual = sesiones.filter(s => ahora - new Date(s.fecha).getTime() < 7*86400000 && s.estado==='completado');
+    const semAnterior = sesiones.filter(s => {
+      const ms = ahora - new Date(s.fecha).getTime();
+      return ms >= 7*86400000 && ms < 14*86400000 && s.estado==='completado';
+    });
+
+    const calcStats = sems => {
+      let ton=0, series=0, sesCount=sems.length;
+      sems.forEach(s=>{ s.series.forEach(sr=>{ ton += (sr.peso_real||0)*(sr.reps_real||0); series++; }); });
+      return { ton: Math.round(ton), series, sesCount };
+    };
+    const stA = calcStats(semActual);
+    const stB = calcStats(semAnterior);
+
+    const diff = (a, b) => {
+      if(!b) return { txt:'—', col:'var(--tx3)', icon:'' };
+      const pct = Math.round((a-b)/b*100);
+      if(pct > 0) return { txt:'+'+pct+'%', col:'var(--gnb)', icon:'↑' };
+      if(pct < 0) return { txt:pct+'%', col:'#fca5a5', icon:'↓' };
+      return { txt:'=', col:'var(--tx3)', icon:'' };
+    };
+
+    html += `<div class="sec" style="margin-bottom:12px">
+      <div class="sec-hdr">📊 Esta semana vs anterior</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        ${[
+          ['Sesiones', stA.sesCount, stB.sesCount],
+          ['Series', stA.series, stB.series],
+          ['Tonelaje', stA.ton+'kg', stB.ton ? stB.ton+'kg' : null],
+        ].map(([lbl, actual, anterior]) => {
+          const d = diff(typeof actual==='number'?actual:parseInt(actual), typeof anterior==='number'?anterior:(anterior?parseInt(anterior):0));
+          return `<div style="background:var(--s3);border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:16px;font-weight:800;color:var(--sv)">${actual}</div>
+            <div style="font-size:9px;color:var(--tx3);text-transform:uppercase;margin:2px 0">${lbl}</div>
+            <div style="font-size:11px;font-weight:700;color:${d.col}">${d.icon} ${d.txt}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+    // ── CHECK-INS DEL CLIENTE ─────────────────────────────────────
+    try {
+      const checkins = await api('/clientes/'+clienteId+'/checkins');
+      if(checkins && checkins.length) {
+        const ultimo = checkins[0];
+        const suenoBar = v => '█'.repeat(v) + '░'.repeat(5-v);
+        html += `<div class="sec" style="margin-bottom:12px">
+          <div class="sec-hdr">📋 Último check-in del cliente</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+            <div style="background:var(--s3);border-radius:10px;padding:10px">
+              <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">😴 Sueño</div>
+              <div style="font-size:13px;font-weight:700;color:var(--sv)">${último ? suenoBar(ultimo.sueno||0) : '—'}</div>
+              <div style="font-size:18px;font-weight:800;color:var(--sv)">${ultimo.sueno||'—'}/5</div>
+            </div>
+            <div style="background:var(--s3);border-radius:10px;padding:10px">
+              <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">⚡ Energía</div>
+              <div style="font-size:13px;font-weight:700;color:var(--sv)">${ultimo ? suenoBar(ultimo.energia||0) : '—'}</div>
+              <div style="font-size:18px;font-weight:800;color:var(--sv)">${ultimo.energia||'—'}/5</div>
+            </div>
+          </div>
+          ${checkins.length > 1 ? `<div style="font-size:10px;color:var(--tx3)">Últimas ${checkins.length} semanas · Sueño medio: ${(checkins.reduce((a,c)=>a+(c.sueno||0),0)/checkins.length).toFixed(1)} · Energía media: ${(checkins.reduce((a,c)=>a+(c.energia||0),0)/checkins.length).toFixed(1)}</div>` : ''}
+        </div>`;
+      }
+    } catch(e){}
+
     wrap.innerHTML = html || '<div style="font-size:13px;color:var(--tx3)">Sin datos suficientes.</div>';
 
   } catch(e) { wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3)">Error cargando métricas.</div>'; }
@@ -2956,6 +3045,7 @@ function renderKL(){
   else if(klTab==='dieta')el.innerHTML=hDieta();
   else if(klTab==='asistente'){el.innerHTML=hAsistente();chatH=[{role:'assistant',content:`Hola ${CD.nombre.split(' ')[0]}, aquí para ayudarte. ¿Qué necesitas?`}];}
   else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100);}
+  else if(klTab==='logros')el.innerHTML=hBadgesCliente();
   else if(klTab==='perfil')el.innerHTML=hPerfil();
 }
 
@@ -2969,6 +3059,122 @@ let doneShown = false;
 
 // ═══ PANTALLA SELECCIÓN DE DÍA (estilo Hevy) ═══════════
 let vistaActual = 'seleccion'; // 'seleccion' | 'preview' | 'entreno'
+
+function calcularStreak(){
+  let streak = 0;
+  const hoy = new Date();
+  for(let i=0; i<365; i++){
+    const d = new Date(hoy);
+    d.setDate(hoy.getDate() - i);
+    const dateStr = d.toISOString().slice(0,10);
+    const found = Object.keys(localStorage).some(k => k.includes(dateStr) && k.startsWith('sesion_') && localStorage.getItem(k) === 'completado');
+    if(found) streak++;
+    else if(i > 0) break;
+  }
+  return streak;
+}
+
+function hStreakBanner(){
+  const streak = calcularStreak();
+  if(streak === 0) return '';
+  const emoji = streak >= 30 ? '🐺' : streak >= 14 ? '🔥' : streak >= 7 ? '⚡' : '💪';
+  const msg = streak >= 30 ? '¡Bestia imparable!' : streak >= 14 ? '¡Dos semanas seguidas!' : streak >= 7 ? '¡Una semana de fuego!' : streak === 1 ? '¡Primer día!' : '¡Sigue así!';
+  return`<div style="background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(239,68,68,.1));border:0.5px solid rgba(245,158,11,.3);border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+    <div style="font-size:32px;line-height:1">${emoji}</div>
+    <div style="flex:1">
+      <div style="font-size:20px;font-weight:800;color:var(--amb);font-family:'Bebas Neue',sans-serif;letter-spacing:.05em">${streak} día${streak>1?'s':''} seguido${streak>1?'s':''}</div>
+      <div style="font-size:12px;color:var(--sv3);font-weight:600">${msg}</div>
+    </div>
+  </div>`;
+}
+
+function hMensajeCoach(){
+  const msg = CD.mensaje_semana;
+  if(!msg) return '';
+  return`<div style="background:linear-gradient(135deg,rgba(37,99,235,.1),rgba(17,17,19,.9));border:0.5px solid rgba(59,130,246,.25);border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start">
+    <span style="font-size:22px;flex-shrink:0">🐺</span>
+    <div>
+      <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Mensaje de tu coach</div>
+      <div style="font-size:13px;color:var(--sv2);line-height:1.5">${msg}</div>
+    </div>
+  </div>`;
+}
+
+function getISOWeek(){
+  const d = new Date();
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() + 4 - day);
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  return d.getFullYear() + '_' + Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function necesitaCheckin(){
+  return !localStorage.getItem('checkin_semana_' + getISOWeek());
+}
+
+function hCheckinBanner(){
+  if(!necesitaCheckin()) return '';
+  return`<div style="background:rgba(34,197,94,.06);border:0.5px solid rgba(34,197,94,.25);border-radius:14px;padding:12px 16px;margin-bottom:14px">
+    <div style="font-size:12px;font-weight:700;color:var(--gnb);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">📋 Check-in semanal</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">😴 ¿Cómo dormiste?</div>
+        <div style="display:flex;gap:4px">
+          ${[1,2,3,4,5].map(n=>`<button onclick="setCheckin('sueno',${n})" id="ci_s${n}" style="flex:1;padding:5px 0;border:0.5px solid var(--br);border-radius:6px;background:var(--s3);color:var(--tx3);font-size:12px;cursor:pointer;font-family:inherit">${n}</button>`).join('')}
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">⚡ Energía hoy</div>
+        <div style="display:flex;gap:4px">
+          ${[1,2,3,4,5].map(n=>`<button onclick="setCheckin('energia',${n})" id="ci_e${n}" style="flex:1;padding:5px 0;border:0.5px solid var(--br);border-radius:6px;background:var(--s3);color:var(--tx3);font-size:12px;cursor:pointer;font-family:inherit">${n}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div style="flex:1">
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">⚖️ Peso hoy (kg)</div>
+        <input id="ci_peso" type="number" step="0.1" placeholder="Ej: 78.5" style="width:100%;padding:7px 10px;border:0.5px solid var(--br);border-radius:8px;background:var(--b);color:var(--sv);font-size:14px;font-weight:700;box-sizing:border-box;font-family:inherit"/>
+      </div>
+      <button onclick="guardarCheckin()" style="margin-top:18px;padding:8px 16px;background:var(--gn);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Guardar</button>
+    </div>
+  </div>`;
+}
+
+const _checkinData = {};
+function setCheckin(campo, val){
+  _checkinData[campo] = val;
+  const prefix = campo === 'sueno' ? 'ci_s' : 'ci_e';
+  for(let i=1;i<=5;i++){
+    const btn = document.getElementById(prefix+i);
+    if(btn){ btn.style.background = i===val ? 'var(--bl2)' : 'var(--s3)'; btn.style.color = i===val ? '#fff' : 'var(--tx3)'; btn.style.fontWeight = i===val ? '700' : '400'; }
+  }
+}
+
+async function guardarCheckin(){
+  const sueno = _checkinData.sueno || 3;
+  const energia = _checkinData.energia || 3;
+  const peso = parseFloat(document.getElementById('ci_peso')?.value) || 0;
+  const semana = getISOWeek();
+
+  // Guardar semana local
+  localStorage.setItem('checkin_semana_' + semana, JSON.stringify({sueno, energia, peso, fecha: new Date().toISOString()}));
+
+  // Guardar en BD para que el coach lo vea
+  try {
+    await api('/clientes/'+CD.id+'/checkin', {
+      method: 'POST',
+      body: JSON.stringify({ sueno, energia, peso, semana })
+    });
+  } catch(e){}
+
+  // Guardar peso en BD si se indicó
+  if(peso > 0){
+    try { await api('/clientes/'+CD.id+'/pesos', {method:'POST', body:JSON.stringify({peso, grasa:null, cintura:null})}); } catch(e){}
+  }
+
+  // Recargar pantalla sin el banner
+  document.getElementById('klContent').innerHTML = hSeleccionDia();
+}
 
 function hSeleccionDia(){
   if(!CD.dias.length) return`<div style="padding:60px 20px;text-align:center;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">🏋️</div><div style="font-size:16px;font-weight:600;color:var(--sv2)">Tu coach está preparando tu plan</div></div>`;
@@ -3007,11 +3213,13 @@ function hSeleccionDia(){
 
   return`<div style="padding:16px 14px 8px">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.08em;color:var(--sv);margin-bottom:2px">Entrenar</div>
-    <div style="font-size:13px;color:var(--tx3);margin-bottom:16px">Semana ${CD.semanas} · ${CD.objetivo}</div>
+    <div style="font-size:13px;color:var(--tx3);margin-bottom:14px">Semana ${CD.semanas} · ${CD.objetivo}</div>
+    ${hStreakBanner()}
+    ${hMensajeCoach()}
+    ${hCheckinBanner()}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${cards}</div>
   </div>`;
 }
-
 function diasDesde(fecha){
   const d = Math.floor((Date.now()-new Date(fecha).getTime())/86400000);
   if(d===0) return 'Hoy';
@@ -3888,6 +4096,8 @@ function hProgreso2(){return`<div style="padding-top:8px">
     </div>
     <!-- Analizar fotos solo disponible para coach desde su panel -->
   </div>
+  <!-- Gráfica tendencia peso -->
+  <div id="peso_tendencia_wrap" style="padding:0 14px 12px"></div>
   <input type="file" id="fUp" accept="image/*" style="display:none" onchange="uploadFoto(event)"/>
   <div id="fLoad" style="display:none;padding:0 14px 10px"><div class="ia-chip"><div class="ia-chip-title">Analizando tu progreso...</div></div></div>
   <!-- Fotos timeline -->
@@ -3929,7 +4139,6 @@ function pesoModoEditar(){
 }
 
 function initPesoSection(){
-  // Check if already weighed this week
   const ultima=parseInt(localStorage.getItem('wm_ultimo_peso_'+CD.id)||'0');
   const SEMANA=7*24*60*60*1000;
   const yaEsta = ultima && (Date.now()-ultima) < SEMANA;
@@ -3937,6 +4146,87 @@ function initPesoSection(){
     const ultimoPeso=CD.pesos?.length?CD.pesos[CD.pesos.length-1].peso:null;
     if(ultimoPeso) pesoModoVer(ultimoPeso);
   }
+  // Renderizar gráfica de tendencia si hay suficientes datos
+  renderPesoTendencia();
+}
+
+function renderPesoTendencia(){
+  const wrap = document.getElementById('peso_tendencia_wrap');
+  if(!wrap) return;
+  const pesos = (CD.pesos||[]).filter(p=>p.peso>0).slice(-20); // últimos 20 registros
+  if(pesos.length < 3){ wrap.innerHTML=''; return; }
+
+  // Media móvil de 3 puntos (tendencia suavizada)
+  const tendencia = pesos.map((p,i,arr) => {
+    if(i===0) return p.peso;
+    if(i===arr.length-1) return p.peso;
+    return (arr[i-1].peso + p.peso + arr[i+1].peso) / 3;
+  });
+
+  const W=320, H=110, PAD={t:12,r:10,b:28,l:38};
+  const iW=W-PAD.l-PAD.r, iH=H-PAD.t-PAD.b;
+  const pesoVals = pesos.map(p=>p.peso);
+  const minP = Math.min(...pesoVals)*0.995;
+  const maxP = Math.max(...pesoVals)*1.005;
+  const scX = i => PAD.l + (pesos.length<2 ? iW/2 : i/(pesos.length-1)*iW);
+  const scY = v => PAD.t + iH - ((v-minP)/(maxP-minP||1))*iH;
+
+  // Línea real (puntos)
+  const linePath = pesos.map((p,i)=>`${i===0?'M':'L'}${scX(i).toFixed(1)},${scY(p.peso).toFixed(1)}`).join(' ');
+  // Línea tendencia suavizada
+  const tendPath = tendencia.map((v,i)=>`${i===0?'M':'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
+
+  // Área bajo tendencia
+  const areaPath = tendPath + ` L${scX(pesos.length-1).toFixed(1)},${(PAD.t+iH).toFixed(1)} L${scX(0).toFixed(1)},${(PAD.t+iH).toFixed(1)} Z`;
+
+  // Dirección de la tendencia
+  const diff = tendencia[tendencia.length-1] - tendencia[0];
+  const objetivo = CD.objetivo||'';
+  const esBajar = objetivo.toLowerCase().includes('def') || objetivo.toLowerCase().includes('perder');
+  const esBueno = (esBajar && diff < 0) || (!esBajar && diff > 0);
+  const trendColor = Math.abs(diff) < 0.3 ? '#a1a1aa' : esBueno ? '#22c55e' : '#f59e0b';
+  const trendIcon = diff < -0.3 ? '↘' : diff > 0.3 ? '↗' : '→';
+  const trendLabel = diff < -0.3 ? `${Math.abs(diff).toFixed(1)}kg menos` : diff > 0.3 ? `+${diff.toFixed(1)}kg` : 'Peso estable';
+
+  // Eje Y (3 labels)
+  const yLabels = [minP, (minP+maxP)/2, maxP].map(v=>`
+    <text x="${PAD.l-4}" y="${scY(v).toFixed(1)}" fill="#52525b" font-size="8.5" text-anchor="end" dominant-baseline="middle">${v.toFixed(1)}</text>
+    <line x1="${PAD.l}" y1="${scY(v).toFixed(1)}" x2="${W-PAD.r}" y2="${scY(v).toFixed(1)}" stroke="#27272a" stroke-width="0.5"/>`).join('');
+
+  // Eje X (fechas, máx 4)
+  const step = Math.max(1, Math.floor(pesos.length/4));
+  const xLabels = pesos.filter((_,i)=>i%step===0||i===pesos.length-1).map(p=>{
+    const idx = pesos.indexOf(p);
+    const d = new Date(p.fecha||'');
+    const lbl = isNaN(d)?'?':`${d.getDate()}/${d.getMonth()+1}`;
+    return `<text x="${scX(idx).toFixed(1)}" y="${H-5}" fill="#52525b" font-size="8.5" text-anchor="middle">${lbl}</text>`;
+  }).join('');
+
+  // Puntos
+  const dots = pesos.map((p,i)=>`<circle cx="${scX(i).toFixed(1)}" cy="${scY(p.peso).toFixed(1)}" r="2.5" fill="#3b82f6" opacity=".7"/>`).join('');
+
+  wrap.innerHTML = `
+    <div class="sec-lbl" style="margin-bottom:6px">📈 Tendencia de peso</div>
+    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:11px;color:var(--tx3)">${pesos.length} registros · ${pesos[0]?.peso||'?'}kg → ${pesos[pesos.length-1]?.peso||'?'}kg</div>
+        <div style="font-size:13px;font-weight:700;color:${trendColor}">${trendIcon} ${trendLabel}</div>
+      </div>
+      <svg width="100%" viewBox="0 0 ${W} ${H}" style="overflow:visible">
+        <defs>
+          <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${trendColor}" stop-opacity=".15"/>
+            <stop offset="100%" stop-color="${trendColor}" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        ${yLabels}${xLabels}
+        <path d="${areaPath}" fill="url(#tg)"/>
+        <path d="${linePath}" stroke="#3b82f6" stroke-width="1" fill="none" stroke-dasharray="3,3" opacity=".5"/>
+        <path d="${tendPath}" stroke="${trendColor}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        ${dots}
+      </svg>
+      <div style="font-size:9px;color:var(--tx3);margin-top:4px">Línea azul: registros reales · Línea ${trendColor==='#22c55e'?'verde':trendColor==='#f59e0b'?'ámbar':'gris'}: tendencia suavizada</div>
+    </div>`;
 }
 
 async function uploadFoto(event){
@@ -4658,16 +4948,60 @@ async function cargarGraficasCliente(){
   const wrap = document.getElementById('progreso_graficas_wrap');
   if(!wrap) return;
   try {
-    // Get ejercicios principales from client's days
     const principales = [];
     (CD.dias||[]).forEach(d=>{
       (d.ejercicios||[]).forEach(e=>{
         if(e.es_principal && !principales.find(p=>p===e.nombre)) principales.push(e.nombre);
       });
     });
-    if(!principales.length){ wrap.innerHTML=''; return; }
 
-    wrap.innerHTML = `<div class="sec-lbl">Progreso ejercicios principales</div>
+    // Cargar sesiones para PRs
+    let prsHtml = '';
+    try {
+      const sesiones = await api('/clientes/'+CD.id+'/sesiones');
+      if(sesiones.length) {
+        const prs = {};
+        sesiones.forEach(s=>{
+          s.series.forEach(sr=>{
+            const p = sr.peso_real||0, r = sr.reps_real||0;
+            if(!p) return;
+            const rm1 = calcular1RM(p, r);
+            if(!prs[sr.ejercicio_nombre] || rm1 > prs[sr.ejercicio_nombre].rm1) {
+              prs[sr.ejercicio_nombre] = { rm1, peso:p, reps:r, fecha:s.fecha };
+            }
+          });
+        });
+        const prsList = Object.entries(prs)
+          .sort((a,b)=>{ const pa=principales.includes(a[0])?1:0, pb=principales.includes(b[0])?1:0; return pb-pa; })
+          .slice(0,8);
+        if(prsList.length) {
+          prsHtml = `<div class="sec-lbl" style="margin-top:4px">🏆 Mis marcas personales</div>
+            <div style="padding:0 14px 8px">
+              ${prsList.map(([nom, d])=>{
+                const esPrincipal = principales.includes(nom);
+                const fechaStr = new Date(d.fecha).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'2-digit'});
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid var(--br)">
+                  <div>
+                    <div style="font-size:12px;font-weight:700;color:var(--sv)">${esPrincipal?'⭐ ':''}${nom}</div>
+                    <div style="font-size:10px;color:var(--tx3)">${d.peso}kg × ${d.reps} reps · ${fechaStr}</div>
+                  </div>
+                  <div style="text-align:right;flex-shrink:0;margin-left:10px">
+                    <div style="font-size:16px;font-weight:800;color:var(--gnb)">${d.rm1}kg</div>
+                    <div style="font-size:9px;color:var(--tx3)">1RM est.</div>
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>`;
+        }
+      }
+    } catch(e){}
+
+    if(!principales.length){
+      wrap.innerHTML = prsHtml;
+      return;
+    }
+
+    wrap.innerHTML = prsHtml + `<div class="sec-lbl">Progreso ejercicios principales</div>
       <div id="graficas_container" style="padding:0 14px 4px"></div>`;
 
     const container = document.getElementById('graficas_container');
@@ -5460,6 +5794,23 @@ function notificarDescansoTerminado(nombreEjercicio){
   }catch(e){ try{ new Notification('¡A por ello! 💪', opts); }catch(e2){} }
 }
 
+function valorarEntreno(emoji, btn){
+  document.querySelectorAll('#valoracion_wrap button').forEach(b => {
+    b.style.background = 'none';
+    b.style.borderColor = 'var(--br)';
+  });
+  btn.style.background = 'rgba(59,130,246,.2)';
+  btn.style.borderColor = 'var(--bl2)';
+  const etiquetas = {'😴':'Cansado','😐':'Normal','💪':'Bien','🔥':'En llamas','🤕':'Lesión/dolor'};
+  const label = etiquetas[emoji] || emoji;
+  try {
+    api('/clientes/'+CD.id+'/valoracion-sesion', {
+      method: 'POST',
+      body: JSON.stringify({ valoracion: emoji + ' ' + label })
+    }).catch(()=>{});
+  } catch(e) {}
+}
+
 function notificarEntrenoCompletado(nombre, minutos){
   if(!('Notification' in window) || Notification.permission !== 'granted') return;
   try{
@@ -5626,6 +5977,140 @@ function getSesionEstado(diaNombre){
   return localStorage.getItem(getSesionKey(diaNombre)); // null | 'completado' | 'incompleto'
 }
 
+// ── SISTEMA DE BADGES ─────────────────────────────────────────────
+const BADGES = [
+  // Sesiones completadas
+  { id:'first_session',  emoji:'🐣', titulo:'¡Primera vez!',        desc:'Completaste tu primera sesión. El viaje ha comenzado.',     check: s => s.total >= 1 },
+  { id:'sessions_5',     emoji:'💪', titulo:'5 Sesiones',           desc:'5 entrenos completados. Ya estás cogiendo el hábito.',      check: s => s.total >= 5 },
+  { id:'sessions_10',    emoji:'🔟', titulo:'10 Sesiones',          desc:'10 entrenos completados. Eres constante.',                  check: s => s.total >= 10 },
+  { id:'sessions_25',    emoji:'🏅', titulo:'25 Sesiones',          desc:'25 entrenos. Estás construyendo algo serio.',               check: s => s.total >= 25 },
+  { id:'sessions_50',    emoji:'🥈', titulo:'50 Sesiones',          desc:'50 sesiones completadas. Eres de los que no paran.',        check: s => s.total >= 50 },
+  { id:'sessions_100',   emoji:'🥇', titulo:'100 Sesiones',         desc:'100 entrenos. Eres una máquina.',                           check: s => s.total >= 100 },
+
+  // Racha
+  { id:'streak_7',       emoji:'🔥', titulo:'7 días en racha',      desc:'Una semana seguida entrenando. ¡Fuego!',                    check: s => s.streak >= 7 },
+  { id:'streak_14',      emoji:'⚡', titulo:'14 días en racha',     desc:'Dos semanas sin parar. Nada te detiene.',                   check: s => s.streak >= 14 },
+  { id:'streak_30',      emoji:'🐺', titulo:'30 días en racha',     desc:'Un mes entero. Eres un auténtico Wolf.',                    check: s => s.streak >= 30 },
+
+  // Peso levantado (PRs)
+  { id:'pr_100kg',       emoji:'💯', titulo:'¡100 kg!',             desc:'Has levantado 100 kg en un ejercicio. Brutal.',             check: s => s.maxPeso >= 100 },
+  { id:'pr_150kg',       emoji:'🦁', titulo:'¡150 kg!',             desc:'150 kg. Estás en otra liga.',                               check: s => s.maxPeso >= 150 },
+  { id:'pr_200kg',       emoji:'👑', titulo:'¡200 kg!',             desc:'200 kg. Eres una leyenda.',                                 check: s => s.maxPeso >= 200 },
+
+  // Tonelaje total
+  { id:'ton_1000',       emoji:'🏋️', titulo:'1.000 kg movidos',    desc:'Has movido una tonelada en total. Literal.',                check: s => s.tonelaje >= 1000 },
+  { id:'ton_10000',      emoji:'🚛', titulo:'10.000 kg movidos',    desc:'10 toneladas. Un camión entero. Increíble.',                check: s => s.tonelaje >= 10000 },
+  { id:'ton_50000',      emoji:'🌋', titulo:'50.000 kg movidos',    desc:'50 toneladas acumuladas. Eres pura fuerza.',                check: s => s.tonelaje >= 50000 },
+
+  // Mes perfecto
+  { id:'perfect_month',  emoji:'📅', titulo:'Mes perfecto',         desc:'Todos los días del mes con al menos un entreno. Épico.',    check: s => s.mesPerfecto },
+];
+
+function getBadgesDesbloqueados(){
+  return JSON.parse(localStorage.getItem('wolfBadges_'+CD.id) || '[]');
+}
+function setBadgesDesbloqueados(lista){
+  localStorage.setItem('wolfBadges_'+CD.id, JSON.stringify(lista));
+}
+
+async function comprobarBadges(){
+  try {
+    // Recoger datos necesarios
+    const sesiones = await api('/clientes/'+CD.id+'/sesiones').catch(()=>[]);
+    const total = sesiones.filter(s=>s.estado==='completado').length;
+    const streak = calcularStreak();
+
+    // Máximo peso en cualquier serie
+    let maxPeso = 0;
+    let tonelaje = 0;
+    sesiones.forEach(s=>{
+      (s.series||[]).forEach(sr=>{
+        const p = sr.peso_real||0, r = sr.reps_real||0;
+        if(p > maxPeso) maxPeso = p;
+        tonelaje += p * r;
+      });
+    });
+
+    // Mes perfecto: todos los días del mes actual con sesión
+    const hoy = new Date();
+    const diasEnMes = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0).getDate();
+    const diasConSesion = new Set(
+      sesiones
+        .filter(s=>s.estado==='completado')
+        .map(s=>new Date(s.fecha))
+        .filter(d=>d.getMonth()===hoy.getMonth() && d.getFullYear()===hoy.getFullYear())
+        .map(d=>d.getDate())
+    ).size;
+    const mesPerfecto = diasConSesion >= diasEnMes;
+
+    const stats = { total, streak, maxPeso, tonelaje, mesPerfecto };
+    const yaDesbloqueados = getBadgesDesbloqueados();
+    const nuevos = BADGES.filter(b => !yaDesbloqueados.includes(b.id) && b.check(stats));
+
+    if(nuevos.length > 0){
+      // Guardar todos como desbloqueados
+      setBadgesDesbloqueados([...yaDesbloqueados, ...nuevos.map(b=>b.id)]);
+      // Mostrar en cadena (uno a uno con delay)
+      mostrarBadgesEnCadena(nuevos, 0);
+    }
+  } catch(e) { console.log('Badge check error:', e); }
+}
+
+const _badgeQueue = [];
+function mostrarBadgesEnCadena(lista, i){
+  if(i >= lista.length) return;
+  const badge = lista[i];
+  document.getElementById('badgeEmoji').textContent = badge.emoji;
+  document.getElementById('badgeTitulo').textContent = badge.titulo;
+  document.getElementById('badgeDesc').textContent = badge.desc;
+
+  // Reiniciar animación
+  const emoji = document.getElementById('badgeEmoji');
+  emoji.style.animation = 'none';
+  setTimeout(()=>{ emoji.style.animation = 'badgePop .5s cubic-bezier(.34,1.56,.64,1)'; }, 10);
+
+  const ov = document.getElementById('badgeOv');
+  ov.style.display = 'flex';
+  _badgeQueue.length = 0;
+  _badgeQueue.push({ lista, next: i+1 });
+
+  // Vibrar
+  vibrate([50,30,50,30,100]);
+}
+
+function cerrarBadge(){
+  document.getElementById('badgeOv').style.display = 'none';
+  if(_badgeQueue.length > 0){
+    const { lista, next } = _badgeQueue.pop();
+    if(next < lista.length){
+      setTimeout(()=>mostrarBadgesEnCadena(lista, next), 300);
+    }
+  }
+}
+
+// Ver todos los badges del cliente
+function hBadgesCliente(){
+  const desbloqueados = getBadgesDesbloqueados();
+  const total = BADGES.length;
+  const ok = desbloqueados.length;
+
+  return`<div style="padding:16px 14px">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;color:var(--sv);margin-bottom:4px">Mis Logros</div>
+    <div style="font-size:12px;color:var(--tx3);margin-bottom:16px">${ok} de ${total} desbloqueados</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      ${BADGES.map(b=>{
+        const ok = desbloqueados.includes(b.id);
+        return`<div style="background:${ok?'rgba(59,130,246,.08)':'var(--s2)'};border:0.5px solid ${ok?'rgba(59,130,246,.3)':'var(--br)'};border-radius:12px;padding:12px;opacity:${ok?1:.45}">
+          <div style="font-size:28px;margin-bottom:6px">${b.emoji}</div>
+          <div style="font-size:12px;font-weight:700;color:${ok?'var(--sv)':'var(--tx3)'};margin-bottom:2px">${b.titulo}</div>
+          <div style="font-size:10px;color:var(--tx3);line-height:1.4">${b.desc}</div>
+          ${ok?'<div style="font-size:9px;color:var(--blg);font-weight:700;margin-top:4px;text-transform:uppercase">✓ Desbloqueado</div>':''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
 function cerrarDoneOverlay(){
   document.getElementById('doneOv').classList.remove('show');
   // Go back to day selection showing completed status
@@ -5664,6 +6149,8 @@ function mostrarDoneOverlay(estado, pendientes){
   // Notificación coherente con el estado real
   if(estado === 'completado') {
     notificarEntrenoCompletado(nombre, dur);
+    // Comprobar badges con pequeño delay para que la sesión ya esté guardada en BD
+    setTimeout(comprobarBadges, 2000);
   } else {
     notificarEntrenoIncompleto(nombre, pendientes);
     avisarCoachEntrenoIncompleto(pendientes);
@@ -6327,7 +6814,6 @@ function renderFotosProgreso(){
   const fotos = CD.fotos || [];
   if(!fotos.length) return;
 
-  // Group by fecha (date only)
   const grupos = {};
   fotos.forEach(f => {
     const fecha = f.fecha ? f.fecha.split('T')[0].split(' ')[0] : 'Sin fecha';
@@ -6337,46 +6823,100 @@ function renderFotosProgreso(){
 
   const timelineEl = document.getElementById('fotos_timeline');
   if(!timelineEl) return;
-
   const fechas = Object.keys(grupos).sort();
 
-  timelineEl.innerHTML = fechas.map((fecha, fi) => {
+  // ── SIDE-BY-SIDE ──────────────────────────────────────────────
+  let sideBySideHtml = '';
+  if(fechas.length >= 2) {
+    const primera = grupos[fechas[0]];
+    const ultima  = grupos[fechas[fechas.length-1]];
+    const tipoInit = ['frente','posterior','costado'].find(t => primera[t] && ultima[t]) || 'frente';
+    const fotoA = primera[tipoInit];
+    const fotoB = ultima[tipoInit];
+    const diasDiff = Math.round((new Date(fechas[fechas.length-1]) - new Date(fechas[0])) / 86400000);
+    const semanas = Math.round(diasDiff/7);
+    if(fotoA && fotoB) {
+      sideBySideHtml = `<div style="padding:0 14px 16px">
+        <div style="font-size:11px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">📸 Tu progreso — ${semanas} semana${semanas!==1?'s':''}</div>
+        <div id="sbs_grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div>
+            <div style="font-size:9px;color:var(--tx3);text-align:center;margin-bottom:4px;text-transform:uppercase;font-weight:700">ANTES · Sem.1</div>
+            <div style="position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--s2)">
+              <img id="sbs_antes" src="${fotoA.url}" style="width:100%;height:100%;object-fit:cover"/>
+              <div style="position:absolute;bottom:0;left:0;right:0;padding:6px;background:linear-gradient(transparent,rgba(0,0,0,.7));text-align:center">
+                <div style="font-size:9px;color:#fff;font-weight:700">${new Date(fechas[0]+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--gnb);text-align:center;margin-bottom:4px;text-transform:uppercase;font-weight:700">AHORA · Sem.${fechas.length}</div>
+            <div style="position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--s2);border:1.5px solid rgba(34,197,94,.4)">
+              <img id="sbs_ahora" src="${fotoB.url}" style="width:100%;height:100%;object-fit:cover"/>
+              <div style="position:absolute;bottom:0;left:0;right:0;padding:6px;background:linear-gradient(transparent,rgba(0,0,0,.7));text-align:center">
+                <div style="font-size:9px;color:#fff;font-weight:700">${new Date(fechas[fechas.length-1]+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;justify-content:center">
+          ${['frente','posterior','costado'].map(t =>
+            primera[t]&&ultima[t]
+              ? `<button onclick="cambiarTipoSBS('${t}',this)" data-sbstipo="${t}" style="padding:4px 12px;border-radius:20px;border:0.5px solid ${t===tipoInit?'var(--bl2)':'var(--br)'};background:${t===tipoInit?'rgba(59,130,246,.15)':'none'};color:${t===tipoInit?'var(--blg)':'var(--tx3)'};font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;text-transform:capitalize">${t}</button>`
+              : ''
+          ).join('')}
+        </div>
+      </div>`;
+    }
+  }
+
+  timelineEl.innerHTML = sideBySideHtml + fechas.map((fecha, fi) => {
     const g = grupos[fecha];
     const dateStr = new Date(fecha+'T12:00:00').toLocaleDateString('es-ES', {day:'numeric', month:'long', year:'numeric'});
     const tipoOrder = ['frente','posterior','costado'];
     const hasAnalysis = Object.values(g).some(f=>f.analysis);
-
-    return `<div style="margin-bottom:20px">
-      <!-- Fecha header -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <div style="background:var(--bl2);color:#fff;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;white-space:nowrap">${fi===fechas.length-1?'📅 Última foto':'📅 '+dateStr}</div>
-        ${fi===fechas.length-1?`<div style="font-size:10px;color:var(--tx3)">${dateStr}</div>`:''}
-        <div style="flex:1;height:0.5px;background:var(--br)"></div>
-        ${fi>0?`<div style="font-size:10px;color:var(--gnb);font-weight:600">Semana ${fi+1}</div>`:'<div style="font-size:10px;color:var(--tx3)">Semana 1</div>'}
-      </div>
-      <!-- 3 fotos -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
-        ${tipoOrder.map(tipo => {
+    return '<div style="margin-bottom:20px">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'+
+        '<div style="background:var(--bl2);color:#fff;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;white-space:nowrap">'+(fi===fechas.length-1?'📅 Última foto':'📅 '+dateStr)+'</div>'+
+        (fi===fechas.length-1?'<div style="font-size:10px;color:var(--tx3)">'+dateStr+'</div>':'')+
+        '<div style="flex:1;height:0.5px;background:var(--br)"></div>'+
+        (fi>0?'<div style="font-size:10px;color:var(--gnb);font-weight:600">Semana '+(fi+1)+'</div>':'<div style="font-size:10px;color:var(--tx3)">Semana 1</div>')+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">'+
+        tipoOrder.map(tipo => {
           const f = g[tipo];
-          return f ? `
-            <div style="position:relative;aspect-ratio:3/4;border-radius:10px;overflow:hidden;background:var(--s2)">
-              <img src="${f.url}" style="width:100%;height:100%;object-fit:cover"/>
-              <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.7));padding:4px;text-align:center">
-                <div style="font-size:9px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.08em">${tipo}</div>
-              </div>
-            </div>` :
-            `<div style="aspect-ratio:3/4;border-radius:10px;border:1.5px dashed rgba(255,255,255,.1);background:var(--s2);display:flex;align-items:center;justify-content:center">
-              <div style="font-size:10px;color:var(--tx3);text-transform:uppercase">${tipo}</div>
-            </div>`;
-        }).join('')}
-      </div>
-      <!-- Analysis if exists -->
-      ${hasAnalysis ? `<div style="background:rgba(37,99,235,.06);border:0.5px solid rgba(59,130,246,.15);border-radius:10px;padding:10px 12px;margin-top:4px">
-        <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">VALORACIÓN COACH</div>
-        <div style="font-size:12px;color:var(--sv2);line-height:1.7">${Object.values(g).find(f=>f.analysis)?.analysis||''}</div>
-      </div>` : ''}
-    </div>`;
+          return f
+            ? '<div style="position:relative;aspect-ratio:3/4;border-radius:10px;overflow:hidden;background:var(--s2)"><img src="'+f.url+'" style="width:100%;height:100%;object-fit:cover"/><div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.7));padding:4px;text-align:center"><div style="font-size:9px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.08em">'+tipo+'</div></div></div>'
+            : '<div style="aspect-ratio:3/4;border-radius:10px;border:1.5px dashed rgba(255,255,255,.1);background:var(--s2);display:flex;align-items:center;justify-content:center"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase">'+tipo+'</div></div>';
+        }).join('')+
+      '</div>'+
+      (hasAnalysis ? '<div style="background:rgba(37,99,235,.06);border:0.5px solid rgba(59,130,246,.15);border-radius:10px;padding:10px 12px;margin-top:4px"><div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">VALORACIÓN COACH</div><div style="font-size:12px;color:var(--sv2);line-height:1.7">'+(Object.values(g).find(f=>f.analysis)?.analysis||'')+'</div></div>' : '')+
+    '</div>';
   }).join('');
+}
+
+function cambiarTipoSBS(tipo, btn){
+  const fotos = CD.fotos || [];
+  const grupos = {};
+  fotos.forEach(f => {
+    const fecha = f.fecha ? f.fecha.split('T')[0].split(' ')[0] : 'Sin fecha';
+    if(!grupos[fecha]) grupos[fecha] = {};
+    grupos[fecha][f.tipo||'frente'] = f;
+  });
+  const fechas = Object.keys(grupos).sort();
+  if(fechas.length < 2) return;
+  const fotoA = grupos[fechas[0]][tipo];
+  const fotoB = grupos[fechas[fechas.length-1]][tipo];
+  if(!fotoA || !fotoB) return;
+  const antes = document.getElementById('sbs_antes');
+  const ahora = document.getElementById('sbs_ahora');
+  if(antes) antes.src = fotoA.url;
+  if(ahora) ahora.src = fotoB.url;
+  document.querySelectorAll('[data-sbstipo]').forEach(b => {
+    const active = b.dataset.sbstipo === tipo;
+    b.style.borderColor = active ? 'var(--bl2)' : 'var(--br)';
+    b.style.background  = active ? 'rgba(59,130,246,.15)' : 'none';
+    b.style.color       = active ? 'var(--blg)' : 'var(--tx3)';
+  });
 }
 
 
