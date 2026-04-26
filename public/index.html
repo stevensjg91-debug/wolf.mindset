@@ -2828,9 +2828,21 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => {
   if(e.key === 'Enter') {
     const kb = document.getElementById('strong_keyboard');
-    if(kb && kb.style.display !== 'none') {
+    if(kb && kb.style.display !== 'none' && activeInput) {
       e.preventDefault();
-      kbConfirm();
+      if(activeInput.field === 'reps') {
+        // En reps: confirmar directamente (activa el timer)
+        kbConfirm();
+      } else if(activeInput.field === 'peso') {
+        // En peso: guardar y saltar a reps inmediatamente
+        const {ei, si} = activeInput;
+        const ex = CD.dias[activeDia]?.ejercicios[ei];
+        if(ex) ex._series[si].peso = parseFloat(kbValue) || 0;
+        rerenderSerieRow(ei, si);
+        openKeyboard(ei, si, 'reps');
+      } else {
+        kbConfirm();
+      }
     }
   }
 });
@@ -3117,7 +3129,6 @@ function abrirDescripcion(nombre){
                </div>
              </div>`
         }
-      </div>
       </div>
       <div style="font-size:11px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">Instrucciones</div>
       ${pasos}
