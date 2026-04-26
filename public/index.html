@@ -25,19 +25,48 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
 .screen{display:none;flex-direction:column;height:100%}.screen.on{display:flex}
 
 /* LOGIN */
-.login-bg{flex-direction:column;align-items:center;justify-content:flex-start;min-height:100%;padding:32px 20px 40px;overflow-y:auto;background:radial-gradient(ellipse at 50% 0%,#1e3a5f 0%,#09090b 60%)}
-.login-logo{text-align:center;margin-bottom:28px}
-.logo-img{width:110px;height:110px;object-fit:contain;margin:0 auto 12px;display:block;mix-blend-mode:lighten}
-.login-brand{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.12em;color:var(--sv)}
-.login-sub{font-size:10px;color:var(--sv3);letter-spacing:.2em;text-transform:uppercase;margin-top:3px}
-.login-card{background:rgba(17,17,19,.95);border:0.5px solid rgba(255,255,255,.08);border-radius:20px;padding:20px 16px;width:100%;max-width:380px;box-sizing:border-box}
+.login-bg{
+  position:relative;flex-direction:column;align-items:center;justify-content:flex-start;
+  min-height:100%;padding:0;overflow-y:auto;overflow-x:hidden;
+  background:#060810;
+}
+.login-bg-img{
+  position:fixed;inset:0;width:100%;height:100%;object-fit:cover;
+  z-index:0;opacity:.35;pointer-events:none;
+}
+.login-bg-overlay{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(to bottom,rgba(6,8,16,.3) 0%,rgba(6,8,16,.1) 35%,rgba(6,8,16,.6) 70%,rgba(6,8,16,.97) 100%);
+}
+.login-content{
+  position:relative;z-index:2;display:flex;flex-direction:column;
+  align-items:center;width:100%;min-height:100%;padding:48px 20px 40px;
+}
+/* Palabras flotantes */
+.floating-word{
+  position:fixed;font-family:'Bebas Neue',sans-serif;
+  font-size:11px;letter-spacing:.22em;color:rgba(255,255,255,.35);
+  z-index:2;pointer-events:none;display:flex;align-items:center;gap:6px;
+}
+.floating-word::before{content:'•';color:rgba(99,179,237,.7);font-size:8px}
+.login-logo{text-align:center;margin-bottom:20px}
+.logo-img{width:120px;height:120px;object-fit:contain;margin:0 auto 10px;display:block;mix-blend-mode:lighten;filter:drop-shadow(0 0 30px rgba(59,130,246,.4))}
+.login-brand{font-family:'Bebas Neue',sans-serif;font-size:38px;letter-spacing:.15em;color:#fff;text-shadow:0 2px 30px rgba(59,130,246,.3)}
+.login-sub{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.25em;text-transform:uppercase;margin-top:4px}
+.login-card{
+  background:rgba(10,12,20,.82);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:0.5px solid rgba(255,255,255,.1);
+  border-radius:24px;padding:24px 20px;width:100%;max-width:380px;box-sizing:border-box;
+  box-shadow:0 8px 60px rgba(0,0,0,.6);
+}
 .ltabs{display:flex;gap:3px;background:var(--b);border-radius:10px;padding:3px;border:0.5px solid var(--br);margin-bottom:18px}
 .ltab{flex:1;padding:9px;border:none;border-radius:8px;font-size:14px;cursor:pointer;background:none;color:var(--sv3);font-family:'Inter',sans-serif;transition:.2s}
 .ltab.on{background:var(--bl2);color:#fff;font-weight:600}
-.finp{width:100%;padding:11px 13px;border:0.5px solid var(--br);border-radius:10px;background:rgba(255,255,255,.04);color:var(--tx);font-size:14px;margin-bottom:8px;font-family:'Inter',sans-serif;box-sizing:border-box}
-.finp:focus{outline:none;border-color:var(--bl)}
+.finp{width:100%;padding:12px 14px;border:0.5px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(255,255,255,.06);color:#fff;font-size:15px;margin-bottom:10px;font-family:'Inter',sans-serif;box-sizing:border-box}
+.finp:focus{outline:none;border-color:rgba(99,179,237,.5);background:rgba(255,255,255,.09)}
 .finp option{background:var(--s)}
-.fbtn{width:100%;padding:13px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif}
+.fbtn{width:100%;padding:14px;background:var(--bl2);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:.02em;box-shadow:0 4px 20px rgba(37,99,235,.4)}
 .fbtn:active{background:var(--bl)}
 .ferr{font-size:13px;color:#f87171;margin-bottom:10px;text-align:center}
 
@@ -297,60 +326,83 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
 
 <!-- LOGIN -->
 <div class="screen on login-bg" id="sLogin">
-  <div class="login-logo">
-    <img class="logo-img" src="/logo.png" alt="WolfMindset" onerror="this.style.display='none'"/>
-    <div class="login-brand">WOLFMINDSET</div>
-    <div class="login-sub">Fitness &amp; Wellness</div>
-  </div>
-  <!-- Selector de idioma — banderas -->
-  <div style="display:flex;gap:12px;margin-bottom:16px;justify-content:center">
-    <button id="lang_es" onclick="setLangLogin('es')" style="width:52px;height:52px;border-radius:50%;border:2.5px solid rgba(255,255,255,.6);background:rgba(255,255,255,.1);font-size:28px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;line-height:1" title="Español">🇪🇸</button>
-    <button id="lang_en" onclick="setLangLogin('en')" style="width:52px;height:52px;border-radius:50%;border:2.5px solid rgba(255,255,255,.1);background:none;font-size:28px;cursor:pointer;transition:.15s;opacity:.4;display:flex;align-items:center;justify-content:center;line-height:1" title="English">🇬🇧</button>
-  </div>
-  <div class="login-card">
-    <div style="text-align:center;margin-bottom:16px">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.1em;color:var(--sv3)" id="login_titulo">ACCESO MIEMBROS</div>
-    </div>
-    <div id="lerr" class="ferr" style="display:none"></div>
-    <input class="finp" id="lu" placeholder="Usuario" autocomplete="username"/>
-    <input class="finp" id="lp" placeholder="Contraseña" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;font-size:13px;color:var(--tx3)"><input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer" checked/> <span id="login_recordar">Recordar contraseña</span></label>
+  <!-- Imagen de fondo -->
+  <img class="login-bg-img" src="/bg-login.jpg" alt="" onerror="this.style.display='none'"/>
+  <div class="login-bg-overlay"></div>
 
-    <button class="fbtn" id="login_btn" onclick="doLogin()">Entrar</button>
-    <div style="text-align:center;margin-top:10px">
-      <button onclick="mostrarOlvideContrasena()" style="background:none;border:none;color:var(--tx3);font-size:12px;cursor:pointer;font-family:inherit;padding:4px" id="login_olvide">¿Olvidaste tu contraseña?</button>
+  <!-- Palabras flotantes -->
+  <div class="floating-word" style="top:6%;left:4%">DISCIPLINA</div>
+  <div class="floating-word" style="top:6%;right:4%;flex-direction:row-reverse">CONSTANCIA</div>
+  <div class="floating-word" style="top:26%;left:3%">ENFOQUE</div>
+  <div class="floating-word" style="top:26%;right:3%;flex-direction:row-reverse">ESFUERZO</div>
+  <div class="floating-word" style="bottom:28%;left:4%">FUERZA</div>
+  <div class="floating-word" style="bottom:28%;right:2%;flex-direction:row-reverse">MENTALIDAD</div>
+  <div class="floating-word" style="bottom:8%;left:50%;transform:translateX(-50%)">SUPERACIÓN</div>
+
+  <div class="login-content">
+    <!-- Logo -->
+    <div class="login-logo">
+      <img class="logo-img" src="/logo.png" alt="WolfMindset" onerror="this.style.display='none'"/>
+      <div class="login-brand">WOLFMINDSET</div>
+      <div class="login-sub">Fitness &amp; Wellness</div>
     </div>
-    <div style="text-align:center;margin-top:6px">
-      <span style="font-size:13px;color:var(--tx3)" id="login_nuevo_txt">¿Nuevo cliente? </span>
-      <button onclick="showRegistro()" style="background:none;border:none;color:var(--blg);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" id="login_solicitar">Solicitar acceso →</button>
+
+    <!-- Selector de idioma — banderas -->
+    <div style="display:flex;gap:12px;margin-bottom:20px;justify-content:center">
+      <button id="lang_es" onclick="setLangLogin('es')" style="width:52px;height:52px;border-radius:50%;border:2.5px solid rgba(255,255,255,.6);background:rgba(255,255,255,.1);font-size:28px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;line-height:1" title="Español">🇪🇸</button>
+      <button id="lang_en" onclick="setLangLogin('en')" style="width:52px;height:52px;border-radius:50%;border:2.5px solid rgba(255,255,255,.1);background:none;font-size:28px;cursor:pointer;transition:.15s;opacity:.4;display:flex;align-items:center;justify-content:center;line-height:1" title="English">🇬🇧</button>
+    </div>
+
+    <!-- Card -->
+    <div class="login-card">
+      <div style="text-align:center;margin-bottom:18px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:.15em;color:rgba(255,255,255,.5)" id="login_titulo">ACCESO MIEMBROS</div>
+      </div>
+      <div id="lerr" class="ferr" style="display:none"></div>
+      <input class="finp" id="lu" placeholder="Usuario" autocomplete="username"/>
+      <input class="finp" id="lp" placeholder="Contraseña" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;cursor:pointer;font-size:13px;color:rgba(255,255,255,.4)"><input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer;accent-color:var(--bl2)" checked/> <span id="login_recordar">Recordar contraseña</span></label>
+
+      <button class="fbtn" id="login_btn" onclick="doLogin()">Entrar</button>
+      <div style="text-align:center;margin-top:12px">
+        <button onclick="mostrarOlvideContrasena()" style="background:none;border:none;color:rgba(255,255,255,.35);font-size:12px;cursor:pointer;font-family:inherit;padding:4px" id="login_olvide">¿Olvidaste tu contraseña?</button>
+      </div>
+      <div style="text-align:center;margin-top:8px">
+        <span style="font-size:13px;color:rgba(255,255,255,.35)" id="login_nuevo_txt">¿Nuevo cliente? </span>
+        <button onclick="showRegistro()" style="background:none;border:none;color:var(--blg);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" id="login_solicitar">Solicitar acceso →</button>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- OLVIDE CONTRASEÑA -->
 <div class="screen login-bg" id="sOlvide">
-  <div class="login-logo">
-    <img class="logo-img" src="/logo.png" alt="WolfMindset" onerror="this.style.display='none'"/>
-    <div class="login-brand">WOLFMINDSET</div>
-    <div class="login-sub">Recuperar acceso</div>
-  </div>
-  <div class="login-card">
-    <div style="text-align:center;margin-bottom:20px">
-      <div style="font-size:40px;margin-bottom:10px">🔑</div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.1em;color:var(--sv3)">¿OLVIDASTE TU CONTRASEÑA?</div>
+  <img class="login-bg-img" src="/bg-login.jpg" alt="" onerror="this.style.display='none'"/>
+  <div class="login-bg-overlay"></div>
+  <div class="login-content">
+    <div class="login-logo">
+      <img class="logo-img" src="/logo.png" alt="WolfMindset" onerror="this.style.display='none'"/>
+      <div class="login-brand">WOLFMINDSET</div>
+      <div class="login-sub" id="olvide_sub">Recuperar acceso</div>
     </div>
-    <div style="background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:12px;padding:14px;margin-bottom:16px">
-      <div style="font-size:13px;color:var(--sv2);line-height:1.7">
-        Escribe tu nombre de usuario y tu coach recibirá una solicitud de reseteo. Te enviará tu nueva contraseña por el canal habitual (WhatsApp, email, etc.)
+    <div class="login-card">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:40px;margin-bottom:10px">🔑</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.12em;color:rgba(255,255,255,.5)" id="olvide_titulo">¿OLVIDASTE TU CONTRASEÑA?</div>
       </div>
+      <div style="background:rgba(37,99,235,.1);border:0.5px solid rgba(59,130,246,.2);border-radius:12px;padding:14px;margin-bottom:16px">
+        <div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.7" id="olvide_desc">
+          Escribe tu nombre de usuario y tu coach recibirá una solicitud de reseteo. Te enviará tu nueva contraseña por el canal habitual (WhatsApp, email, etc.)
+        </div>
+      </div>
+      <div id="olvide_err" class="ferr" style="display:none"></div>
+      <div id="olvide_ok" style="display:none;background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.3);border-radius:10px;padding:12px;text-align:center;font-size:13px;color:var(--gnb);margin-bottom:12px">
+        ✓ Solicitud enviada. Tu coach te contactará pronto.
+      </div>
+      <input class="finp" id="olvide_user" placeholder="Tu nombre de usuario" autocomplete="username"/>
+      <button class="fbtn" onclick="solicitarReseteo()" id="olvide_btn">Enviar solicitud al coach</button>
+      <button onclick="show('sLogin')" style="width:100%;margin-top:10px;background:none;border:none;color:rgba(255,255,255,.35);font-size:13px;cursor:pointer;font-family:inherit;padding:8px" id="olvide_back">← Volver al login</button>
     </div>
-    <div id="olvide_err" class="ferr" style="display:none"></div>
-    <div id="olvide_ok" style="display:none;background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.3);border-radius:10px;padding:12px;text-align:center;font-size:13px;color:var(--gnb);margin-bottom:12px">
-      ✓ Solicitud enviada. Tu coach te contactará pronto.
-    </div>
-    <input class="finp" id="olvide_user" placeholder="Tu nombre de usuario" autocomplete="username"/>
-    <button class="fbtn" onclick="solicitarReseteo()">Enviar solicitud al coach</button>
-    <button onclick="show('sLogin')" style="width:100%;margin-top:10px;background:none;border:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:inherit;padding:8px">← Volver al login</button>
   </div>
 </div>
 <div class="screen login-bg" id="sRegistro">
@@ -926,8 +978,27 @@ function setLangLogin(lang) {
   const titulo = document.getElementById('login_titulo');
   if(titulo) titulo.textContent = es ? 'ACCESO MIEMBROS' : 'MEMBER LOGIN';
 
-  // Traducir pantalla de olvide contraseña si está visible
-  applyLang(document.getElementById('sOlvide'));
+  const olvide_sub = document.getElementById('olvide_sub');
+  const olvide_titulo = document.getElementById('olvide_titulo');
+  const olvide_desc = document.getElementById('olvide_desc');
+  const olvide_btn = document.getElementById('olvide_btn');
+  const olvide_back = document.getElementById('olvide_back');
+  if(olvide_sub) olvide_sub.textContent = es ? 'Recuperar acceso' : 'Recover access';
+  if(olvide_titulo) olvide_titulo.textContent = es ? '¿OLVIDASTE TU CONTRASEÑA?' : 'FORGOT YOUR PASSWORD?';
+  if(olvide_desc) olvide_desc.textContent = es
+    ? 'Escribe tu nombre de usuario y tu coach recibirá una solicitud de reseteo. Te enviará tu nueva contraseña por el canal habitual (WhatsApp, email, etc.)'
+    : 'Enter your username and your coach will receive a reset request. They will send your new password via the usual channel (WhatsApp, email, etc.)';
+  if(olvide_btn) olvide_btn.textContent = es ? 'Enviar solicitud al coach' : 'Send request to coach';
+  if(olvide_back) olvide_back.textContent = es ? '← Volver al login' : '← Back to login';
+
+  // Palabras flotantes
+  const words_es = ['DISCIPLINA','CONSTANCIA','ENFOQUE','ESFUERZO','FUERZA','MENTALIDAD','SUPERACIÓN'];
+  const words_en = ['DISCIPLINE','CONSISTENCY','FOCUS','EFFORT','STRENGTH','MINDSET','IMPROVEMENT'];
+  document.querySelectorAll('.floating-word').forEach((el, i) => {
+    // Preservar el ::before dot — solo cambiar el texto
+    const words = es ? words_es : words_en;
+    if(words[i]) el.childNodes.forEach(n => { if(n.nodeType===3) n.textContent=words[i]; });
+  });
 }
 
 // Aplicar idioma guardado al cargar la app
