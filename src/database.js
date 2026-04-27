@@ -25,6 +25,8 @@ async function initDB() {
   try { db.run("ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE users ADD COLUMN estado TEXT DEFAULT 'activo'"); } catch(e) {}
   try { db.run("ALTER TABLE users ADD COLUMN telefono TEXT DEFAULT ''"); } catch(e) {}
+  // NUEVO: idioma preferido del coach
+  try { db.run("ALTER TABLE users ADD COLUMN lang TEXT DEFAULT 'es'"); } catch(e) {}
 
   db.run(`CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, objetivo TEXT DEFAULT 'Volumen', nivel TEXT DEFAULT 'Intermedio', semanas INTEGER DEFAULT 1, kcal_internas INTEGER DEFAULT 2500, prot INTEGER DEFAULT 160, carbs INTEGER DEFAULT 280, fat INTEGER DEFAULT 80, comida_libre TEXT DEFAULT 'Elige lo que mas te apetezca.', mensaje_semana TEXT DEFAULT '', notas_coach TEXT DEFAULT '', peso_actual REAL DEFAULT 0, altura INTEGER DEFAULT 0, edad INTEGER DEFAULT 0, sexo TEXT DEFAULT 'Hombre', actividad TEXT DEFAULT 'Moderada', cintura_actual REAL DEFAULT 0, cadera REAL DEFAULT 0, observaciones TEXT DEFAULT '', dieta_tipo TEXT DEFAULT 'Omnivoro', alimentos_no TEXT DEFAULT '', lesiones TEXT DEFAULT '')`);
 
@@ -33,14 +35,14 @@ async function initDB() {
   try { db.run("ALTER TABLE clientes ADD COLUMN dieta_tipo TEXT DEFAULT 'Omnivoro'"); } catch(e) {}
   try { db.run("ALTER TABLE clientes ADD COLUMN alimentos_no TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE clientes ADD COLUMN lesiones TEXT DEFAULT ''"); } catch(e) {}
+  try { db.run("ALTER TABLE clientes ADD COLUMN deficiencias TEXT DEFAULT ''"); } catch(e) {}
+  // NUEVO: coach asignado
+  try { db.run("ALTER TABLE clientes ADD COLUMN coach_id INTEGER DEFAULT NULL"); } catch(e) {}
 
   db.run(`CREATE TABLE IF NOT EXISTS peso_registros (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, peso REAL, grasa REAL, cintura REAL, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-
   db.run(`CREATE TABLE IF NOT EXISTS dias_entreno (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, nombre TEXT, grupo TEXT, orden INTEGER DEFAULT 0)`);
-
   db.run(`CREATE TABLE IF NOT EXISTS ejercicios_dia (id INTEGER PRIMARY KEY AUTOINCREMENT, dia_id INTEGER, nombre TEXT, musculos TEXT, series INTEGER DEFAULT 3, reps TEXT DEFAULT '10-12', peso_objetivo REAL DEFAULT 0, descanso INTEGER DEFAULT 90, rir INTEGER, es_principal INTEGER DEFAULT 0, orden INTEGER DEFAULT 0, es_pr INTEGER DEFAULT 0, youtube_url TEXT DEFAULT '', imagen_url TEXT DEFAULT '', nota_coach TEXT DEFAULT '')`);
   try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN rir INTEGER"); } catch(e) {}
-  try { db.run("ALTER TABLE clientes ADD COLUMN deficiencias TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("UPDATE ejercicios_dia SET rir=NULL WHERE rir=2"); } catch(e) {}
   try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN es_principal INTEGER DEFAULT 0"); } catch(e) {}
   try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN youtube_url TEXT DEFAULT ''"); } catch(e) {}
@@ -52,24 +54,18 @@ async function initDB() {
   db.run(`CREATE TABLE IF NOT EXISTS recetas (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, nombre TEXT, pasos TEXT, orden INTEGER DEFAULT 0)`);
   db.run(`CREATE TABLE IF NOT EXISTS receta_ingredientes (id INTEGER PRIMARY KEY AUTOINCREMENT, receta_id INTEGER, nombre TEXT, gramos INTEGER)`);
   db.run(`CREATE TABLE IF NOT EXISTS fotos (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, url TEXT, analysis TEXT, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-
   db.run(`CREATE TABLE IF NOT EXISTS ejercicios_db (id INTEGER PRIMARY KEY AUTOINCREMENT, grupo TEXT, nombre TEXT, musculos TEXT, tipo TEXT, dificultad TEXT, equipo TEXT)`);
   db.run(`CREATE TABLE IF NOT EXISTS ejercicios_config (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT UNIQUE, youtube_url TEXT DEFAULT '', imagen_url TEXT DEFAULT '', nota_default TEXT DEFAULT '')`);
   db.run(`CREATE TABLE IF NOT EXISTS alimentos_db (id INTEGER PRIMARY KEY AUTOINCREMENT, categoria TEXT, nombre TEXT, calorias REAL, proteinas REAL, carbos REAL, grasas REAL)`);
 
-  // ── SESIONES Y SERIES LOG ─────────────────────────────
   db.run(`CREATE TABLE IF NOT EXISTS sesiones_entreno (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cliente_id INTEGER,
     dia_nombre TEXT,
     dia_grupo TEXT,
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
-    duracion_min INTEGER DEFAULT 0,
-    estado TEXT DEFAULT 'completado'
+    duracion_min INTEGER DEFAULT 0
   )`);
-  // Migraciones para BD existente en Railway
-  try { db.run("ALTER TABLE sesiones_entreno ADD COLUMN estado TEXT DEFAULT 'completado'"); } catch(e) {}
-
   db.run(`CREATE TABLE IF NOT EXISTS series_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sesion_id INTEGER,
@@ -78,11 +74,9 @@ async function initDB() {
     peso_real REAL,
     reps_real INTEGER,
     rir INTEGER,
-    nota_cliente TEXT DEFAULT '',
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
   try { db.run("ALTER TABLE series_log ADD COLUMN rir INTEGER"); } catch(e) {}
-  try { db.run("ALTER TABLE series_log ADD COLUMN nota_cliente TEXT DEFAULT ''"); } catch(e) {}
 
   saveToDisk();
   setInterval(saveToDisk, 30000);
@@ -91,7 +85,7 @@ async function initDB() {
   const existing = dbGet('SELECT id FROM users WHERE username = ?', ['wolf']);
   if (!existing) {
     const hash = bcrypt.hashSync('1234', 10);
-    dbRun('INSERT INTO users (username, password, role, nombre) VALUES (?, ?, ?, ?)', ['wolf', hash, 'coach', 'Coach WolfMindset']);
+    dbRun('INSERT INTO users (username, password, role, nombre, lang) VALUES (?, ?, ?, ?, ?)', ['wolf', hash, 'coach', 'Coach WolfMindset', 'es']);
     console.log('Coach creado: wolf / 1234');
   }
 
@@ -108,33 +102,21 @@ async function initDB() {
 
   db.run(`CREATE TABLE IF NOT EXISTS plan_meta (
     cliente_id INTEGER PRIMARY KEY,
-    alternativas TEXT,
-    ajustes TEXT,
-    frase TEXT,
-    kcal INTEGER,
-    prot INTEGER,
-    carbs INTEGER,
-    grasas INTEGER,
-    variaciones TEXT,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    alternativas TEXT, ajustes TEXT, frase TEXT,
+    kcal INTEGER, prot INTEGER, carbs INTEGER, grasas INTEGER,
+    variaciones TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
-  try{ db.run('ALTER TABLE plan_meta ADD COLUMN variaciones TEXT'); }catch(e){}
-  try{ db.run("ALTER TABLE fotos ADD COLUMN tipo TEXT DEFAULT 'frente'"); }catch(e){}
-  try{ db.run('ALTER TABLE fotos ADD COLUMN published_analysis TEXT'); }catch(e){}
-  try{ db.run('ALTER TABLE plan_meta ADD COLUMN suplementacion TEXT'); }catch(e){}
-  try{ db.run('ALTER TABLE plan_meta ADD COLUMN alimentos_therapeuticos TEXT'); }catch(e){}
+  try { db.run('ALTER TABLE plan_meta ADD COLUMN variaciones TEXT'); } catch(e) {}
+  try { db.run("ALTER TABLE fotos ADD COLUMN tipo TEXT DEFAULT 'frente'"); } catch(e) {}
+  try { db.run('ALTER TABLE fotos ADD COLUMN published_analysis TEXT'); } catch(e) {}
+  try { db.run('ALTER TABLE plan_meta ADD COLUMN suplementacion TEXT'); } catch(e) {}
+  try { db.run('ALTER TABLE plan_meta ADD COLUMN alimentos_therapeuticos TEXT'); } catch(e) {}
 
   db.run(`CREATE TABLE IF NOT EXISTS semana_borrador (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cliente_id INTEGER,
-    ejercicio_id INTEGER,
-    series INTEGER,
-    reps TEXT,
-    peso_objetivo REAL,
-    descanso INTEGER,
-    nota_coach TEXT,
-    rir INTEGER,
-    creado DATETIME DEFAULT CURRENT_TIMESTAMP,
+    cliente_id INTEGER, ejercicio_id INTEGER,
+    series INTEGER, reps TEXT, peso_objetivo REAL, descanso INTEGER,
+    nota_coach TEXT, rir INTEGER, creado DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(cliente_id, ejercicio_id)
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS semana_estado (
@@ -142,29 +124,11 @@ async function initDB() {
     tiene_borrador INTEGER DEFAULT 0,
     publicado_at DATETIME
   )`);
-
-  // ── SUSCRIPCIONES ─────────────────────────────────────
   db.run(`CREATE TABLE IF NOT EXISTS suscripciones (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cliente_id INTEGER UNIQUE NOT NULL,
-    estado TEXT DEFAULT 'activa',
-    fecha_inicio TEXT NOT NULL,
-    fecha_fin TEXT NOT NULL,
-    precio REAL DEFAULT 0,
-    notas TEXT DEFAULT '',
-    renovado_at TEXT,
-    FOREIGN KEY(cliente_id) REFERENCES clientes(id)
-  )`);
-
-  // ── NOTIFICACIONES ────────────────────────────────────
-  db.run(`CREATE TABLE IF NOT EXISTS notificaciones (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    tipo TEXT NOT NULL,
-    mensaje TEXT NOT NULL,
-    leida INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id)
+    cliente_id INTEGER UNIQUE,
+    fecha_inicio TEXT, fecha_fin TEXT,
+    estado TEXT DEFAULT 'activa'
   )`);
 }
 
