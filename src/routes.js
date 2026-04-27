@@ -7,10 +7,14 @@ router.use(authMiddleware);
 
 router.get('/clientes', coachOnly, (req, res) => {
   const clientes = dbAll(`SELECT c.*, u.nombre, u.username,
+    c.coach_id,
+    coach.nombre as coach_nombre,
     (SELECT peso FROM peso_registros WHERE cliente_id=c.id ORDER BY rowid DESC LIMIT 1) as peso_actual,
     (SELECT grasa FROM peso_registros WHERE cliente_id=c.id ORDER BY rowid DESC LIMIT 1) as grasa_actual,
     (SELECT COUNT(*) FROM fotos WHERE cliente_id=c.id) as fotos_count
-    FROM clientes c JOIN users u ON c.user_id=u.id`);
+    FROM clientes c
+    JOIN users u ON c.user_id=u.id
+    LEFT JOIN users coach ON c.coach_id=coach.id`);
   res.json(clientes);
 });
 
@@ -20,7 +24,7 @@ router.get('/clientes/:id', (req, res) => {
     const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
     if (!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
   }
-  const c = dbGet('SELECT c.*, u.nombre, u.username FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [id]);
+  const c = dbGet(`SELECT c.*, u.nombre, u.username, c.coach_id, coach.nombre as coach_nombre FROM clientes c JOIN users u ON c.user_id=u.id LEFT JOIN users coach ON c.coach_id=coach.id WHERE c.id=?`, [id]);
   if (!c) return res.status(404).json({ error: 'No encontrado' });
   const pesos = dbAll('SELECT * FROM peso_registros WHERE cliente_id=? ORDER BY rowid ASC', [id]);
   const dias = dbAll('SELECT * FROM dias_entreno WHERE cliente_id=? ORDER BY orden', [id]);
@@ -885,5 +889,76 @@ router.post('/notificaciones/coach', (req, res) => {
     res.json({ ok: false });
   }
 });
+
+// ═══ GESTIÓN DE COACHES ═════════════════════════════════════════════════════
+
+// GET /coaches — lista todos los coaches
+router.get('/coaches', coachOnly, (req, res) => {
+  const coaches = dbAll("SELECT id, username, nombre, email, lang FROM users WHERE role='coach' ORDER BY id ASC");
+  res.json(coaches);
+});
+
+// POST /coaches — crear nuevo coach (solo admin wolf)
+router.post('/coaches', coachOnly, async (req, res) => {
+  const admin = dbGet("SELECT id FROM users WHERE id=? AND username='wolf'", [req.user.id]);
+  if (!admin) return res.status(403).json({ error: 'Solo el administrador puede crear coaches' });
+  const { nombre, username, password, email, lang } = req.body;
+  if (!nombre || !username || !password) return res.status(400).json({ error: 'Nombre, usuario y contraseña obligatorios' });
+  if (password.length < 6) return res.status(400).json({ error: 'Contraseña mínimo 6 caracteres' });
+  const existing = dbGet('SELECT id FROM users WHERE username=?', [username]);
+  if (existing) return res.status(400).json({ error: 'Ese usuario ya existe' });
+  const bcrypt = require('bcryptjs');
+  const hash = bcrypt.hashSync(password, 10);
+  const r = dbRun("INSERT INTO users (username, password, role, nombre, email, estado, lang) VALUES (?,?,?,?,?,?,?)",
+    [username, hash, 'coach', nombre, email||'', 'activo', lang||'es']);
+  const { saveToDisk } = require('./database');
+  saveToDisk();
+  res.json({ ok: true, id: r.lastInsertRowid });
+});
+
+// POST /coaches/:id/reset-password
+router.post('/coaches/:id/reset-password', coachOnly, async (req, res) => {
+  const admin = dbGet("SELECT id FROM users WHERE id=? AND username='wolf'", [req.user.id]);
+  if (!admin) return res.status(403).json({ error: 'Sin permisos' });
+  const bcrypt = require('bcryptjs');
+  const { newPassword } = req.body;
+  if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'Contraseña mínimo 6 caracteres' });
+  const coach = dbGet("SELECT id FROM users WHERE id=? AND role='coach'", [req.params.id]);
+  if (!coach) return res.status(404).json({ error: 'Coach no encontrado' });
+  const hash = bcrypt.hashSync(newPassword, 10);
+  dbRun('UPDATE users SET password=? WHERE id=?', [hash, req.params.id]);
+  const { saveToDisk } = require('./database');
+  saveToDisk();
+  res.json({ ok: true });
+});
+
+// DELETE /coaches/:id — eliminar coach
+router.delete('/coaches/:id', coachOnly, (req, res) => {
+  const admin = dbGet("SELECT id FROM users WHERE id=? AND username='wolf'", [req.user.id]);
+  if (!admin) return res.status(403).json({ error: 'Sin permisos' });
+  const coach = dbGet("SELECT id, username FROM users WHERE id=? AND role='coach'", [req.params.id]);
+  if (!coach) return res.status(404).json({ error: 'Coach no encontrado' });
+  if (coach.username === 'wolf') return res.status(400).json({ error: 'No puedes eliminar el coach principal' });
+  dbRun('UPDATE clientes SET coach_id=NULL WHERE coach_id=?', [req.params.id]);
+  dbRun('DELETE FROM users WHERE id=?', [req.params.id]);
+  const { saveToDisk } = require('./database');
+  saveToDisk();
+  res.json({ ok: true });
+});
+
+// POST /clientes/:id/asignar-coach
+router.post('/clientes/:id/asignar-coach', coachOnly, (req, res) => {
+  const { coach_id } = req.body;
+  const cliente = dbGet('SELECT id FROM clientes WHERE id=?', [req.params.id]);
+  if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
+  const coach = dbGet("SELECT id FROM users WHERE id=? AND role='coach'", [coach_id]);
+  if (!coach) return res.status(404).json({ error: 'Coach no encontrado' });
+  dbRun('UPDATE clientes SET coach_id=? WHERE id=?', [coach_id, req.params.id]);
+  const { saveToDisk } = require('./database');
+  saveToDisk();
+  res.json({ ok: true });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
 
 module.exports = router;
