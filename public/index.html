@@ -1594,6 +1594,11 @@ async function doLogin(){
     if(remember){ localStorage.setItem('wm_saved_user',u); localStorage.setItem('wm_saved_pass',p); }
     else { localStorage.removeItem('wm_saved_user'); localStorage.removeItem('wm_saved_pass'); }
     TOKEN=data.token;USER=data.user;
+    // Si el servidor devuelve lang del coach, usarlo como COACH_LANG
+    if(data.user.role==='coach' && data.user.lang) {
+      COACH_LANG = data.user.lang;
+      localStorage.setItem('wm_coach_lang', data.user.lang);
+    }
     localStorage.setItem('wm_token',TOKEN);localStorage.setItem('wm_user',JSON.stringify(USER));
     if(USER.role==='coach'){
       show('sCoach');renderCoach('clientes');setTimeout(()=>{setCoachLang(COACH_LANG);},200);
@@ -1727,7 +1732,7 @@ function cNavM(s,btn){
 // ═══ COACH RENDER ════════════════════════════════════
 async function renderCoach(s){
   const el=document.getElementById('cContent');
-  if(s==='clientes'){const cl=await api('/clientes');el.innerHTML=hClientes(cl);}
+  if(s==='clientes'){const cl=await api('/clientes');window._clientesCache=cl;el.innerHTML=hClientes(cl);}
   else if(s==='nuevo'){el.innerHTML=hNuevo();}
   else if(s==='rutinas'){el.innerHTML=hRutinas();await initRutinas();}
   else if(s==='dieta-builder'){el.innerHTML=hDietaBuilder();await initDietaBuilder();}
@@ -1748,17 +1753,101 @@ async function renderCoach(s){
 
 function hClientes(cl){
   if(!cl.length)return`<div style="text-align:center;padding:60px 20px;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">👤</div><div style="font-size:15px;font-weight:600;color:var(--sv2)">Sin clientes aún</div><div style="font-size:13px;margin-top:6px">Crea el primero desde "Nuevo cliente"</div></div>`;
-  return`<div class="g3">${[{l:'Clientes',v:cl.length},{l:'Fotos',v:cl.reduce((a,c)=>a+(c.fotos_count||0),0)},{l:'Estado',v:'Online',c:'#86efac'}].map(m=>`<div class="mcard"><div class="mlbl">${m.l}</div><div class="mval" style="${m.c?'font-size:14px;color:'+m.c:''}">${m.v}</div></div>`).join('')}</div>
-  <div class="sec"><div class="sec-hdr">Mis clientes</div><div class="cc-grid">${cl.map((c,i)=>{const a=ac(i);return`<div class="cc" onclick="verCliente(${c.id})"><div class="fl" style="margin-bottom:10px"><div class="av" style="width:42px;height:42px;font-size:15px;background:${a.bg};color:${a.tx};border-color:${a.br};margin-right:10px">${ini(c.nombre)}</div><div><div style="font-size:14px;font-weight:700;color:var(--sv)">${c.nombre}</div><div style="font-size:11px;color:var(--tx3);font-weight:500">${c.objetivo} · ${c.nivel}</div></div></div><div style="display:flex;gap:5px;flex-wrap:wrap"><span class="badge b-sv">Sem ${c.semanas}</span>${c.peso_actual?`<span class="badge b-bl">${c.peso_actual}kg</span>`:''}</div></div>`;}).join('')}</div></div>`;
+
+  // Colores por coach — el coach actual siempre es azul, otros son púrpura
+  const coachColors = {
+    [USER.id]: {bg:'rgba(59,130,246,.18)',color:'#93c5fd',label: USER.nombre||USER.username},
+  };
+  // Detectar otros coaches en la lista
+  cl.forEach(c => {
+    if(c.coach_id && !coachColors[c.coach_id]) {
+      coachColors[c.coach_id] = {bg:'rgba(168,85,247,.18)',color:'#d8b4fe',label:c.coach_nombre||'Coach'};
+    }
+  });
+
+  // Filtro activo (guardado en variable global)
+  if(typeof window._clienteFilter === 'undefined') window._clienteFilter = 'todos';
+  const filter = window._clienteFilter;
+
+  const clFiltrados = filter === 'todos' ? cl :
+    filter === 'mios' ? cl.filter(c => !c.coach_id || c.coach_id === USER.id) :
+    cl.filter(c => c.coach_id && c.coach_id !== USER.id);
+
+  // Stats
+  const misCls = cl.filter(c => !c.coach_id || c.coach_id === USER.id).length;
+  const otrosCls = cl.filter(c => c.coach_id && c.coach_id !== USER.id).length;
+  const otroCoachNombre = Object.values(coachColors).find((v,i) => i > 0)?.label || 'Socia';
+
+  return`
+  <!-- Stats -->
+  <div class="g3" style="margin-bottom:14px">
+    <div class="mcard"><div class="mlbl">Total</div><div class="mval">${cl.length}</div></div>
+    <div class="mcard" style="border-color:rgba(59,130,246,.3)"><div class="mlbl" style="color:#93c5fd">Míos</div><div class="mval" style="color:#93c5fd">${misCls}</div></div>
+    <div class="mcard" style="border-color:rgba(168,85,247,.3)"><div class="mlbl" style="color:#d8b4fe">${otroCoachNombre}</div><div class="mval" style="color:#d8b4fe">${otrosCls}</div></div>
+  </div>
+
+  <!-- Filtros -->
+  <div style="display:flex;gap:6px;margin-bottom:14px">
+    <button onclick="filtrarClientes('todos')" style="flex:1;padding:7px;border-radius:8px;border:0.5px solid ${filter==='todos'?'var(--bl2)':'var(--br)'};background:${filter==='todos'?'rgba(59,130,246,.15)':'none'};color:${filter==='todos'?'var(--blg)':'var(--tx3)'};font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Todos</button>
+    <button onclick="filtrarClientes('mios')" style="flex:1;padding:7px;border-radius:8px;border:0.5px solid ${filter==='mios'?'#3b82f6':'var(--br)'};background:${filter==='mios'?'rgba(59,130,246,.15)':'none'};color:${filter==='mios'?'#93c5fd':'var(--tx3)'};font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🔵 Míos</button>
+    <button onclick="filtrarClientes('otros')" style="flex:1;padding:7px;border-radius:8px;border:0.5px solid ${filter==='otros'?'#a855f7':'var(--br)'};background:${filter==='otros'?'rgba(168,85,247,.15)':'none'};color:${filter==='otros'?'#d8b4fe':'var(--tx3)'};font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🟣 ${otroCoachNombre}</button>
+  </div>
+
+  <!-- Grid clientes -->
+  <div class="cc-grid">
+    ${clFiltrados.map((c,i)=>{
+      const a=ac(i);
+      const cc=c.coach_id?coachColors[c.coach_id]:coachColors[USER.id];
+      const esMio = !c.coach_id || c.coach_id === USER.id;
+      return`<div class="cc" onclick="verCliente(${c.id})" style="position:relative;border-top:2px solid ${esMio?'rgba(59,130,246,.4)':'rgba(168,85,247,.4)'}">
+        <!-- Badge coach -->
+        <div style="position:absolute;top:8px;right:8px;background:${cc.bg};color:${cc.color};font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.04em">${esMio?'🔵':'🟣'} ${cc.label}</div>
+        <div class="fl" style="margin-bottom:10px;margin-top:4px">
+          <div class="av" style="width:42px;height:42px;font-size:15px;background:${a.bg};color:${a.tx};border-color:${esMio?'rgba(59,130,246,.4)':'rgba(168,85,247,.4)'};margin-right:10px">${ini(c.nombre)}</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--sv);padding-right:48px">${c.nombre}</div>
+            <div style="font-size:11px;color:var(--tx3);font-weight:500">${c.objetivo} · ${c.nivel}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <span class="badge b-sv">Sem ${c.semanas}</span>
+          ${c.peso_actual?`<span class="badge b-bl">${c.peso_actual}kg</span>`:''}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function filtrarClientes(filtro){
+  window._clienteFilter = filtro;
+  // Re-renderizar con el mismo listado en cache
+  if(window._clientesCache) {
+    document.getElementById('cContent').innerHTML = hClientes(window._clientesCache);
+  }
 }
 
 async function verCliente(id){
   const c=await api('/clientes/'+id); window._coachClienteActual=c; window._coachClienteId=id; window._lastClienteId=id; const a=ac(0);
+  const esMio = !c.coach_id || c.coach_id === USER.id;
+  const coachBadgeColor = esMio ? '#93c5fd' : '#d8b4fe';
+  const coachBadgeBg = esMio ? 'rgba(59,130,246,.15)' : 'rgba(168,85,247,.15)';
+  const coachBadgeBorder = esMio ? 'rgba(59,130,246,.3)' : 'rgba(168,85,247,.3)';
+  const coachNombre = c.coach_nombre || (esMio ? (USER.nombre||USER.username) : 'Coach');
   document.getElementById('cContent').innerHTML=`
 
 
   <div class="back-lnk" onclick="renderCoach('clientes')"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Volver</div>
-  <div class="fl" style="margin-bottom:18px"><div class="av" style="width:50px;height:50px;font-size:17px;background:${a.bg};color:${a.tx};border-color:${a.br};margin-right:12px">${ini(c.nombre)}</div><div><div style="font-size:17px;font-weight:700;color:var(--sv)">${c.nombre}</div><div style="font-size:12px;color:var(--tx3);margin-top:2px">${c.objetivo} · ${c.nivel} · Semana ${c.semanas}</div></div></div>
+  <div class="fl" style="margin-bottom:14px;align-items:flex-start">
+    <div class="av" style="width:50px;height:50px;font-size:17px;background:${a.bg};color:${a.tx};border-color:${esMio?'rgba(59,130,246,.4)':'rgba(168,85,247,.4)'};margin-right:12px">${ini(c.nombre)}</div>
+    <div style="flex:1">
+      <div style="font-size:17px;font-weight:700;color:var(--sv)">${c.nombre}</div>
+      <div style="font-size:12px;color:var(--tx3);margin-top:2px">${c.objetivo} · ${c.nivel} · Semana ${c.semanas}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+        <span style="background:${coachBadgeBg};color:${coachBadgeColor};border:0.5px solid ${coachBadgeBorder};font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px">${esMio?'🔵':'🟣'} ${coachNombre}</span>
+        <button onclick="reasignarCoach(${c.id})" style="background:none;border:0.5px solid var(--br);color:var(--tx3);font-size:10px;padding:3px 8px;border-radius:8px;cursor:pointer;font-family:inherit">Reasignar</button>
+      </div>
+    </div>
+  </div>
   
   <!-- TABS NAV -->
   <div class="ctab-bar">
@@ -2635,24 +2724,64 @@ async function borrarDietaCoach(){
 
 function mb2(l,c,a,cal,tot){const p=Math.round((cal/(tot||1))*100)||0;return`<div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--tx3);margin-bottom:3px;font-weight:500"><span>${l}</span><span style="color:var(--sv2)">${a}g·${p}%</span></div><div style="height:3px;background:var(--s3);border-radius:2px;overflow:hidden;margin-bottom:8px"><div style="width:${p}%;height:100%;background:${c};border-radius:2px"></div></div></div>`;}
 
-function hNuevo(){return`<div class="sec" style="max-width:500px"><div class="sec-hdr">Crear nuevo cliente</div>
+function hNuevo(){
+  // Cargar coaches disponibles para el selector
+  api('/coaches').then(coaches=>{
+    const sel=document.getElementById('nc_coach');
+    if(!sel||!coaches) return;
+    coaches.forEach(c=>{
+      const opt=document.createElement('option');
+      opt.value=c.id;
+      opt.textContent=(c.id===USER.id?'🔵 ':'🟣 ')+(c.nombre||c.username)+(c.id===USER.id?' (yo)':'');
+      if(c.id===USER.id) opt.selected=true;
+      sel.appendChild(opt);
+    });
+  }).catch(()=>{});
+
+  return`<div class="sec" style="max-width:500px"><div class="sec-hdr">Crear nuevo cliente</div>
   <div class="g2" style="gap:8px">
     <div style="grid-column:span 2"><div class="form-lbl">Nombre completo</div><input class="inp" id="nc_n" placeholder="Carlos Martínez"/></div>
     <div><div class="form-lbl">Usuario (login)</div><input class="inp" id="nc_u" placeholder="carlos"/></div>
     <div><div class="form-lbl">Contraseña</div><input class="inp" id="nc_p" type="password" placeholder="Mín 6 caracteres"/></div>
     <div><div class="form-lbl">Objetivo</div><select class="inp" id="nc_o"><option>Volumen</option><option>Definición</option><option>Fuerza</option><option>Recomposición</option></select></div>
     <div><div class="form-lbl">Nivel</div><select class="inp" id="nc_nv"><option>Principiante</option><option selected>Intermedio</option><option>Avanzado</option></select></div>
+    <div style="grid-column:span 2">
+      <div class="form-lbl">Asignar a coach</div>
+      <select class="inp" id="nc_coach" style="margin-bottom:0">
+        <option value="${USER.id}">🔵 ${USER.nombre||USER.username} (yo)</option>
+      </select>
+    </div>
   </div>
   <button class="btn" style="width:100%;padding:13px;margin-top:4px" onclick="crearCliente()">Crear cliente</button>
   <div id="nc_msg" style="font-size:13px;text-align:center;margin-top:10px;font-weight:500"></div>
-</div>`;}
+</div>`;
+}
 
 async function crearCliente(){
   const n=document.getElementById('nc_n').value.trim(),u=document.getElementById('nc_u').value.trim(),p=document.getElementById('nc_p').value;
+  const coachId=document.getElementById('nc_coach')?.value||USER.id;
   const msg=document.getElementById('nc_msg');
   if(!n||!u||!p){msg.style.color='#f87171';msg.textContent='Rellena todos los campos';return;}
-  try{await api('/auth/register-cliente',{method:'POST',body:JSON.stringify({username:u,password:p,nombre:n,objetivo:document.getElementById('nc_o').value,nivel:document.getElementById('nc_nv').value})});msg.style.color='#86efac';msg.textContent=`✓ ${n} creado. Login: ${u}`;}
-  catch(e){msg.style.color='#f87171';msg.textContent=e.error||'Error';}
+  try{
+    await api('/auth/register-cliente',{method:'POST',body:JSON.stringify({username:u,password:p,nombre:n,objetivo:document.getElementById('nc_o').value,nivel:document.getElementById('nc_nv').value,coach_id:coachId})});
+    msg.style.color='#86efac';msg.textContent=`✓ ${n} creado. Login: ${u}`;
+  }catch(e){msg.style.color='#f87171';msg.textContent=e.error||'Error';}
+}
+
+async function reasignarCoach(clienteId){
+  try{
+    const coaches = await api('/coaches');
+    const c = window._coachClienteActual;
+    const actual = c.coach_id || USER.id;
+    const opciones = coaches.map((co,i) => `${i+1}. ${co.nombre||co.username} (@${co.username})${co.id===actual?' ← actual':''}`).join('\n');
+    const idx = prompt(`Reasignar "${c.nombre}" a:\n\n${opciones}\n\nEscribe el número:`);
+    if(!idx) return;
+    const coach = coaches[parseInt(idx)-1];
+    if(!coach){alert('Número inválido');return;}
+    await api('/clientes/'+clienteId+'/asignar-coach',{method:'POST',body:JSON.stringify({coach_id:coach.id})});
+    alert(`✓ ${c.nombre} asignado a ${coach.nombre||coach.username}`);
+    verCliente(clienteId); // Recargar
+  }catch(e){alert('Error: '+(e.error||e.message||'No se pudo reasignar'));}
 }
 
 // ═══ RUTINAS BUILDER ══════════════════════════════════
