@@ -1384,6 +1384,12 @@ const TRANSLATIONS = {
   '💬 Nota para el coach (sensaciones, dolor, etc.)':'💬 Note for coach (sensations, pain, etc.)',
   'Sube las 3 fotos para que tu coach pueda hacer una valoración completa.':'Upload all 3 photos so your coach can do a full assessment.',
 
+  'Mensaje de tu coach':'Message from your coach',
+  '¡Dos semanas seguidas!':'Two weeks straight!',
+  '¡Una semana de fuego!':'One week on fire!',
+  '¡Primer día!':'First day!',
+  '¡Sigue así!':'Keep it up!',
+
 }
 function t(text) {
   if(LANG === 'es') return text;
@@ -1536,7 +1542,7 @@ function setLang(lang) {
   const el = document.getElementById('klContent');
   if(el) {
     // Re-ejecutar el render del tab actual
-    if(klTab === 'entreno' && vistaActual === 'seleccion') el.innerHTML = hSeleccionDia();
+    if(klTab === 'entreno' && vistaActual === 'seleccion') renderSeleccion();
     else if(klTab === 'dieta') el.innerHTML = hDieta();
     else if(klTab === 'progreso') { el.innerHTML = hProgreso2(); setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100); }
     else if(klTab === 'logros') el.innerHTML = hBadgesCliente();
@@ -4358,14 +4364,16 @@ function renderKL(){
   const el=document.getElementById('klContent');
   if(!CD){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--tx3)">Cargando...</div>';return;}
   if(klTab==='entreno'){
-    // Check if coach has pending changes (borrador)
     api('/clientes/'+CD.id+'/semana-estado').then(estado=>{
       if(estado.tiene_borrador){
         el.innerHTML = hProximaSemanaEnPreparacion();
       } else {
         el.innerHTML = hSeleccionDia();
       }
-    }).catch(()=>{ el.innerHTML = hSeleccionDia(); applyLang(el); });
+      if(LANG!=='es') setTimeout(()=>applyLang(el), 30);
+    }).catch(()=>{ el.innerHTML = hSeleccionDia(); if(LANG!=='es') applyLang(el); });
+    // Traducir nav bar siempre
+    if(LANG!=='es') applyLang(document.querySelector('#sCliente .bnav-bar'));
     return;
   }
   else if(klTab==='dieta')el.innerHTML=hDieta();
@@ -4373,8 +4381,13 @@ function renderKL(){
   else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100);}
   else if(klTab==='logros')el.innerHTML=hBadgesCliente();
   else if(klTab==='perfil')el.innerHTML=hPerfil();
-  // Aplicar traducción si idioma es inglés
-  setTimeout(()=>applyLang(el), 50);
+  // Aplicar traducción + nav bar
+  if(LANG!=='es') {
+    setTimeout(()=>{
+      applyLang(el);
+      applyLang(document.querySelector('#sCliente .bnav-bar'));
+    }, 50);
+  }
 }
 
 // ENTRENO CLIENTE (estilo Strong)
@@ -4410,7 +4423,7 @@ function hStreakBanner(){
   return`<div style="background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(239,68,68,.1));border:0.5px solid rgba(245,158,11,.3);border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
     <div style="font-size:32px;line-height:1">${emoji}</div>
     <div style="flex:1">
-      <div style="font-size:20px;font-weight:800;color:var(--amb);font-family:'Bebas Neue',sans-serif;letter-spacing:.05em">${streak} día${streak>1?'s':''} seguido${streak>1?'s':''}</div>
+      <div style="font-size:20px;font-weight:800;color:var(--amb);font-family:'Bebas Neue',sans-serif;letter-spacing:.05em">${streak} ${LANG==='en'?`day${streak>1?'s':''}`:(`día${streak>1?'s':''} seguido${streak>1?'s':''}`)} </div>
       <div style="font-size:12px;color:var(--sv3);font-weight:600">${msg}</div>
     </div>
   </div>`;
@@ -4422,7 +4435,7 @@ function hMensajeCoach(){
   return`<div style="background:linear-gradient(135deg,rgba(37,99,235,.1),rgba(17,17,19,.9));border:0.5px solid rgba(59,130,246,.25);border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start">
     <span style="font-size:22px;flex-shrink:0">🐺</span>
     <div>
-      <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Mensaje de tu coach</div>
+      <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">${t('Mensaje de tu coach')}</div>
       <div style="font-size:13px;color:var(--sv2);line-height:1.5">${msg}</div>
     </div>
   </div>`;
@@ -4447,7 +4460,7 @@ async function activarNotificaciones(btn){
   btn.disabled = true;
   const ok = await pedirPermisosNotificacion();
   // Recargar pantalla para que desaparezca el banner
-  document.getElementById('klContent').innerHTML = hSeleccionDia();
+  renderSeleccion();
   if(ok) {
     // Confirmar que funcionó
     setTimeout(()=>{
@@ -4529,7 +4542,14 @@ async function guardarCheckin(){
   }
 
   // Recargar pantalla sin el banner
-  document.getElementById('klContent').innerHTML = hSeleccionDia();
+  document.renderSeleccion();
+}
+
+function renderSeleccion() {
+  const el = document.getElementById('klContent');
+  if(!el) return;
+  el.innerHTML = hSeleccionDia();
+  if(LANG !== 'es') setTimeout(()=>applyLang(el), 30);
 }
 
 function hSeleccionDia(){
@@ -4656,7 +4676,7 @@ function hPreviewDia(i){
 
 function volverSeleccion(){
   vistaActual = 'seleccion';
-  document.getElementById('klContent').innerHTML = hSeleccionDia();
+  renderSeleccion();
 }
 
 function empezarEntreno(i){
@@ -7551,7 +7571,7 @@ function cerrarDoneOverlay(){
   // Go back to day selection showing completed status
   vistaActual = 'seleccion';
   klTab = 'entreno';
-  document.getElementById('klContent').innerHTML = hSeleccionDia();
+  renderSeleccion();
 }
 
 
