@@ -543,15 +543,24 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
         <div><div class="sb-brand">WOLFMINDSET</div><div class="sb-role">Coach</div></div>
       </div>
       <div class="snav">
-        <button class="sni on" onclick="cNav('clientes',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 13c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="5" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M14 13c0-1.86-.93-3.5-2.34-4.47" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Clientes</button>
-        <button class="sni" onclick="cNav('rutinas',this)"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M5 8h6M5 5h4M5 11h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Crear rutina</button>
-        <button class="sni" onclick="cNav('dieta-builder',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2v3M5 4c0 2.5 1 4 3 4s3-1.5 3-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M4 8h8l-1 6H5L4 8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>Crear dieta</button>
-        <button class="sni" onclick="cNav('nuevo',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="6" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M1 14c0-3.31 2.69-6 6-6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 10v4M10 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Nuevo cliente</button>
-        <button class="sni" id="sni_pendientes" onclick="cNav('pendientes',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Pendientes <span id="badge_pend" style="display:none;background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px">0</span></button>
-        <button class="sni" onclick="cNav('progreso',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Progreso</button>
-        <button class="sni" onclick="cNav('ia',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 015 5c0 2.4-1.7 4.4-4 4.9V14H7v-2.1C4.7 11.4 3 9.4 3 7a5 5 0 015-5z" stroke="currentColor" stroke-width="1.3"/></svg>Asistente IA</button>
+        <button class="sni on" onclick="cNav('clientes',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 13c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="5" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M14 13c0-1.86-.93-3.5-2.34-4.47" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span data-i18n-coach="Clientes">Clientes</span></button>
+        <button class="sni" onclick="cNav('rutinas',this)"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M5 8h6M5 5h4M5 11h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span data-i18n-coach="Crear rutina">Crear rutina</span></button>
+        <button class="sni" onclick="cNav('dieta-builder',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2v3M5 4c0 2.5 1 4 3 4s3-1.5 3-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M4 8h8l-1 6H5L4 8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span data-i18n-coach="Crear dieta">Crear dieta</span></button>
+        <button class="sni" onclick="cNav('nuevo',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="6" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M1 14c0-3.31 2.69-6 6-6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 10v4M10 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-i18n-coach="Nuevo cliente">Nuevo cliente</span></button>
+        <button class="sni" id="sni_pendientes" onclick="cNav('pendientes',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span data-i18n-coach="Pendientes">Pendientes</span> <span id="badge_pend" style="display:none;background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px">0</span></button>
+        <button class="sni" onclick="cNav('progreso',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n-coach="Progreso">Progreso</span></button>
+        <button class="sni" onclick="cNav('ia',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 015 5c0 2.4-1.7 4.4-4 4.9V14H7v-2.1C4.7 11.4 3 9.4 3 7a5 5 0 015-5z" stroke="currentColor" stroke-width="1.3"/></svg><span data-i18n-coach="Asistente IA">Asistente IA</span></button>
       </div>
       <button class="sb-out" onclick="doLogout()"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Cerrar sesión</button>
+      <!-- Selector idioma coach -->
+      <div style="display:flex;gap:6px;padding:10px 12px 14px;border-top:0.5px solid var(--br);margin-top:4px">
+        <button id="coach_lang_es" onclick="setCoachLang('es')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);cursor:pointer;transition:.2s">
+          <span style="font-size:16px">🇪🇸</span><span style="font-size:10px;font-weight:700;color:#fff;font-family:'Inter',sans-serif">ES</span>
+        </button>
+        <button id="coach_lang_en" onclick="setCoachLang('en')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:none;cursor:pointer;transition:.2s;opacity:.4">
+          <span style="font-size:16px">🇬🇧</span><span style="font-size:10px;font-weight:700;color:#fff;font-family:'Inter',sans-serif">EN</span>
+        </button>
+      </div>
     </div>
     <div class="main-area">
       <div class="topbar">
@@ -749,6 +758,7 @@ let CD=null,klTab='entreno',activeDia=0,chatH=[],iaH=[],timerInts={},restInt=nul
 
 // ── SISTEMA DE IDIOMA ─────────────────────────────────────────────
 let LANG = localStorage.getItem('wm_lang') || 'es';
+let COACH_LANG = localStorage.getItem('wm_coach_lang') || 'es';
 
 const TRANSLATIONS = {
   // ── Navegación ──
@@ -1377,6 +1387,119 @@ function setLang(lang) {
 }
 
 
+// Traducción para el coach (independiente del idioma del cliente)
+const COACH_TRANSLATIONS = {
+  // Nav sidebar
+  'Clientes':'Clients','Crear rutina':'Create routine','Crear dieta':'Create diet',
+  'Nuevo cliente':'New client','Pendientes':'Pending','Progreso':'Progress',
+  'Asistente IA':'AI Assistant','Cerrar sesión':'Log out',
+  // Nav mobile
+  'Rutinas':'Routines','Solicitudes':'Requests','+ Cliente':'+ Client',
+  // Topbar
+  'Clientes':'Clients',
+  // Títulos secciones
+  'Resumen':'Summary','Entreno':'Workout','Dieta':'Diet','Notas':'Notes',
+  'Notificaciones':'Notifications','Marcar todas leídas':'Mark all read',
+  'Cargando...':'Loading...',
+  // Cliente card
+  'Semana':'Week','Sesiones':'Sessions','sin sesiones':'no sessions',
+  'Suscripción activa':'Active subscription','Sin suscripción':'No subscription',
+  'Renovar suscripción':'Renew subscription','Cancelar suscripción':'Cancel subscription',
+  'Contraseña del cliente':'Client password','Resetear':'Reset',
+  'Nueva contraseña':'New password','Mín 6 caracteres':'Min 6 chars',
+  // Botones
+  'Guardar':'Save','Publicar':'Publish','Eliminar':'Delete','Editar':'Edit',
+  'Añadir':'Add','Cancelar':'Cancel','Guardar cambios':'Save changes',
+  '✓ Publicar rutina':'✓ Publish routine','✓ Guardar cambios':'✓ Save changes',
+  '+ Día':'+ Day','+ Ejercicio':'+ Exercise',
+  'Añadir día de entreno':'Add training day','Añadir ejercicio →':'Add exercise →',
+  // Nuevo cliente
+  'Nombre completo *':'Full name *','Email *':'Email *','Teléfono *':'Phone *',
+  'Usuario para acceder *':'Username *','Contraseña *':'Password *',
+  'Objetivo':'Goal','Nivel':'Level','Días/semana':'Days/week',
+  'Solicitud de acceso':'Access request','Aprobar y crear':'Approve & create',
+  'Rechazar':'Reject',
+  // Dieta builder  
+  'Tipo de alimentación':'Diet type','Objetivo calórico':'Calorie goal',
+  'Automático según objetivo del cliente':'Auto based on client goal',
+  'Calorías objetivo:':'Target calories:','Proteína':'Protein',
+  'Carbos':'Carbs','Grasas':'Fats','Añadir alimento':'Add food',
+  'Generar con IA':'Generate with AI','Borrar dieta':'Delete diet',
+  'Comida libre':'Free meal','Sin dieta asignada':'No diet assigned',
+  // IA asistente
+  'Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?':
+    'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?',
+  // Progreso
+  'Valoración IA':'AI Assessment','Analizar progreso':'Analyze progress',
+  'Ver historial':'View history','Fotos de progreso':'Progress photos',
+  // Mensajes
+  'VALORACIÓN COACH':'COACH ASSESSMENT',
+  'Sin notas':'No notes','Sin historial':'No history',
+  'Semanas de entrenamiento':'Training weeks',
+  // Ajuste dieta
+  'Ajuste automático':'Auto adjustment','Ajuste calórico':'Calorie adjustment',
+  'Aplicar ajuste':'Apply adjustment',
+  // Días semana (para crear rutinas)
+  'Lunes':'Monday','Martes':'Tuesday','Miércoles':'Wednesday',
+  'Jueves':'Thursday','Viernes':'Friday','Sábado':'Saturday','Domingo':'Sunday',
+  // Músculos
+  'Pecho + Tríceps':'Chest + Triceps','Espalda + Bíceps':'Back + Biceps',
+  'Hombros + Brazos':'Shoulders + Arms','Full Body':'Full Body',
+  'Piernas':'Legs','Empuje':'Push','Tirón':'Pull','Glúteos':'Glutes',
+  'Principiante':'Beginner','Intermedio':'Intermediate','Avanzado':'Advanced',
+  // Objetivos cliente
+  'Volumen':'Bulk','Definición':'Cutting','Fuerza':'Strength',
+  'Recomposición':'Body recomp','Perder peso':'Lose weight',
+};
+
+function tc(text) {
+  if(COACH_LANG === 'es') return text;
+  return COACH_TRANSLATIONS[text] || TRANSLATIONS[text] || text;
+}
+
+function setCoachLang(lang) {
+  COACH_LANG = lang;
+  localStorage.setItem('wm_coach_lang', lang);
+  // Actualizar botones del selector
+  const esBtn = document.getElementById('coach_lang_es');
+  const enBtn = document.getElementById('coach_lang_en');
+  if(esBtn) {
+    esBtn.style.border = lang==='es' ? '1px solid rgba(255,255,255,.6)' : '1px solid rgba(255,255,255,.12)';
+    esBtn.style.background = lang==='es' ? 'rgba(255,255,255,.15)' : 'none';
+    esBtn.style.opacity = lang==='es' ? '1' : '0.4';
+  }
+  if(enBtn) {
+    enBtn.style.border = lang==='en' ? '1px solid rgba(255,255,255,.6)' : '1px solid rgba(255,255,255,.12)';
+    enBtn.style.background = lang==='en' ? 'rgba(255,255,255,.15)' : 'none';
+    enBtn.style.opacity = lang==='en' ? '1' : '0.4';
+  }
+  // Re-renderizar panel coach si está activo
+  if(document.getElementById('sCoach')?.classList.contains('on')) {
+    renderCoach(currentCoachTab || 'clientes');
+  }
+  // Traducir nav estática del coach
+  applyCoachLang(document.getElementById('sCoach'));
+}
+
+function applyCoachLang(el) {
+  if(!el || COACH_LANG === 'es') return;
+  // Traducir todos los textos visibles
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+  const nodes = [];
+  while(walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(node => {
+    const trimmed = node.textContent.trim();
+    if(trimmed && COACH_TRANSLATIONS[trimmed]) {
+      node.textContent = node.textContent.replace(trimmed, COACH_TRANSLATIONS[trimmed]);
+    }
+  });
+  // data-i18n-coach
+  el.querySelectorAll('[data-i18n-coach]').forEach(e2 => {
+    const key = e2.getAttribute('data-i18n-coach');
+    if(COACH_TRANSLATIONS[key]) e2.textContent = COACH_TRANSLATIONS[key];
+  });
+}
+
 // EMOJIS Y COLORES
 const FOOD_EMOJIS={'pollo':'🍗','pechuga':'🍗','pavo':'🦃','ternera':'🥩','carne':'🥩','salmon':'🐟','salmón':'🐟','merluza':'🐟','bacalao':'🐟','atun':'🐟','atún':'🐟','gambas':'🦐','huevo':'🥚','claras':'🥚','arroz':'🍚','avena':'🥣','patata':'🥔','boniato':'🍠','pasta':'🍝','pan':'🍞','leche':'🥛','yogur':'🥛','queso':'🧀','tomate':'🍅','brocoli':'🥦','brócoli':'🥦','espinaca':'🥬','ensalada':'🥗','platano':'🍌','plátano':'🍌','manzana':'🍎','naranja':'🍊','fresa':'🍓','aceite':'🫒','almendra':'🥜','nuez':'🥜','whey':'💪','proteina':'💪','proteína':'💪','aguacate':'🥑','pepino':'🥒','zanahoria':'🥕','quinoa':'🌾','requesón':'🥗','requesón':'🥗'};
 const EX_COLORS={'Chest':'rgba(59,130,246,0.15)','Back':'rgba(168,85,247,0.15)','Shoulders':'rgba(245,158,11,0.15)','Biceps':'rgba(34,197,94,0.15)','Triceps':'rgba(239,68,68,0.15)','Legs':'rgba(6,182,212,0.15)','Abs':'rgba(251,146,60,0.15)'};
@@ -1454,7 +1577,7 @@ async function doLogin(){
     TOKEN=data.token;USER=data.user;
     localStorage.setItem('wm_token',TOKEN);localStorage.setItem('wm_user',JSON.stringify(USER));
     if(USER.role==='coach'){
-      show('sCoach');renderCoach('clientes');
+      show('sCoach');renderCoach('clientes');setTimeout(()=>{setCoachLang(COACH_LANG);},200);
       if(isMobile())document.getElementById('coachMobileNav').style.display='flex';
       cargarNotificacionesCoach();
       // Auto-verificar vencimientos al entrar
@@ -1557,7 +1680,7 @@ if(savedPass){ const lp=document.getElementById('lp'); if(lp)lp.value=savedPass;
 // AUTO LOGIN
 if(TOKEN&&USER){
   if(USER.role==='coach'){
-    show('sCoach');renderCoach('clientes');
+    show('sCoach');renderCoach('clientes');setTimeout(()=>{setCoachLang(COACH_LANG);},200);
     if(isMobile())document.getElementById('coachMobileNav').style.display='flex';
     setTimeout(checkPendientes,1000);
   } else {
@@ -1590,7 +1713,7 @@ async function renderCoach(s){
   else if(s==='pendientes'){const p=await api('/clientes-pendientes');el.innerHTML=hPendientes(p);}
   else if(s==='ia'){
   el.innerHTML=hIACoach();
-  iaH=[{role:'assistant',content:'Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?'}];
+  iaH=[{role:'assistant',content:tc('Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?')}];
   fetch('/api/images-status').then(r=>r.json()).then(d=>{
     const btn=document.getElementById('btn_img_status');
     if(!btn)return;
@@ -2796,7 +2919,7 @@ ${c.lesiones?'LESIONES/LIMITACIONES: '+c.lesiones+'. Evita ejercicios contraindi
 ${c.observaciones?'Observaciones: '+c.observaciones:''}
 Días disponibles: 4.
 Para cada día indica: nombre del día, grupo muscular, y lista de ejercicios con series × reps, peso orientativo inicial en kg, descanso en segundos, y RIR objetivo (2-3 para volumen, 1-2 para intensidad).
-Aplica periodización ondulante: varía intensidad y volumen entre días. Sé específico y práctico.`}],system:'Eres un experto en periodización y programación de fuerza basado en evidencia científica (Mike Israetel, Greg Nuckols). Generas rutinas completas con volumen adecuado al nivel, progresión de carga planificada y RIR objetivo por ejercicio. Responde siempre en español.'})});
+Aplica periodización ondulante: varía intensidad y volumen entre días. Sé específico y práctico.`}],system:COACH_LANG==='en'?'You are an expert in periodization and strength programming. Generate complete routines. Always respond in English.':'Eres un experto en periodización y programación de fuerza. Generas rutinas completas. Responde siempre en español.'})});
     res.innerHTML=`<div class="ia-chip"><div class="ia-chip-title">Rutina generada para ${c.nombre}</div><div class="ia-result-body" style="white-space:pre-line">${d.reply}</div></div>`;
   }catch(e){res.innerHTML='<div style="color:#f87171;font-size:13px">Error generando. Verifica la API key.</div>';}
 }
@@ -3123,7 +3246,7 @@ async function dbGenerarIA(){
   res.innerHTML='<div class="ia-chip"><div class="ia-chip-title">Generando dieta...</div></div>';
   const c=await api('/clientes/'+dbState.clienteId);
   try{
-    const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:[{role:'user',content:`Genera un plan de dieta para ${c.nombre}. Objetivo: ${c.objetivo}. Nivel: ${c.nivel}. Calorías objetivo: ${c.kcal_internas} kcal. Proteína: ${c.prot}g. Carbos: ${c.carbs}g. Grasas: ${c.fat}g. Alimentos disponibles: ${alimentos}. Crea 5 comidas (desayuno, media mañana, comida, merienda, cena) con alimentos en gramos en crudo. NO menciones calorías al cliente.`}],system:'Eres un nutricionista deportivo experto. Genera planes de dieta flexibles, prácticos y adaptados al objetivo. Responde en español con cantidades en gramos en crudo.'})});
+    const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:[{role:'user',content:`Genera un plan de dieta para ${c.nombre}. Objetivo: ${c.objetivo}. Nivel: ${c.nivel}. Calorías objetivo: ${c.kcal_internas} kcal. Proteína: ${c.prot}g. Carbos: ${c.carbs}g. Grasas: ${c.fat}g. Alimentos disponibles: ${alimentos}. Crea 5 comidas (desayuno, media mañana, comida, merienda, cena) con alimentos en gramos en crudo. NO menciones calorías al cliente.`}],system:'Eres un nutricionista deportivo experto. Genera planes de dieta flexibles, prácticos y adaptados al objetivo. Cantidades en gramos en crudo. '+(COACH_LANG==='en'?'Always respond in English.':'Responde en español.')})});
     res.innerHTML=`<div class="ia-chip"><div class="ia-chip-title">Dieta generada para ${c.nombre}</div><div class="ia-result-body" style="white-space:pre-line">${d.reply}</div></div>`;
   }catch(e){res.innerHTML='<div style="color:#f87171;font-size:13px">Error generando. Verifica la API key.</div>';}
 }
@@ -3800,7 +3923,7 @@ async function sendIA(){
   const msgs=document.getElementById('iaMsgs');
   msgs.innerHTML+=`<div class="msg msg-u">${msg}</div>`;msgs.scrollTop=msgs.scrollHeight;
   iaH.push({role:'user',content:msg});document.getElementById('iaTyping').style.display='block';
-  try{const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:iaH,system:'Eres el asistente IA privado del coach WolfMindset. Ayudas con progresión de carga, periodización, ajustes calóricos, generación de rutinas y dietas completas. Respuestas técnicas y concisas en español.'})});iaH.push({role:'assistant',content:d.reply});document.getElementById('iaTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">WolfMindset IA</div>${d.reply}</div>`;msgs.scrollTop=msgs.scrollHeight;}
+  try{const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:iaH,system:`Eres el asistente IA privado del coach WolfMindset. Ayudas con progresión de carga, periodización, ajustes calóricos, generación de rutinas y dietas completas. ${COACH_LANG==='en'?'Always respond in English. Technical and concise.':'Respuestas técnicas y concisas en español.'}`})});iaH.push({role:'assistant',content:d.reply});document.getElementById('iaTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">WolfMindset IA</div>${d.reply}</div>`;msgs.scrollTop=msgs.scrollHeight;}
   catch(e){document.getElementById('iaTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">WolfMindset IA</div>Error. Inténtalo de nuevo.</div>`;}
 }
 
@@ -6503,7 +6626,7 @@ ${ejerciciosPlan}
 ÚLTIMAS SESIONES:
 ${resumenSesiones}
 
-Responde en español, máximo 150 palabras. Sé directo y específico. Indica:
+${COACH_LANG==='en'?'Respond in English, max 150 words.':'Responde en español, máximo 150 palabras.'} Sé directo y específico. Indica:
 1. Qué ejercicios subir de carga y cuánto
 2. Si hay que ajustar volumen (series/semana)
 3. Si toca descarga o progresión
@@ -6513,7 +6636,7 @@ Responde en español, máximo 150 palabras. Sé directo y específico. Indica:
       method: 'POST',
       body: JSON.stringify({
         messages: [{ role: 'user', content: prompt }],
-        system: 'Eres un coach experto en periodización y progresión de fuerza. Analizas datos reales de entreno y das recomendaciones concretas y prácticas en español.'
+        system: COACH_LANG==='en'?'You are an expert coach in periodization and strength progression. Analyze real training data and give concrete practical recommendations. Always in English.':'Eres un coach experto en periodización y progresión de fuerza. Analizas datos reales de entreno y das recomendaciones concretas y prácticas. Responde en español.'
       })
     });
 
@@ -7668,7 +7791,7 @@ async function analizarFotos(){
         imageBase64: fotos[0][1].b64,
         mediaType: fotos[0][1].mt,
         extraImages: fotos.slice(1).map(([t,f])=>({b64:f.b64,mt:f.mt,tipo:t})),
-        system: 'Eres un coach de fitness experto de WolfMindset. Analizas fotos de progreso con ojo clínico y motivador. Responde en español.'
+        system: COACH_LANG==='en'?'You are an expert WolfMindset fitness coach. Analyze progress photos with a clinical and motivating eye. Always respond in English.':'Eres un coach de fitness experto de WolfMindset. Analizas fotos de progreso con ojo clínico y motivador. Responde en español.'
       })
     });
 
