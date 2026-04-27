@@ -549,7 +549,8 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
         <button class="sni" onclick="cNav('nuevo',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="6" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M1 14c0-3.31 2.69-6 6-6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 10v4M10 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-i18n-coach="Nuevo cliente">Nuevo cliente</span></button>
         <button class="sni" id="sni_pendientes" onclick="cNav('pendientes',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span data-i18n-coach="Pendientes">Pendientes</span> <span id="badge_pend" style="display:none;background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px">0</span></button>
         <button class="sni" onclick="cNav('progreso',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n-coach="Progreso">Progreso</span></button>
-        <button class="sni" onclick="cNav('ia',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 015 5c0 2.4-1.7 4.4-4 4.9V14H7v-2.1C4.7 11.4 3 9.4 3 7a5 5 0 015-5z" stroke="currentColor" stroke-width="1.3"/></svg><span data-i18n-coach="Asistente IA">Asistente IA</span></button>
+        <button class="sni" onclick="cNav('ia',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 015 5c0 2.4-1.7 4.4-4 4.9V14H7v-2.1C4.7 11.4 3 0.4 3 7a5 5 0 015-5z" stroke="currentColor" stroke-width="1.3"/></svg><span data-i18n-coach="Asistente IA">Asistente IA</span></button>
+        <button class="sni" id="sni_equipo" onclick="cNav('equipo',this)" style="display:none"><svg viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 13c0-2.76 2.24-5 4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M15 13c0-2.76-2.24-5-4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 8v5M6 10h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>Mi equipo</span></button>
       </div>
       <button class="sb-out" onclick="doLogout()"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Cerrar sesión</button>
       <!-- Selector idioma coach -->
@@ -619,19 +620,19 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
 <!-- RECORDATORIO PESO -->
 <div id="pesoReminder" style="display:none;position:fixed;inset:0;background:rgba(9,9,11,.95);z-index:400;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
   <div style="font-size:56px;margin-bottom:16px">⚖️</div>
-  <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.08em;color:var(--sv);margin-bottom:8px">¡Hora de pesarte!</div>
-  <div style="font-size:14px;color:var(--tx3);margin-bottom:28px;line-height:1.6;max-width:280px">Son las 48h de seguimiento semanal. Pésate en ayunas y regístralo para que tu coach vea tu progreso.</div>
-  <button class="btn" style="width:100%;max-width:280px;padding:14px;margin-bottom:10px" onclick="irAPeso()">Registrar peso ahora</button>
-  <button style="background:none;border:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;padding:8px" onclick="posponerPeso()">Recordarme más tarde</button>
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.08em;color:var(--sv);margin-bottom:8px" data-i18n="¡Hora de pesarte!">¡Hora de pesarte!</div>
+  <div style="font-size:14px;color:var(--tx3);margin-bottom:28px;line-height:1.6;max-width:280px" data-i18n="Son las 48h de seguimiento semanal. Pésate en ayunas y regístralo para que tu coach vea tu progreso.">Son las 48h de seguimiento semanal. Pésate en ayunas y regístralo para que tu coach vea tu progreso.</div>
+  <button class="btn" style="width:100%;max-width:280px;padding:14px;margin-bottom:10px" onclick="irAPeso()" data-i18n="Registrar peso ahora">Registrar peso ahora</button>
+  <button style="background:none;border:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;padding:8px" onclick="posponerPeso()" data-i18n="Recordarme más tarde">Recordarme más tarde</button>
 </div>
 
 <!-- RECORDATORIO FOTO -->
 <div id="fotoReminder" style="display:none;position:fixed;inset:0;background:rgba(9,9,11,.95);z-index:400;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
   <div style="font-size:56px;margin-bottom:16px">📸</div>
-  <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.08em;color:var(--sv);margin-bottom:8px">¡Foto mensual!</div>
-  <div style="font-size:14px;color:var(--tx3);margin-bottom:28px;line-height:1.6;max-width:280px">Ha pasado más de un mes desde tu última foto. Las fotos son la mejor herramienta para ver tu transformación real.</div>
-  <button class="btn" style="width:100%;max-width:280px;padding:14px;margin-bottom:10px" onclick="irAFoto()">Subir foto ahora</button>
-  <button style="background:none;border:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;padding:8px" onclick="posponerFoto()">Recordarme más tarde</button>
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.08em;color:var(--sv);margin-bottom:8px" data-i18n="¡Foto mensual!">¡Foto mensual!</div>
+  <div style="font-size:14px;color:var(--tx3);margin-bottom:28px;line-height:1.6;max-width:280px" data-i18n="Ha pasado más de un mes desde tu última foto. Las fotos son la mejor herramienta para ver tu transformación real.">Ha pasado más de un mes desde tu última foto. Las fotos son la mejor herramienta para ver tu transformación real.</div>
+  <button class="btn" style="width:100%;max-width:280px;padding:14px;margin-bottom:10px" onclick="irAFoto()" data-i18n="Subir foto ahora">Subir foto ahora</button>
+  <button style="background:none;border:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;padding:8px" onclick="posponerFoto()" data-i18n="Recordarme más tarde">Recordarme más tarde</button>
 </div>
 
 </div>
@@ -1227,6 +1228,24 @@ const TRANSLATIONS = {
   'Logros':'Achievements',
   'Salir':'Log out',
 
+  // ── Entreno activo ──
+  'Entrenamiento':'Training',
+  '■ Terminar':'■ Finish',
+  'En curso':'In progress',
+  'SET':'SET','PREVIOUS':'PREVIOUS','REPS':'REPS',
+  'Serie':'Set','Anterior':'Previous','Rep.':'Reps',
+  '⭐ Principal':'⭐ Main',
+  'Coach dice':'Coach says',
+  '💬 Nota para el coach (sensaciones, dolor, etc.)':'💬 Note for coach (sensations, pain, etc.)',
+  '¡Entreno completado!':'Workout complete!',
+  'Descansa y come bien.':'Rest and eat well.',
+  '💪 ¿Cuántas reps más podrías haber hecho? (RIR = Reps In Reserve)':'💪 How many more reps could you have done? (RIR = Reps In Reserve)',
+  '0 = al fallo · 1 = casi al límite · 2-3 = cómodo · 4+ = fácil':'0 = failure · 1 = near limit · 2-3 = comfortable · 4+ = easy',
+  '📋 Check-in semanal':'📋 Weekly check-in',
+  'Activar':'Enable',
+  'Guardar':'Save',
+  '⚖️ Peso hoy (kg)':'⚖️ Today weight (kg)',
+
 }
 function t(text) {
   if(LANG === 'es') return text;
@@ -1579,6 +1598,9 @@ async function doLogin(){
     if(USER.role==='coach'){
       show('sCoach');renderCoach('clientes');setTimeout(()=>{setCoachLang(COACH_LANG);},200);
       if(isMobile())document.getElementById('coachMobileNav').style.display='flex';
+      // Mostrar Mi Equipo solo al coach admin (username 'wolf')
+      const sniEq=document.getElementById('sni_equipo');
+      if(sniEq && (USER.username==='wolf'||USER.is_admin)) sniEq.style.display='flex';
       cargarNotificacionesCoach();
       // Auto-verificar vencimientos al entrar
       api('/suscripciones/avisar-vencimientos', {method:'POST'}).catch(()=>{});
@@ -1711,6 +1733,7 @@ async function renderCoach(s){
   else if(s==='dieta-builder'){el.innerHTML=hDietaBuilder();await initDietaBuilder();}
   else if(s==='progreso'){const cl=await api('/clientes');el.innerHTML=hProgreso(cl);cargarProgresoSubs();cargarDashboard();}
   else if(s==='pendientes'){const p=await api('/clientes-pendientes');el.innerHTML=hPendientes(p);}
+  else if(s==='equipo'){el.innerHTML=hEquipo();initEquipo();}
   else if(s==='ia'){
   el.innerHTML=hIACoach();
   iaH=[{role:'assistant',content:tc('Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?')}];
@@ -1797,7 +1820,7 @@ async function verCliente(id){
   </div>
   <div class="sec" style="margin-botto
     m:12px" id="ajustar_datos_form">
-    <div class="sec-hdr">Ajustar datos <button class="btn btn-sm" id="btn_guardar_datos" data-cliente-id="${c.id}" onclick="guardarDatos(${c.id})">Guardar</button></div>
+    <div class="sec-hdr">Ajustar datos <button class="btn btn-sm" id="btn_guardar_datos" data-cliente-id="${c.id}" onclick="guardarDatos(${c.id})">${t('Guardar')}</button></div>
     <div class="g2" style="gap:8px;margin-bottom:10px">
       <div><div class="form-lbl">Objetivo</div><input class="inp" id="obj" value="${c.objetivo}" oninput="recalcularYGuardarCoach()" style="margin-bottom:0"/></div>
       <div><div class="form-lbl">Nivel</div><select class="inp" id="niv" onchange="autoGuardarMacrosCoach()" style="margin-bottom:0"><option ${c.nivel==='Principiante'?'selected':''}>Principiante</option><option ${c.nivel==='Intermedio'?'selected':''}>Intermedio</option><option ${c.nivel==='Avanzado'?'selected':''}>Avanzado</option></select></div>
@@ -2925,7 +2948,126 @@ Aplica periodización ondulante: varía intensidad y volumen entre días. Sé es
 }
 
 
-// ═══ IA EXERCISE FILTER ═══════════════════════════════
+// ═══ MI EQUIPO — GESTIÓN DE COACHES ══════════════════════════════
+function hEquipo(){
+  return`
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.08em;color:var(--sv);margin-bottom:4px">Mi equipo</div>
+  <div style="font-size:13px;color:var(--tx3);margin-bottom:20px">Gestiona los coachs de WolfMindset</div>
+
+  <!-- LISTA DE COACHES -->
+  <div id="equipo_lista" style="margin-bottom:24px">
+    <div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">Cargando...</div>
+  </div>
+
+  <!-- CREAR NUEVO COACH -->
+  <div style="background:var(--s);border:0.5px solid var(--br);border-radius:16px;padding:18px">
+    <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:14px">➕ Añadir nuevo coach</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>
+        <div class="form-lbl">Nombre completo</div>
+        <input class="inp" id="eq_nombre" type="text" placeholder="Ej: María García" style="margin-bottom:0"/>
+      </div>
+      <div>
+        <div class="form-lbl">Usuario (login)</div>
+        <input class="inp" id="eq_user" type="text" placeholder="Ej: maria" style="margin-bottom:0"/>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>
+        <div class="form-lbl">Contraseña</div>
+        <input class="inp" id="eq_pass" type="password" placeholder="Mín 6 caracteres" style="margin-bottom:0"/>
+      </div>
+      <div>
+        <div class="form-lbl">Email (opcional)</div>
+        <input class="inp" id="eq_email" type="email" placeholder="coach@email.com" style="margin-bottom:0"/>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div class="form-lbl">Idioma del panel</div>
+      <select class="inp" id="eq_lang" style="margin-bottom:0">
+        <option value="es">🇪🇸 Español</option>
+        <option value="en">🇬🇧 English</option>
+      </select>
+    </div>
+    <div id="eq_msg" style="display:none;font-size:13px;margin-bottom:10px;padding:8px 12px;border-radius:8px"></div>
+    <button class="btn" onclick="crearCoach()" style="width:100%;padding:12px">✓ Crear coach</button>
+  </div>`;
+}
+
+async function initEquipo(){
+  try{
+    const coaches = await api('/coaches');
+    const lista = document.getElementById('equipo_lista');
+    if(!lista) return;
+    if(!coaches || !coaches.length){
+      lista.innerHTML='<div style="font-size:13px;color:var(--tx3);padding:12px;text-align:center">Solo tú por ahora.</div>';
+      return;
+    }
+    lista.innerHTML=`
+      <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Coaches activos</div>
+      ${coaches.map(c=>`
+        <div style="background:var(--s);border:0.5px solid var(--br);border-radius:12px;padding:14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:38px;height:38px;border-radius:50%;background:var(--bl2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff">${c.nombre?c.nombre[0].toUpperCase():'C'}</div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--sv)">${c.nombre||c.username}</div>
+              <div style="font-size:11px;color:var(--tx3)">@${c.username} · ${c.lang==='en'?'🇬🇧 English':'🇪🇸 Español'}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            ${c.username!=='wolf'?`<button onclick="resetCoachPass(${c.id},'${c.nombre||c.username}')" style="background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);color:var(--blg);font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;cursor:pointer;font-family:inherit">🔑 Reset pass</button>
+            <button onclick="eliminarCoach(${c.id},'${c.nombre||c.username}')" style="background:rgba(239,68,68,.1);border:0.5px solid rgba(239,68,68,.2);color:#fca5a5;font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;cursor:pointer;font-family:inherit">🗑</button>`:'<span style="font-size:11px;color:var(--sv3);background:rgba(34,197,94,.1);border:0.5px solid rgba(34,197,94,.2);padding:3px 8px;border-radius:6px">Admin</span>'}
+          </div>
+        </div>`).join('')}`;
+  }catch(e){
+    const lista=document.getElementById('equipo_lista');
+    if(lista) lista.innerHTML='<div style="font-size:13px;color:#fca5a5;padding:12px">Error cargando coaches. Actualiza el backend.</div>';
+  }
+}
+
+async function crearCoach(){
+  const nombre=document.getElementById('eq_nombre').value.trim();
+  const user=document.getElementById('eq_user').value.trim().toLowerCase();
+  const pass=document.getElementById('eq_pass').value;
+  const email=document.getElementById('eq_email').value.trim();
+  const lang=document.getElementById('eq_lang').value;
+  const msg=document.getElementById('eq_msg');
+
+  if(!nombre||!user||!pass){msg.style.display='block';msg.style.background='rgba(239,68,68,.1)';msg.style.color='#fca5a5';msg.textContent='Nombre, usuario y contraseña son obligatorios.';return;}
+  if(pass.length<6){msg.style.display='block';msg.style.background='rgba(239,68,68,.1)';msg.style.color='#fca5a5';msg.textContent='La contraseña debe tener al menos 6 caracteres.';return;}
+
+  try{
+    await api('/coaches',{method:'POST',body:JSON.stringify({nombre,username:user,password:pass,email,lang})});
+    msg.style.display='block';msg.style.background='rgba(34,197,94,.1)';msg.style.color='#86efac';
+    msg.textContent=`✓ Coach "${nombre}" creado. Login: ${user}`;
+    document.getElementById('eq_nombre').value='';
+    document.getElementById('eq_user').value='';
+    document.getElementById('eq_pass').value='';
+    document.getElementById('eq_email').value='';
+    initEquipo(); // Recargar lista
+  }catch(e){
+    msg.style.display='block';msg.style.background='rgba(239,68,68,.1)';msg.style.color='#fca5a5';
+    msg.textContent=e.error||'Error al crear el coach.';
+  }
+}
+
+async function resetCoachPass(id, nombre){
+  const newPass=prompt(`Nueva contraseña para ${nombre} (mín 6 chars):`);
+  if(!newPass||newPass.length<6){alert('Contraseña demasiado corta.');return;}
+  try{
+    await api('/coaches/'+id+'/reset-password',{method:'POST',body:JSON.stringify({newPassword:newPass})});
+    alert(`✓ Contraseña de ${nombre} actualizada.`);
+  }catch(e){alert('Error: '+(e.error||'No se pudo actualizar'));}
+}
+
+async function eliminarCoach(id, nombre){
+  if(!confirm(`¿Eliminar el coach "${nombre}"? Sus clientes NO se eliminarán.`)) return;
+  try{
+    await api('/coaches/'+id,{method:'DELETE'});
+    initEquipo();
+  }catch(e){alert('Error: '+(e.error||'No se pudo eliminar'));}
+}
+// ═══════════════════════════════════════════════════════════════════
 let rbExFilter = null; // null = no filter, object = {avoid:[], beginner:[], advanced:[]}
 
 async function rbFiltrarIA(){
@@ -4016,7 +4158,7 @@ function hNotifBanner(){
       <div style="font-size:12px;font-weight:700;color:var(--amb);margin-bottom:2px">Activa las notificaciones</div>
       <div style="font-size:11px;color:var(--tx3)">Para que suene el timer aunque la pantalla esté bloqueada</div>
     </div>
-    <button onclick="activarNotificaciones(this)" style="padding:6px 12px;background:var(--amb);border:none;border-radius:8px;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Activar</button>
+    <button onclick="activarNotificaciones(this)" style="padding:6px 12px;background:var(--amb);border:none;border-radius:8px;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">${t('Activar')}</button>
   </div>`;
 }
 
@@ -4049,7 +4191,7 @@ function necesitaCheckin(){
 function hCheckinBanner(){
   if(!necesitaCheckin()) return '';
   return`<div style="background:rgba(34,197,94,.06);border:0.5px solid rgba(34,197,94,.25);border-radius:14px;padding:12px 16px;margin-bottom:14px">
-    <div style="font-size:12px;font-weight:700;color:var(--gnb);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">📋 Check-in semanal</div>
+    <div style="font-size:12px;font-weight:700;color:var(--gnb);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">${t('📋 Check-in semanal')}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
       <div>
         <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">${t('😴 ¿Cómo dormiste?')}</div>
@@ -4352,14 +4494,14 @@ function hEntreno(){
         </div>
         ${ytUrl?`<button onclick="openVideo('${ytUrl}','${e.nombre}')" style="width:34px;height:34px;border-radius:8px;background:rgba(239,68,68,.15);border:0.5px solid rgba(239,68,68,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg></button>`:''}
       </div>
-      ${e.nota_coach?`<div style="background:linear-gradient(135deg,rgba(180,130,0,0.18),rgba(245,158,11,0.1));border-left:3px solid #f59e0b;padding:8px 12px;margin:0 0 8px;display:flex;gap:8px;align-items:flex-start"><span style="font-size:14px">🐺</span><div><div style="font-size:9px;color:#fcd34d;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1px">Coach dice</div><div style="font-size:12px;color:#fde68a;font-weight:600">${e.nota_coach}</div></div></div>`:''}
+      ${e.nota_coach?`<div style="background:linear-gradient(135deg,rgba(180,130,0,0.18),rgba(245,158,11,0.1));border-left:3px solid #f59e0b;padding:8px 12px;margin:0 0 8px;display:flex;gap:8px;align-items:flex-start"><span style="font-size:14px">🐺</span><div><div style="font-size:9px;color:#fcd34d;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1px">${t('Coach dice')}</div><div style="font-size:12px;color:#fde68a;font-weight:600">${e.nota_coach}</div></div></div>`:''}
       <div class="strong-serie-header" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px 1fr 1fr'}">
-        <span>Serie</span><span>Anterior</span><span>✓</span><span>kg</span><span>Rep.</span>${e.rir!=null?'<span>RIR</span>':''}
+        <span>${t('SET')}</span><span>${t('PREVIOUS')}</span><span>✓</span><span>KG</span><span>${t('REPS')}</span>${e.rir!=null?'<span>RIR</span>':''}
       </div>
       ${seriesRows}
       <!-- Nota del cliente para el coach -->
       <div style="padding:8px 14px 12px">
-        <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">💬 Nota para el coach (sensaciones, dolor, etc.)</div>
+        <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${t('💬 Nota para el coach (sensaciones, dolor, etc.')}</div>
         <input id="nota_cliente_${ei}" type="text" placeholder="Ej: Sentí el peso muy pesado, me dolió el hombro..." value="${e._nota_cliente||''}"
           style="width:100%;padding:8px 10px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:12px;font-family:inherit;box-sizing:border-box"
           onchange="CD.dias[activeDia].ejercicios[${ei}]._nota_cliente=this.value"/>
@@ -4372,21 +4514,21 @@ function hEntreno(){
     <img src="${wolfSrc}" style="position:absolute;right:-10px;bottom:-10px;height:120px;width:auto;opacity:.2;mix-blend-mode:screen;pointer-events:none;z-index:0"/>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1">
       <div>
-        <div class="hero-day-lbl">Entrenamiento</div>
+        <div class="hero-day-lbl">${t('Entrenamiento')}</div>
         <div class="hero-day-name">${d.nombre}</div>
         <div class="hero-day-sub">${d.grupo}</div>
       </div>
       <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-        ${workoutStartTime?`<div id="workout_timer" style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gnb);letter-spacing:.08em">00:00</div><div style="font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em">En curso</div>`:''}
-        <button id="btn_terminar" onclick="terminarEntreno()" style="background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:12px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;min-width:100px;min-height:42px;-webkit-tap-highlight-color:transparent;touch-action:manipulation">■ Terminar</button>
+        ${workoutStartTime?`<div id="workout_timer" style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gnb);letter-spacing:.08em">00:00</div><div style="font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em">${t('En curso')}</div>`:''}
+        <button id="btn_terminar" onclick="terminarEntreno()" style="background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:12px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;min-width:100px;min-height:42px;-webkit-tap-highlight-color:transparent;touch-action:manipulation">${t('■ Terminar')}</button>
       </div>
     </div>
-    ${pct>0?`<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.4);font-weight:600;margin-bottom:4px"><span>Progreso</span><span>${doneSeries}/${totalSeries}</span></div><div style="height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--bl);border-radius:2px;transition:.5s"></div></div></div>`:''}
+    ${pct>0?`<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.4);font-weight:600;margin-bottom:4px"><span>${t('Progreso')}</span><span>${doneSeries}/${totalSeries}</span></div><div style="height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--bl);border-radius:2px;transition:.5s"></div></div></div>`:''}
   </div>
   <div class="day-scroll">${pills}</div>
   <div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.08em">${d.grupo}</div>
   ${exCards}
-  ${d.ejercicios.length>0&&d.ejercicios.every(e=>e._series&&e._series.every(s=>s.done))?`<div style="margin:0 14px 20px;background:var(--gnd);border:0.5px solid rgba(34,197,94,.3);border-radius:14px;padding:18px;text-align:center"><div style="font-size:32px;margin-bottom:8px">🎉</div><div style="font-size:16px;font-weight:700;color:var(--gnb)">¡Entreno completado!</div><div style="font-size:13px;color:var(--tx3);margin-top:4px">Descansa y come bien.</div></div>`:''}
+  ${d.ejercicios.length>0&&d.ejercicios.every(e=>e._series&&e._series.every(s=>s.done))?`<div style="margin:0 14px 20px;background:var(--gnd);border:0.5px solid rgba(34,197,94,.3);border-radius:14px;padding:18px;text-align:center"><div style="font-size:32px;margin-bottom:8px">🎉</div><div style="font-size:16px;font-weight:700;color:var(--gnb)">${t('¡Entreno completado!')}</div><div style="font-size:13px;color:var(--tx3);margin-top:4px">${t('Descansa y come bien.')}</div></div>`:''}
   ${renderKeyboard()}`;
 }
 
@@ -4395,8 +4537,8 @@ function parseFirstNum(r){const m=String(r||10).match(/\d+/);return m?parseInt(m
 function renderKeyboard(){
   return`<div id="strong_keyboard" style="display:none;position:fixed;bottom:60px;left:0;right:0;z-index:400;background:var(--s2);border-top:1.5px solid var(--br2);padding:10px 14px 16px;box-shadow:0 -8px 32px rgba(0,0,0,.7)">
     <div id="kb_rir_hint" style="display:none;background:rgba(37,99,235,.1);border:0.5px solid rgba(59,130,246,.3);border-radius:8px;padding:6px 10px;margin-bottom:8px;font-size:11px;color:var(--blg);text-align:center">
-      💪 ¿Cuántas reps más podrías haber hecho? (RIR = Reps In Reserve)<br>
-      <span style="color:var(--tx3)">0 = al fallo · 1 = casi al límite · 2-3 = cómodo · 4+ = fácil</span>
+      ${t('💪 ¿Cuántas reps más podrías haber hecho? (RIR = Reps In Reserve)')}<br>
+      <span style="color:var(--tx3)">${t('0 = al fallo · 1 = casi al límite · 2-3 = cómodo · 4+ = fácil')}</span>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 4px">
       <div style="font-size:11px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.06em" id="kb_label">kg</div>
@@ -5599,9 +5741,9 @@ function checkRecordatorios(){
   const necesitaFoto=(ahora-ultimaFotoFecha)>MES&&ahora>posponerFotoTs;
 
   if(necesitaPeso){
-    setTimeout(()=>{document.getElementById('pesoReminder').style.display='flex';},1500);
+    setTimeout(()=>{document.getElementById('pesoReminder').style.display='flex';applyLang(document.getElementById('pesoReminder'));},1500);
   } else if(necesitaFoto){
-    setTimeout(()=>{document.getElementById('fotoReminder').style.display='flex';},2000);
+    setTimeout(()=>{document.getElementById('fotoReminder').style.display='flex';applyLang(document.getElementById('fotoReminder'));},2000);
   }
 }
 
@@ -6878,7 +7020,7 @@ function programarRecordatorioPeso(clienteId){
           tag: 'peso-reminder',
           requireInteraction: true,
         });
-        document.getElementById('pesoReminder').style.display='flex';
+        document.getElementById('pesoReminder').style.display='flex';applyLang(document.getElementById('pesoReminder'));
       }, msHasta);
     }
   }
@@ -6901,7 +7043,7 @@ function programarRecordatorioFoto(clienteId){
           tag: 'foto-reminder',
           requireInteraction: true,
         });
-        document.getElementById('fotoReminder').style.display='flex';
+        document.getElementById('fotoReminder').style.display='flex';applyLang(document.getElementById('fotoReminder'));
       }, msHasta);
     }
   }
@@ -7175,8 +7317,8 @@ function mostrarDoneOverlay(estado, pendientes){
   if(wolfImg && estado === 'completado') wolfImg.src = WOLF_COMPLETE_SRC;
   setTimeout(()=>{
     const msg = estado === 'completado'
-      ? `¡Felicidades, ${nombre}! Has completado tu entreno en ${dur} min. Tu disciplina te hace más fuerte cada día.`
-      : `${pendientes} serie${pendientes>1?'s':''} sin completar. La constancia es lo que separa a los fuertes del resto.`;
+      ? LANG==='en'?`Congrats, ${nombre}! You completed your workout in ${dur} min. Your discipline makes you stronger every day.`:`¡Felicidades, ${nombre}! Has completado tu entreno en ${dur} min. Tu disciplina te hace más fuerte cada día.`
+      : LANG==='en'?`${pendientes} set${pendientes>1?'s':''} incomplete. Consistency is what separates those who achieve from those who don't.`:`${pendientes} serie${pendientes>1?'s':''} sin completar. La constancia es lo que separa a los fuertes del resto.`;
     document.getElementById('doneMsg').textContent = msg;
     document.getElementById('doneOv').classList.add('show');
     applyLang(document.getElementById('doneOv'));
