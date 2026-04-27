@@ -5143,7 +5143,9 @@ function selDia(i){
   if(workoutTimerInt){clearInterval(workoutTimerInt);workoutTimerInt=null;}
   // If we're in entreno, go to preview first; if already selecting, go to entreno
   if(vistaActual==='entreno'){
-    document.getElementById('klContent').innerHTML=hEntreno();
+    const klEl = document.getElementById('klContent');
+    klEl.innerHTML=hEntreno();
+    setTimeout(()=>{ applyLang(klEl); iniciarEntreno(); }, 50);
   } else {
     abrirPreviewDia(i);
   }
