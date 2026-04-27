@@ -18,6 +18,7 @@ function coachOnly(req, res, next) {
   next();
 }
 
+// POST /api/auth/login
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
   const user = dbGet('SELECT * FROM users WHERE username = ?', [username]);
@@ -29,22 +30,28 @@ router.post('/login', (req, res) => {
     const c = dbGet('SELECT id FROM clientes WHERE user_id = ?', [user.id]);
     clienteId = c?.id;
   }
-  res.json({ token, user: { id: user.id, username: user.username, role: user.role, nombre: user.nombre, clienteId } });
+  // Incluir lang para que el frontend inicialice COACH_LANG correctamente
+  res.json({ token, user: { id: user.id, username: user.username, role: user.role, nombre: user.nombre, clienteId, lang: user.lang || 'es' } });
 });
 
+// POST /api/auth/register-cliente — crear cliente desde panel coach
 router.post('/register-cliente', authMiddleware, coachOnly, (req, res) => {
-  const { username, password, nombre, objetivo, nivel } = req.body;
+  const { username, password, nombre, objetivo, nivel, coach_id } = req.body;
   if (!username || !password || !nombre) return res.status(400).json({ error: 'Faltan datos' });
   const exists = dbGet('SELECT id FROM users WHERE username = ?', [username]);
   if (exists) return res.status(400).json({ error: 'Usuario ya existe' });
   const hash = bcrypt.hashSync(password, 10);
   const userResult = dbRun('INSERT INTO users (username, password, role, nombre) VALUES (?, ?, ?, ?)', [username, hash, 'cliente', nombre]);
-  const clienteResult = dbRun('INSERT INTO clientes (user_id, objetivo, nivel) VALUES (?, ?, ?)', [userResult.lastInsertRowid, objetivo || 'Volumen', nivel || 'Intermedio']);
+  // Asignar al coach que lo crea, o al coach_id que se pasa
+  const assignedCoach = coach_id || req.user.id;
+  const clienteResult = dbRun(
+    'INSERT INTO clientes (user_id, objetivo, nivel, coach_id) VALUES (?, ?, ?, ?)',
+    [userResult.lastInsertRowid, objetivo || 'Volumen', nivel || 'Intermedio', assignedCoach]
+  );
   res.json({ ok: true, userId: userResult.lastInsertRowid, clienteId: clienteResult.lastInsertRowid });
 });
 
-
-// POST /api/auth/registro - registro público de clientes
+// POST /api/auth/registro — registro público de clientes (desde landing)
 router.post('/registro', async (req, res) => {
   const { nombre, username, email, telefono, password, objetivo, nivel, peso_actual, altura, edad, sexo, actividad, observaciones, dieta_tipo, alimentos_no, lesiones } = req.body;
   if (!nombre || !username || !password) return res.status(400).json({ error: 'Nombre, usuario y contraseña son obligatorios' });
@@ -58,6 +65,11 @@ router.post('/registro', async (req, res) => {
       [ur.lastInsertRowid, objetivo||'Volumen', nivel||'Intermedio', parseFloat(peso_actual)||0, parseInt(altura)||0, parseInt(edad)||0, sexo||'Hombre', actividad||'Moderada', observaciones||'', dieta_tipo||'Omnivoro', alimentos_no||'', lesiones||'']);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/auth/solicitar-reset — olvidé contraseña (cliente)
+router.post('/solicitar-reset', async (req, res) => {
+  res.json({ ok: true, msg: 'Contacta con tu coach para resetear tu contraseña.' });
 });
 
 module.exports = { router, authMiddleware, coachOnly };
