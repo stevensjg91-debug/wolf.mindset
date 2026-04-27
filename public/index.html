@@ -1390,6 +1390,21 @@ const TRANSLATIONS = {
   '¡Primer día!':'First day!',
   '¡Sigue así!':'Keep it up!',
 
+  'Dorsal ancho':'Latissimus dorsi',
+  'Romboides':'Rhomboids',
+  'Braquial':'Brachialis',
+  'Gastrocnemio':'Gastrocnemius',
+  'Lumbar':'Lower back',
+  'Rotadores':'Rotators',
+  'Pectoral':'Chest',
+  'Core':'Core',
+  'Abdominales':'Abs',
+  'alimentos':'foods',
+  'OPCIONES ALTERNATIVAS':'ALTERNATIVE OPTIONS',
+  'INSTRUCCIONES':'INSTRUCTIONS',
+  'ESPALDA':'BACK','PECHO':'CHEST','PIERNAS':'LEGS',
+  'HOMBROS':'SHOULDERS','BRAZOS':'ARMS','GLÚTEOS':'GLUTES',
+
 }
 function t(text) {
   if(LANG === 'es') return text;
@@ -4728,17 +4743,17 @@ function abrirDescripcion(nombre){
                <div style="flex:1">
                  <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">${t("Músculos trabajados")}</div>
                  <div style="display:flex;flex-wrap:wrap;gap:5px">
-                   ${getExerciseMuscles(nombre).map(m=>'<span style="font-size:11px;background:rgba(239,68,68,.15);color:#fca5a5;border:0.5px solid rgba(239,68,68,.3);padding:3px 8px;border-radius:10px;font-weight:600">'+m+'</span>').join('')}
+                   ${getExerciseMuscles(nombre).map(m=>'<span style="font-size:11px;background:rgba(239,68,68,.15);color:#fca5a5;border:0.5px solid rgba(239,68,68,.3);padding:3px 8px;border-radius:10px;font-weight:600">'+t(m)+'</span>').join('')}
                  </div>
                  <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em;margin-top:10px;margin-bottom:5px">${t("Secundarios")}</div>
                  <div style="display:flex;flex-wrap:wrap;gap:5px">
-                   ${getExerciseSecondary(nombre).map(m=>'<span style="font-size:11px;background:rgba(59,130,246,.1);color:#93c5fd;border:0.5px solid rgba(59,130,246,.2);padding:3px 8px;border-radius:10px">'+m+'</span>').join('')}
+                   ${getExerciseSecondary(nombre).map(m=>'<span style="font-size:11px;background:rgba(59,130,246,.1);color:#93c5fd;border:0.5px solid rgba(59,130,246,.2);padding:3px 8px;border-radius:10px">'+t(m)+'</span>').join('')}
                  </div>
                </div>
              </div>`
         }
       </div>
-      <div style="font-size:11px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">Instrucciones</div>
+      <div style="font-size:11px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">${t('INSTRUCCIONES')}</div>
       ${pasos}
     </div>`;
   document.body.appendChild(modal);
@@ -5189,7 +5204,7 @@ function hDieta(){
   const mealNamesES = ['DESAYUNO','ALMUERZO','MERIENDA','CENA','COMIDA 5','COMIDA 6'];
   const comidas = CD.comidas.map((m,i)=>({
     numero: i+1,
-    nombre: m.nombre.replace(/^\d+\.\s*/,'').toUpperCase() || mealNamesES[i],
+    nombre: LANG==='en' ? (mealNames[i]||'MEAL '+(i+1)) : (m.nombre.replace(/^\d+\.\s*/,'').toUpperCase() || mealNamesES[i]),
     nombreEN: mealNames[i] || 'MEAL '+(i+1),
     alimentos: m.items.map(it=>({
       nombre: it.nombre,
@@ -5211,7 +5226,7 @@ function hDieta(){
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div>
             <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:#fff;letter-spacing:.1em">${m.nombre}</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.05em">${m.alimentos.length} alimentos</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.05em">${m.alimentos.length} ${t('alimentos')}</div>
           </div>
           ${m.alimentos.some(a=>a.nombre.toLowerCase().match(/pollo|salmón|salmon|huevo|whey|pavo|carne|proteína/))
             ? `<div style="font-size:9px;font-weight:700;color:${accLight};border:0.5px solid ${acc};padding:2px 7px;border-radius:4px;letter-spacing:.08em;background:${accBg}">HIGH PROTEIN</div>`
@@ -5231,7 +5246,7 @@ function hDieta(){
           const vars = CD._planVariaciones?.[mi];
           if(!vars?.length) return '';
           return `<div style="border-top:0.5px solid rgba(255,255,255,.07);margin-top:6px;padding-top:8px">
-            <div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:.08em;margin-bottom:6px">OPCIONES ALTERNATIVAS</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:.08em;margin-bottom:6px">${t('OPCIONES ALTERNATIVAS')}</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               <button onclick="clienteVarSelect2(${mi},-1,this)" style="padding:4px 12px;border-radius:10px;border:1px solid ${acc};background:${accBg};color:${accLight};font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation">A</button>
               ${vars.map((v,vi)=>`<button onclick="clienteVarSelect2(${mi},${vi},this)" style="padding:4px 12px;border-radius:10px;border:0.5px solid rgba(255,255,255,.2);background:none;color:rgba(255,255,255,.45);font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation">${v.letra||String.fromCharCode(66+vi)} · ${v.nombre||''}</button>`).join('')}
@@ -8476,7 +8491,7 @@ function getMuscleMapSVG(nombre){
     <ellipse cx="22" cy="100" rx="5" ry="9" fill="${dim}"/>
     <ellipse cx="38" cy="100" rx="5" ry="9" fill="${dim}"/>
     <!-- Back label if needed -->
-    ${isEspalda?'<text x="30" y="115" text-anchor="middle" font-size="6" fill="#ef4444" font-weight="bold">ESPALDA</text>':''}
+    ${isEspalda?'<text x="30" y="115" text-anchor="middle" font-size="6" fill="#ef4444" font-weight="bold">${LANG==="en"?"BACK":"ESPALDA"}</text>':''}
   </svg>`;
 }
 
