@@ -1141,6 +1141,64 @@ const TRANSLATIONS = {
   '¿OLVIDASTE TU CONTRASEÑA?':'FORGOT YOUR PASSWORD?',
   '¿Olvidaste tu contraseña?':'Forgot your password?',
   '✓ Añadir día':'✓ Add day',
+  // ── Perfil cliente ──
+  'Alimentos que no me gustan o no puedo comer':'Foods I dislike or cannot eat',
+  'Lesiones / zonas con dolor / alergias':'Injuries / pain areas / allergies',
+  'Otras observaciones':'Other notes',
+  'Vegetariano':'Vegetarian','Vegano':'Vegan',
+  'Muy activo (dobles entrenos)':'Very active (double sessions)',
+  'Por ejemplo: anemia, vitamina D baja, ferritina baja, B12, omega-3... Tu coach lo tendrá en cuenta al preparar tu dieta.':'For example: anemia, low Vitamin D, low ferritin, B12, omega-3... Your coach will consider this when preparing your diet.',
+  '🧪 ¿Has tenido o tienes algún tipo de deficiencia?':'🧪 Do you have or have you had any deficiency?',
+  'Cualquier cosa que tu coach deba saber...':'Anything your coach should know...',
+  'Ej: rodilla derecha, lumbar...':'E.g. right knee, lower back...',
+
+  // ── Progreso ──
+  'Semanas':'Weeks','Objetivo':'Goal','Nivel':'Level','Días/sem':'Days/wk',
+  'Medición semanal':'Weekly measurement',
+  'Peso registrado esta semana':'Weight logged this week',
+  'Guardar peso':'Save weight',
+  'Fotos de progreso':'Progress photos',
+  'frente':'front','posterior':'back','costado':'side',
+  'FRENTE':'FRONT','POSTERIOR':'BACK','COSTADO':'SIDE',
+  '${t("Sube las 3 fotos para que tu coach pueda hacer una valoración completa.")}':'Upload all 3 photos so your coach can do a full assessment.',
+
+  // ── Descripción ejercicio ──
+  'MÚSCULOS TRABAJADOS':'MUSCLES WORKED',
+  'Músculos trabajados':'Muscles worked',
+  'SECUNDARIOS':'SECONDARY',
+  'Secundarios':'Secondary',
+  'Pectoral mayor':'Pectoralis major','Pectoral menor':'Pectoralis minor',
+  'Deltoides anterior':'Anterior deltoid','Deltoides posterior':'Posterior deltoid',
+  'Deltoides lateral':'Lateral deltoid',
+  'Bíceps braquial':'Brachial biceps','Bíceps':'Biceps',
+  'Tríceps':'Triceps','Cuádriceps':'Quadriceps',
+  'Isquiotibiales':'Hamstrings','Glúteo mayor':'Gluteus maximus',
+  'Glúteo':'Glute','Sóleo':'Soleus','Gemelos':'Calves',
+  'Espalda baja':'Lower back','Trapecio':'Trapezius',
+  'Serrato':'Serratus','Romboides':'Rhomboids',
+  'Lumbares':'Erector spinae','Core':'Core','Abdominales':'Abs',
+
+  // ── Check-in semanal ──
+  'CHECK-IN SEMANAL':'WEEKLY CHECK-IN',
+  '📋 Check-in semanal':'📋 Weekly check-in',
+  'Medición WEEKL':'Weekly measurement',
+  '¡HORA DE PESARTE!':'TIME TO WEIGH IN!',
+  'Son las 48h de seguimiento semanal. Pésate en ayunas y regístralo para que tu coach vea tu progreso.':'It is your weekly 48h check-in. Weigh yourself fasted and log it so your coach can track your progress.',
+  'Registrar peso ahora':'Log weight now',
+  'Recordarme más tarde':'Remind me later',
+
+  // ── Progreso stats ──
+  'Volumen':'Volume','Fuerza':'Strength',
+  'Principiante':'Beginner','Intermedio':'Intermediate','Avanzado':'Advanced',
+  'Ganar músculo':'Build muscle','Perder peso':'Lose weight',
+  'Recomposición':'Body recomp','Definición':'Cutting',
+
+  // ── Entreno ──
+  'Guardar sesión':'Save session',
+  'Entreno guardado':'Workout saved',
+  'serie al fallo':'set to failure',
+  'Pausa 1-2 segundos en la posición de máxima contracción.':'Pause 1-2 seconds at peak contraction.',
+
 }
 function t(text) {
   if(LANG === 'es') return text;
@@ -4081,11 +4139,11 @@ function abrirDescripcion(nombre){
                </div>
                <!-- Muscle info -->
                <div style="flex:1">
-                 <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Músculos trabajados</div>
+                 <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">${t("Músculos trabajados")}</div>
                  <div style="display:flex;flex-wrap:wrap;gap:5px">
                    ${getExerciseMuscles(nombre).map(m=>'<span style="font-size:11px;background:rgba(239,68,68,.15);color:#fca5a5;border:0.5px solid rgba(239,68,68,.3);padding:3px 8px;border-radius:10px;font-weight:600">'+m+'</span>').join('')}
                  </div>
-                 <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em;margin-top:10px;margin-bottom:5px">Secundarios</div>
+                 <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em;margin-top:10px;margin-bottom:5px">${t("Secundarios")}</div>
                  <div style="display:flex;flex-wrap:wrap;gap:5px">
                    ${getExerciseSecondary(nombre).map(m=>'<span style="font-size:11px;background:rgba(59,130,246,.1);color:#93c5fd;border:0.5px solid rgba(59,130,246,.2);padding:3px 8px;border-radius:10px">'+m+'</span>').join('')}
                  </div>
@@ -4757,14 +4815,14 @@ async function sendChat(){
 function hProgreso2(){return`<div style="padding-top:8px">
   ${CD.mensaje_semana?`<div class="motiv-card"><div style="font-size:14px;color:var(--sv2);line-height:1.7;font-weight:500">${CD.mensaje_semana}</div></div>`:''}
   <div class="stats-g">
-    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">Semanas</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.semanas}</div></div>
-    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">Objetivo</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${CD.objetivo}</div></div>
-    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">Nivel</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${CD.nivel}</div></div>
-    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">Días/sem</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.dias.length}</div></div>
+    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Semanas')}</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.semanas}</div></div>
+    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Objetivo')}</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${t(CD.objetivo||'')}</div></div>
+    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Nivel')}</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${t(CD.nivel||'')}</div></div>
+    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Días/sem')}</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.dias.length}</div></div>
   </div>
   <div id="progreso_graficas_wrap"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin:0 14px 6px">
-    <div class="sec-lbl" style="margin:0">Medición semanal</div>
+    <div class="sec-lbl" style="margin:0">${t('Medición semanal')}</div>
     <div id="peso_edit_btn_wrap"></div>
   </div>
   <div id="peso_section" style="margin:0 14px 12px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:14px">
@@ -4777,10 +4835,10 @@ function hProgreso2(){return`<div style="padding-top:8px">
         <div class="form-lbl">Peso (kg)</div>
         <input class="inp" id="np" type="number" step="0.1" placeholder="84.5" style="margin-bottom:0"/>
       </div>
-      <button class="btn" style="width:100%;padding:11px" onclick="guardarPeso()">Guardar peso</button>
+      <button class="btn" style="width:100%;padding:11px" onclick="guardarPeso()">${t('Guardar peso')}</button>
     </div>
   </div>
-  <div class="sec-lbl">Fotos de progreso</div>
+  <div class="sec-lbl">${t('Fotos de progreso')}</div>
   <div style="padding:0 14px 12px">
     <!-- 3 foto slots -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
@@ -4817,7 +4875,7 @@ function hProgreso2(){return`<div style="padding-top:8px">
             </div>
             <div style="position:relative;z-index:1;text-align:center;padding:6px">
               <div style="font-size:18px;margin-bottom:4px">📷</div>
-              <div style="font-size:10px;font-weight:700;color:var(--sv2);text-transform:uppercase;letter-spacing:.05em">${tipo}</div>
+              <div style="font-size:10px;font-weight:700;color:var(--sv2);text-transform:uppercase;letter-spacing:.05em">${t(tipo)}</div>
             </div>
           </div>
         </label>
@@ -4825,7 +4883,7 @@ function hProgreso2(){return`<div style="padding-top:8px">
       </div>`).join('')}
     </div>
     <div style="font-size:11px;color:var(--tx3);text-align:center;margin-bottom:10px;line-height:1.5">
-      Sube las 3 fotos para que tu coach pueda hacer una valoración completa.<br>
+      ${t("Sube las 3 fotos para que tu coach pueda hacer una valoración completa.")}<br>
       📏 Posición: de pie, cuerpo entero, buena iluminación.
     </div>
     <!-- Analizar fotos solo disponible para coach desde su panel -->
@@ -5026,13 +5084,13 @@ function hPerfil(){
         <option ${c.dieta_tipo==='Sin lactosa'?'selected':''}>Sin lactosa</option>
       </select>
     </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">Alimentos que no me gustan o no puedo comer</div>
+    <div style="margin-bottom:10px"><div class="form-lbl">${t("Alimentos que no me gustan o no puedo comer")}</div>
       <input class="inp" id="pf_alimentos_no" placeholder="Ej: brócoli, pescado, huevos..." value="${c.alimentos_no||''}" style="margin-bottom:0"/>
     </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">Lesiones / zonas con dolor / alergias</div>
+    <div style="margin-bottom:10px"><div class="form-lbl">${t("Lesiones / zonas con dolor / alergias")}</div>
       <input class="inp" id="pf_lesiones" placeholder="Ej: rodilla derecha, lumbar..." value="${c.lesiones||''}" style="margin-bottom:0"/>
     </div>
-    <div><div class="form-lbl">Otras observaciones</div>
+    <div><div class="form-lbl">${t("Otras observaciones")}</div>
       <textarea class="ta" id="pf_ob" placeholder="Cualquier cosa que tu coach deba saber...">${c.observaciones||''}</textarea>
     </div>
     <div style="margin-top:10px;background:rgba(168,85,247,.06);border:0.5px solid rgba(168,85,247,.2);border-radius:12px;padding:12px">
