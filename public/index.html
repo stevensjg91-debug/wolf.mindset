@@ -450,7 +450,7 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
   <div class="login-logo">
     <div style="width:220px;height:220px;margin:0 auto -20px;background:url('/logo.png') center/contain no-repeat"></div>
     <div class="login-brand">WOLFMINDSET</div>
-    <div class="login-sub">Solicitud de acceso</div>
+    <div class="login-sub">Access request</div>
   </div>
   <div class="login-card" style="max-width:600px;width:100%;margin:0 auto">
     <div style="font-size:13px;color:var(--tx3);margin-bottom:16px;line-height:1.5">Rellena tus datos y tu coach revisará tu solicitud. Te avisaremos cuando tengas acceso.</div>
@@ -528,7 +528,7 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
     <div class="form-lbl">Otras observaciones (opcional)</div>
     <textarea class="finp" id="reg_obs" placeholder="Cualquier cosa que tu coach deba saber..." style="resize:vertical;min-height:50px"></textarea>
     
-    <button class="fbtn" onclick="doRegistro()" style="margin-top:4px">Enviar solicitud</button>
+    <button class="fbtn" onclick="doRegistro()" style="margin-top:4px">Send request</button>
     <button onclick="show('sLogin')" style="width:100%;margin-top:10px;background:none;border:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:inherit;padding:8px">← Volver al login</button>
   </div>
 </div>
@@ -2195,7 +2195,7 @@ async function verCliente(id){
   </div>
   
     <div id="graficas_coach_sec" style="display:none">
-    <div class="sec-lbl" style="padding-top:0;padding-bottom:8px">Progreso ejercicios principales</div>
+    <div class="sec-lbl" style="padding-top:0;padding-bottom:8px">Main exercise progress</div>
     <div id="graficas_coach_wrap" style="padding:0 0 12px"></div>
   </div>
   
@@ -2211,7 +2211,7 @@ async function verCliente(id){
       <div id="sesiones_wrap2"><div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">Cargando...</div></div>
     </div>
     <div id="graficas_coach_sec2" style="display:none">
-      <div class="sec-lbl" style="padding-top:0;padding-bottom:8px">Progreso ejercicios principales</div>
+      <div class="sec-lbl" style="padding-top:0;padding-bottom:8px">Main exercise progress</div>
       <div id="graficas_coach_wrap2" style="padding:0 0 12px"></div>
     </div>
   </div>
@@ -3740,7 +3740,7 @@ function hDietaBuilder(){return`
 
       <!-- Chips seleccionados visibles -->
       <div id="db_selected_chips" style="display:flex;flex-wrap:wrap;gap:5px;min-height:32px;padding:6px;background:var(--s2);border:0.5px solid var(--br);border-radius:10px;margin-bottom:8px">
-        <span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">Toca una categoría para añadir alimentos →</span>
+        <span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">Tap a category to add foods →</span>
       </div>
 
       <!-- Categorías -->
@@ -3767,7 +3767,7 @@ function hDietaBuilder(){return`
       <!-- Campo manual oculto - sync automático -->
       <input type="hidden" id="db_alimentos_input"/>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <button onclick="dbGuardarFavoritos()" id="btn_guardar_fav" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;display:none">⭐ Guardar como favorito</button>
+        <button onclick="dbGuardarFavoritos()" id="btn_guardar_fav" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;display:none">⭐ Save as favourite</button>
         <div style="font-size:11px;color:var(--tx3)" id="db_count_lbl"></div>
       </div>
 
@@ -6493,9 +6493,9 @@ async function doRegistro(){
 
 // PANEL PENDIENTES
 function hPendientes(p){
-  if(!p.length) return `<div style="text-align:center;padding:60px 20px;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">✅</div><div style="font-size:15px;font-weight:600;color:var(--sv2)">Sin solicitudes pendientes</div><div style="font-size:13px;margin-top:6px">Cuando alguien se registre aparecerá aquí</div></div>`;
+  if(!p.length) return `<div style="text-align:center;padding:60px 20px;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">✅</div><div style="font-size:15px;font-weight:600;color:var(--sv2)">No pending requests</div><div style="font-size:13px;margin-top:6px">Registrations will appear here</div></div>`;
   
-  return `<div class="sec" style="margin-bottom:12px"><div class="sec-hdr">${p.length} solicitud${p.length!==1?'es':''} pendiente${p.length!==1?'s':''}</div>
+  return `<div class="sec" style="margin-bottom:12px"><div class="sec-hdr">${p.length} pending request${p.length!==1?'s':''}</div>
   ${p.map(c=>`<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:14px;margin-bottom:10px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <div>
@@ -6725,7 +6725,7 @@ async function cargarGraficasCliente(){
       return;
     }
 
-    wrap.innerHTML = prsHtml + `<div class="sec-lbl">Progreso ejercicios principales</div>
+    wrap.innerHTML = prsHtml + `<div class="sec-lbl">Main exercise progress</div>
       <div id="graficas_container" style="padding:0 14px 4px"></div>`;
 
     const container = document.getElementById('graficas_container');
@@ -8925,7 +8925,7 @@ function dbActualizarSelected(){
   if(!wrap) return;
   const arr = [..._dbSeleccionados];
   if(!arr.length){
-    wrap.innerHTML = '<span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">Toca una categoría para añadir alimentos →</span>';
+    wrap.innerHTML = '<span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">Tap a category to add foods →</span>';
     if(countLbl) countLbl.textContent = '';
     if(favBtn) favBtn.style.display = 'none';
     if(inp) inp.value = '';
@@ -8936,7 +8936,7 @@ function dbActualizarSelected(){
       ${a}
       <button onclick="dbQuitarAlim('${a.replace(/'/g,"\'")}',this)" style="background:none;border:none;color:#93c5fd;cursor:pointer;font-size:12px;padding:0;line-height:1;touch-action:manipulation">×</button>
     </span>`).join('');
-  if(countLbl) countLbl.textContent = arr.length+' alimentos';
+  if(countLbl) countLbl.textContent = arr.length+' foods';
   if(favBtn) favBtn.style.display = 'block';
   if(inp) inp.value = arr.join(', ');
 }
@@ -8970,7 +8970,7 @@ function dbGuardarFavoritos(){
   localStorage.setItem('wm_alim_favs', JSON.stringify(updated));
   dbCargarFavoritos();
   const btn = document.getElementById('btn_guardar_fav');
-  if(btn){ btn.textContent='✓ Guardado como favorito'; setTimeout(()=>btn.textContent='⭐ Guardar como favorito',2000); }
+  if(btn){ btn.textContent='✓ Saved as favourite'; setTimeout(()=>btn.textContent='⭐ Save as favourite',2000); }
 }
 
 function dbCargarFavoritos(){
