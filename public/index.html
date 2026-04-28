@@ -1739,17 +1739,21 @@ const COACH_TRANSLATIONS = {
   // Objetivos cliente
   'Volumen':'Bulk','Definición':'Cutting','Fuerza':'Strength',
   'Recomposición':'Body recomp','Perder peso':'Lose weight',
-  // Coach: títulos y panel de cliente
-  'Solicitudes pendientes':'Pending requests','Asistente IA Coach':'AI Coach Assistant',
-  'Volver':'Back','Reasignar':'Reassign','📋 Resumen':'📋 Summary','🏋️ Rutina':'🏋️ Routine','📊 Historial':'📊 History','🥗 Dieta':'🥗 Diet','📈 Progreso':'📈 Progress',
-  'Macros internos':'Internal macros','SOLO COACH':'COACH ONLY','Mensaje semana':'Weekly message','Notas coach':'Coach notes',
-  '🏋️ Rutina asignada':'🏋️ Assigned routine','Rutina asignada':'Assigned routine','+ Día':'+ Day','+ Ejercicio':'+ Exercise','✏️ Editar':'✏️ Edit','✕ Cerrar':'✕ Close',
-  'Historial de entrenos':'Workout history','📊 Historial de entrenos':'📊 Workout history','Main exercise progress':'Main exercise progress',
-  '🥗 Dieta asignada':'🥗 Assigned diet','Dieta asignada':'Assigned diet','Sin dieta asignada. Usa el Creador de Dieta IA.':'No diet assigned. Use the AI Diet Builder.',
-  '📸 Fotos de progreso':'📸 Progress photos','Fotos de progreso':'Progress photos','📋 Revisión semanal':'📋 Weekly check-in','Revisión semanal':'Weekly check-in','⚖️ Evolución de peso':'⚖️ Weight trend','Evolución de peso':'Weight trend',
-  'Sin registros de peso aún.':'No weight records yet.','Sin entrenos aún.':'No workouts yet.','Sin ejercicios aún.':'No exercises yet.','Sin días. Pulsa + Día para empezar.':'No days yet. Tap + Day to start.',
-  'Incompleto':'Incomplete','Completado':'Completed','ejercicios':'exercises','entrenos':'workouts','sesiones':'sessions','grasa':'body fat',
-  'Míos':'Mine','Todos':'All','Socia':'Partner','Mi equipo':'My team',
+  // Perfil cliente / tabs / historial
+  'Volver':'Back','Reasignar':'Reassign','Resumen':'Summary','Rutina':'Routine','Historial':'History','Dieta':'Diet','Progreso':'Progress',
+  'Macros internos':'Internal macros','SOLO COACH':'COACH ONLY','Peso':'Weight','Sin registros':'No records','Sin registros de peso aún.':'No weight records yet.',
+  'Suscripción':'Subscription','Duración':'Duration','Precio (€)':'Price (€)','Notas internas (opcional)':'Internal notes (optional)',
+  '✓ Activar / Renovar':'✓ Activate / renew','Datos personales del cliente':'Client personal data','Altura':'Height','Edad':'Age','Sexo':'Sex','Actividad':'Activity','Cintura/Cadera':'Waist/Hip',
+  'Sin datos':'No data','Lesiones:':'Injuries:','Dieta:':'Diet:','No come:':'Does not eat:','Obs:':'Notes:',
+  'Ajustar datos':'Adjust data','Calculadora de macros — ajusta y se recalcula solo':'Macro calculator — adjust and it recalculates automatically','Recalcular':'Recalculate',
+  'Kcal totales':'Total kcal','Proteína (g)':'Protein (g)','Grasas (g)':'Fats (g)','Carbos (g)':'Carbs (g)','Comida libre':'Free meal','Mensaje motivacional':'Motivational message','Notas coach':'Coach notes',
+  'Rutina asignada':'Assigned routine','RUTINA ASIGNADA':'ASSIGNED ROUTINE','ejercicios':'exercises','Sin ejercicios aún.':'No exercises yet.','Sin días. Pulsa + Día para empezar.':'No days yet. Press + Day to start.',
+  'Editando ejercicio':'Editing exercise','Cerrar':'Close','Series':'Sets','Reps':'Reps','Peso obj. (kg)':'Target weight (kg)','Descanso (s)':'Rest (s)','Usar RIR':'Use RIR','Principal':'Main','Nota al cliente':'Note to client',
+  'Historial de entrenos':'Workout history','HISTORIAL DE ENTRENOS':'WORKOUT HISTORY','Cargando sesiones del cliente':'Loading client sessions','Sin sesiones aún.':'No sessions yet.','El cliente debe completar al menos un entreno':'Client must complete at least one workout','Error cargando sesiones.':'Error loading sessions.',
+  'Incompleto':'Incomplete','Completado':'Completed','entrenos':'workouts','Sin entrenos aún.':'No workouts yet.','Main exercise progress':'Main exercise progress',
+  'Dieta asignada':'Assigned diet','Sin dieta asignada. Usa el Creador de Dieta IA.':'No diet assigned. Use the AI Diet Builder.','Fotos de progreso':'Progress photos','Revisión semanal':'Weekly review','Evolución de peso':'Weight progress',
+  'Míos':'Mine','Todos':'All','Socia':'Partner','Total':'Total','Sem':'Week','Semana':'Week','mes':'month','meses':'months','años':'years','grasa':'body fat',
+  'Solicitudes pendientes':'Pending requests','Asistente IA Coach':'AI Coach Assistant','Mi equipo':'My team',
 };
 
 function tc(text) {
@@ -1773,30 +1777,60 @@ function setCoachLang(lang) {
     enBtn.style.background = lang==='en' ? 'rgba(255,255,255,.15)' : 'none';
     enBtn.style.opacity = lang==='en' ? '1' : '0.4';
   }
-  // Traducir panel coach visible sin perder la ficha abierta
+  // Re-renderizar panel coach si está activo para regenerar texto base antes de traducir.
   if(document.getElementById('sCoach')?.classList.contains('on')) {
-    const title=document.getElementById('cTitle');
-    if(title) title.textContent=tc(TITLES[currentCoachTab]||title.textContent||'Clientes');
-    applyCoachLang(document.getElementById('sCoach'));
+    if(window._lastClienteId && document.getElementById('ctab_resumen')) {
+      verCliente(window._lastClienteId);
+    } else {
+      renderCoach(currentCoachTab || 'clientes');
+    }
   }
+  setTimeout(()=>applyCoachLang(document.getElementById('sCoach')), 50);
 }
 
 function applyCoachLang(el) {
-  if(!el || COACH_LANG === 'es') return;
-  // Traducir todos los textos visibles
-  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+  if(!el) return;
+  if(COACH_LANG === 'es') return;
+
+  const dict = COACH_TRANSLATIONS || {};
+  const keys = Object.keys(dict).sort((a,b)=>b.length-a.length);
+  const translateText = (txt) => {
+    let out = txt || '';
+    keys.forEach(k => {
+      if(!k) return;
+      out = out.split(k).join(dict[k]);
+    });
+    return out;
+  };
+
+  el.querySelectorAll('[data-i18n-coach]').forEach(e2 => {
+    const key = e2.getAttribute('data-i18n-coach');
+    if(dict[key]) e2.textContent = dict[key];
+  });
+
+  el.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(inp => {
+    inp.placeholder = translateText(inp.placeholder || '');
+  });
+  el.querySelectorAll('[title]').forEach(ti => {
+    ti.title = translateText(ti.title || '');
+  });
+
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      if(!parent) return NodeFilter.FILTER_REJECT;
+      const tag = parent.tagName;
+      if(['SCRIPT','STYLE','TEXTAREA','INPUT','SELECT','OPTION'].includes(tag)) return NodeFilter.FILTER_REJECT;
+      if(!node.textContent || !node.textContent.trim()) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
   const nodes = [];
   while(walker.nextNode()) nodes.push(walker.currentNode);
   nodes.forEach(node => {
-    const trimmed = node.textContent.trim();
-    if(trimmed && COACH_TRANSLATIONS[trimmed]) {
-      node.textContent = node.textContent.replace(trimmed, COACH_TRANSLATIONS[trimmed]);
-    }
-  });
-  // data-i18n-coach
-  el.querySelectorAll('[data-i18n-coach]').forEach(e2 => {
-    const key = e2.getAttribute('data-i18n-coach');
-    if(COACH_TRANSLATIONS[key]) e2.textContent = COACH_TRANSLATIONS[key];
+    const original = node.textContent;
+    const translated = translateText(original);
+    if(translated !== original) node.textContent = translated;
   });
 }
 
@@ -2001,24 +2035,21 @@ if(TOKEN&&USER){
 let currentCoachTab='clientes';
 const TITLES={clientes:'Clientes',nuevo:'Nuevo cliente',pendientes:'Solicitudes pendientes',rutinas:'Crear rutina','dieta-builder':'Crear dieta',progreso:'Progreso',ia:'Asistente IA Coach'};
 function cNav(s,btn){
-  currentCoachTab=s;
-  document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));
-  if(btn) btn.classList.add('on');
-  const title=document.getElementById('cTitle');
-  if(title) title.textContent=tc(TITLES[s]||s);
+  currentCoachTab=s; window._lastClienteId=null;
+  document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
+  document.getElementById('cTitle').textContent=tc(TITLES[s]||s);
   renderCoach(s);
 }
 function cNavM(s,btn){
-  currentCoachTab=s;
-  document.querySelectorAll('#coachMobileNav .bni').forEach(b=>b.classList.remove('on'));
-  if(btn) btn.classList.add('on');
-  const title=document.getElementById('cTitle');
-  if(title) title.textContent=tc(TITLES[s]||s);
+  currentCoachTab=s; window._lastClienteId=null;
+  document.querySelectorAll('#coachMobileNav .bni').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
+  document.getElementById('cTitle').textContent=tc(TITLES[s]||s);
   renderCoach(s);
 }
 
 // ═══ COACH RENDER ════════════════════════════════════
 async function renderCoach(s){
+  currentCoachTab=s;
   const el=document.getElementById('cContent');
   if(s==='clientes'){const cl=await api('/clientes');window._clientesCache=cl;el.innerHTML=hClientes(cl);}
   else if(s==='nuevo'){el.innerHTML=hNuevo();}
@@ -2037,7 +2068,8 @@ async function renderCoach(s){
     else{btn.textContent='🖼️ Descargar imágenes ejercicios';}
  }).catch(()=>{});
   }
-  setTimeout(()=>applyCoachLang(el),0);
+  document.getElementById('cTitle').textContent = tc(TITLES[s] || s);
+  applyCoachLang(el);
 }
 
 function hClientes(cl){
@@ -2111,7 +2143,7 @@ function filtrarClientes(filtro){
   window._clienteFilter = filtro;
   // Re-renderizar con el mismo listado en cache
   if(window._clientesCache) {
-    document.getElementById('cContent').innerHTML = hClientes(window._clientesCache);
+    document.getElementById('cContent').innerHTML = hClientes(window._clientesCache); applyCoachLang(document.getElementById('cContent'));
   }
 }
 
@@ -2389,11 +2421,12 @@ async function verCliente(id){
   </div>`;
 
   window._cid=c.id;
+  document.getElementById('cTitle').textContent = tc('Progreso');
+  applyCoachLang(document.getElementById('cContent'));
 
   // Tab Resumen: cargar suscripción y macros
   cargarSuscripcionCliente(id);
-  setTimeout(()=>{ aplicarMacrosCoach(c, true); applyCoachLang(document.getElementById('cContent')); }, 200);
-  setTimeout(()=>applyCoachLang(document.getElementById('cContent')),0);
+  setTimeout(()=>{ aplicarMacrosCoach(c, true); }, 200);
 
   // Historial (para tab Entreno)
   api('/clientes/'+id+'/sesiones').then(sesiones=>{
@@ -2430,7 +2463,7 @@ async function verCliente(id){
           '</div>'
         ).join('')+'</div>';
     }).join('');
-    applyCoachLang(document.getElementById('cContent'));
+    applyCoachLang(wrap);
   }).catch(()=>{});
 
   // Peso evolución (para tab Progreso)
@@ -2626,7 +2659,7 @@ function switchClienteTab(tab, btn) {
           ).join('')+
         '</div>';
       }).join('');
-      applyCoachLang(document.getElementById('cContent'));
+      applyCoachLang(wrap);
 
       // Cargar gráficas de progreso
       const c = window._coachClienteActual;
@@ -2674,7 +2707,7 @@ function switchClienteTab(tab, btn) {
       // ya está en modo edición, ok
     }
   }
-  setTimeout(()=>applyCoachLang(document.getElementById('cContent')),0);
+  applyCoachLang(document.getElementById('cContent'));
 }
 
 async function guardarDatos(id){
@@ -4612,18 +4645,6 @@ async function cargarNotificacionesCoach() {
     }
     window._notifCoach = notifs;
   } catch(e) {}
-}
-
-// Auto-refresh seguro: actualiza badge/notificaciones del coach cada 10s sin recargar app.
-if(!window.__wmCoachNotifAutoRefresh){
-  window.__wmCoachNotifAutoRefresh = true;
-  setInterval(()=>{
-    if(document.hidden) return;
-    if(window.USER && USER.role === 'coach' && typeof cargarNotificacionesCoach === 'function') cargarNotificacionesCoach();
-  }, 10000);
-  document.addEventListener('visibilitychange', ()=>{
-    if(!document.hidden && window.USER && USER.role === 'coach' && typeof cargarNotificacionesCoach === 'function') cargarNotificacionesCoach();
-  });
 }
 
 function toggleNotifCoach() {
