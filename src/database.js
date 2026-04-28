@@ -77,6 +77,9 @@ async function initDB() {
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
   try { db.run("ALTER TABLE series_log ADD COLUMN rir INTEGER"); } catch(e) {}
+  try { db.run("ALTER TABLE sesiones_entreno ADD COLUMN estado TEXT DEFAULT 'completado'"); } catch(e) {}
+  try { db.run("ALTER TABLE sesiones_entreno ADD COLUMN valoracion TEXT DEFAULT ''"); } catch(e) {}
+  try { db.run("ALTER TABLE series_log ADD COLUMN nota_cliente TEXT DEFAULT ''"); } catch(e) {}
 
   saveToDisk();
   setInterval(saveToDisk, 30000);
