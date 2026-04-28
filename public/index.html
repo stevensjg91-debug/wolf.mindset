@@ -683,8 +683,8 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
       <!-- PANEL NOTIFICACIONES COACH -->
       <div id="notif_panel_coach" style="display:none;position:absolute;top:48px;right:12px;width:320px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.4);max-height:420px;overflow-y:auto">
         <div style="padding:12px 14px;border-bottom:0.5px solid var(--br);display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;font-weight:700;color:var(--sv)">Notificaciones</span>
-          <button onclick="marcarTodasLeidasCoach()" style="background:none;border:none;color:var(--blg);font-size:11px;cursor:pointer;font-family:'Inter',sans-serif">Marcar todas leídas</button>
+          <span style="font-size:12px;font-weight:700;color:var(--sv)">${tc('Notificaciones')}</span>
+          <button onclick="marcarTodasLeidasCoach()" style="background:none;border:none;color:var(--blg);font-size:11px;cursor:pointer;font-family:'Inter',sans-serif">${tc('Marcar todas leídas')}</button>
         </div>
         <div id="notif_list_coach"><div style="padding:16px;font-size:13px;color:var(--tx3);text-align:center">Cargando...</div></div>
       </div>
@@ -1838,12 +1838,68 @@ Object.assign(COACH_TRANSLATIONS, {
   'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.':'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.',
   'Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?':'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?',
   'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?':'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?',
-  'Recargar ejercicios':'Reload exercises',
+  'Generar plan de dieta con IA':'Generate AI diet plan',
+  'La IA usa automáticamente las kcal, macros, intolerancias y preferencias del cliente. Solo tienes que indicar los alimentos disponibles y el número de comidas.':'The AI automatically uses the client\'s kcal, macros, intolerances and preferences. Just specify the available foods and number of meals.',
+  'Alimentos disponibles':'Available foods',
+  'Nuevo alimento':'New food',
+  'Limpiar todo':'Clear all',
+  'Toca una categoría para añadir alimentos →':'Tap a category to add foods →',
+  'Proteínas':'Proteins',
+  'Carbos':'Carbs',
+  'Grasas':'Fats',
+  'Verduras':'Vegetables',
+  'Frutas':'Fruits',
+  'Bebidas':'Drinks',
+  'Mis favoritos':'My favourites',
+  'Guardar como favorito':'Save as favourite',
+  'Nº de comidas':'No. of meals',
+  'comidas':'meals',
+  'Ajuste calórico':'Calorie adjustment',
+  'opcional — usa el del cliente por defecto':'optional — uses client\'s default',
+  'Automático según objetivo del cliente':'Automatic based on client\'s goal',
+  'Forzar mantenimiento':'Force maintenance',
+  'Forzar déficit (-300 kcal)':'Force deficit (-300 kcal)',
+  'Forzar déficit agresivo (-500 kcal)':'Force aggressive deficit (-500 kcal)',
+  'Forzar superávit (+300 kcal)':'Force surplus (+300 kcal)',
+  'Notas adicionales (opcional)':'Additional notes (optional)',
+  'Ej: prefiere desayunos rápidos, cena antes de las 20h...':'E.g. prefers quick breakfasts, dinner before 8pm...',
+  'Analíticas / déficits (opcional)':'Blood work / deficiencies (optional)',
+  'La IA recomendará suplementación':'The AI will recommend supplementation',
+  'Ej: Vitamina D baja (18 ng/ml), ferritina 12, B12 deficiente, omega-3 bajo...':'E.g. Low Vitamin D (18 ng/ml), ferritin 12, B12 deficient, low omega-3...',
+  'Generar plan personalizado':'Generate personalised plan',
+  'Vista previa del plan':'Plan preview',
+  'Editar cantidades':'Edit amounts',
+  'Publicar al cliente':'Publish to client',
+  'Sin objetivo':'No goal',
+  'Actividad:':'Activity:',
+  'No puede:':'Cannot eat:',
+  'Lesiones:':'Injuries:',
+  'Deficiencias:':'Deficiencies:',
+  'Sin comidas. Publica una dieta primero desde el Creador IA.':'No meals. Publish a diet first from the AI Builder.',
+  'Sin comidas. Añade la primera.':'No meals yet. Add the first one.',
+  'Notificaciones':'Notifications',
+  'Marcar todas leídas':'Mark all as read',
   '🔄 Recargar ejercicios (112)':'🔄 Reload exercises (112)',
   '🔄 Reload exercises (112)':'🔄 Reload exercises (112)',
   'Descargar imágenes ejercicios':'Download exercise images',
   '🖼️ Descargar imágenes ejercicios':'🖼️ Download exercise images',
   '🖼️ Download exercise images':'🖼️ Download exercise images',
+  '🏋️ Gestionar ejercicios':'🏋️ Manage exercises',
+  '🏋️ Manage exercises':'🏋️ Manage exercises',
+  'Gestionar ejercicios':'Manage exercises',
+  'Manage exercises':'Manage exercises',
+  'Crear ejercicio nuevo':'Create new exercise',
+  'Create new exercise':'Create new exercise',
+  'Añade ejercicios personalizados que no están en la biblioteca.':'Add custom exercises that are not in the library.',
+  'Add custom exercises that are not in the library.':'Add custom exercises that are not in the library.',
+  'Añadir imagen a un ejercicio':'Add image to an exercise',
+  'Add image to an exercise':'Add image to an exercise',
+  'Pega la URL de una imagen o GIF. Solo visible para ti como coach hasta que la guardes.':'Paste the URL of an image or GIF. Only visible to you as coach until saved.',
+  'Paste the URL of an image or GIF. Only visible to you as coach until saved.':'Paste the URL of an image or GIF. Only visible to you as coach until saved.',
+  'Todos los grupos':'All groups',
+  'All groups':'All groups',
+  'Buscar ejercicio...':'Search exercise...',
+  'Search exercise...':'Search exercise...',
   'Ej: genera rutina para Carlos, 4 días, volumen...':'Ex: generate a routine for Carlos, 4 days, bulking...',
   'Ex: generate a routine for Carlos, 4 days, bulking...':'Ex: generate a routine for Carlos, 4 days, bulking...',
 
@@ -3003,7 +3059,7 @@ function renderEditarDietaCoach(c){
   const edit = document.getElementById('coach_dieta_edit');
   if(!edit) return;
   if(!c.comidas.length){
-    edit.innerHTML = '<div style="font-size:13px;color:var(--tx3)">Sin comidas. Publica una dieta primero desde el Creador IA.</div>';
+    edit.innerHTML = `<div style="font-size:13px;color:var(--tx3)">${tc('Sin comidas. Publica una dieta primero desde el Creador IA.')}</div>`;
     return;
   }
 
@@ -4026,98 +4082,93 @@ let dbState={clienteId:null,comidaId:null,comidaNombre:''};
 
 function hDietaBuilder(){return`
   <div class="sec" style="margin-bottom:12px">
-    <div class="sec-hdr">1. Selecciona cliente</div>
-    <select class="inp" id="db_cl" onchange="dbSelCliente(this.value)" style="margin-bottom:0"><option value="">-- Elige cliente --</option></select>
+    <div class="sec-hdr">${tc('1. Selecciona cliente')}</div>
+    <select class="inp" id="db_cl" onchange="dbSelCliente(this.value)" style="margin-bottom:0"><option value="">${tc('-- Elige cliente --')}</option></select>
   </div>
   <div id="db_wrap" style="display:none">
     <div class="sec" style="margin-bottom:12px;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.2)">
-      <div class="sec-hdr">🤖 Generar plan de dieta con IA</div>
+      <div class="sec-hdr">🤖 ${tc('Generar plan de dieta con IA')}</div>
       <div id="db_client_hint"></div>
-      <div style="font-size:12px;color:var(--tx3);margin-bottom:12px;line-height:1.6">La IA usa automáticamente las kcal, macros, intolerancias y preferencias del cliente. Solo tienes que indicar los alimentos disponibles y el número de comidas.</div>
+      <div style="font-size:12px;color:var(--tx3);margin-bottom:12px;line-height:1.6">${tc('La IA usa automáticamente las kcal, macros, intolerancias y preferencias del cliente. Solo tienes que indicar los alimentos disponibles y el número de comidas.')}</div>
 
       <div class="form-lbl" style="display:flex;align-items:center;justify-content:space-between">
-        Alimentos disponibles
+        ${tc('Alimentos disponibles')}
         <div style="display:flex;align-items:center;gap:12px">
-          <button onclick="dbNuevoAlimento()" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;font-weight:700">+ Nuevo alimento</button>
-          <button onclick="dbLimpiarAlimentos()" style="font-size:11px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation">✕ Limpiar todo</button>
+          <button onclick="dbNuevoAlimento()" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;font-weight:700">+ ${tc('Nuevo alimento')}</button>
+          <button onclick="dbLimpiarAlimentos()" style="font-size:11px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation">✕ ${tc('Limpiar todo')}</button>
         </div>
       </div>
 
-      <!-- Chips seleccionados visibles -->
       <div id="db_selected_chips" style="display:flex;flex-wrap:wrap;gap:5px;min-height:32px;padding:6px;background:var(--s2);border:0.5px solid var(--br);border-radius:10px;margin-bottom:8px">
-        <span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">Tap a category to add foods →</span>
+        <span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">${tc('Toca una categoría para añadir alimentos →')}</span>
       </div>
 
-      <!-- Categorías -->
       <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
-        <button onclick="dbToggleCat(0,this)" data-cat="0" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥩 Proteínas</button>
-        <button onclick="dbToggleCat(1,this)" data-cat="1" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🌾 Carbos</button>
-        <button onclick="dbToggleCat(2,this)" data-cat="2" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥑 Grasas</button>
-        <button onclick="dbToggleCat(3,this)" data-cat="3" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥦 Verduras</button>
-        <button onclick="dbToggleCat(4,this)" data-cat="4" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🍎 Frutas</button>
-        <button onclick="dbToggleCat(5,this)" data-cat="5" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">☕ Bebidas</button>
+        <button onclick="dbToggleCat(0,this)" data-cat="0" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥩 ${tc('Proteínas')}</button>
+        <button onclick="dbToggleCat(1,this)" data-cat="1" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🌾 ${tc('Carbos')}</button>
+        <button onclick="dbToggleCat(2,this)" data-cat="2" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥑 ${tc('Grasas')}</button>
+        <button onclick="dbToggleCat(3,this)" data-cat="3" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥦 ${tc('Verduras')}</button>
+        <button onclick="dbToggleCat(4,this)" data-cat="4" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🍎 ${tc('Frutas')}</button>
+        <button onclick="dbToggleCat(5,this)" data-cat="5" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">☕ ${tc('Bebidas')}</button>
       </div>
 
-      <!-- Lista de alimentos de la categoría activa -->
       <div id="db_alim_chips" style="display:none;flex-wrap:wrap;gap:5px;padding:8px;background:var(--s2);border:0.5px solid var(--br);border-radius:10px;margin-bottom:8px;max-height:140px;overflow-y:auto"></div>
 
-      <!-- Favoritos guardados -->
       <div id="db_favoritos_wrap" style="display:none;margin-bottom:6px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-          <div style="font-size:10px;color:var(--amb);font-weight:700;text-transform:uppercase;letter-spacing:.08em">⭐ Mis favoritos</div>
+          <div style="font-size:10px;color:var(--amb);font-weight:700;text-transform:uppercase;letter-spacing:.08em">⭐ ${tc('Mis favoritos')}</div>
         </div>
         <div id="db_favoritos_chips" style="display:flex;flex-wrap:wrap;gap:5px"></div>
       </div>
 
-      <!-- Campo manual oculto - sync automático -->
       <input type="hidden" id="db_alimentos_input"/>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <button onclick="dbGuardarFavoritos()" id="btn_guardar_fav" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;display:none">⭐ Save as favourite</button>
+        <button onclick="dbGuardarFavoritos()" id="btn_guardar_fav" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;display:none">⭐ ${tc('Guardar como favorito')}</button>
         <div style="font-size:11px;color:var(--tx3)" id="db_count_lbl"></div>
       </div>
 
       <div class="g2" style="gap:8px;margin-bottom:10px">
         <div>
-          <div class="form-lbl">Nº de comidas</div>
+          <div class="form-lbl">${tc('Nº de comidas')}</div>
           <select class="inp" id="db_num_comidas" style="margin-bottom:0">
-            <option value="2">2 comidas</option>
-            <option value="3">3 comidas</option>
-            <option value="4" selected>4 comidas</option>
-            <option value="5">5 comidas</option>
-            <option value="6">6 comidas</option>
+            <option value="2">2 ${tc('comidas')}</option>
+            <option value="3">3 ${tc('comidas')}</option>
+            <option value="4" selected>4 ${tc('comidas')}</option>
+            <option value="5">5 ${tc('comidas')}</option>
+            <option value="6">6 ${tc('comidas')}</option>
           </select>
         </div>
         <div>
-          <div class="form-lbl">Ajuste calórico <span style="font-size:10px;color:var(--tx3);font-weight:400">(opcional — usa el del cliente por defecto)</span></div>
+          <div class="form-lbl">${tc('Ajuste calórico')} <span style="font-size:10px;color:var(--tx3);font-weight:400">(${tc('opcional — usa el del cliente por defecto')})</span></div>
           <select class="inp" id="db_objetivo_cal" style="margin-bottom:0">
-            <option value="auto">Automático según objetivo del cliente</option>
-            <option value="mantenimiento">Forzar mantenimiento</option>
-            <option value="deficit">Forzar déficit (-300 kcal)</option>
-            <option value="deficit_agresivo">Forzar déficit agresivo (-500 kcal)</option>
-            <option value="superavit">Forzar superávit (+300 kcal)</option>
+            <option value="auto">${tc('Automático según objetivo del cliente')}</option>
+            <option value="mantenimiento">${tc('Forzar mantenimiento')}</option>
+            <option value="deficit">${tc('Forzar déficit (-300 kcal)')}</option>
+            <option value="deficit_agresivo">${tc('Forzar déficit agresivo (-500 kcal)')}</option>
+            <option value="superavit">${tc('Forzar superávit (+300 kcal)')}</option>
           </select>
         </div>
       </div>
 
-      <div class="form-lbl">Notas adicionales (opcional)</div>
-      <input class="inp" id="db_notas_extra" placeholder="Ej: prefiere desayunos rápidos, cena antes de las 20h..." style="margin-bottom:10px"/>
+      <div class="form-lbl">${tc('Notas adicionales (opcional)')}</div>
+      <input class="inp" id="db_notas_extra" placeholder="${tc('Ej: prefiere desayunos rápidos, cena antes de las 20h...')}" style="margin-bottom:10px"/>
 
       <div class="form-lbl" style="display:flex;align-items:center;gap:6px">
-        🧪 Analíticas / déficits (opcional)
-        <span style="font-size:10px;color:var(--tx3);font-weight:400">La IA recomendará suplementación</span>
+        🧪 ${tc('Analíticas / déficits (opcional)')}
+        <span style="font-size:10px;color:var(--tx3);font-weight:400">${tc('La IA recomendará suplementación')}</span>
       </div>
-      <textarea class="ta" id="db_analiticas" placeholder="Ej: Vitamina D baja (18 ng/ml), ferritina 12, B12 deficiente, omega-3 bajo..." style="min-height:60px;margin-bottom:12px"></textarea>
+      <textarea class="ta" id="db_analiticas" placeholder="${tc('Ej: Vitamina D baja (18 ng/ml), ferritina 12, B12 deficiente, omega-3 bajo...')}" style="min-height:60px;margin-bottom:12px"></textarea>
 
-      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="dbGenerarIANuevo()">⚡ Generar plan personalizado</button>
+      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="dbGenerarIANuevo()">⚡ ${tc('Generar plan personalizado')}</button>
       <div id="db_ia_result" style="margin-top:12px"></div>
     </div>
 
     <div id="db_plan_preview" style="display:none">
       <div class="sec" style="margin-bottom:12px">
-        <div class="sec-hdr">Vista previa del plan</div>
+        <div class="sec-hdr">${tc('Vista previa del plan')}</div>
         <div style="display:flex;gap:8px;margin-bottom:12px">
-          <button class="btn" style="flex:1;padding:10px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);font-size:13px" onclick="dbEditarPlan()">✏️ Editar cantidades</button>
-          <button class="btn" style="flex:1;padding:10px;background:var(--gn);font-size:13px" id="btn_publicar_dieta_ia" onclick="dbPublicarPlan()">✓ Publicar al cliente</button>
+          <button class="btn" style="flex:1;padding:10px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);font-size:13px" onclick="dbEditarPlan()">✏️ ${tc('Editar cantidades')}</button>
+          <button class="btn" style="flex:1;padding:10px;background:var(--gn);font-size:13px" id="btn_publicar_dieta_ia" onclick="dbPublicarPlan()">✓ ${tc('Publicar al cliente')}</button>
         </div>
         <div id="db_plan_html"></div>
       </div>
@@ -4153,15 +4204,15 @@ async function dbSelCliente(id){
       <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:6px">${c.nombre}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:var(--tx3);margin-bottom:6px">
         <div>⚡ <b style="color:var(--sv2)">${kcal} kcal</b></div>
-        <div>🎯 ${c.objetivo||'Sin objetivo'}</div>
+        <div>🎯 ${c.objetivo||tc('Sin objetivo')}</div>
         <div>🥗 ${c.dieta_tipo||'Omnívoro'}</div>
-        <div>📊 ${c.nivel||'Principiante'}</div>
+        <div>📊 ${c.nivel||tc('Principiante')}</div>
         <div>⚖️ ${c.peso_actual||'—'}kg · ${c.altura||'—'}cm</div>
-        <div>🔥 Actividad: ${c.actividad||'—'}</div>
+        <div>🔥 ${tc('Actividad:')} ${c.actividad||'—'}</div>
       </div>
-      ${c.alimentos_no?`<div style="font-size:11px;color:#fca5a5;margin-bottom:4px">❌ No puede: ${c.alimentos_no}</div>`:''}
-      ${c.lesiones?`<div style="font-size:11px;color:#fbbf24;margin-bottom:4px">⚠️ Lesiones: ${c.lesiones}</div>`:''}
-      ${c.deficiencias?`<div style="font-size:11px;color:#c084fc;margin-top:4px">🧪 Deficiencias: ${c.deficiencias}</div>`:''}
+      ${c.alimentos_no?`<div style="font-size:11px;color:#fca5a5;margin-bottom:4px">❌ ${tc('No puede:')} ${c.alimentos_no}</div>`:''}
+      ${c.lesiones?`<div style="font-size:11px;color:#fbbf24;margin-bottom:4px">⚠️ ${tc('Lesiones:')} ${c.lesiones}</div>`:''}
+      ${c.deficiencias?`<div style="font-size:11px;color:#c084fc;margin-top:4px">🧪 ${tc('Deficiencias:')} ${c.deficiencias}</div>`:''}
     </div>`;
     // Set to auto — the IA will derive from client objetivo
     const objCal = document.getElementById('db_objetivo_cal');
@@ -4178,8 +4229,7 @@ async function dbLoadComidas(){
   const c=await api('/clientes/'+dbState.clienteId);
   const mIcons=['☀️','🕐','🍽️','🌅','🌙','🥗'];
   const catColors={'Proteína':'#3b82f6','Carbohidrato':'#a78bfa','Verdura':'#22c55e','Grasa saludable':'#f59e0b','Lácteo':'#ec4899'};
-  listEl.innerHTML=c.comidas.length?c.comidas.map((m,mi)=>`
-    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;margin-bottom:10px;overflow:hidden">
+  listEl.innerHTML=c.comidas.length?c.comidas.map((m,mi)=>`    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;margin-bottom:10px;overflow:hidden">
       <div style="padding:11px 13px;display:flex;align-items:center;justify-content:space-between;${m.items.length?'border-bottom:0.5px solid var(--br)':''}">
         <div class="fl"><span style="font-size:20px;margin-right:8px">${mIcons[mi]||'🍽️'}</span><span style="font-size:14px;font-weight:700;color:var(--sv)">${m.nombre}</span></div>
         <button class="btn btn-sm" onclick="dbOpenAlim(${m.id},'${m.nombre}')">+ Alimento</button>
@@ -4191,7 +4241,7 @@ async function dbLoadComidas(){
         <span style="font-size:11px;color:var(--tx3)">g</span>
         <button onclick="dbDelAlim(${it.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px">✕</button>
       </div>`).join('')}
-    </div>`).join(''):'<div style="font-size:13px;color:var(--tx3)">Sin comidas. Añade la primera.</div>';
+    </div>`).join(''):`<div style="font-size:13px;color:var(--tx3)">${tc('Sin comidas. Añade la primera.')}</div>`;
 }
 
 async function dbAddComida(){
@@ -4861,40 +4911,39 @@ document.addEventListener('keydown', e => {
 // ═══ IA COACH ═════════════════════════════════════════
 function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">${tc('IA privada del coach')}</div>${tc('Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.')}</div>
 <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-  <button class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="reloadEjercicios()">${tc('🔄 Recargar ejercicios (112)')}</button>
-  <button id="btn_img_status" class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="abrirGestorImagenes()">${tc('🖼️ Gestionar imágenes ejercicios')}</button>
+  <button id="btn_img_status" class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="abrirGestorImagenes()">${tc('🏋️ Gestionar ejercicios')}</button>
 </div>
 
-<!-- GESTOR DE IMÁGENES -->
+<!-- EXERCISE MANAGER -->
 <div id="gestor_imagenes" style="display:none;margin-bottom:12px">
   <div class="sec">
-    <div class="sec-hdr">Gestionar imágenes de ejercicios</div>
+    <div class="sec-hdr">${tc('Gestionar ejercicios')}</div>
     
-    <!-- Crear ejercicio nuevo -->
+    <!-- Create new exercise -->
     <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px;margin-bottom:12px">
-      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">➕ Crear ejercicio nuevo</div>
-      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">Añade ejercicios personalizados que no están en la biblioteca.</div>
+      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">➕ ${tc('Crear ejercicio nuevo')}</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">${tc('Añade ejercicios personalizados que no están en la biblioteca.')}</div>
       <div class="g2" style="gap:8px;margin-bottom:8px">
-        <div><div class="form-lbl">Nombre</div><input class="inp" id="new_ex_nombre" placeholder="Bench Press (Barbell)" style="margin-bottom:0"/></div>
-        <div><div class="form-lbl">Grupo</div><select class="inp" id="new_ex_grupo" style="margin-bottom:0"><option>Chest</option><option>Back</option><option>Shoulders</option><option>Biceps</option><option>Triceps</option><option>Legs</option><option>Abs</option></select></div>
-        <div><div class="form-lbl">Músculos</div><input class="inp" id="new_ex_musculos" placeholder="Pectorales, tríceps" style="margin-bottom:0"/></div>
-        <div><div class="form-lbl">Dificultad</div><select class="inp" id="new_ex_dif" style="margin-bottom:0"><option>Principiante</option><option selected>Intermedio</option><option>Avanzado</option></select></div>
+        <div><div class="form-lbl">${tc('Nombre')}</div><input class="inp" id="new_ex_nombre" placeholder="Bench Press (Barbell)" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl">${tc('Grupo')}</div><select class="inp" id="new_ex_grupo" style="margin-bottom:0"><option>Chest</option><option>Back</option><option>Shoulders</option><option>Biceps</option><option>Triceps</option><option>Legs</option><option>Abs</option></select></div>
+        <div><div class="form-lbl">${tc('Músculos')}</div><input class="inp" id="new_ex_musculos" placeholder="${tc('Pectorales, tríceps')}" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl">${tc('Dificultad')}</div><select class="inp" id="new_ex_dif" style="margin-bottom:0"><option>${tc('Principiante')}</option><option selected>${tc('Intermedio')}</option><option>${tc('Avanzado')}</option></select></div>
       </div>
-      <input class="inp" id="new_ex_imagen" placeholder="URL imagen/GIF (opcional)" style="margin-bottom:8px"/>
-      <button class="btn btn-sm" onclick="crearEjercicioManual()">✓ Crear ejercicio</button>
+      <input class="inp" id="new_ex_imagen" placeholder="${tc('URL imagen/GIF (opcional)')}" style="margin-bottom:8px"/>
+      <button class="btn btn-sm" onclick="crearEjercicioManual()">✓ ${tc('Crear ejercicio')}</button>
       <span id="new_ex_msg" style="font-size:12px;margin-left:10px"></span>
     </div>
 
-    <!-- Editar imagen de ejercicio existente -->
+    <!-- Edit existing exercise image -->
     <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px">
-      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🖼️ Añadir imagen a un ejercicio</div>
-      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">Pega la URL de una imagen o GIF. Solo visible para ti como coach hasta que la guardes.</div>
+      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🖼️ ${tc('Añadir imagen a un ejercicio')}</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">${tc('Pega la URL de una imagen o GIF. Solo visible para ti como coach hasta que la guardes.')}</div>
       <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
         <select class="inp" id="edit_ex_grupo_filter" onchange="filtrarEjerciciosGestor()" style="flex:1;min-width:120px;margin-bottom:0">
-          <option value="All">Todos los grupos</option>
+          <option value="All">${tc('Todos los grupos')}</option>
           <option>Chest</option><option>Back</option><option>Shoulders</option><option>Biceps</option><option>Triceps</option><option>Legs</option><option>Abs</option>
         </select>
-        <input class="inp" id="edit_ex_buscar" placeholder="Buscar ejercicio..." style="flex:2;min-width:140px;margin-bottom:0" oninput="filtrarEjerciciosGestor()"/>
+        <input class="inp" id="edit_ex_buscar" placeholder="${tc('Buscar ejercicio...')}" style="flex:2;min-width:140px;margin-bottom:0" oninput="filtrarEjerciciosGestor()"/>
       </div>
       <div id="gestor_lista" style="max-height:400px;overflow-y:auto"></div>
     </div>
