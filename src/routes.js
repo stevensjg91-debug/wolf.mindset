@@ -903,6 +903,20 @@ router.post('/clientes/:id/checkin', (req, res) => {
     } else {
       dbRun('INSERT INTO checkins (cliente_id, semana, sueno, energia, peso) VALUES (?,?,?,?,?)', [req.params.id, semana, sueno, energia, peso||0]);
     }
+
+    // Notificar al coach sobre estado de ánimo / energía / sueño
+    const coachId = getCoachId();
+    if(coachId) {
+      const nombre = getNombreCliente(req.params.id);
+      const detalles = [];
+      if(sueno != null && sueno !== '') detalles.push(`sueño ${sueno}/10`);
+      if(energia != null && energia !== '') detalles.push(`energía ${energia}/10`);
+      if(peso != null && peso !== '') detalles.push(`peso ${peso}kg`);
+      const semanaTxt = semana ? ` (${semana})` : '';
+      const resumen = detalles.length ? detalles.join(' · ') : 'ha enviado su check-in';
+      crearNotificacion(coachId, 'checkin_cliente', `🧠 ${nombre} ha enviado check-in${semanaTxt}: ${resumen}`);
+    }
+
     saveToDisk();
     res.json({ ok: true });
   } catch(e) { res.json({ ok: false }); }
@@ -928,6 +942,16 @@ router.post('/clientes/:id/valoracion-sesion', (req, res) => {
     if(ultima) {
       try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN valoracion TEXT DEFAULT ''"); } catch(e) {}
       dbRun('UPDATE sesiones_entreno SET valoracion=? WHERE id=?', [valoracion||'', ultima.id]);
+
+      // Notificar al coach sobre cómo le pareció el entreno
+      if(valoracion && String(valoracion).trim() !== '') {
+        const coachId = getCoachId();
+        if(coachId) {
+          const nombre = getNombreCliente(req.params.id);
+          crearNotificacion(coachId, 'valoracion_entreno', `⭐ ${nombre} valoró su entreno: "${String(valoracion).trim()}"`);
+        }
+      }
+
       saveToDisk();
     }
     res.json({ ok: true });
