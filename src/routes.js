@@ -973,4 +973,48 @@ router.post('/notificaciones/coach', (req, res) => {
   }
 });
 
+// ── ACCOUNT SETTINGS ─────────────────────────────────────────────────
+router.get('/me', (req, res) => {
+  try {
+    const user = dbGet('SELECT id, username, nombre, email, telefono, role FROM users WHERE id=?', [req.user.id]);
+    if(!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/me', (req, res) => {
+  try {
+    const { nombre, email, telefono, username, password_actual, password_nueva } = req.body;
+    const bcrypt = require('bcryptjs');
+    const user = dbGet('SELECT * FROM users WHERE id=?', [req.user.id]);
+    if(!user) return res.status(404).json({ error: 'User not found' });
+
+    // Verify current password before changing
+    if(password_nueva) {
+      if(!password_actual) return res.status(400).json({ error: 'Current password required' });
+      const valid = bcrypt.compareSync(password_actual, user.password);
+      if(!valid) return res.status(400).json({ error: 'Current password is incorrect' });
+      if(password_nueva.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+
+    // Check username not already taken by another user
+    if(username && username !== user.username) {
+      const existing = dbGet('SELECT id FROM users WHERE username=? AND id!=?', [username, req.user.id]);
+      if(existing) return res.status(400).json({ error: 'Username already taken' });
+    }
+
+    const newHash     = password_nueva ? bcrypt.hashSync(password_nueva, 10) : user.password;
+    const newNombre   = nombre   || user.nombre;
+    const newEmail    = email    || user.email;
+    const newTelefono = telefono || user.telefono;
+    const newUsername = username || user.username;
+
+    dbRun('UPDATE users SET nombre=?, email=?, telefono=?, username=?, password=? WHERE id=?',
+      [newNombre, newEmail, newTelefono, newUsername, newHash, req.user.id]);
+
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
