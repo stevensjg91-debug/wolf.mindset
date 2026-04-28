@@ -1775,11 +1775,119 @@ const COACH_TRANSLATIONS = {
   'Enviar':'Send',
 };
 
+
+
+// Refuerzo final traducción coach: cubre textos dinámicos ES↔EN sin tocar lógica de la app
+Object.assign(COACH_TRANSLATIONS, {
+  // Empty states / clients
+  'Sin clientes aún':'No clients yet',
+  'Crea el primero desde "Nuevo cliente"':'Create the first one from "New client"',
+  'Crea el primero desde "New client"':'Create the first one from "New client"',
+  'No clients yet':'No clients yet',
+  'Create the first one from "New client"':'Create the first one from "New client"',
+  'Todos':'All','Míos':'Mine','Socia':'Partner',
+
+  // Create routine / diet selectors
+  'SELECCIONA CLIENTE':'SELECT CLIENT',
+  '1. SELECCIONA CLIENTE':'1. SELECT CLIENT',
+  '-- Elige cliente --':'-- Choose client --',
+  '-- Choose client --':'-- Choose client --',
+  'ELIGE CLIENTE':'CHOOSE CLIENT',
+
+  // New client screen
+  'CREAR NUEVO CLIENTE':'CREATE NEW CLIENT',
+  'Crear nuevo cliente':'Create new client',
+  'NAME COMPLETO':'FULL NAME',
+  'NOMBRE COMPLETO':'FULL NAME',
+  'FULL NAME':'FULL NAME',
+  'USUARIO (LOGIN)':'USERNAME (LOGIN)',
+  'CONTRASEÑA':'PASSWORD',
+  'PASSWORD':'PASSWORD',
+  'GOAL':'GOAL',
+  'LEVEL':'LEVEL',
+  'ASIGNAR A COACH':'ASSIGN TO COACH',
+  'ASSIGN TO COACH':'ASSIGN TO COACH',
+  'Crear cliente':'Create client',
+  'Create client':'Create client',
+  'Min 6 chars':'Min 6 chars',
+
+  // Progress dashboard
+  'DASHBOARD CLIENTES':'CLIENT DASHBOARD',
+  'CLIENT DASHBOARD':'CLIENT DASHBOARD',
+  'CLIENTE':'CLIENT',
+  'CLIENT':'CLIENT',
+  'ÚLTIMA SESIÓN':'LAST SESSION',
+  'LAST SESSION':'LAST SESSION',
+  'ATENCIÓN':'ATTENTION',
+  'ATTENTION':'ATTENTION',
+  'ACTIVOS':'ACTIVE',
+  'ACTIVE':'ACTIVE',
+  'Avisos':'Alerts',
+  '🔔 Avisos':'🔔 Alerts',
+  'Actualizar':'Refresh',
+  '↻ Actualizar':'↻ Refresh',
+  'SUBSCRIPTION':'SUBSCRIPTION',
+
+  // AI Coach
+  'Asistente IA Coach':'AI Coach Assistant',
+  'AI Coach Assistant':'AI Coach Assistant',
+  'IA privada del coach':'Private Coach AI',
+  'IA PRIVADA DEL COACH':'PRIVATE COACH AI',
+  'PRIVATE COACH AI':'PRIVATE COACH AI',
+  'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.':'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.',
+  'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.':'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.',
+  'Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?':'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?',
+  'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?':'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?',
+  'Recargar ejercicios':'Reload exercises',
+  '🔄 Recargar ejercicios (112)':'🔄 Reload exercises (112)',
+  '🔄 Reload exercises (112)':'🔄 Reload exercises (112)',
+  'Descargar imágenes ejercicios':'Download exercise images',
+  '🖼️ Descargar imágenes ejercicios':'🖼️ Download exercise images',
+  '🖼️ Download exercise images':'🖼️ Download exercise images',
+  'Ej: genera rutina para Carlos, 4 días, volumen...':'Ex: generate a routine for Carlos, 4 days, bulking...',
+  'Ex: generate a routine for Carlos, 4 days, bulking...':'Ex: generate a routine for Carlos, 4 days, bulking...',
+
+  // Common form labels / values
+  'NAME COMPLETO':'FULL NAME',
+  'Nombre completo':'Full name',
+  'Nombre completo *':'Full name *',
+  'Usuario':'Username',
+  'Usuario para acceder *':'Username *',
+  'Contraseña':'Password',
+  'Contraseña *':'Password *',
+  'Objetivo':'Goal',
+  'Nivel':'Level',
+  'Asignar a coach':'Assign to coach',
+  'Volumen':'Bulking',
+  'Definición':'Cutting',
+  'Intermedio':'Intermediate',
+  'Principiante':'Beginner',
+  'Avanzado':'Advanced',
+  'Log out':'Log out'
+});
+
+// Traducciones inversas extra para cuando el panel ya está renderizado en inglés y se pulsa ES
+const COACH_REVERSE_EXTRA = {
+  'Clients':'Clientes','Create routine':'Crear rutina','Create diet':'Crear dieta','New client':'Nuevo cliente','Pending':'Pendientes','Progress':'Progreso','AI Assistant':'Asistente IA','Log out':'Cerrar sesión',
+  'No clients yet':'Sin clientes aún','Create the first one from "New client"':'Crea el primero desde "Nuevo cliente"',
+  'SELECT CLIENT':'SELECCIONA CLIENTE','1. SELECT CLIENT':'1. SELECCIONA CLIENTE','-- Choose client --':'-- Elige cliente --','CHOOSE CLIENT':'ELIGE CLIENTE',
+  'CREATE NEW CLIENT':'CREAR NUEVO CLIENTE','Create new client':'Crear nuevo cliente','FULL NAME':'NOMBRE COMPLETO','USERNAME (LOGIN)':'USUARIO (LOGIN)','PASSWORD':'CONTRASEÑA','GOAL':'OBJETIVO','LEVEL':'NIVEL','ASSIGN TO COACH':'ASIGNAR A COACH','Create client':'Crear cliente',
+  'Client dashboard':'Dashboard clientes','CLIENT DASHBOARD':'DASHBOARD CLIENTES','CLIENT':'CLIENTE','LAST SESSION':'ÚLTIMA SESIÓN','ATTENTION':'ATENCIÓN','ACTIVE':'ACTIVOS','Alerts':'Avisos','🔔 Alerts':'🔔 Avisos','Refresh':'Actualizar','↻ Refresh':'↻ Actualizar',
+  'AI Coach Assistant':'Asistente IA Coach','Private Coach AI':'IA privada del coach','PRIVATE COACH AI':'IA PRIVADA DEL COACH',
+  'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.':'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.',
+  'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?':'Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?',
+  'Reload exercises':'Recargar ejercicios','🔄 Reload exercises (112)':'🔄 Recargar ejercicios (112)','Download exercise images':'Descargar imágenes ejercicios','🖼️ Download exercise images':'🖼️ Descargar imágenes ejercicios',
+  'Ex: generate a routine for Carlos, 4 days, bulking...':'Ej: genera rutina para Carlos, 4 días, volumen...',
+  'Full name':'Nombre completo','Full name *':'Nombre completo *','Username':'Usuario','Username *':'Usuario para acceder *','Password':'Contraseña','Password *':'Contraseña *','Goal':'Objetivo','Level':'Nivel','Assign to coach':'Asignar a coach',
+  'Bulking':'Volumen','Cutting':'Definición','Intermediate':'Intermedio','Beginner':'Principiante','Advanced':'Avanzado','Mine':'Míos','All':'Todos','Partner':'Socia','Send':'Enviar'
+};
+
 function buildCoachReverseTranslations(){
   const rev = {};
   Object.entries(COACH_TRANSLATIONS || {}).forEach(([es,en]) => {
     if(en && !rev[en]) rev[en] = es;
   });
+  Object.assign(rev, COACH_REVERSE_EXTRA || {});
   Object.assign(rev, {
     'Clients':'Clientes','Create routine':'Crear rutina','Create diet':'Crear dieta','New client':'Nuevo cliente','Pending':'Pendientes','Progress':'Progreso','AI Assistant':'Asistente IA','Log out':'Cerrar sesión',
     'AI Coach Assistant':'Asistente IA Coach','Private Coach AI':'IA privada del coach','PRIVATE COACH AI':'IA PRIVADA DEL COACH',
@@ -1823,6 +1931,7 @@ function setCoachLang(lang) {
     }
   }
   setTimeout(()=>applyCoachLang(document.getElementById('sCoach')), 80);
+  setTimeout(()=>applyCoachLang(document.getElementById('sCoach')), 350);
 }
 
 function applyCoachLang(el) {
@@ -1831,6 +1940,8 @@ function applyCoachLang(el) {
   const keys = Object.keys(dict).filter(Boolean).sort((a,b)=>b.length-a.length);
   const translateText = (txt) => {
     let out = txt || '';
+    const trimmed = out.trim();
+    if(dict[trimmed]) return out.replace(trimmed, dict[trimmed]);
     keys.forEach(k => {
       if(out.includes(k)) out = out.split(k).join(dict[k]);
     });
