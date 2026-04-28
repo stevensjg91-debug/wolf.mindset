@@ -9348,5 +9348,28 @@ function dbEliminarFav(nombre, btn){
 }
 
 </script>
+<script>
+(function(){
+  const ES_TO_EN = {
+    '1. SELECCIONA CLIENTE':'1. SELECT CLIENT','SELECCIONA CLIENTE':'SELECT CLIENT','-- Elige cliente --':'-- Choose client --',
+    'DASHBOARD CLIENTES':'CLIENT DASHBOARD','CLIENTES':'CLIENTS','ACTIVOS':'ACTIVE','ATENCIÓN':'ATTENTION','CLIENTE':'CLIENT','ÚLTIMA SESIÓN':'LAST SESSION','SUSCRIPCIÓN':'SUBSCRIPTION','Avisos':'Alerts','Actualizar':'Refresh','↻ Actualizar':'↻ Refresh',
+    'Crear nuevo cliente':'Create new client','CREAR NUEVO CLIENTE':'CREATE NEW CLIENT','NOMBRE COMPLETO':'FULL NAME','NAME COMPLETO':'FULL NAME','USUARIO (LOGIN)':'USERNAME (LOGIN)','CONTRASEÑA':'PASSWORD','OBJETIVO':'GOAL','NIVEL':'LEVEL','ASIGNAR A COACH':'ASSIGN TO COACH','Crear cliente':'Create client',
+    'Sin clientes aún':'No clients yet','Crea el primero desde "Nuevo cliente"':'Create the first one from "New client"','Crea el primero desde "New client"':'Create the first one from "New client"',
+    'Clientes':'Clients','Crear rutina':'Create routine','Crear dieta':'Create diet','Nuevo cliente':'New client','Pendientes':'Pending','Progreso':'Progress','Asistente IA':'AI Assistant','Cerrar sesión':'Log out',
+    'IA PRIVADA DEL COACH':'PRIVATE COACH AI','IA privada del coach':'Private Coach AI','Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.':'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.','Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?':'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?','Descargar imágenes ejercicios':'Download exercise images','Ej: genera rutina para Carlos, 4 días, volumen...':'Ex: generate a routine for Carlos, 4 days, bulking...','Enviar':'Send'
+  };
+  const EN_TO_ES = Object.fromEntries(Object.entries(ES_TO_EN).map(([k,v])=>[v,k]));
+  Object.assign(EN_TO_ES, {'Clients':'Clientes','Create routine':'Crear rutina','Create diet':'Crear dieta','New client':'Nuevo cliente','Pending':'Pendientes','Progress':'Progreso','AI Assistant':'Asistente IA','Log out':'Cerrar sesión','CLIENTS':'CLIENTES','ACTIVE':'ACTIVOS','ATTENTION':'ATENCIÓN','CLIENT':'CLIENTE','LAST SESSION':'ÚLTIMA SESIÓN','SUBSCRIPTION':'SUSCRIPCIÓN','Alerts':'Avisos','Refresh':'Actualizar','No clients yet':'Sin clientes aún'});
+  function lang(){try{return window.COACH_LANG || localStorage.getItem('wm_coach_lang') || 'es'}catch(e){return 'es'}}
+  function dict(){return lang()==='en'?ES_TO_EN:EN_TO_ES}
+  function tr(s){if(!s)return s;let out=String(s),m=dict(),t=out.trim();if(m[t])return out.replace(t,m[t]);Object.keys(m).sort((a,b)=>b.length-a.length).forEach(k=>{if(out.includes(k))out=out.split(k).join(m[k])});return out}
+  function run(root){root=root||document.getElementById('sCoach');if(!root)return;root.querySelectorAll('[data-i18n-coach]').forEach(el=>{let n=tr(el.getAttribute('data-i18n-coach')||el.textContent);if(n&&el.textContent!==n)el.textContent=n});root.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(el=>{let n=tr(el.placeholder);if(n!==el.placeholder)el.placeholder=n});root.querySelectorAll('option').forEach(el=>{let n=tr(el.textContent);if(n!==el.textContent)el.textContent=n});const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){let p=node.parentElement;if(!p||['SCRIPT','STYLE','TEXTAREA','INPUT'].includes(p.tagName)||!node.textContent.trim())return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}}),nodes=[];while(w.nextNode())nodes.push(w.currentNode);nodes.forEach(node=>{let n=tr(node.textContent);if(n!==node.textContent)node.textContent=n})}
+  const oldApply=window.applyCoachLang;window.applyCoachLang=function(el){try{oldApply&&oldApply(el)}catch(e){}try{run(el)}catch(e){}};
+  const oldSet=window.setCoachLang;window.setCoachLang=function(l){try{oldSet&&oldSet(l)}catch(e){}[50,200,600].forEach(ms=>setTimeout(()=>run(),ms))};
+  if(window.cNav){const old=window.cNav;window.cNav=async function(){const r=await old.apply(this,arguments);[50,200].forEach(ms=>setTimeout(()=>run(),ms));return r}}
+  document.addEventListener('DOMContentLoaded',()=>[300,900].forEach(ms=>setTimeout(()=>run(),ms)));
+})();
+
+</script>
 </body>
 </html>
