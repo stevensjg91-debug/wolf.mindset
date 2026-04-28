@@ -2450,11 +2450,16 @@ function switchClienteTab(tab, btn) {
   if(tab === 'historial') {
     const wrap = document.getElementById('sesiones_wrap2');
     const count = document.getElementById('sesiones_count2');
-    if(wrap) wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">Cargando...</div>';
+    if(!id) {
+      if(wrap) wrap.innerHTML = '<div style="font-size:13px;color:#f87171;padding:20px;text-align:center">❌ Error: cliente no identificado. Cierra y vuelve a abrir la ficha.</div>';
+      return;
+    }
+    if(wrap) wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">Cargando sesiones del cliente #'+id+'...</div>';
     api('/clientes/'+id+'/sesiones').then(sesiones=>{
+      console.log('[WM Historial] Sesiones recibidas:', sesiones.length, sesiones);
       if(count) count.textContent = '('+sesiones.length+' sesiones)';
       if(!sesiones.length){
-        if(wrap) wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">'+tc('Sin sesiones aún.')+'</div>';
+        if(wrap) wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">Sin sesiones aún.<br><span style="font-size:11px;opacity:.5">El cliente debe completar al menos un entreno</span></div>';
         return;
       }
       if(wrap) wrap.innerHTML = sesiones.map(s=>{
@@ -3038,7 +3043,7 @@ async function traducirEjercicioIA(nombre, pasos) {
   if(!btn || !txt || !pasos) return;
 
   btn.disabled = true;
-  txt.textContent = '🔄 Translating...';
+  txt.textContent = '⏳';
 
   try {
     const listaTexto = pasos.map((p,i) => `${i+1}. ${p}`).join('\n');
@@ -3068,14 +3073,14 @@ async function traducirEjercicioIA(nombre, pasos) {
         <div style="font-size:14px;color:var(--sv2);line-height:1.55">${p}</div>
       </div>`).join('');
     }
-    txt.textContent = '✓ Translated!';
+    txt.textContent = '✅🇬🇧';
     btn.style.background = 'rgba(34,197,94,.12)';
     btn.style.color = '#86efac';
     btn.style.borderColor = 'rgba(34,197,94,.3)';
 
   } catch(e) {
-    txt.textContent = '⚠ Error — try again';
-    setTimeout(()=>{ txt.textContent = 'Translate instructions with AI'; btn.disabled = false; }, 2500);
+    txt.textContent = '⚠️';
+    setTimeout(()=>{ txt.textContent = '🇬🇧'; btn.disabled = false; }, 2500);
   }
 }
 // ──────────────────────────────────────────────────────────────────────
@@ -3085,18 +3090,48 @@ async function traducirDietaIA() {
   if(!btn || !txt) return;
 
   btn.disabled = true;
-  txt.textContent = '🔄 Translating...';
+  txt.textContent = '⏳';
 
   try {
-    const items = [];
+    // ── Construir lista completa de textos a traducir ──
+    const allItems = []; // { type, key, text }
+
+    // 1. Alimentos de cada comida
     CD.comidas.forEach((m, mi) => {
       (m.items || []).forEach((it, ji) => {
-        items.push({ mi, ji, nombre: it.nombre });
+        allItems.push({ type:'food', mi, ji, text: it.nombre });
       });
     });
 
-    const listaTexto = items.map((it, i) => `${i+1}. ${it.nombre}`).join('\n');
-    const prompt = `Translate these Spanish food/ingredient names to English. Keep quantities, preparation methods (raw, grilled, etc.) also translated. Return ONLY a JSON array of strings in the same order, no extra text.\n\n${listaTexto}`;
+    // 2. Nombres de variaciones/alternativas
+    const vars = CD._planVariaciones || {};
+    Object.entries(vars).forEach(([mi, varList]) => {
+      (varList || []).forEach((v, vi) => {
+        if(v.nombre) allItems.push({ type:'var', mi:parseInt(mi), vi, text: v.nombre });
+      });
+    });
+
+    // 3. Suplementos personalizados (los base son hardcoded y ya en inglés en código)
+    const sups = CD._planSuplementacion || [];
+    sups.forEach((s, si) => {
+      if(s.nombre) allItems.push({ type:'sup_nombre', si, text: s.nombre });
+      if(s.momento) allItems.push({ type:'sup_momento', si, text: s.momento });
+      if(s.motivo) allItems.push({ type:'sup_motivo', si, text: s.motivo });
+    });
+
+    // 4. Alimentos terapéuticos
+    const alimTher = CD._planAlimentosTerapeuticos || [];
+    alimTher.forEach((a, ai) => {
+      if(a.alimento) allItems.push({ type:'ther_alimento', ai, text: a.alimento });
+      if(a.frecuencia) allItems.push({ type:'ther_frecuencia', ai, text: a.frecuencia });
+      if(a.motivo) allItems.push({ type:'ther_motivo', ai, text: a.motivo });
+    });
+
+    // 5. Frase motivadora
+    if(CD._planFrase) allItems.push({ type:'frase', text: CD._planFrase });
+
+    const listaTexto = allItems.map((it, i) => `${i+1}. ${it.text}`).join('\n');
+    const prompt = `Translate all these Spanish nutrition texts to English. Keep quantities, doses, brand names and scientific terms. Return ONLY a JSON array of strings in the same order, no extra text.\n\n${listaTexto}`;
 
     const data = await api('/ia/chat', {
       method: 'POST',
@@ -3108,23 +3143,56 @@ async function traducirDietaIA() {
     const raw = (data.reply || '').trim().replace(/```json|```/g,'').trim();
     const translated = JSON.parse(raw);
 
-    if (!Array.isArray(translated) || translated.length !== items.length) throw new Error('length mismatch');
+    if (!Array.isArray(translated) || translated.length !== allItems.length) throw new Error('length mismatch: got '+translated.length+' expected '+allItems.length);
 
-    const cache = {};
-    items.forEach((it, i) => {
-      if (!cache[it.mi]) cache[it.mi] = {};
-      cache[it.mi][it.ji] = translated[i];
+    // ── Construir cache completo ──
+    const cache = {
+      foods: {},      // [mi][ji] = nombre traducido
+      vars: {},       // [mi][vi] = nombre alternativa
+      sups: {},       // [si] = {nombre, momento, motivo}
+      ther: {},       // [ai] = {alimento, frecuencia, motivo}
+    };
+
+    allItems.forEach((it, i) => {
+      const tr = translated[i];
+      if(it.type === 'food') {
+        if(!cache.foods[it.mi]) cache.foods[it.mi] = {};
+        cache.foods[it.mi][it.ji] = tr;
+      } else if(it.type === 'var') {
+        if(!cache.vars[it.mi]) cache.vars[it.mi] = {};
+        cache.vars[it.mi][it.vi] = tr;
+      } else if(it.type === 'sup_nombre') {
+        if(!cache.sups[it.si]) cache.sups[it.si] = {};
+        cache.sups[it.si].nombre = tr;
+      } else if(it.type === 'sup_momento') {
+        if(!cache.sups[it.si]) cache.sups[it.si] = {};
+        cache.sups[it.si].momento = tr;
+      } else if(it.type === 'sup_motivo') {
+        if(!cache.sups[it.si]) cache.sups[it.si] = {};
+        cache.sups[it.si].motivo = tr;
+      } else if(it.type === 'ther_alimento') {
+        if(!cache.ther[it.ai]) cache.ther[it.ai] = {};
+        cache.ther[it.ai].alimento = tr;
+      } else if(it.type === 'ther_frecuencia') {
+        if(!cache.ther[it.ai]) cache.ther[it.ai] = {};
+        cache.ther[it.ai].frecuencia = tr;
+      } else if(it.type === 'ther_motivo') {
+        if(!cache.ther[it.ai]) cache.ther[it.ai] = {};
+        cache.ther[it.ai].motivo = tr;
+      } else if(it.type === 'frase') {
+        cache.frase = tr;
+      }
     });
 
     localStorage.setItem('dieta_trans_'+CD.id, JSON.stringify(cache));
-    txt.textContent = '✓ Translated! Reloading...';
+    txt.textContent = '✅🇬🇧';
     setTimeout(() => { document.getElementById('klContent').innerHTML = hDieta(); }, 500);
 
   } catch(e) {
     console.error('Diet translation error:', e);
-    txt.textContent = '⚠ Error — try again';
+    txt.textContent = '⚠️';
     btn.disabled = false;
-    setTimeout(() => { txt.textContent = 'Translate food names with AI'; }, 2500);
+    setTimeout(() => { txt.textContent = '🇬🇧'; }, 2500);
   }
 }
 // ──────────────────────────────────────────────────────────────────────
@@ -4906,12 +4974,13 @@ function abrirDescripcion(nombre){
   modal.id = 'desc_modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(9,9,11,.97);z-index:600;display:flex;flex-direction:column;overflow:hidden';
 
-  const descNombreJSON = JSON.stringify(nombre);
-  const descPasosJSON = desc ? JSON.stringify(desc) : 'null';
+  // Guardar en variable global para evitar problemas de escaping en onclick
+  window._descModalNombre = nombre;
+  window._descModalPasos = desc || null;
 
   modal.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--s);border-bottom:0.5px solid var(--br);flex-shrink:0">
-      <button onclick="document.getElementById('desc_modal').remove()" style="width:34px;height:34px;border-radius:8px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);cursor:pointer;font-size:20px;line-height:1">×</button>
+      <button onclick="document.getElementById('desc_modal').remove(); window._descModalNombre=null; window._descModalPasos=null;" style="width:34px;height:34px;border-radius:8px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);cursor:pointer;font-size:20px;line-height:1">×</button>
       <div style="font-size:15px;font-weight:700;color:var(--sv);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nombre}</div>
     </div>
     <div style="flex:1;overflow-y:auto;padding:16px">
@@ -4938,10 +5007,9 @@ function abrirDescripcion(nombre){
       <div style="font-size:11px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">${t('INSTRUCCIONES')}</div>
       <div id="desc_pasos">${pasos}</div>
       ${LANG==='en' && desc ? `
-      <button id="btn_trans_ex" onclick="traducirEjercicioIA(${descNombreJSON},${descPasosJSON})"
-        style="width:100%;margin-top:14px;padding:10px;background:rgba(59,130,246,.12);color:#93c5fd;border:0.5px solid rgba(59,130,246,.3);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;touch-action:manipulation">
-        <span>🤖</span>
-        <span id="btn_trans_ex_txt">${cachedSteps ? '✓ Translated · Translate again' : 'Translate instructions with AI'}</span>
+      <button id="btn_trans_ex" onclick="traducirEjercicioIA(window._descModalNombre, window._descModalPasos)" title="Translate with AI"
+        style="width:100%;margin-top:14px;padding:8px;background:rgba(59,130,246,.1);color:#93c5fd;border:0.5px solid rgba(59,130,246,.2);border-radius:10px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;touch-action:manipulation">
+        <span style="font-size:20px" id="btn_trans_ex_txt">${cachedSteps ? '✅🇬🇧' : '🇬🇧'}</span>
       </button>` : ''}
     </div>`;
   document.body.appendChild(modal);
@@ -5396,19 +5464,21 @@ function hDieta(){
 
   // Usar traducción cacheada si existe
   const dietaTransKey = 'dieta_trans_'+CD.id;
-  const cachedTrans = LANG==='en' ? (() => { try { return JSON.parse(localStorage.getItem(dietaTransKey)||'null'); } catch(e){ return null; } })() : null;
+  const rawCache = LANG==='en' ? (() => { try { return JSON.parse(localStorage.getItem(dietaTransKey)||'null'); } catch(e){ return null; } })() : null;
+  // Soporte para formato antiguo (solo array) y nuevo (objeto con foods/vars/sups/ther)
+  const cachedTrans = rawCache && typeof rawCache === 'object' && !Array.isArray(rawCache) && rawCache.foods ? rawCache : (rawCache ? { foods: rawCache } : null);
 
   const comidas = CD.comidas.map((m,i)=>({
     numero: i+1,
     nombre: LANG==='en' ? (mealNames[i]||'MEAL '+(i+1)) : (m.nombre.replace(/^\d+\.\s*/,'').toUpperCase() || mealNamesES[i]),
     nombreEN: mealNames[i] || 'MEAL '+(i+1),
     alimentos: m.items.map((it,j)=>({
-      nombre: (cachedTrans && cachedTrans[i] && cachedTrans[i][j]) ? cachedTrans[i][j] : it.nombre,
+      nombre: (cachedTrans?.foods?.[i]?.[j]) ? cachedTrans.foods[i][j] : it.nombre,
       cantidad: it.gramos+'g'
     }))
   }));
 
-  const frase = CD._planFrase || 'Consistency fuels results. Discipline builds freedom.';
+  const frase = (cachedTrans?.frase) || CD._planFrase || 'Consistency fuels results. Discipline builds freedom.';
 
   // Each meal card matching template style
   const comidasHtml = comidas.map((m,mi)=>`
@@ -5445,7 +5515,7 @@ function hDieta(){
             <div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:.08em;margin-bottom:6px">${t('OPCIONES ALTERNATIVAS')}</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               <button onclick="clienteVarSelect2(${mi},-1,this)" style="padding:4px 12px;border-radius:10px;border:1px solid ${acc};background:${accBg};color:${accLight};font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation">A</button>
-              ${vars.map((v,vi)=>`<button onclick="clienteVarSelect2(${mi},${vi},this)" style="padding:4px 12px;border-radius:10px;border:0.5px solid rgba(255,255,255,.2);background:none;color:rgba(255,255,255,.45);font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation">${v.letra||String.fromCharCode(66+vi)} · ${v.nombre||''}</button>`).join('')}
+              ${vars.map((v,vi)=>`<button onclick="clienteVarSelect2(${mi},${vi},this)" style="padding:4px 12px;border-radius:10px;border:0.5px solid rgba(255,255,255,.2);background:none;color:rgba(255,255,255,.45);font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation">${v.letra||String.fromCharCode(66+vi)} · ${(cachedTrans?.vars?.[mi]?.[vi]) || v.nombre||''}</button>`).join('')}
             </div>
           </div>`;
         })()}
@@ -5486,15 +5556,20 @@ function hDieta(){
     ${(()=>{
       const sups = CD._planSuplementacion;
       const alimTher = CD._planAlimentosTerapeuticos;
+      const supBase = LANG==='en' ? [
+        {nombre:'Omega-3 (TG form)',dosis:'2-3g EPA+DHA/day',momento:'With main meals',motivo:'Reduces inflammation and improves recovery',icon:'🐟'},
+        {nombre:'Creatine Monohydrate',dosis:'3-5g/day',momento:'Any time of day — daily consistency',motivo:'Increases strength, power and muscle mass. Most scientifically backed supplement',icon:'⚡'},
+        {nombre:'Whey Protein',dosis:'20-40g as needed',momento:'Post-workout or when not reaching protein goals',motivo:'Supplement to reach your daily protein target',icon:'🥛'},
+      ] : [
+        {nombre:'Omega-3 (forma TG)',dosis:'2-3g EPA+DHA/día',momento:'Con las comidas principales',motivo:'Base para reducir inflamación y mejorar recuperación',icon:'🐟'},
+        {nombre:'Creatina Monohidrato',dosis:'3-5g/día',momento:'Cualquier momento del día — consistencia diaria',motivo:'Aumenta fuerza, potencia y masa muscular. El suplemento más respaldado científicamente',icon:'⚡'},
+        {nombre:'Proteína Whey',dosis:'20-40g según necesidad',momento:'Post-entreno o cuando no llegues a objetivos proteicos',motivo:'Complemento para alcanzar tu objetivo diario de proteína',icon:'🥛'},
+      ];
       // Always show — base supplements are always recommended
       return `<div style="margin:10px 14px 0;background:rgba(168,85,247,.08);border:0.5px solid rgba(168,85,247,.25);border-radius:12px;padding:12px 14px">
-        <div style="font-size:11px;font-weight:700;color:#c084fc;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">🧪 Suplementación recomendada</div>
-        <!-- Base supplements - always recommended -->
-        ${[
-          {nombre:'Omega-3 (forma TG)',dosis:'2-3g EPA+DHA/día',momento:'Con las comidas principales',motivo:'Base para reducir inflamación y mejorar recuperación',icon:'🐟'},
-          {nombre:'Creatina Monohidrato',dosis:'3-5g/día',momento:'Cualquier momento del día — consistencia diaria',motivo:'Aumenta fuerza, potencia y masa muscular. El suplemento más respaldado científicamente',icon:'⚡'},
-          {nombre:'Proteína Whey',dosis:'20-40g según necesidad',momento:'Post-entreno o cuando no llegues a objetivos proteicos',motivo:'Complemento para alcanzar tu objetivo diario de proteína',icon:'🥛'},
-        ].map(s=>`
+        <div style="font-size:11px;font-weight:700;color:#c084fc;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">🧪 ${LANG==='en'?'RECOMMENDED SUPPLEMENTATION':'Suplementación recomendada'}</div>
+        <!-- Base supplements -->
+        ${supBase.map(s=>`
         <div style="display:flex;gap:10px;margin-bottom:8px;align-items:flex-start">
           <div style="width:36px;height:36px;border-radius:10px;background:rgba(168,85,247,.15);border:0.5px solid rgba(168,85,247,.3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${s.icon}</div>
           <div style="flex:1">
@@ -5504,22 +5579,22 @@ function hDieta(){
           </div>
         </div>`).join('')}
         <!-- Personalised supplements from IA -->
-        ${(sups||[]).map(s=>`
+        ${(sups||[]).map((s,si)=>`
         <div style="display:flex;gap:10px;margin-bottom:8px;align-items:flex-start">
           <div style="width:36px;height:36px;border-radius:10px;background:rgba(168,85,247,.15);border:0.5px solid rgba(168,85,247,.3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">💊</div>
           <div style="flex:1">
-            <div style="font-size:13px;font-weight:700;color:#fff">${s.nombre} <span style="font-size:11px;color:#c084fc;font-weight:400">· ${s.dosis}</span></div>
-            <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">⏰ ${s.momento}</div>
-            ${s.motivo?`<div style="font-size:10px;color:rgba(168,85,247,.7);margin-top:2px">${s.motivo}</div>`:''}
+            <div style="font-size:13px;font-weight:700;color:#fff">${cachedTrans?.sups?.[si]?.nombre||s.nombre} <span style="font-size:11px;color:#c084fc;font-weight:400">· ${s.dosis}</span></div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">⏰ ${cachedTrans?.sups?.[si]?.momento||s.momento}</div>
+            ${s.motivo?`<div style="font-size:10px;color:rgba(168,85,247,.7);margin-top:2px">${cachedTrans?.sups?.[si]?.motivo||s.motivo}</div>`:''}
           </div>
         </div>`).join('')}
         ${(alimTher||[]).length?`
         <div style="border-top:0.5px solid rgba(168,85,247,.15);padding-top:8px;margin-top:4px">
-          <div style="font-size:10px;font-weight:700;color:#c084fc;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">🥩 Alimentos terapéuticos</div>
-          ${(alimTher||[]).map(a=>`
+          <div style="font-size:10px;font-weight:700;color:#c084fc;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">🥩 ${LANG==='en'?'Therapeutic foods':'Alimentos terapéuticos'}</div>
+          ${(alimTher||[]).map((a,ai)=>`
           <div style="font-size:12px;color:rgba(255,255,255,.75);margin-bottom:4px">
-            <b style="color:#fff">${a.alimento}</b> · ${a.frecuencia}
-            ${a.motivo?`<span style="color:rgba(168,85,247,.7);font-size:11px"> — ${a.motivo}</span>`:''}
+            <b style="color:#fff">${cachedTrans?.ther?.[ai]?.alimento||a.alimento}</b> · ${cachedTrans?.ther?.[ai]?.frecuencia||a.frecuencia}
+            ${a.motivo?`<span style="color:rgba(168,85,247,.7);font-size:11px"> — ${cachedTrans?.ther?.[ai]?.motivo||a.motivo}</span>`:''}
           </div>`).join('')}
         </div>`:''}
       </div>`;
@@ -5577,9 +5652,8 @@ function hDieta(){
     <!-- BOTÓN TRADUCIR CON IA — solo en inglés y sin traducción cacheada -->
     ${LANG==='en' ? `
     <div style="padding:0 14px;margin-bottom:8px">
-      <button id="btn_translate_diet" onclick="traducirDietaIA()" style="width:100%;padding:12px;background:rgba(59,130,246,.15);color:#93c5fd;border:0.5px solid rgba(59,130,246,.35);border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.03em;touch-action:manipulation;display:flex;align-items:center;justify-content:center;gap:8px">
-        <span style="font-size:16px">🤖</span>
-        <span id="btn_translate_diet_txt">${cachedTrans ? '✓ Diet translated · Translate again' : 'Translate food names with AI'}</span>
+      <button id="btn_translate_diet" onclick="traducirDietaIA()" title="Translate with AI" style="width:100%;padding:10px;background:rgba(59,130,246,.1);color:#93c5fd;border:0.5px solid rgba(59,130,246,.25);border-radius:10px;cursor:pointer;font-family:inherit;touch-action:manipulation;display:flex;align-items:center;justify-content:center;gap:6px">
+        <span style="font-size:20px" id="btn_translate_diet_txt">${cachedTrans ? '✅🇬🇧' : '🇬🇧'}</span>
       </button>
     </div>` : ''}
 
