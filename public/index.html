@@ -450,88 +450,191 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
   <div class="login-logo">
     <div style="width:220px;height:220px;margin:0 auto -20px;background:url('/logo.png') center/contain no-repeat"></div>
     <div class="login-brand">WOLFMINDSET</div>
-    <div class="login-sub">Access request</div>
+    <div class="login-sub" id="reg_subtitle">ACCESS REQUEST</div>
   </div>
+
+  <!-- Language toggle -->
+  <div style="display:flex;justify-content:center;margin-bottom:10px;gap:8px">
+    <button id="reg_lang_en" onclick="setRegLang('en')" style="display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1.5px solid var(--bl2);background:rgba(37,99,235,.18);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s">🇬🇧 EN</button>
+    <button id="reg_lang_es" onclick="setRegLang('es')" style="display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:inherit;transition:.2s">🇪🇸 ES</button>
+  </div>
+
   <div class="login-card" style="max-width:600px;width:100%;margin:0 auto">
-    <div style="font-size:13px;color:var(--tx3);margin-bottom:16px;line-height:1.5">Rellena tus datos y tu coach revisará tu solicitud. Te avisaremos cuando tengas acceso.</div>
+    <div id="reg_desc" style="font-size:13px;color:var(--tx3);margin-bottom:16px;line-height:1.5">Fill in your details and your coach will review your request. We will notify you when you have access.</div>
     <div id="reg_err" class="ferr" style="display:none"></div>
     <div id="reg_ok" style="display:none;background:rgba(34,197,94,.1);border:0.5px solid rgba(34,197,94,.3);border-radius:10px;padding:12px;font-size:13px;color:var(--gnb);margin-bottom:12px;text-align:center;line-height:1.5"></div>
-    
-    <div class="form-lbl">Nombre completo *</div>
+
+    <div class="form-lbl" id="lbl_nombre">Full name *</div>
     <input class="finp" id="reg_nombre" placeholder="Carlos Martínez"/>
-    
-    <div class="form-lbl">Usuario para acceder *</div>
-    <input class="finp" id="reg_username" placeholder="carlos123 (solo letras y números)" autocomplete="username"/>
-    
-    <div class="form-lbl">Email *</div>
+
+    <div class="form-lbl" id="lbl_usuario">Username *</div>
+    <input class="finp" id="reg_username" placeholder="carlos123 (letters and numbers only)" autocomplete="username"/>
+
+    <div class="form-lbl" id="lbl_email">Email *</div>
     <input class="finp" id="reg_email" type="email" placeholder="carlos@email.com"/>
-    
-    <div class="form-lbl">Teléfono *</div>
+
+    <div class="form-lbl" id="lbl_telefono">Phone *</div>
     <input class="finp" id="reg_tel" type="tel" placeholder="+34 600 000 000"/>
-    <div class="form-lbl">Contraseña *</div>
-    <input class="finp" id="reg_pass" type="password" placeholder="Mínimo 6 caracteres"/>
-    
+
+    <div class="form-lbl" id="lbl_pass">Password *</div>
+    <input class="finp" id="reg_pass" type="password" placeholder="Minimum 6 characters"/>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px">
       <div>
-        <div class="form-lbl">Objetivo</div>
+        <div class="form-lbl" id="lbl_objetivo">Goal</div>
         <select class="finp" id="reg_obj" style="margin-bottom:0">
-          <option>Volumen</option><option>Definición</option><option>Fuerza</option><option>Recomposición</option><option>Perder peso</option>
+          <option value="Volumen" data-en="Bulking" data-es="Volumen">Bulking</option>
+          <option value="Definición" data-en="Cutting" data-es="Definición">Cutting</option>
+          <option value="Fuerza" data-en="Strength" data-es="Fuerza">Strength</option>
+          <option value="Recomposición" data-en="Recomposition" data-es="Recomposición">Recomposition</option>
+          <option value="Perder peso" data-en="Lose weight" data-es="Perder peso">Lose weight</option>
         </select>
       </div>
       <div>
-        <div class="form-lbl">Nivel</div>
+        <div class="form-lbl" id="lbl_nivel">Level</div>
         <select class="finp" id="reg_niv" style="margin-bottom:0">
-          <option>Principiante</option><option selected>Intermedio</option><option>Avanzado</option>
+          <option value="Principiante" data-en="Beginner" data-es="Principiante">Beginner</option>
+          <option value="Intermedio" selected data-en="Intermediate" data-es="Intermedio">Intermediate</option>
+          <option value="Avanzado" data-en="Advanced" data-es="Avanzado">Advanced</option>
         </select>
       </div>
       <div>
-        <div class="form-lbl">Peso (kg)</div>
+        <div class="form-lbl" id="lbl_peso">Weight (kg)</div>
         <input class="finp" id="reg_peso" type="number" step="0.1" placeholder="75" style="margin-bottom:0"/>
       </div>
       <div>
-        <div class="form-lbl">Altura (cm)</div>
+        <div class="form-lbl" id="lbl_altura">Height (cm)</div>
         <input class="finp" id="reg_altura" type="number" placeholder="175" style="margin-bottom:0"/>
       </div>
       <div>
-        <div class="form-lbl">Edad</div>
+        <div class="form-lbl" id="lbl_edad">Age</div>
         <input class="finp" id="reg_edad" type="number" placeholder="28" style="margin-bottom:0"/>
       </div>
       <div>
-        <div class="form-lbl">Sexo</div>
+        <div class="form-lbl" id="lbl_sexo">Sex</div>
         <select class="finp" id="reg_sexo" style="margin-bottom:0">
-          <option>Hombre</option><option>Mujer</option>
+          <option value="Hombre" data-en="Male" data-es="Hombre">Male</option>
+          <option value="Mujer" data-en="Female" data-es="Mujer">Female</option>
         </select>
       </div>
     </div>
-    
-    <div class="form-lbl" style="margin-top:8px">Nivel de actividad</div>
+
+    <div class="form-lbl" id="lbl_actividad" style="margin-top:8px">Activity level</div>
     <select class="finp" id="reg_act">
-      <option>Sedentario (poco o nada de ejercicio)</option>
-      <option selected>Moderada (3-4 días/semana)</option>
-      <option>Alta (5-6 días/semana)</option>
-      <option>Muy alta (atleta, 2x día)</option>
+      <option value="Sedentario" data-en="Sedentary (little or no exercise)" data-es="Sedentario (poco o nada de ejercicio)">Sedentary (little or no exercise)</option>
+      <option value="Moderada" selected data-en="Moderate (3-4 days/week)" data-es="Moderada (3-4 días/semana)">Moderate (3-4 days/week)</option>
+      <option value="Alta" data-en="High (5-6 days/week)" data-es="Alta (5-6 días/semana)">High (5-6 days/week)</option>
+      <option value="Muy alta" data-en="Very high (athlete, 2x/day)" data-es="Muy alta (atleta, 2x día)">Very high (athlete, 2x/day)</option>
     </select>
-    
-    <div class="form-lbl">Tipo de alimentación</div>
+
+    <div class="form-lbl" id="lbl_dieta">Diet type</div>
     <select class="finp" id="reg_dieta">
-      <option value="Omnivoro">Omnívoro (como de todo)</option>
-      <option value="Vegetariano">Vegetariano</option>
-      <option value="Vegano">Vegano</option>
-      <option value="Pescetariano">Pescetariano</option>
-      <option value="Sin gluten">Sin gluten / Celiaco</option>
-      <option value="Sin lactosa">Sin lactosa</option>
+      <option value="Omnivoro" data-en="Omnivore (eat everything)" data-es="Omnívoro (como de todo)">Omnivore (eat everything)</option>
+      <option value="Vegetariano" data-en="Vegetarian" data-es="Vegetariano">Vegetarian</option>
+      <option value="Vegano" data-en="Vegan" data-es="Vegano">Vegan</option>
+      <option value="Pescetariano" data-en="Pescatarian" data-es="Pescetariano">Pescatarian</option>
+      <option value="Sin gluten" data-en="Gluten-free / Celiac" data-es="Sin gluten / Celiaco">Gluten-free / Celiac</option>
+      <option value="Sin lactosa" data-en="Lactose-free" data-es="Sin lactosa">Lactose-free</option>
     </select>
-    <div class="form-lbl">Alimentos que no puedo comer (opcional)</div>
-    <input class="finp" id="reg_alimentos_no" placeholder="Ej: brócoli, pescado, huevos..."/>
-    <div class="form-lbl">Lesiones / zonas con dolor (opcional)</div>
-    <input class="finp" id="reg_lesiones" placeholder="Ej: rodilla derecha, lumbar..."/>
-    <div class="form-lbl">Otras observaciones (opcional)</div>
-    <textarea class="finp" id="reg_obs" placeholder="Cualquier cosa que tu coach deba saber..." style="resize:vertical;min-height:50px"></textarea>
-    
-    <button class="fbtn" onclick="doRegistro()" style="margin-top:4px">Send request</button>
-    <button onclick="show('sLogin')" style="width:100%;margin-top:10px;background:none;border:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:inherit;padding:8px">← Volver al login</button>
+
+    <div class="form-lbl" id="lbl_alimentos_no">Foods I cannot eat (optional)</div>
+    <input class="finp" id="reg_alimentos_no" data-placeholder-en="E.g: broccoli, fish, eggs..." data-placeholder-es="Ej: brócoli, pescado, huevos..." placeholder="E.g: broccoli, fish, eggs..."/>
+
+    <div class="form-lbl" id="lbl_lesiones">Injuries / painful areas (optional)</div>
+    <input class="finp" id="reg_lesiones" data-placeholder-en="E.g: right knee, lower back..." data-placeholder-es="Ej: rodilla derecha, lumbar..." placeholder="E.g: right knee, lower back..."/>
+
+    <div class="form-lbl" id="lbl_obs">Other notes (optional)</div>
+    <textarea class="finp" id="reg_obs" data-placeholder-en="Anything your coach should know..." data-placeholder-es="Cualquier cosa que tu coach deba saber..." placeholder="Anything your coach should know..." style="resize:vertical;min-height:50px"></textarea>
+
+    <button class="fbtn" id="reg_submit_btn" onclick="doRegistro()" style="margin-top:4px">Send request</button>
+    <button id="reg_back_btn" onclick="show('sLogin')" style="width:100%;margin-top:10px;background:none;border:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:inherit;padding:8px">← Back to login</button>
   </div>
 </div>
+
+<script>
+// ── REGISTRO FORM LANGUAGE TOGGLE ─────────────────────────────────
+let _regLang = localStorage.getItem('wm_reg_lang') || 'en';
+
+const REG_STRINGS = {
+  en: {
+    subtitle: 'ACCESS REQUEST',
+    desc: 'Fill in your details and your coach will review your request. We will notify you when you have access.',
+    lbl_nombre: 'Full name *', lbl_usuario: 'Username *', lbl_email: 'Email *',
+    lbl_telefono: 'Phone *', lbl_pass: 'Password *', lbl_objetivo: 'Goal',
+    lbl_nivel: 'Level', lbl_peso: 'Weight (kg)', lbl_altura: 'Height (cm)',
+    lbl_edad: 'Age', lbl_sexo: 'Sex', lbl_actividad: 'Activity level',
+    lbl_dieta: 'Diet type', lbl_alimentos_no: 'Foods I cannot eat (optional)',
+    lbl_lesiones: 'Injuries / painful areas (optional)', lbl_obs: 'Other notes (optional)',
+    submit: 'Send request', back: '← Back to login',
+    pass_placeholder: 'Minimum 6 characters', user_placeholder: 'carlos123 (letters and numbers only)'
+  },
+  es: {
+    subtitle: 'SOLICITUD DE ACCESO',
+    desc: 'Rellena tus datos y tu coach revisará tu solicitud. Te avisaremos cuando tengas acceso.',
+    lbl_nombre: 'Nombre completo *', lbl_usuario: 'Usuario para acceder *', lbl_email: 'Email *',
+    lbl_telefono: 'Teléfono *', lbl_pass: 'Contraseña *', lbl_objetivo: 'Objetivo',
+    lbl_nivel: 'Nivel', lbl_peso: 'Peso (kg)', lbl_altura: 'Altura (cm)',
+    lbl_edad: 'Edad', lbl_sexo: 'Sexo', lbl_actividad: 'Nivel de actividad',
+    lbl_dieta: 'Tipo de alimentación', lbl_alimentos_no: 'Alimentos que no puedo comer (opcional)',
+    lbl_lesiones: 'Lesiones / zonas con dolor (opcional)', lbl_obs: 'Otras observaciones (opcional)',
+    submit: 'Enviar solicitud', back: '← Volver al login',
+    pass_placeholder: 'Mínimo 6 caracteres', user_placeholder: 'carlos123 (solo letras y números)'
+  }
+};
+
+function setRegLang(lang) {
+  _regLang = lang;
+  localStorage.setItem('wm_reg_lang', lang);
+  const s = REG_STRINGS[lang];
+  const enBtn = document.getElementById('reg_lang_en');
+  const esBtn = document.getElementById('reg_lang_es');
+
+  // Toggle button styles
+  if(enBtn && esBtn) {
+    if(lang === 'en') {
+      enBtn.style.cssText = 'display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1.5px solid var(--bl2);background:rgba(37,99,235,.18);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s';
+      esBtn.style.cssText = 'display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:inherit;transition:.2s';
+    } else {
+      esBtn.style.cssText = 'display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1.5px solid var(--bl2);background:rgba(37,99,235,.18);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s';
+      enBtn.style.cssText = 'display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:inherit;transition:.2s';
+    }
+  }
+
+  // Update text labels
+  const ids = ['subtitle','desc','lbl_nombre','lbl_usuario','lbl_email','lbl_telefono','lbl_pass',
+    'lbl_objetivo','lbl_nivel','lbl_peso','lbl_altura','lbl_edad','lbl_sexo',
+    'lbl_actividad','lbl_dieta','lbl_alimentos_no','lbl_lesiones','lbl_obs'];
+  ids.forEach(id => {
+    const el = document.getElementById(id === 'subtitle' ? 'reg_subtitle' : id === 'desc' ? 'reg_desc' : id);
+    if(el) el.textContent = s[id];
+  });
+
+  // Update submit and back buttons
+  const sb = document.getElementById('reg_submit_btn');
+  const bb = document.getElementById('reg_back_btn');
+  if(sb) sb.textContent = s.submit;
+  if(bb) bb.textContent = s.back;
+
+  // Update placeholders
+  const passEl = document.getElementById('reg_pass');
+  if(passEl) passEl.placeholder = s.pass_placeholder;
+  const userEl = document.getElementById('reg_username');
+  if(userEl) userEl.placeholder = s.user_placeholder;
+
+  // Update select options
+  document.querySelectorAll('#sRegistro select option[data-en]').forEach(opt => {
+    opt.textContent = opt.getAttribute('data-' + lang);
+  });
+
+  // Update dynamic placeholders
+  document.querySelectorAll('#sRegistro input[data-placeholder-en], #sRegistro textarea[data-placeholder-en]').forEach(el => {
+    el.placeholder = el.getAttribute('data-placeholder-' + lang);
+  });
+}
+
+// Init on page load
+document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
+</script>
 
 
 <!-- COACH -->
