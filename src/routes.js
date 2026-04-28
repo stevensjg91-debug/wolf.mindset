@@ -5,6 +5,28 @@ const { authMiddleware, coachOnly } = require('./auth');
 const router = express.Router();
 router.use(authMiddleware);
 
+// ── HELPERS ───────────────────────────────────────────────────────────
+function crearNotificacion(userId, tipo, mensaje) {
+  try {
+    dbRun('INSERT INTO notificaciones (user_id, tipo, mensaje) VALUES (?,?,?)',
+      [userId, tipo, mensaje]);
+  } catch(e) {}
+}
+
+function getCoachId() {
+  try {
+    const coach = dbGet("SELECT id FROM users WHERE role='coach' LIMIT 1");
+    return coach ? coach.id : null;
+  } catch(e) { return null; }
+}
+
+function getNombreCliente(clienteId) {
+  try {
+    const c = dbGet('SELECT u.nombre FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [clienteId]);
+    return c ? c.nombre : 'Un cliente';
+  } catch(e) { return 'Un cliente'; }
+}
+
 router.get('/clientes', coachOnly, (req, res) => {
   const clientes = dbAll(`SELECT c.*, u.nombre, u.username,
     (SELECT peso FROM peso_registros WHERE cliente_id=c.id ORDER BY rowid DESC LIMIT 1) as peso_actual,
@@ -87,6 +109,14 @@ router.put('/clientes/:id/perfil', (req, res) => {
 router.post('/clientes/:id/peso', (req, res) => {
   const { peso, grasa, cintura } = req.body;
   dbRun('INSERT INTO peso_registros (cliente_id, peso, grasa, cintura) VALUES (?, ?, ?, ?)', [req.params.id, peso, grasa||null, cintura||null]);
+  // Notificar al coach
+  const coachId = getCoachId();
+  if(coachId) {
+    const nombre = getNombreCliente(req.params.id);
+    const detalle = grasa ? ` · ${grasa}% grasa` : '';
+    crearNotificacion(coachId, 'peso_registrado', `⚖️ ${nombre} ha registrado su peso: ${peso}kg${detalle}`);
+  }
+  saveToDisk();
   res.json({ ok: true });
 });
 
@@ -187,6 +217,14 @@ router.post('/clientes/:id/fotos', (req, res) => {
   // url is full base64 image — store completely
   const r = dbRun('INSERT INTO fotos (cliente_id, url, analysis, tipo) VALUES (?, ?, ?, ?)',
     [req.params.id, url||'', analysis||'', tipo||'frente']);
+  // Notificar al coach
+  const coachId = getCoachId();
+  if(coachId) {
+    const nombre = getNombreCliente(req.params.id);
+    const tipoLabel = tipo === 'espalda' ? 'espalda' : tipo === 'lado' ? 'lateral' : 'frontal';
+    crearNotificacion(coachId, 'foto_subida', `📸 ${nombre} ha subido una foto de progreso (${tipoLabel})`);
+  }
+  saveToDisk();
   res.json({ id: r.lastInsertRowid });
 });
 
@@ -365,6 +403,28 @@ router.post('/clientes/:id/sesiones', (req, res) => {
         }
       });
     }
+
+    // ── Notificar al coach ──────────────────────────────────────────
+    const coachId = getCoachId();
+    if(coachId) {
+      const nombre = getNombreCliente(req.params.id);
+      const durStr = duracion_min ? ` (${duracion_min} min)` : '';
+      const diaStr = dia_nombre || 'entreno';
+
+      // Notificación de sesión completada
+      crearNotificacion(coachId, 'sesion_completada',
+        `💪 ${nombre} ha terminado: ${diaStr}${durStr}`);
+
+      // Notificaciones adicionales por notas/sensaciones con texto
+      if(series && series.length) {
+        const notasConTexto = series.filter(s => s.nota_cliente && s.nota_cliente.trim() !== '');
+        notasConTexto.forEach(s => {
+          crearNotificacion(coachId, 'nota_cliente',
+            `💬 ${nombre} — ${s.ejercicio}: "${s.nota_cliente.trim()}"`);
+        });
+      }
+    }
+
     saveToDisk();
     res.json({ ok: true, sesion_id: sesionId });
   } catch(e) {
@@ -597,14 +657,6 @@ function diasRestantes(fecha_fin) {
   const fin = new Date(fecha_fin);
   fin.setHours(0,0,0,0);
   return Math.ceil((fin - hoy) / (1000 * 60 * 60 * 24));
-}
-
-// Helper: crear notificación
-function crearNotificacion(userId, tipo, mensaje) {
-  try {
-    dbRun('INSERT INTO notificaciones (user_id, tipo, mensaje) VALUES (?,?,?)',
-      [userId, tipo, mensaje]);
-  } catch(e) {}
 }
 
 // GET todas las suscripciones (coach)
