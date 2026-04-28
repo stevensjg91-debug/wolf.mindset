@@ -1754,17 +1754,55 @@ const COACH_TRANSLATIONS = {
   'Dieta asignada':'Assigned diet','Sin dieta asignada. Usa el Creador de Dieta IA.':'No diet assigned. Use the AI Diet Builder.','Fotos de progreso':'Progress photos','Revisión semanal':'Weekly review','Evolución de peso':'Weight progress',
   'Míos':'Mine','Todos':'All','Socia':'Partner','Total':'Total','Sem':'Week','Semana':'Week','mes':'month','meses':'months','años':'years','grasa':'body fat',
   'Solicitudes pendientes':'Pending requests','Asistente IA Coach':'AI Coach Assistant','Mi equipo':'My team',
+  // IA Coach screen exact strings
+  'IA privada del coach':'Private Coach AI','IA PRIVADA DEL COACH':'PRIVATE COACH AI',
+  'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.':'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.',
+  '🔄 Recargar ejercicios (112)':'🔄 Reload exercises (112)',
+  '🔄 Recargar exercises (112)':'🔄 Reload exercises (112)',
+  '🖼️ Descargar imágenes ejercicios':'🖼️ Download exercise images',
+  '🖼️ Gestionar imágenes ejercicios':'🖼️ Manage exercise images',
+  'Gestionar imágenes de ejercicios':'Manage exercise images',
+  '➕ Crear ejercicio nuevo':'➕ Create new exercise',
+  'Añade ejercicios personalizados que no están en la biblioteca.':'Add custom exercises that are not in the library.',
+  'Nombre':'Name','Grupo':'Group','Músculos':'Muscles','Dificultad':'Difficulty',
+  'URL imagen/GIF (opcional)':'Image/GIF URL (optional)',
+  '✓ Crear ejercicio':'✓ Create exercise',
+  '🖼️ Añadir imagen a un ejercicio':'🖼️ Add image to an exercise',
+  'Pega la URL de una imagen o GIF. Solo visible para ti como coach hasta que la guardes.':'Paste the URL of an image or GIF. Only visible to you as coach until you save it.',
+  'Todos los grupos':'All groups','Buscar ejercicio...':'Search exercise...',
+  'procesando...':'processing...',
+  'Ej: genera rutina para Carlos, 4 días, volumen...':'Ex: generate a routine for Carlos, 4 days, bulking...',
+  'Enviar':'Send',
 };
 
+function buildCoachReverseTranslations(){
+  const rev = {};
+  Object.entries(COACH_TRANSLATIONS || {}).forEach(([es,en]) => {
+    if(en && !rev[en]) rev[en] = es;
+  });
+  Object.assign(rev, {
+    'Clients':'Clientes','Create routine':'Crear rutina','Create diet':'Crear dieta','New client':'Nuevo cliente','Pending':'Pendientes','Progress':'Progreso','AI Assistant':'Asistente IA','Log out':'Cerrar sesión',
+    'AI Coach Assistant':'Asistente IA Coach','Private Coach AI':'IA privada del coach','PRIVATE COACH AI':'IA PRIVADA DEL COACH',
+    'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.':'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.',
+    'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?':'Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?',
+    '🔄 Reload exercises (112)':'🔄 Recargar ejercicios (112)','🔄 Recargar exercises (112)':'🔄 Recargar ejercicios (112)',
+    '🖼️ Download exercise images':'🖼️ Descargar imágenes ejercicios','🖼️ Manage exercise images':'🖼️ Gestionar imágenes ejercicios',
+    'Ex: generate a routine for Carlos, 4 days, bulking...':'Ej: genera rutina para Carlos, 4 días, volumen...',
+    'Send':'Enviar','processing...':'procesando...'
+  });
+  return rev;
+}
+
 function tc(text) {
-  if(COACH_LANG === 'es') return text;
-  return COACH_TRANSLATIONS[text] || TRANSLATIONS[text] || text;
+  if(!text) return text;
+  if(COACH_LANG === 'en') return COACH_TRANSLATIONS[text] || TRANSLATIONS[text] || text;
+  const rev = buildCoachReverseTranslations();
+  return rev[text] || text;
 }
 
 function setCoachLang(lang) {
   COACH_LANG = lang;
   localStorage.setItem('wm_coach_lang', lang);
-  // Actualizar botones del selector
   const esBtn = document.getElementById('coach_lang_es');
   const enBtn = document.getElementById('coach_lang_en');
   if(esBtn) {
@@ -1777,7 +1815,6 @@ function setCoachLang(lang) {
     enBtn.style.background = lang==='en' ? 'rgba(255,255,255,.15)' : 'none';
     enBtn.style.opacity = lang==='en' ? '1' : '0.4';
   }
-  // Re-renderizar panel coach si está activo para regenerar texto base antes de traducir.
   if(document.getElementById('sCoach')?.classList.contains('on')) {
     if(window._lastClienteId && document.getElementById('ctab_resumen')) {
       verCliente(window._lastClienteId);
@@ -1785,27 +1822,25 @@ function setCoachLang(lang) {
       renderCoach(currentCoachTab || 'clientes');
     }
   }
-  setTimeout(()=>applyCoachLang(document.getElementById('sCoach')), 50);
+  setTimeout(()=>applyCoachLang(document.getElementById('sCoach')), 80);
 }
 
 function applyCoachLang(el) {
   if(!el) return;
-  if(COACH_LANG === 'es') return;
-
-  const dict = COACH_TRANSLATIONS || {};
-  const keys = Object.keys(dict).sort((a,b)=>b.length-a.length);
+  const dict = COACH_LANG === 'en' ? (COACH_TRANSLATIONS || {}) : buildCoachReverseTranslations();
+  const keys = Object.keys(dict).filter(Boolean).sort((a,b)=>b.length-a.length);
   const translateText = (txt) => {
     let out = txt || '';
     keys.forEach(k => {
-      if(!k) return;
-      out = out.split(k).join(dict[k]);
+      if(out.includes(k)) out = out.split(k).join(dict[k]);
     });
     return out;
   };
 
   el.querySelectorAll('[data-i18n-coach]').forEach(e2 => {
     const key = e2.getAttribute('data-i18n-coach');
-    if(dict[key]) e2.textContent = dict[key];
+    const next = dict[key] || dict[(e2.textContent || '').trim()];
+    if(next) e2.textContent = next;
   });
 
   el.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(inp => {
@@ -4713,10 +4748,10 @@ document.addEventListener('keydown', e => {
 
 
 // ═══ IA COACH ═════════════════════════════════════════
-function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">IA privada del coach</div>Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.</div>
+function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">${tc('IA privada del coach')}</div>${tc('Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.')}</div>
 <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-  <button class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="reloadEjercicios()">🔄 Recargar ejercicios (112)</button>
-  <button id="btn_img_status" class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="abrirGestorImagenes()">🖼️ Gestionar imágenes ejercicios</button>
+  <button class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="reloadEjercicios()">${tc('🔄 Recargar ejercicios (112)')}</button>
+  <button id="btn_img_status" class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="abrirGestorImagenes()">${tc('🖼️ Gestionar imágenes ejercicios')}</button>
 </div>
 
 <!-- GESTOR DE IMÁGENES -->
@@ -4757,12 +4792,12 @@ function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div 
 
 <div class="sec" style="display:flex;flex-direction:column;height:480px">
   <div class="chat-msgs" id="iaMsgs" style="flex:1;background:var(--b);border:0.5px solid var(--br);border-radius:10px;padding:11px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
-    <div class="msg msg-b"><div class="msg-sender">WolfMindset IA</div>Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?</div>
+    <div class="msg msg-b"><div class="msg-sender">WolfMindset IA</div>${tc('Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?')}</div>
   </div>
-  <div class="typing" id="iaTyping">procesando...</div>
+  <div class="typing" id="iaTyping">${tc('procesando...')}</div>
   <div style="display:flex;gap:8px">
-    <input class="inp" id="iaIn" placeholder="Ej: genera rutina para Carlos, 4 días, volumen..." style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')sendIA()"/>
-    <button class="btn" onclick="sendIA()">Enviar</button>
+    <input class="inp" id="iaIn" placeholder="${tc('Ej: genera rutina para Carlos, 4 días, volumen...')}" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')sendIA()"/>
+    <button class="btn" onclick="sendIA()">${tc('Enviar')}</button>
   </div>
 </div>`;}
 
