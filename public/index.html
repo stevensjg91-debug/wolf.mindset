@@ -901,7 +901,7 @@ const TRANSLATIONS = {
 
   // ── Timer / Series ──
   'Descanso':'Rest','Pausar':'Pause','Reanudar':'Resume',
-  'Serie':'Set','Anterior':'Previous','Rep.':'Reps','Último':'Last',
+  'Serie':'Set','Anterior':'Previous','Rep.':'Reps',
   'Nota para el coach (sensaciones, dolor, etc.)':'Note for coach (feelings, pain, etc.)',
   '${t("Ej: Sentí el peso muy pesado, me dolió el hombro...")}':'E.g. Weight felt heavy, shoulder pain...',
   '¿Cuántas reps más podrías haber hecho? (RIR = Reps In Reserve)':'How many more reps could you have done? (RIR = Reps In Reserve)',
@@ -1876,7 +1876,7 @@ async function doLogin(){
       // Mostrar Mi Equipo solo al coach admin (username 'wolf')
       const sniEq=document.getElementById('sni_equipo');
       if(sniEq) sniEq.style.display='flex';
-      cargarNotificacionesCoach();
+      startCoachNotifPolling();
       // Auto-verificar vencimientos al entrar
       api('/suscripciones/avisar-vencimientos', {method:'POST'}).catch(()=>{});
     } else {
@@ -1966,7 +1966,7 @@ async function cargarNotificacionesCliente() {
   } catch(e) {}
 }
 
-function doLogout(){TOKEN=null;USER=null;CD=null;localStorage.removeItem('wm_token');localStorage.removeItem('wm_user');show('sLogin');}
+function doLogout(){stopCoachNotifPolling();TOKEN=null;USER=null;CD=null;localStorage.removeItem('wm_token');localStorage.removeItem('wm_user');show('sLogin');}
 
 // PRE-FILL SAVED CREDENTIALS
 const savedUser = localStorage.getItem('wm_saved_user');
@@ -1979,6 +1979,7 @@ if(TOKEN&&USER){
   if(USER.role==='coach'){
     show('sCoach');renderCoach('clientes');setTimeout(()=>{setCoachLang(COACH_LANG);},200);
     if(isMobile())document.getElementById('coachMobileNav').style.display='flex';
+    startCoachNotifPolling();
     setTimeout(checkPendientes,1000);
   } else {
     show('sCliente');
@@ -2297,7 +2298,10 @@ async function verCliente(id){
     <div id="sesiones_wrap"><div style="font-size:13px;color:var(--tx3)">Cargando...</div></div>
   </div>
   
-
+    <div id="graficas_coach_sec" style="display:none">
+    <div class="sec-lbl" style="padding-top:0;padding-bottom:8px">Main exercise progress</div>
+    <div id="graficas_coach_wrap" style="padding:0 0 12px"></div>
+  </div>
   
   </div>
 
@@ -2310,7 +2314,10 @@ async function verCliente(id){
       </div>
       <div id="sesiones_wrap2"><div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">Cargando...</div></div>
     </div>
-
+    <div id="graficas_coach_sec2" style="display:none">
+      <div class="sec-lbl" style="padding-top:0;padding-bottom:8px">Main exercise progress</div>
+      <div id="graficas_coach_wrap2" style="padding:0 0 12px"></div>
+    </div>
   </div>
 
   <!-- TAB: DIETA -->
@@ -2604,7 +2611,11 @@ function switchClienteTab(tab, btn) {
       const c = window._coachClienteActual;
       if(c) {
         const principales = c.dias.flatMap(d=>(d.ejercicios||[]).filter(e=>e.es_principal).map(e=>e.nombre)).filter((n,i,a)=>a.indexOf(n)===i);
-      // Gráficas de progreso eliminadas
+        if(principales.length) {
+          const sec2 = document.getElementById('graficas_coach_sec2');
+          if(sec2) sec2.style.display = 'block';
+          cargarGraficasCoach2(id, principales);
+        }
       }
     }).catch(()=>{
       if(wrap) wrap.innerHTML = '<div style="font-size:13px;color:#f87171;padding:20px;text-align:center">Error cargando sesiones.</div>';
@@ -2614,7 +2625,11 @@ function switchClienteTab(tab, btn) {
     const c = window._coachClienteActual;
     if(c) {
       const principales = c.dias.flatMap(d=>(d.ejercicios||[]).filter(e=>e.es_principal).map(e=>e.nombre)).filter((n,i,a)=>a.indexOf(n)===i);
-    // Gráficas de progreso eliminadas
+      if(principales.length) {
+        const sec = document.getElementById('graficas_coach_sec');
+        if(sec) sec.style.display = 'block';
+        cargarGraficasCoach(id, principales);
+      }
     }
   }
   if(tab === 'progreso') {
@@ -4564,7 +4579,13 @@ async function cancelarSuscripcion(clienteId) {
 }
 
 // ── NOTIFICACIONES COACH ──────────────────────────────────────────
+let _coachNotifTimer = null;
+let _coachNotifLoading = false;
+let _coachNotifLastUnread = 0;
+
 async function cargarNotificacionesCoach() {
+  if(_coachNotifLoading) return;
+  _coachNotifLoading = true;
   try {
     const notifs = await api('/notificaciones');
     const noLeidas = notifs.filter(n=>!n.leida).length;
@@ -4574,8 +4595,36 @@ async function cargarNotificacionesCoach() {
       else { badge.style.display='none'; }
     }
     window._notifCoach = notifs;
-  } catch(e) {}
+    _coachNotifLastUnread = noLeidas;
+
+    // Si el panel está abierto, refrescar la lista sin tener que cerrar/abrir.
+    const panel = document.getElementById('notif_panel_coach');
+    if(panel && panel.style.display !== 'none') renderNotifCoach();
+  } catch(e) {
+    // Silencioso para no molestar al coach si hay un microcorte de conexión.
+  } finally {
+    _coachNotifLoading = false;
+  }
 }
+
+function startCoachNotifPolling() {
+  if(!USER || USER.role !== 'coach') return;
+  cargarNotificacionesCoach();
+  if(_coachNotifTimer) clearInterval(_coachNotifTimer);
+  _coachNotifTimer = setInterval(() => {
+    if(document.hidden) return;
+    if(USER && USER.role === 'coach') cargarNotificacionesCoach();
+  }, 10000);
+}
+
+function stopCoachNotifPolling() {
+  if(_coachNotifTimer) clearInterval(_coachNotifTimer);
+  _coachNotifTimer = null;
+}
+
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden && USER && USER.role === 'coach') cargarNotificacionesCoach();
+});
 
 function toggleNotifCoach() {
   const panel = document.getElementById('notif_panel_coach');
@@ -4994,7 +5043,7 @@ function hPreviewDia(i){
   });
 
   const lastSession = sesiones.find(s=>s.dia_nombre===d.nombre);
-  const lastStr = lastSession ? `${t('Último')}: ${diasDesde(lastSession.fecha)}` : t('Sin realizar aún');
+  const lastStr = lastSession ? `Último: ${diasDesde(lastSession.fecha)}` : 'Sin realizar aún';
 
   const exList = d.ejercicios.map((e,ei)=>{
     const ult = ultimoPorEx[e.nombre];
@@ -5006,7 +5055,7 @@ function hPreviewDia(i){
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:2px">${e.nombre}</div>
         <div style="font-size:12px;color:var(--tx3)">${e.series} × ${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''}</div>
-        ${ult?`<div style="font-size:11px;color:var(--sv3);margin-top:1px">${t('Anterior')}: ${ultStr}</div>`:''}
+        ${ult?`<div style="font-size:11px;color:var(--sv3);margin-top:1px">Anterior: ${ultStr}</div>`:''}
         ${e.es_principal?`<span style="font-size:10px;background:rgba(245,158,11,.2);color:var(--amb);padding:1px 6px;border-radius:4px;font-weight:700">⭐</span>`:''}
       </div>
       <button onclick="event.stopPropagation();abrirDescripcion('${e.nombre.replace(/'/g,"\'")}')" style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.15);border:0.5px solid rgba(59,130,246,.25);color:var(--blg);cursor:pointer;font-size:14px;font-weight:700;flex-shrink:0;display:flex;align-items:center;justify-content:center">?</button>
@@ -5026,7 +5075,7 @@ function hPreviewDia(i){
     </div>
     <!-- Exercise list -->
     <div style="flex:1;overflow-y:auto;padding-bottom:140px">
-      <div style="padding:10px 16px 6px;font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.08em">${t(d.grupo)||d.grupo} · ${d.ejercicios.length} ${t('ejercicios')}</div>
+      <div style="padding:10px 16px 6px;font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.08em">${t(d.grupo)||d.grupo} · ${d.ejercicios.length} ejercicios</div>
       ${exList}
     </div>
     <!-- Entrenar button -->
@@ -5174,7 +5223,7 @@ function hEntreno(){
       ${seriesRows}
       <!-- Nota del cliente para el coach -->
       <div style="padding:8px 14px 12px">
-        <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${t('💬 Nota para el coach (sensaciones, dolor, etc.)')}</div>
+        <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${t('💬 Nota para el coach (sensaciones, dolor, etc.')}</div>
         <input id="nota_cliente_${ei}" type="text" placeholder="${t('Ej: Sentí el peso muy pesado, me dolió el hombro...')}" value="${e._nota_cliente||''}"
           style="width:100%;padding:8px 10px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:12px;font-family:inherit;box-sizing:border-box"
           onchange="CD.dias[activeDia].ejercicios[${ei}]._nota_cliente=this.value"/>
@@ -6145,7 +6194,7 @@ async function guardarPerfil(){
       deficiencias: pf('pf_deficiencias')?.value||''
     })});
     await loadCD(CD.id);
-    msg.style.color='#86efac';msg.textContent='✓ Profile saved ✓';
+    msg.style.color='#86efac';msg.textContent='✓ Perfil guardado ✓';
     // Switch to view mode immediately
     const formEl=document.getElementById('pf_form');
     const btnsEl=document.getElementById('pf_btns');
@@ -6848,8 +6897,15 @@ async function cargarGraficasCliente(){
       return;
     }
 
-    wrap.innerHTML = prsHtml;
+    wrap.innerHTML = prsHtml + `<div class="sec-lbl">Main exercise progress</div>
+      <div id="graficas_container" style="padding:0 14px 4px"></div>`;
 
+    const container = document.getElementById('graficas_container');
+    for(const ejercicio of principales){
+      const data = await api('/clientes/'+CD.id+'/progreso-ejercicio?ejercicio='+encodeURIComponent(ejercicio));
+      if(!data.length) continue;
+      container.innerHTML += renderGraficaSVG(ejercicio, data);
+    }
   } catch(e){ console.log('Error graficas:', e); }
 }
 
