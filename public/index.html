@@ -653,9 +653,9 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
         <button class="sni" id="sni_pendientes" onclick="cNav('pendientes',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span data-i18n-coach="Pendientes">Pendientes</span> <span id="badge_pend" style="display:none;background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px">0</span></button>
         <button class="sni" onclick="cNav('progreso',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n-coach="Progreso">Progreso</span></button>
         <button class="sni" onclick="cNav('ia',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 015 5c0 2.4-1.7 4.4-4 4.9V14H7v-2.1C4.7 11.4 3 0.4 3 7a5 5 0 015-5z" stroke="currentColor" stroke-width="1.3"/></svg><span data-i18n-coach="Asistente IA">Asistente IA</span></button>
-        <button class="sni" id="sni_equipo" onclick="cNav('equipo',this)" style="display:none"><svg viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 13c0-2.76 2.24-5 4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M15 13c0-2.76-2.24-5-4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 8v5M6 10h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>Mi equipo</span></button>
+        <button class="sni" id="sni_equipo" onclick="cNav('equipo',this)" style="display:none"><svg viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 13c0-2.76 2.24-5 4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M15 13c0-2.76-2.24-5-4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 8v5M6 10h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span data-i18n-coach="Mi equipo">Mi equipo</span></button>
       </div>
-      <button class="sb-out" onclick="doLogout()"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Cerrar sesión</button>
+      <button class="sb-out" onclick="doLogout()"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n-coach="Cerrar sesión">Cerrar sesión</span></button>
       <!-- Selector idioma coach -->
       <div style="display:flex;gap:6px;padding:10px 12px 14px;border-top:0.5px solid var(--br);margin-top:4px">
         <button id="coach_lang_es" onclick="setCoachLang('es')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);cursor:pointer;transition:.2s">
@@ -901,7 +901,7 @@ const TRANSLATIONS = {
 
   // ── Timer / Series ──
   'Descanso':'Rest','Pausar':'Pause','Reanudar':'Resume',
-  'Serie':'Set','Anterior':'Previous','Rep.':'Reps',
+  'Serie':'Set','Anterior':'Previous','Rep.':'Reps','Último':'Last',
   'Nota para el coach (sensaciones, dolor, etc.)':'Note for coach (feelings, pain, etc.)',
   '${t("Ej: Sentí el peso muy pesado, me dolió el hombro...")}':'E.g. Weight felt heavy, shoulder pain...',
   '¿Cuántas reps más podrías haber hecho? (RIR = Reps In Reserve)':'How many more reps could you have done? (RIR = Reps In Reserve)',
@@ -1678,67 +1678,22 @@ function setLang(lang) {
 
 // Traducción para el coach (independiente del idioma del cliente)
 const COACH_TRANSLATIONS = {
-  // Nav sidebar
-  'Clientes':'Clients','Crear rutina':'Create routine','Crear dieta':'Create diet',
-  'Nuevo cliente':'New client','Pendientes':'Pending','Progreso':'Progress',
-  'Asistente IA':'AI Assistant','Cerrar sesión':'Log out',
-  // Nav mobile
-  'Rutinas':'Routines','Solicitudes':'Requests','+ Cliente':'+ Client',
-  // Topbar
-  'Clientes':'Clients',
-  // Títulos secciones
-  'Resumen':'Summary','Entreno':'Workout','Dieta':'Diet','Notas':'Notes',
-  'Notificaciones':'Notifications','Marcar todas leídas':'Mark all read',
-  'Cargando...':'Loading...',
-  // Cliente card
-  'Semana':'Week','Sesiones':'Sessions','sin sesiones':'no sessions',
-  'Suscripción activa':'Active subscription','Sin suscripción':'No subscription',
-  'Renovar suscripción':'Renew subscription','Cancelar suscripción':'Cancel subscription',
-  'Contraseña del cliente':'Client password','Resetear':'Reset',
-  'Nueva contraseña':'New password','Mín 6 caracteres':'Min 6 chars',
-  // Botones
-  'Guardar':'Save','Publicar':'Publish','Eliminar':'Delete','Editar':'Edit',
-  'Añadir':'Add','Cancelar':'Cancel','Guardar cambios':'Save changes',
-  '✓ Publicar rutina':'✓ Publish routine','✓ Guardar cambios':'✓ Save changes',
-  '+ Día':'+ Day','+ Ejercicio':'+ Exercise',
-  'Añadir día de entreno':'Add training day','Añadir ejercicio →':'Add exercise →',
-  // Nuevo cliente
-  'Nombre completo *':'Full name *','Email *':'Email *','Teléfono *':'Phone *',
-  'Usuario para acceder *':'Username *','Contraseña *':'Password *',
-  'Objetivo':'Goal','Nivel':'Level','Días/semana':'Days/week',
-  'Solicitud de acceso':'Access request','Aprobar y crear':'Approve & create',
-  'Rechazar':'Reject',
-  // Dieta builder  
-  'Tipo de alimentación':'Diet type','Objetivo calórico':'Calorie goal',
-  'Automático según objetivo del cliente':'Auto based on client goal',
-  'Calorías objetivo:':'Target calories:','Proteína':'Protein',
-  'Carbos':'Carbs','Grasas':'Fats','Añadir alimento':'Add food',
-  'Generar con IA':'Generate with AI','Borrar dieta':'Delete diet',
-  'Comida libre':'Free meal','Sin dieta asignada':'No diet assigned',
-  // IA asistente
-  'Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?':
-    'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?',
-  // Progreso
-  'Valoración IA':'AI Assessment','Analizar progreso':'Analyze progress',
-  'Ver historial':'View history','Fotos de progreso':'Progress photos',
-  // Mensajes
-  'VALORACIÓN COACH':'COACH ASSESSMENT',
-  'Sin notas':'No notes','Sin historial':'No history',
-  'Semanas de entrenamiento':'Training weeks',
-  // Ajuste dieta
-  'Ajuste automático':'Auto adjustment','Ajuste calórico':'Calorie adjustment',
-  'Aplicar ajuste':'Apply adjustment',
-  // Días semana (para crear rutinas)
-  'Lunes':'Monday','Martes':'Tuesday','Miércoles':'Wednesday',
-  'Jueves':'Thursday','Viernes':'Friday','Sábado':'Saturday','Domingo':'Sunday',
-  // Músculos
-  'Pecho + Tríceps':'Chest + Triceps','Espalda + Bíceps':'Back + Biceps',
-  'Hombros + Brazos':'Shoulders + Arms','Full Body':'Full Body',
-  'Piernas':'Legs','Empuje':'Push','Tirón':'Pull','Glúteos':'Glutes',
-  'Principiante':'Beginner','Intermedio':'Intermediate','Avanzado':'Advanced',
-  // Objetivos cliente
-  'Volumen':'Bulk','Definición':'Cutting','Fuerza':'Strength',
-  'Recomposición':'Body recomp','Perder peso':'Lose weight',
+  'Clientes':'Clients','Crear rutina':'Create routine','Crear dieta':'Create diet','Nuevo cliente':'New client',
+  'Pendientes':'Pending','Progreso':'Progress','Asistente IA':'AI Assistant','Asistente IA Coach':'Coach AI Assistant',
+  'Cerrar sesión':'Log out','Mi equipo':'My team','Rutinas':'Routines','Solicitudes':'Requests','+ Cliente':'+ Client',
+  'Solicitudes pendientes':'Pending requests','Dashboard':'Dashboard','Resumen':'Summary','Entreno':'Training','Dieta':'Diet','Notas':'Notes','Historial':'History','Configuración':'Settings',
+  'Notificaciones':'Notifications','Marcar todas leídas':'Mark all as read','Cargando...':'Loading...',
+  'Total':'Total','Míos':'Mine','Otros':'Others','Todos':'All','Buscar':'Search','Filtrar':'Filter','Selecciona cliente':'Select client','Seleccionar cliente':'Select client','Sin cliente seleccionado':'No client selected',
+  'Sin clientes aún':'No clients yet','Crea el primero desde "Nuevo cliente"':'Create the first one from "New client"','No hay datos todavía':'No data yet','Sin datos':'No data','Sin notas':'No notes','Sin historial':'No history','Sin sesiones':'No sessions','sin sesiones':'no sessions',
+  'Hoy':'Today','Fecha':'Date','Semana':'Week','Semanas':'Weeks','Día':'Day','Días':'Days','Sesiones':'Sessions','Última sesión':'Last session','Último registro':'Last record','Peso':'Weight','Grasa':'Body fat','Cintura':'Waist','Altura':'Height','Edad':'Age','Sexo':'Sex','Actividad':'Activity','Observaciones':'Notes','Lesiones':'Injuries','Objetivo':'Goal','Nivel':'Level','Estado':'Status','Acciones':'Actions','Nombre':'Name','Usuario':'Username','Email':'Email','Teléfono':'Phone',
+  'Guardar':'Save','Publicar':'Publish','Eliminar':'Delete','Borrar':'Delete','Editar':'Edit','Añadir':'Add','Cancelar':'Cancel','Confirmar':'Confirm','Aceptar':'Accept','Cerrar':'Close','Volver':'Back','Ver':'View','Abrir':'Open','Crear':'Create','Guardar cambios':'Save changes','✓ Guardar cambios':'✓ Save changes','✓ Publicar rutina':'✓ Publish routine','+ Día':'+ Day','+ Ejercicio':'+ Exercise','Añadir día de entreno':'Add training day','Añadir ejercicio →':'Add exercise →','Aprobar':'Approve','Rechazar':'Reject','Aprobar y crear':'Approve & create','Resetear':'Reset','Renovar suscripción':'Renew subscription','Cancelar suscripción':'Cancel subscription','Aplicar ajuste':'Apply adjustment','Analizar progreso':'Analyze progress','Ver historial':'View history','Generar con IA':'Generate with AI','Borrar dieta':'Delete diet','Descargar imágenes ejercicios':'Download exercise images',
+  'Suscripción activa':'Active subscription','Sin suscripción':'No subscription','Suscripción vencida':'Expired subscription','Contraseña del cliente':'Client password','Nueva contraseña':'New password','Mín 6 caracteres':'Min 6 chars','Cliente':'Client','Coach':'Coach','Activo':'Active','Pendiente':'Pending','Bloqueado':'Blocked',
+  'Nombre completo *':'Full name *','Email *':'Email *','Teléfono *':'Phone *','Usuario para acceder *':'Login username *','Contraseña *':'Password *','Días/semana':'Days/week','Solicitud de acceso':'Access request','Solicitudes de acceso':'Access requests','Sin solicitudes pendientes':'No pending requests','Tipo de alimentación':'Diet type','Alimentos que no puedo comer':'Foods I cannot eat','Lesiones / zonas con dolor':'Injuries / painful areas','Otras observaciones':'Other notes',
+  'Rutina':'Routine','Día de entreno':'Training day','Días de entreno':'Training days','Nombre del día':'Day name','Grupo muscular':'Muscle group','Ejercicios':'Exercises','Ejercicio':'Exercise','Series':'Sets','Reps':'Reps','Repeticiones':'Reps','Peso objetivo':'Target weight','Descanso':'Rest','RIR':'RIR','Principal':'Main','Nota coach':'Coach note','URL YouTube':'YouTube URL','Imagen':'Image','Publicar rutina':'Publish routine','Rutina publicada':'Routine published','Borrador':'Draft','Borrador pendiente':'Pending draft','Semanas de entrenamiento':'Training weeks','VALORACIÓN COACH':'COACH ASSESSMENT',
+  'Objetivo calórico':'Calorie target','Automático según objetivo del cliente':'Auto based on client goal','Calorías objetivo:':'Target calories:','Calorías':'Calories','Proteína':'Protein','Carbos':'Carbs','Grasas':'Fats','Añadir alimento':'Add food','Alimento':'Food','Comida':'Meal','Comidas':'Meals','Comida libre':'Free meal','Sin dieta asignada':'No diet assigned','Plan de dieta':'Diet plan','Publicar dieta':'Publish diet','Ajuste automático':'Auto adjustment','Ajuste calórico':'Calorie adjustment','Equivalencias':'Alternatives','Suplementación':'Supplementation','Variaciones':'Variations',
+  'IA privada del coach':'Coach private AI','Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.':'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.','Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?':'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?','Escribe tu mensaje...':'Write your message...',
+  'Valoración IA':'AI assessment','Fotos de progreso':'Progress photos','Check-in semanal':'Weekly check-in','Sueño':'Sleep','Energía':'Energy','Peso registrado':'Weight logged','Evolución':'Evolution','Progreso de entrenos':'Training progress','Historial de entrenos':'Training history','Mejor marca':'Best mark',
+  'Lunes':'Monday','Martes':'Tuesday','Miércoles':'Wednesday','Jueves':'Thursday','Viernes':'Friday','Sábado':'Saturday','Domingo':'Sunday','Pecho + Tríceps':'Chest + Triceps','Espalda + Bíceps':'Back + Biceps','Hombros + Brazos':'Shoulders + Arms','Full Body':'Full Body','Piernas':'Legs','Empuje':'Push','Tirón':'Pull','Glúteos':'Glutes','Torso':'Upper body','Principiante':'Beginner','Intermedio':'Intermediate','Avanzado':'Advanced','Volumen':'Bulk','Definición':'Cutting','Fuerza':'Strength','Recomposición':'Body recomp','Perder peso':'Lose weight','Hombre':'Male','Mujer':'Female','Sedentario':'Sedentary','Moderada':'Moderate','Alta':'High','Muy alta':'Very high','Omnivoro':'Omnivore','Omnívoro':'Omnivore','Vegetariano':'Vegetarian','Vegano':'Vegan','Pescetariano':'Pescatarian','Sin gluten':'Gluten-free','Sin lactosa':'Lactose-free'
 };
 
 function tc(text) {
@@ -1749,7 +1704,6 @@ function tc(text) {
 function setCoachLang(lang) {
   COACH_LANG = lang;
   localStorage.setItem('wm_coach_lang', lang);
-  // Actualizar botones del selector
   const esBtn = document.getElementById('coach_lang_es');
   const enBtn = document.getElementById('coach_lang_en');
   if(esBtn) {
@@ -1762,30 +1716,42 @@ function setCoachLang(lang) {
     enBtn.style.background = lang==='en' ? 'rgba(255,255,255,.15)' : 'none';
     enBtn.style.opacity = lang==='en' ? '1' : '0.4';
   }
-  // Re-renderizar panel coach si está activo
   if(document.getElementById('sCoach')?.classList.contains('on')) {
-    renderCoach(currentCoachTab || 'clientes');
+    const tab = window.currentCoachTab || 'clientes';
+    renderCoach(tab);
+    const titleEl = document.getElementById('cTitle');
+    if(titleEl) titleEl.textContent = tc(TITLES[tab] || tab);
   }
-  // Traducir nav estática del coach
   applyCoachLang(document.getElementById('sCoach'));
 }
 
 function applyCoachLang(el) {
-  if(!el || COACH_LANG === 'es') return;
-  // Traducir todos los textos visibles
-  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+  if(!el) return;
+  el.querySelectorAll('[data-i18n-coach]').forEach(e2 => {
+    const key = e2.getAttribute('data-i18n-coach');
+    e2.textContent = COACH_LANG === 'es' ? key : (COACH_TRANSLATIONS[key] || TRANSLATIONS[key] || key);
+  });
+  el.querySelectorAll('[data-i18n-coach-placeholder]').forEach(e2 => {
+    const key = e2.getAttribute('data-i18n-coach-placeholder');
+    e2.placeholder = COACH_LANG === 'es' ? key : (COACH_TRANSLATIONS[key] || TRANSLATIONS[key] || key);
+  });
+  if(COACH_LANG !== 'en') return;
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+    acceptNode(node){
+      const parent = node.parentElement;
+      if(!parent) return NodeFilter.FILTER_REJECT;
+      if(['SCRIPT','STYLE','TEXTAREA','INPUT','OPTION'].includes(parent.tagName)) return NodeFilter.FILTER_REJECT;
+      const txt = node.textContent.trim();
+      if(!txt || txt.length > 90) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
   const nodes = [];
   while(walker.nextNode()) nodes.push(walker.currentNode);
   nodes.forEach(node => {
     const trimmed = node.textContent.trim();
-    if(trimmed && COACH_TRANSLATIONS[trimmed]) {
-      node.textContent = node.textContent.replace(trimmed, COACH_TRANSLATIONS[trimmed]);
-    }
-  });
-  // data-i18n-coach
-  el.querySelectorAll('[data-i18n-coach]').forEach(e2 => {
-    const key = e2.getAttribute('data-i18n-coach');
-    if(COACH_TRANSLATIONS[key]) e2.textContent = COACH_TRANSLATIONS[key];
+    const translated = COACH_TRANSLATIONS[trimmed] || TRANSLATIONS[trimmed];
+    if(translated) node.textContent = node.textContent.replace(trimmed, translated);
   });
 }
 
@@ -1876,7 +1842,7 @@ async function doLogin(){
       // Mostrar Mi Equipo solo al coach admin (username 'wolf')
       const sniEq=document.getElementById('sni_equipo');
       if(sniEq) sniEq.style.display='flex';
-      startCoachNotifPolling();
+      cargarNotificacionesCoach();
       // Auto-verificar vencimientos al entrar
       api('/suscripciones/avisar-vencimientos', {method:'POST'}).catch(()=>{});
     } else {
@@ -1966,7 +1932,7 @@ async function cargarNotificacionesCliente() {
   } catch(e) {}
 }
 
-function doLogout(){stopCoachNotifPolling();TOKEN=null;USER=null;CD=null;localStorage.removeItem('wm_token');localStorage.removeItem('wm_user');show('sLogin');}
+function doLogout(){TOKEN=null;USER=null;CD=null;localStorage.removeItem('wm_token');localStorage.removeItem('wm_user');show('sLogin');}
 
 // PRE-FILL SAVED CREDENTIALS
 const savedUser = localStorage.getItem('wm_saved_user');
@@ -1979,7 +1945,6 @@ if(TOKEN&&USER){
   if(USER.role==='coach'){
     show('sCoach');renderCoach('clientes');setTimeout(()=>{setCoachLang(COACH_LANG);},200);
     if(isMobile())document.getElementById('coachMobileNav').style.display='flex';
-    startCoachNotifPolling();
     setTimeout(checkPendientes,1000);
   } else {
     show('sCliente');
@@ -1988,20 +1953,24 @@ if(TOKEN&&USER){
 }
 
 // ═══ COACH NAV ════════════════════════════════════════
-const TITLES={clientes:'Clientes',nuevo:'Nuevo cliente',pendientes:'Solicitudes pendientes',rutinas:'Crear rutina','dieta-builder':'Crear dieta',progreso:'Progreso',ia:'Asistente IA Coach'};
+const TITLES={clientes:'Clientes',nuevo:'Nuevo cliente',pendientes:'Solicitudes pendientes',rutinas:'Crear rutina','dieta-builder':'Crear dieta',progreso:'Progreso',ia:'Asistente IA Coach',equipo:'Mi equipo'};
+window.currentCoachTab = window.currentCoachTab || 'clientes';
 function cNav(s,btn){
-  document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
-  document.getElementById('cTitle').textContent=TITLES[s]||s;
+  window.currentCoachTab=s;
+  document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
+  document.getElementById('cTitle').textContent=tc(TITLES[s]||s);
   renderCoach(s);
 }
 function cNavM(s,btn){
-  document.querySelectorAll('#coachMobileNav .bni').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
-  document.getElementById('cTitle').textContent=TITLES[s]||s;
+  window.currentCoachTab=s;
+  document.querySelectorAll('#coachMobileNav .bni').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
+  document.getElementById('cTitle').textContent=tc(TITLES[s]||s);
   renderCoach(s);
 }
 
 // ═══ COACH RENDER ════════════════════════════════════
 async function renderCoach(s){
+  window.currentCoachTab=s || window.currentCoachTab || 'clientes';
   const el=document.getElementById('cContent');
   if(s==='clientes'){const cl=await api('/clientes');window._clientesCache=cl;el.innerHTML=hClientes(cl);}
   else if(s==='nuevo'){el.innerHTML=hNuevo();}
@@ -2020,6 +1989,7 @@ async function renderCoach(s){
     else{btn.textContent='🖼️ Descargar imágenes ejercicios';}
  }).catch(()=>{});
   }
+  applyCoachLang(el);
 }
 
 function hClientes(cl){
@@ -2298,10 +2268,7 @@ async function verCliente(id){
     <div id="sesiones_wrap"><div style="font-size:13px;color:var(--tx3)">Cargando...</div></div>
   </div>
   
-    <div id="graficas_coach_sec" style="display:none">
-    <div class="sec-lbl" style="padding-top:0;padding-bottom:8px">Main exercise progress</div>
-    <div id="graficas_coach_wrap" style="padding:0 0 12px"></div>
-  </div>
+
   
   </div>
 
@@ -2314,10 +2281,7 @@ async function verCliente(id){
       </div>
       <div id="sesiones_wrap2"><div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">Cargando...</div></div>
     </div>
-    <div id="graficas_coach_sec2" style="display:none">
-      <div class="sec-lbl" style="padding-top:0;padding-bottom:8px">Main exercise progress</div>
-      <div id="graficas_coach_wrap2" style="padding:0 0 12px"></div>
-    </div>
+
   </div>
 
   <!-- TAB: DIETA -->
@@ -2611,11 +2575,7 @@ function switchClienteTab(tab, btn) {
       const c = window._coachClienteActual;
       if(c) {
         const principales = c.dias.flatMap(d=>(d.ejercicios||[]).filter(e=>e.es_principal).map(e=>e.nombre)).filter((n,i,a)=>a.indexOf(n)===i);
-        if(principales.length) {
-          const sec2 = document.getElementById('graficas_coach_sec2');
-          if(sec2) sec2.style.display = 'block';
-          cargarGraficasCoach2(id, principales);
-        }
+      // Gráficas de progreso eliminadas
       }
     }).catch(()=>{
       if(wrap) wrap.innerHTML = '<div style="font-size:13px;color:#f87171;padding:20px;text-align:center">Error cargando sesiones.</div>';
@@ -2625,11 +2585,7 @@ function switchClienteTab(tab, btn) {
     const c = window._coachClienteActual;
     if(c) {
       const principales = c.dias.flatMap(d=>(d.ejercicios||[]).filter(e=>e.es_principal).map(e=>e.nombre)).filter((n,i,a)=>a.indexOf(n)===i);
-      if(principales.length) {
-        const sec = document.getElementById('graficas_coach_sec');
-        if(sec) sec.style.display = 'block';
-        cargarGraficasCoach(id, principales);
-      }
+    // Gráficas de progreso eliminadas
     }
   }
   if(tab === 'progreso') {
@@ -4579,13 +4535,7 @@ async function cancelarSuscripcion(clienteId) {
 }
 
 // ── NOTIFICACIONES COACH ──────────────────────────────────────────
-let _coachNotifTimer = null;
-let _coachNotifLoading = false;
-let _coachNotifLastUnread = 0;
-
 async function cargarNotificacionesCoach() {
-  if(_coachNotifLoading) return;
-  _coachNotifLoading = true;
   try {
     const notifs = await api('/notificaciones');
     const noLeidas = notifs.filter(n=>!n.leida).length;
@@ -4595,36 +4545,8 @@ async function cargarNotificacionesCoach() {
       else { badge.style.display='none'; }
     }
     window._notifCoach = notifs;
-    _coachNotifLastUnread = noLeidas;
-
-    // Si el panel está abierto, refrescar la lista sin tener que cerrar/abrir.
-    const panel = document.getElementById('notif_panel_coach');
-    if(panel && panel.style.display !== 'none') renderNotifCoach();
-  } catch(e) {
-    // Silencioso para no molestar al coach si hay un microcorte de conexión.
-  } finally {
-    _coachNotifLoading = false;
-  }
+  } catch(e) {}
 }
-
-function startCoachNotifPolling() {
-  if(!USER || USER.role !== 'coach') return;
-  cargarNotificacionesCoach();
-  if(_coachNotifTimer) clearInterval(_coachNotifTimer);
-  _coachNotifTimer = setInterval(() => {
-    if(document.hidden) return;
-    if(USER && USER.role === 'coach') cargarNotificacionesCoach();
-  }, 10000);
-}
-
-function stopCoachNotifPolling() {
-  if(_coachNotifTimer) clearInterval(_coachNotifTimer);
-  _coachNotifTimer = null;
-}
-
-document.addEventListener('visibilitychange', () => {
-  if(!document.hidden && USER && USER.role === 'coach') cargarNotificacionesCoach();
-});
 
 function toggleNotifCoach() {
   const panel = document.getElementById('notif_panel_coach');
@@ -5043,7 +4965,7 @@ function hPreviewDia(i){
   });
 
   const lastSession = sesiones.find(s=>s.dia_nombre===d.nombre);
-  const lastStr = lastSession ? `Último: ${diasDesde(lastSession.fecha)}` : 'Sin realizar aún';
+  const lastStr = lastSession ? `${t('Último')}: ${diasDesde(lastSession.fecha)}` : t('Sin realizar aún');
 
   const exList = d.ejercicios.map((e,ei)=>{
     const ult = ultimoPorEx[e.nombre];
@@ -5055,7 +4977,7 @@ function hPreviewDia(i){
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:2px">${e.nombre}</div>
         <div style="font-size:12px;color:var(--tx3)">${e.series} × ${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''}</div>
-        ${ult?`<div style="font-size:11px;color:var(--sv3);margin-top:1px">Anterior: ${ultStr}</div>`:''}
+        ${ult?`<div style="font-size:11px;color:var(--sv3);margin-top:1px">${t('Anterior')}: ${ultStr}</div>`:''}
         ${e.es_principal?`<span style="font-size:10px;background:rgba(245,158,11,.2);color:var(--amb);padding:1px 6px;border-radius:4px;font-weight:700">⭐</span>`:''}
       </div>
       <button onclick="event.stopPropagation();abrirDescripcion('${e.nombre.replace(/'/g,"\'")}')" style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.15);border:0.5px solid rgba(59,130,246,.25);color:var(--blg);cursor:pointer;font-size:14px;font-weight:700;flex-shrink:0;display:flex;align-items:center;justify-content:center">?</button>
@@ -5075,7 +4997,7 @@ function hPreviewDia(i){
     </div>
     <!-- Exercise list -->
     <div style="flex:1;overflow-y:auto;padding-bottom:140px">
-      <div style="padding:10px 16px 6px;font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.08em">${t(d.grupo)||d.grupo} · ${d.ejercicios.length} ejercicios</div>
+      <div style="padding:10px 16px 6px;font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.08em">${t(d.grupo)||d.grupo} · ${d.ejercicios.length} ${t('ejercicios')}</div>
       ${exList}
     </div>
     <!-- Entrenar button -->
@@ -5223,7 +5145,7 @@ function hEntreno(){
       ${seriesRows}
       <!-- Nota del cliente para el coach -->
       <div style="padding:8px 14px 12px">
-        <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${t('💬 Nota para el coach (sensaciones, dolor, etc.')}</div>
+        <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${t('💬 Nota para el coach (sensaciones, dolor, etc.)')}</div>
         <input id="nota_cliente_${ei}" type="text" placeholder="${t('Ej: Sentí el peso muy pesado, me dolió el hombro...')}" value="${e._nota_cliente||''}"
           style="width:100%;padding:8px 10px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:12px;font-family:inherit;box-sizing:border-box"
           onchange="CD.dias[activeDia].ejercicios[${ei}]._nota_cliente=this.value"/>
@@ -6194,7 +6116,7 @@ async function guardarPerfil(){
       deficiencias: pf('pf_deficiencias')?.value||''
     })});
     await loadCD(CD.id);
-    msg.style.color='#86efac';msg.textContent='✓ Perfil guardado ✓';
+    msg.style.color='#86efac';msg.textContent='✓ Profile saved ✓';
     // Switch to view mode immediately
     const formEl=document.getElementById('pf_form');
     const btnsEl=document.getElementById('pf_btns');
@@ -6897,15 +6819,8 @@ async function cargarGraficasCliente(){
       return;
     }
 
-    wrap.innerHTML = prsHtml + `<div class="sec-lbl">Main exercise progress</div>
-      <div id="graficas_container" style="padding:0 14px 4px"></div>`;
+    wrap.innerHTML = prsHtml;
 
-    const container = document.getElementById('graficas_container');
-    for(const ejercicio of principales){
-      const data = await api('/clientes/'+CD.id+'/progreso-ejercicio?ejercicio='+encodeURIComponent(ejercicio));
-      if(!data.length) continue;
-      container.innerHTML += renderGraficaSVG(ejercicio, data);
-    }
   } catch(e){ console.log('Error graficas:', e); }
 }
 
