@@ -3044,16 +3044,13 @@ async function traducirEjercicioIA(nombre, pasos) {
     const listaTexto = pasos.map((p,i) => `${i+1}. ${p}`).join('\n');
     const prompt = `Translate these Spanish exercise instructions to English. Keep it concise and technical. Return ONLY a JSON array of strings in the same order, no extra text.\n\n${listaTexto}`;
 
-    const res = await fetch('/ia/chat', {
+    const data = await api('/ia/chat', {
       method: 'POST',
-      headers: {'Content-Type':'application/json', 'Authorization':'Bearer '+TOKEN},
       body: JSON.stringify({
         messages: [{ role: 'user', content: prompt }],
-        system: 'You are a fitness translator ES→EN. Return ONLY a valid JSON array of translated instruction strings, same count as input, no markdown, no extra text.',
-        max_tokens: 800
+        system: 'You are a fitness translator ES→EN. Return ONLY a valid JSON array of translated instruction strings, same count as input, no markdown, no extra text.'
       })
     });
-    const data = await res.json();
     const raw = (data.reply||'').trim().replace(/```json|```/g,'').trim();
     const translated = JSON.parse(raw);
 
@@ -3101,16 +3098,13 @@ async function traducirDietaIA() {
     const listaTexto = items.map((it, i) => `${i+1}. ${it.nombre}`).join('\n');
     const prompt = `Translate these Spanish food/ingredient names to English. Keep quantities, preparation methods (raw, grilled, etc.) also translated. Return ONLY a JSON array of strings in the same order, no extra text.\n\n${listaTexto}`;
 
-    const res = await fetch('/ia/chat', {
+    const data = await api('/ia/chat', {
       method: 'POST',
-      headers: {'Content-Type':'application/json', 'Authorization':'Bearer '+TOKEN},
       body: JSON.stringify({
         messages: [{ role: 'user', content: prompt }],
-        system: 'You are a nutrition translator ES→EN. Return ONLY a valid JSON array of translated strings, same count as input, no markdown, no extra text.',
-        max_tokens: 1000
+        system: 'You are a nutrition translator ES→EN. Return ONLY a valid JSON array of translated strings, same count as input, no markdown, no extra text.'
       })
     });
-    const data = await res.json();
     const raw = (data.reply || '').trim().replace(/```json|```/g,'').trim();
     const translated = JSON.parse(raw);
 
@@ -3127,8 +3121,10 @@ async function traducirDietaIA() {
     setTimeout(() => { document.getElementById('klContent').innerHTML = hDieta(); }, 500);
 
   } catch(e) {
+    console.error('Diet translation error:', e);
     txt.textContent = '⚠ Error — try again';
-    setTimeout(() => { txt.textContent = 'Translate food names with AI'; btn.disabled = false; }, 2500);
+    btn.disabled = false;
+    setTimeout(() => { txt.textContent = 'Translate food names with AI'; }, 2500);
   }
 }
 // ──────────────────────────────────────────────────────────────────────
@@ -5243,11 +5239,13 @@ async function guardarSesion(){
         });
       });
     });
-    await api('/clientes/'+CD.id+'/sesiones',{
+    console.log('[WM] Guardando sesión completada:', d.nombre, series.length, 'series');
+    const r = await api('/clientes/'+CD.id+'/sesiones',{
       method:'POST',
       body:JSON.stringify({dia_nombre:d.nombre,dia_grupo:d.grupo,duracion_min:getWorkoutDuration(),series,estado:'completado'})
     });
-  }catch(e){console.log('Error guardando sesión:',e);}
+    console.log('[WM] Sesión guardada OK:', r);
+  }catch(e){console.error('[WM] Error guardando sesión:',e);}
 }
 
 function startTimerInline(ei, si, total){
@@ -7596,8 +7594,7 @@ function terminarEntreno(){
     if(!confirmar) return;
   }
 
-  // Guardar lo completado hasta ahora (parcial)
-  guardarSesionParcial();
+  // mostrarDoneOverlay se encarga de guardar
   mostrarDoneOverlay(pendientes>0?'incompleto':'completado', pendientes);
 }
 
