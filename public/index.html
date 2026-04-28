@@ -4728,7 +4728,19 @@ function renderKL(){
   const el=document.getElementById('klContent');
   if(!CD){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--tx3)">Cargando...</div>';return;}
   if(klTab==='entreno'){
-    api('/clientes/'+CD.id+'/semana-estado').then(estado=>{
+    // Load today's sessions from server first, then render — ensures state is correct across devices
+    const hoy = new Date().toISOString().split('T')[0];
+    Promise.all([
+      api('/clientes/'+CD.id+'/semana-estado'),
+      api('/clientes/'+CD.id+'/sesiones').catch(()=>[])
+    ]).then(([estado, sesiones])=>{
+      // Sync server sessions to localStorage so getSesionEstado() works correctly
+      sesiones.forEach(s => {
+        const fechaSesion = (s.fecha||'').split('T')[0];
+        if(fechaSesion === hoy && s.dia_nombre && s.estado) {
+          localStorage.setItem('wm_sesion_'+CD.id+'_'+s.dia_nombre.replace(/\s/g,'_')+'_'+hoy, s.estado);
+        }
+      });
       if(estado.tiene_borrador){
         el.innerHTML = hProximaSemanaEnPreparacion();
       } else {
@@ -5416,7 +5428,29 @@ async function guardarSesion(){
       body:JSON.stringify({dia_nombre:d.nombre,dia_grupo:d.grupo,duracion_min:getWorkoutDuration(),series,estado:'completado'})
     });
     console.log('[WM] Sesión guardada OK:', r);
-  }catch(e){console.error('[WM] Error guardando sesión:',e);}
+    // Actualizar localStorage con estado del servidor
+    const hoy = new Date().toISOString().split('T')[0];
+    localStorage.setItem('wm_sesion_'+CD.id+'_'+d.nombre.replace(/\s/g,'_')+'_'+hoy, 'completado');
+  }catch(e){
+    console.error('[WM] Error guardando sesión:',e);
+    // Reintentar una vez tras 3 segundos
+    setTimeout(async ()=>{
+      try{
+        const d=CD.dias[activeDia];
+        const series=[];
+        d.ejercicios.forEach((e,ei)=>{
+          const notaCliente = e._nota_cliente || '';
+          (e._series||[]).forEach((s,si)=>{
+            if(s.done)series.push({ejercicio:e.nombre,serie_num:si+1,peso:s.peso||0,reps:s.reps_real||parseFirstNum(e.reps),rir:s.rir_real!=null?s.rir_real:(e.rir!=null?e.rir:2),nota_cliente:notaCliente});
+          });
+        });
+        await api('/clientes/'+CD.id+'/sesiones',{method:'POST',body:JSON.stringify({dia_nombre:d.nombre,dia_grupo:d.grupo,duracion_min:getWorkoutDuration(),series,estado:'completado'})});
+        console.log('[WM] Sesión guardada OK (reintento)');
+        const hoy = new Date().toISOString().split('T')[0];
+        localStorage.setItem('wm_sesion_'+CD.id+'_'+d.nombre.replace(/\s/g,'_')+'_'+hoy, 'completado');
+      }catch(e2){console.error('[WM] Error en reintento de sesión:',e2);}
+    }, 3000);
+  }
 }
 
 function startTimerInline(ei, si, total){
@@ -7802,6 +7836,9 @@ async function guardarSesionParcial(){
         estado: 'incompleto'
       })
     });
+    // Sync to localStorage
+    const hoy = new Date().toISOString().split('T')[0];
+    localStorage.setItem('wm_sesion_'+CD.id+'_'+d.nombre.replace(/\s/g,'_')+'_'+hoy, 'incompleto');
   }catch(e){ console.log('Error guardando parcial:',e); }
 }
 
