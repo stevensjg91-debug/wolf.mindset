@@ -654,6 +654,7 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
         <button class="sni" onclick="cNav('progreso',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n-coach="Progreso">Progreso</span></button>
         <button class="sni" onclick="cNav('ia',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 015 5c0 2.4-1.7 4.4-4 4.9V14H7v-2.1C4.7 11.4 3 0.4 3 7a5 5 0 015-5z" stroke="currentColor" stroke-width="1.3"/></svg><span data-i18n-coach="Asistente IA">Asistente IA</span></button>
         <button class="sni" id="sni_equipo" onclick="cNav('equipo',this)" style="display:none"><svg viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 13c0-2.76 2.24-5 4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M15 13c0-2.76-2.24-5-4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 8v5M6 10h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>Mi equipo</span></button>
+        <button class="sni" onclick="cNav('cuenta',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M2 14c0-3.31 2.69-6 6-6s6 2.69 6 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M11 10l1 1M13 9l-2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span data-i18n-coach="Mi cuenta">Mi cuenta</span></button>
       </div>
       <button class="sb-out" onclick="doLogout()"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Cerrar sesión</button>
       <!-- Selector idioma coach -->
@@ -1664,7 +1665,7 @@ function setLang(lang) {
     else if(klTab === 'dieta') el.innerHTML = hDieta();
     else if(klTab === 'progreso') { el.innerHTML = hProgreso2(); setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100); }
     else if(klTab === 'logros') el.innerHTML = hBadgesCliente();
-    else if(klTab === 'perfil') el.innerHTML = hPerfil();
+    else if(klTab === 'perfil') { el.innerHTML = hPerfil(); setTimeout(cargarDatosCuenta, 50); }
     else if(klTab === 'asistente') { el.innerHTML = hAsistente(); }
     applyLang(el);
   }
@@ -1838,7 +1839,22 @@ Object.assign(COACH_TRANSLATIONS, {
   'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.':'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.',
   'Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?':'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?',
   'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?':'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?',
-  'Generar plan de dieta con IA':'Generate AI diet plan',
+  'Mi cuenta':'My account',
+  'Datos personales':'Personal details',
+  'Tu nombre':'Your name',
+  'Nombre de usuario':'Username',
+  'Cambiar contraseña':'Change password',
+  'Contraseña actual':'Current password',
+  'Nueva contraseña':'New password',
+  'Mínimo 6 caracteres':'Minimum 6 characters',
+  'Repetir nueva contraseña':'Repeat new password',
+  'Repite la nueva contraseña':'Repeat new password',
+  'Guardar cambios':'Save changes',
+  'Cambios guardados':'Changes saved',
+  'Las contraseñas no coinciden':'Passwords do not match',
+  'Introduce tu contraseña actual':'Enter your current password',
+  'Guardando...':'Saving...',
+  'Error al guardar':'Error saving',
   'La IA usa automáticamente las kcal, macros, intolerancias y preferencias del cliente. Solo tienes que indicar los alimentos disponibles y el número de comidas.':'The AI automatically uses the client\'s kcal, macros, intolerances and preferences. Just specify the available foods and number of meals.',
   'Alimentos disponibles':'Available foods',
   'Nuevo alimento':'New food',
@@ -2235,7 +2251,7 @@ if(TOKEN&&USER){
 
 // ═══ COACH NAV ════════════════════════════════════════
 let currentCoachTab='clientes';
-const TITLES={clientes:'Clientes',nuevo:'Nuevo cliente',pendientes:'Solicitudes pendientes',rutinas:'Crear rutina','dieta-builder':'Crear dieta',progreso:'Progreso',ia:'Asistente IA Coach'};
+const TITLES={clientes:'Clientes',nuevo:'Nuevo cliente',pendientes:'Solicitudes pendientes',rutinas:'Crear rutina','dieta-builder':'Crear dieta',progreso:'Progreso',ia:'Asistente IA Coach',cuenta:'Mi cuenta'};
 function cNav(s,btn){
   currentCoachTab=s; window._lastClienteId=null;
   document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
@@ -2270,6 +2286,7 @@ async function renderCoach(s){
     else{btn.textContent='🖼️ Descargar imágenes ejercicios';}
  }).catch(()=>{});
   }
+  else if(s==='cuenta'){el.innerHTML=hCuentaCoach();setTimeout(cargarDatosCuentaCoach,50);}
   document.getElementById('cTitle').textContent = tc(TITLES[s] || s);
   applyCoachLang(el);
 }
@@ -5007,7 +5024,7 @@ function renderKL(){
   else if(klTab==='asistente'){el.innerHTML=hAsistente();chatH=[{role:'assistant',content:`${LANG==='en'?'Hi':'Hola'} ${CD.nombre.split(' ')[0]}, ${LANG==='en'?'here to help. What do you need?':'aquí para ayudarte. ¿Qué necesitas?'}`}];}
   else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100);}
   else if(klTab==='logros')el.innerHTML=hBadgesCliente();
-  else if(klTab==='perfil')el.innerHTML=hPerfil();
+  else if(klTab==='perfil'){el.innerHTML=hPerfil();setTimeout(cargarDatosCuenta,50);}
   // Aplicar traducción + nav bar
   if(LANG!=='es') {
     setTimeout(()=>{
@@ -6375,19 +6392,87 @@ function hPerfil(){
     <div id="pf_msg" style="font-size:13px;text-align:center;margin-top:8px;height:20px"></div>
   </div>
 
-  <!-- Selector de idioma movido al login -->
-  <div style="margin:14px 14px 20px;background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px">
-    <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🌐 Idioma / Language</div>
+  <!-- Selector de idioma -->
+  <div style="margin:14px 14px 0;background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px">
+    <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🌐 ${t('Idioma / Language')}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <button onclick="setLangLogin('es');setLang('es')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='es'?'var(--bl2)':'var(--br)'};background:${LANG==='es'?'rgba(59,130,246,.12)':'none'};color:${LANG==='es'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
-        🇪🇸 Español
-      </button>
-      <button onclick="setLangLogin('en');setLang('en')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='en'?'var(--bl2)':'var(--br)'};background:${LANG==='en'?'rgba(59,130,246,.12)':'none'};color:${LANG==='en'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
-        🇬🇧 English
-      </button>
+      <button onclick="setLangLogin('es');setLang('es')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='es'?'var(--bl2)':'var(--br)'};background:${LANG==='es'?'rgba(59,130,246,.12)':'none'};color:${LANG==='es'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🇪🇸 Español</button>
+      <button onclick="setLangLogin('en');setLang('en')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='en'?'var(--bl2)':'var(--br)'};background:${LANG==='en'?'rgba(59,130,246,.12)':'none'};color:${LANG==='en'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🇬🇧 English</button>
     </div>
-    <div style="font-size:10px;color:var(--tx3);margin-top:8px;text-align:center">También puedes cambiarlo en la pantalla de inicio de sesión</div>
+    <div style="font-size:10px;color:var(--tx3);margin-top:8px;text-align:center">${t('También puedes cambiarlo en la pantalla de inicio de sesión')}</div>
+  </div>
+
+  <!-- Account settings -->
+  <div style="margin:14px 14px 20px;background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px">
+    <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">🔐 ${t('Cuenta')}</div>
+
+    <div style="margin-bottom:10px"><div class="form-lbl">${t('Nombre completo')}</div>
+      <input class="inp" id="acc_nombre" placeholder="${t('Tu nombre')}" style="margin-bottom:0"/>
+    </div>
+    <div style="margin-bottom:10px"><div class="form-lbl">${t('Usuario para acceder')}</div>
+      <input class="inp" id="acc_username" placeholder="${t('Nombre de usuario')}" style="margin-bottom:0" autocomplete="username"/>
+    </div>
+    <div style="margin-bottom:10px"><div class="form-lbl">${t('Email')}</div>
+      <input class="inp" id="acc_email" type="email" placeholder="email@example.com" style="margin-bottom:0"/>
+    </div>
+
+    <div style="border-top:0.5px solid var(--br);margin:12px 0"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🔑 ${t('Cambiar contraseña')}</div>
+
+    <div style="margin-bottom:8px"><div class="form-lbl">${t('Contraseña actual')}</div>
+      <input class="inp" id="acc_pass_actual" type="password" placeholder="••••••••" style="margin-bottom:0" autocomplete="current-password"/>
+    </div>
+    <div style="margin-bottom:8px"><div class="form-lbl">${t('Nueva contraseña')}</div>
+      <input class="inp" id="acc_pass_nueva" type="password" placeholder="${t('Mínimo 6 caracteres')}" style="margin-bottom:0" autocomplete="new-password"/>
+    </div>
+    <div style="margin-bottom:14px"><div class="form-lbl">${t('Repetir nueva contraseña')}</div>
+      <input class="inp" id="acc_pass_rep" type="password" placeholder="${t('Repite la nueva contraseña')}" style="margin-bottom:0" autocomplete="new-password"/>
+    </div>
+
+    <div id="acc_msg" style="font-size:12px;text-align:center;margin-bottom:8px;min-height:18px"></div>
+    <button class="btn" style="width:100%;padding:12px;font-size:14px" onclick="guardarCuenta()">${t('Guardar cambios')}</button>
   </div>`;
+}
+
+async function cargarDatosCuenta(){
+  try {
+    const me = await api('/me');
+    const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val||''; };
+    set('acc_nombre', me.nombre);
+    set('acc_username', me.username);
+    set('acc_email', me.email);
+  } catch(e) {}
+}
+
+async function guardarCuenta(){
+  const msg = document.getElementById('acc_msg');
+  const get = id => document.getElementById(id)?.value?.trim() || '';
+  const nombre = get('acc_nombre');
+  const username = get('acc_username');
+  const email = get('acc_email');
+  const pass_actual = get('acc_pass_actual');
+  const pass_nueva = get('acc_pass_nueva');
+  const pass_rep = get('acc_pass_rep');
+
+  if(pass_nueva && pass_nueva !== pass_rep) {
+    msg.style.color='#f87171'; msg.textContent = t('Las contraseñas no coinciden'); return;
+  }
+  if(pass_nueva && !pass_actual) {
+    msg.style.color='#f87171'; msg.textContent = t('Introduce tu contraseña actual'); return;
+  }
+
+  try {
+    msg.style.color='var(--tx3)'; msg.textContent = t('Guardando...');
+    const body = { nombre, username, email };
+    if(pass_nueva) { body.password_actual = pass_actual; body.password_nueva = pass_nueva; }
+    const r = await api('/me', { method:'PUT', body: JSON.stringify(body) });
+    if(r.error) { msg.style.color='#f87171'; msg.textContent = r.error; return; }
+    msg.style.color='#86efac'; msg.textContent = '✓ ' + t('Cambios guardados');
+    // Clear password fields
+    ['acc_pass_actual','acc_pass_nueva','acc_pass_rep'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+    setTimeout(()=>{ msg.textContent=''; }, 2500);
+  } catch(e) { msg.style.color='#f87171'; msg.textContent = t('Error al guardar'); }
+}
 }
 
 
@@ -9419,6 +9504,77 @@ function dbEliminarFav(nombre, btn){
   document.addEventListener('DOMContentLoaded',()=>[300,900].forEach(ms=>setTimeout(()=>run(),ms)));
 })();
 
+// ═══ COACH ACCOUNT SETTINGS ═══════════════════════════════════════
+function hCuentaCoach(){
+  return`
+  <div style="max-width:520px;margin:0 auto;padding:8px 0 40px">
+    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:18px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">👤 ${tc('Datos personales')}</div>
+      <div style="margin-bottom:10px"><div class="form-lbl">${tc('Nombre completo')}</div>
+        <input class="inp" id="cacc_nombre" placeholder="${tc('Tu nombre')}" style="margin-bottom:0"/>
+      </div>
+      <div style="margin-bottom:10px"><div class="form-lbl">${tc('Usuario para acceder')}</div>
+        <input class="inp" id="cacc_username" placeholder="${tc('Nombre de usuario')}" style="margin-bottom:0" autocomplete="username"/>
+      </div>
+      <div style="margin-bottom:0"><div class="form-lbl">${tc('Email')}</div>
+        <input class="inp" id="cacc_email" type="email" placeholder="email@example.com" style="margin-bottom:0"/>
+      </div>
+    </div>
+
+    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:18px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">🔑 ${tc('Cambiar contraseña')}</div>
+      <div style="margin-bottom:8px"><div class="form-lbl">${tc('Contraseña actual')}</div>
+        <input class="inp" id="cacc_pass_actual" type="password" placeholder="••••••••" style="margin-bottom:0" autocomplete="current-password"/>
+      </div>
+      <div style="margin-bottom:8px"><div class="form-lbl">${tc('Nueva contraseña')}</div>
+        <input class="inp" id="cacc_pass_nueva" type="password" placeholder="${tc('Mínimo 6 caracteres')}" style="margin-bottom:0" autocomplete="new-password"/>
+      </div>
+      <div style="margin-bottom:0"><div class="form-lbl">${tc('Repetir nueva contraseña')}</div>
+        <input class="inp" id="cacc_pass_rep" type="password" placeholder="${tc('Repite la nueva contraseña')}" style="margin-bottom:0" autocomplete="new-password"/>
+      </div>
+    </div>
+
+    <div id="cacc_msg" style="font-size:13px;text-align:center;margin-bottom:10px;min-height:18px"></div>
+    <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarCuentaCoach()">✓ ${tc('Guardar cambios')}</button>
+  </div>`;
+}
+
+async function cargarDatosCuentaCoach(){
+  try {
+    const me = await api('/me');
+    const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
+    set('cacc_nombre', me.nombre);
+    set('cacc_username', me.username);
+    set('cacc_email', me.email);
+  } catch(e) {}
+}
+
+async function guardarCuentaCoach(){
+  const msg = document.getElementById('cacc_msg');
+  const get = id => document.getElementById(id)?.value?.trim() || '';
+  const nombre = get('cacc_nombre');
+  const username = get('cacc_username');
+  const email = get('cacc_email');
+  const pass_actual = get('cacc_pass_actual');
+  const pass_nueva = get('cacc_pass_nueva');
+  const pass_rep = get('cacc_pass_rep');
+
+  if(pass_nueva && pass_nueva !== pass_rep){
+    msg.style.color='#f87171'; msg.textContent = tc('Las contraseñas no coinciden'); return;
+  }
+  if(pass_nueva && !pass_actual){
+    msg.style.color='#f87171'; msg.textContent = tc('Introduce tu contraseña actual'); return;
+  }
+  try {
+    msg.style.color='var(--tx3)'; msg.textContent = tc('Guardando...');
+    const body = { nombre, username, email };
+    if(pass_nueva){ body.password_actual = pass_actual; body.password_nueva = pass_nueva; }
+    const r = await api('/me', { method:'PUT', body: JSON.stringify(body) });
+    if(r.error){ msg.style.color='#f87171'; msg.textContent = r.error; return; }
+    msg.style.color='#86efac'; msg.textContent = '✓ ' + tc('Cambios guardados');
+    ['cacc_pass_actual','cacc_pass_nueva','cacc_pass_rep'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+    setTimeout(()=>{ msg.textContent=''; }, 2500);
+  } catch(e){ msg.style.color='#f87171'; msg.textContent = tc('Error al guardar'); }
+}
+
 </script>
-</body>
-</html>
