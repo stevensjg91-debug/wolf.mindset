@@ -1739,6 +1739,17 @@ const COACH_TRANSLATIONS = {
   // Objetivos cliente
   'Volumen':'Bulk','Definición':'Cutting','Fuerza':'Strength',
   'Recomposición':'Body recomp','Perder peso':'Lose weight',
+  // Coach: títulos y panel de cliente
+  'Solicitudes pendientes':'Pending requests','Asistente IA Coach':'AI Coach Assistant',
+  'Volver':'Back','Reasignar':'Reassign','📋 Resumen':'📋 Summary','🏋️ Rutina':'🏋️ Routine','📊 Historial':'📊 History','🥗 Dieta':'🥗 Diet','📈 Progreso':'📈 Progress',
+  'Macros internos':'Internal macros','SOLO COACH':'COACH ONLY','Mensaje semana':'Weekly message','Notas coach':'Coach notes',
+  '🏋️ Rutina asignada':'🏋️ Assigned routine','Rutina asignada':'Assigned routine','+ Día':'+ Day','+ Ejercicio':'+ Exercise','✏️ Editar':'✏️ Edit','✕ Cerrar':'✕ Close',
+  'Historial de entrenos':'Workout history','📊 Historial de entrenos':'📊 Workout history','Main exercise progress':'Main exercise progress',
+  '🥗 Dieta asignada':'🥗 Assigned diet','Dieta asignada':'Assigned diet','Sin dieta asignada. Usa el Creador de Dieta IA.':'No diet assigned. Use the AI Diet Builder.',
+  '📸 Fotos de progreso':'📸 Progress photos','Fotos de progreso':'Progress photos','📋 Revisión semanal':'📋 Weekly check-in','Revisión semanal':'Weekly check-in','⚖️ Evolución de peso':'⚖️ Weight trend','Evolución de peso':'Weight trend',
+  'Sin registros de peso aún.':'No weight records yet.','Sin entrenos aún.':'No workouts yet.','Sin ejercicios aún.':'No exercises yet.','Sin días. Pulsa + Día para empezar.':'No days yet. Tap + Day to start.',
+  'Incompleto':'Incomplete','Completado':'Completed','ejercicios':'exercises','entrenos':'workouts','sesiones':'sessions','grasa':'body fat',
+  'Míos':'Mine','Todos':'All','Socia':'Partner','Mi equipo':'My team',
 };
 
 function tc(text) {
@@ -1762,12 +1773,12 @@ function setCoachLang(lang) {
     enBtn.style.background = lang==='en' ? 'rgba(255,255,255,.15)' : 'none';
     enBtn.style.opacity = lang==='en' ? '1' : '0.4';
   }
-  // Re-renderizar panel coach si está activo
+  // Traducir panel coach visible sin perder la ficha abierta
   if(document.getElementById('sCoach')?.classList.contains('on')) {
-    renderCoach(currentCoachTab || 'clientes');
+    const title=document.getElementById('cTitle');
+    if(title) title.textContent=tc(TITLES[currentCoachTab]||title.textContent||'Clientes');
+    applyCoachLang(document.getElementById('sCoach'));
   }
-  // Traducir nav estática del coach
-  applyCoachLang(document.getElementById('sCoach'));
 }
 
 function applyCoachLang(el) {
@@ -1987,15 +1998,22 @@ if(TOKEN&&USER){
 }
 
 // ═══ COACH NAV ════════════════════════════════════════
+let currentCoachTab='clientes';
 const TITLES={clientes:'Clientes',nuevo:'Nuevo cliente',pendientes:'Solicitudes pendientes',rutinas:'Crear rutina','dieta-builder':'Crear dieta',progreso:'Progreso',ia:'Asistente IA Coach'};
 function cNav(s,btn){
-  document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
-  document.getElementById('cTitle').textContent=TITLES[s]||s;
+  currentCoachTab=s;
+  document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  const title=document.getElementById('cTitle');
+  if(title) title.textContent=tc(TITLES[s]||s);
   renderCoach(s);
 }
 function cNavM(s,btn){
-  document.querySelectorAll('#coachMobileNav .bni').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
-  document.getElementById('cTitle').textContent=TITLES[s]||s;
+  currentCoachTab=s;
+  document.querySelectorAll('#coachMobileNav .bni').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  const title=document.getElementById('cTitle');
+  if(title) title.textContent=tc(TITLES[s]||s);
   renderCoach(s);
 }
 
@@ -2019,6 +2037,7 @@ async function renderCoach(s){
     else{btn.textContent='🖼️ Descargar imágenes ejercicios';}
  }).catch(()=>{});
   }
+  setTimeout(()=>applyCoachLang(el),0);
 }
 
 function hClientes(cl){
@@ -2373,7 +2392,8 @@ async function verCliente(id){
 
   // Tab Resumen: cargar suscripción y macros
   cargarSuscripcionCliente(id);
-  setTimeout(()=>{ aplicarMacrosCoach(c, true); }, 200);
+  setTimeout(()=>{ aplicarMacrosCoach(c, true); applyCoachLang(document.getElementById('cContent')); }, 200);
+  setTimeout(()=>applyCoachLang(document.getElementById('cContent')),0);
 
   // Historial (para tab Entreno)
   api('/clientes/'+id+'/sesiones').then(sesiones=>{
@@ -2410,6 +2430,7 @@ async function verCliente(id){
           '</div>'
         ).join('')+'</div>';
     }).join('');
+    applyCoachLang(document.getElementById('cContent'));
   }).catch(()=>{});
 
   // Peso evolución (para tab Progreso)
@@ -2605,6 +2626,7 @@ function switchClienteTab(tab, btn) {
           ).join('')+
         '</div>';
       }).join('');
+      applyCoachLang(document.getElementById('cContent'));
 
       // Cargar gráficas de progreso
       const c = window._coachClienteActual;
@@ -2652,6 +2674,7 @@ function switchClienteTab(tab, btn) {
       // ya está en modo edición, ok
     }
   }
+  setTimeout(()=>applyCoachLang(document.getElementById('cContent')),0);
 }
 
 async function guardarDatos(id){
