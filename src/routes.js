@@ -27,6 +27,13 @@ function getNombreCliente(clienteId) {
   } catch(e) { return 'Un cliente'; }
 }
 
+
+function ensureTrainingTrackingSchema() {
+  try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN estado TEXT DEFAULT 'completado'"); } catch(e) {}
+  try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN valoracion TEXT DEFAULT ''"); } catch(e) {}
+  try { dbRun("ALTER TABLE series_log ADD COLUMN nota_cliente TEXT DEFAULT ''"); } catch(e) {}
+}
+
 router.get('/clientes', coachOnly, (req, res) => {
   const clientes = dbAll(`SELECT c.*, u.nombre, u.username,
     (SELECT peso FROM peso_registros WHERE cliente_id=c.id ORDER BY rowid DESC LIMIT 1) as peso_actual,
@@ -380,6 +387,7 @@ try { dbRun("ALTER TABLE series_log ADD COLUMN nota_cliente TEXT DEFAULT ''"); }
 
 router.post('/clientes/:id/sesiones', (req, res) => {
   try {
+    ensureTrainingTrackingSchema();
     const { dia_nombre, dia_grupo, duracion_min, series, estado } = req.body;
     const estadoFinal = estado || 'completado';
     const r = dbRun(
@@ -434,6 +442,7 @@ router.post('/clientes/:id/sesiones', (req, res) => {
 });
 
 router.get('/clientes/:id/sesiones', (req, res) => {
+  ensureTrainingTrackingSchema();
   const id = req.params.id;
   if (req.user.role === 'cliente') {
     const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
@@ -458,6 +467,7 @@ router.get('/clientes/:id/sesiones', (req, res) => {
 });
 
 router.get('/clientes/:id/progreso-ejercicio', (req, res) => {
+  ensureTrainingTrackingSchema();
   const id = req.params.id;
   if (req.user.role === 'cliente') {
     const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
@@ -908,6 +918,7 @@ router.get('/clientes/:id/checkins', (req, res) => {
 
 router.post('/clientes/:id/valoracion-sesion', (req, res) => {
   try {
+    ensureTrainingTrackingSchema();
     const { valoracion } = req.body;
     // Actualizar la sesión más reciente del cliente con la valoración
     const ultima = dbGet(
