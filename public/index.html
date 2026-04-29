@@ -4243,12 +4243,12 @@ function hDietaBuilder(){return`
 
       <!-- Categorías -->
       <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
-        <button onclick="dbToggleCat(0,this)" data-cat="0" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥩 Proteínas</button>
-        <button onclick="dbToggleCat(1,this)" data-cat="1" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🌾 Carbos</button>
-        <button onclick="dbToggleCat(2,this)" data-cat="2" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥑 Grasas</button>
-        <button onclick="dbToggleCat(3,this)" data-cat="3" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥦 Verduras</button>
-        <button onclick="dbToggleCat(4,this)" data-cat="4" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🍎 Frutas</button>
-        <button onclick="dbToggleCat(5,this)" data-cat="5" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">☕ Bebidas</button>
+        <button onclick="dbToggleCat(0,this)" data-cat="0" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥩 ${COACH_LANG==='en'?'Proteins':'Proteínas'}</button>
+        <button onclick="dbToggleCat(1,this)" data-cat="1" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🌾 ${COACH_LANG==='en'?'Carbs':'Carbos'}</button>
+        <button onclick="dbToggleCat(2,this)" data-cat="2" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥑 ${COACH_LANG==='en'?'Fats':'Grasas'}</button>
+        <button onclick="dbToggleCat(3,this)" data-cat="3" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥦 ${COACH_LANG==='en'?'Vegetables':'Verduras'}</button>
+        <button onclick="dbToggleCat(4,this)" data-cat="4" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🍎 ${COACH_LANG==='en'?'Fruits':'Frutas'}</button>
+        <button onclick="dbToggleCat(5,this)" data-cat="5" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">☕ ${COACH_LANG==='en'?'Drinks':'Bebidas'}</button>
       </div>
 
       <!-- Lista de alimentos de la categoría activa -->
@@ -4347,10 +4347,10 @@ async function dbSelCliente(id){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:var(--tx3);margin-bottom:6px">
         <div>⚡ <b style="color:var(--sv2)">${kcal} kcal</b></div>
         <div>🎯 ${c.objetivo||'Sin objetivo'}</div>
-        <div>🥗 ${c.dieta_tipo||'Omnívoro'}</div>
+        <div>🥗 ${tc(c.dieta_tipo)||c.dieta_tipo||tc('Omnívoro')}</div>
         <div>📊 ${c.nivel||'Principiante'}</div>
         <div>⚖️ ${c.peso_actual||'—'}kg · ${c.altura||'—'}cm</div>
-        <div>🔥 Actividad: ${c.actividad||'—'}</div>
+        <div>🔥 ${COACH_LANG==='en'?'Activity:':'Actividad:'} ${tc(c.actividad)||c.actividad||'—'}</div>
       </div>
       ${c.alimentos_no?`<div style="font-size:11px;color:#fca5a5;margin-bottom:4px">❌ No puede: ${c.alimentos_no}</div>`:''}
       ${c.lesiones?`<div style="font-size:11px;color:#fbbf24;margin-bottom:4px">⚠️ Lesiones: ${c.lesiones}</div>`:''}
@@ -9369,17 +9369,30 @@ const DB_ALIMENTOS = {
   5: ['Agua','Agua con gas','Café solo','Café americano','Café con leche desnatada','Café con leche semidesnatada','Té verde','Té negro','Infusión','Manzanilla','Poleo menta','Coca-Cola Zero','Pepsi Max','Aquarius Zero','Monster Ultra / Zero','Red Bull Sugarfree','Bebida vegetal sin azúcar']
 };
 
+const DB_ALIMENTOS_EN = {
+  0: ['Chicken breast','Chicken thigh','Turkey','Salmon','Tuna','Hake','Prawns','Whole eggs','Egg whites','Lean beef','Pork shoulder','Whey protein','Casein','Ricotta','Greek yogurt','Cooked ham 95%','Turkey slices 95%','Fat-free fresh cheese'],
+  1: ['White rice','Brown rice','Oats','Potato','Sweet potato','Wholegrain bread','Wholegrain pasta','Quinoa','Lentils','Chickpeas','Corn','Wholegrain sandwich bread'],
+  2: ['Olive oil','Avocado','Guacamole','Walnuts','Almonds','Cashews','Peanuts','Peanut butter','Gouda cheese','Whole milk'],
+  3: ['Broccoli','Spinach','Lettuce','Tomato','Cucumber','Onion','Garlic','Bell pepper','Mushrooms','Carrot','Zucchini','Green beans','Mixed salad'],
+  4: ['Banana','Apple','Orange','Strawberries','Blueberries','Mango','Pineapple','Canned pineapple','Grapes','Peach'],
+  5: ['Water','Sparkling water','Black coffee','Americano coffee','Skim latte','Semi-skim latte','Green tea','Black tea','Herbal tea','Chamomile','Peppermint tea','Coca-Cola Zero','Pepsi Max','Aquarius Zero','Monster Ultra / Zero','Red Bull Sugarfree','Unsweetened plant milk']
+};
+
+// Returns the correct food list based on coach language
+function getDbAlimentos(catIdx) {
+  const base = COACH_LANG === 'en' ? (DB_ALIMENTOS_EN[catIdx]||[]) : (DB_ALIMENTOS[catIdx]||[]);
+  // Merge with any custom foods added
+  const custom = JSON.parse(localStorage.getItem('wm_custom_alimentos')||'{}');
+  const customList = custom[catIdx] || [];
+  return [...base, ...customList.filter(a => !base.includes(a))];
+}
+
 let _dbCatActiva = null;
 let _dbSeleccionados = new Set();
 
 function dbCargarCustomAlimentos(){
-  try{
-    const custom = JSON.parse(localStorage.getItem("wm_custom_alimentos")||"{}");
-    Object.entries(custom).forEach(([cat,lista])=>{
-      if(!DB_ALIMENTOS[cat]) DB_ALIMENTOS[cat]=[];
-      (lista||[]).forEach(a=>{ if(a && !DB_ALIMENTOS[cat].includes(a)) DB_ALIMENTOS[cat].push(a); });
-    });
-  }catch(e){}
+  // Custom foods are now merged inside getDbAlimentos() dynamically
+  // Keep this for backward compat but no longer needed to mutate DB_ALIMENTOS
 }
 dbCargarCustomAlimentos();
 
@@ -9419,7 +9432,7 @@ function dbToggleCat(catIdx, btn){
   document.querySelectorAll('[data-cat]').forEach(b=>{ b.style.background='var(--s2)'; b.style.color='var(--sv2)'; b.style.border='0.5px solid var(--br)'; });
   btn.style.background='var(--bl2)'; btn.style.color='#fff'; btn.style.border='none';
   // Render chips
-  const alims = DB_ALIMENTOS[catIdx]||[];
+  const alims = getDbAlimentos(catIdx);
   chips.style.display = 'flex';
   chips.innerHTML = alims.map(a=>{
     const sel = _dbSeleccionados.has(a);
