@@ -1007,6 +1007,29 @@ const TRANSLATIONS = {
   'Idioma / Language':'Language / Idioma',
   'También puedes cambiarlo en la pantalla de inicio de sesión':'You can also change it on the login screen',
 
+  // ── Cuenta cliente ──
+  'Mi cuenta':'My account',
+  'Usuario actual':'Current username',
+  'Nuevo usuario':'New username',
+  'Mínimo 4 caracteres':'Minimum 4 characters',
+  'Confirmar con contraseña actual':'Confirm with current password',
+  'Tu contraseña actual':'Your current password',
+  'Cambiar usuario':'Change username',
+  'Usuario actualizado':'Username updated',
+  'El usuario debe tener al menos 4 caracteres':'Username must be at least 4 characters',
+  'Escribe tu contraseña actual para confirmar':'Enter your current password to confirm',
+  'Error al cambiar usuario':'Error changing username',
+  'Contraseña actual':'Current password',
+  'Nueva contraseña':'New password',
+  'Repetir contraseña':'Repeat password',
+  'Repite la nueva contraseña':'Repeat new password',
+  'Cambiar contraseña':'Change password',
+  'Contraseña actualizada':'Password updated',
+  'Escribe tu contraseña actual':'Enter your current password',
+  'La nueva contraseña debe tener al menos 6 caracteres':'New password must be at least 6 characters',
+  'Las contraseñas no coinciden':'Passwords do not match',
+  'Error al cambiar contraseña':'Error changing password',
+
   // ── Notificaciones push ──
   '💪 ¡A por ello!':'💪 Go for it!',
   'Siguiente serie de':'Next set of',
@@ -1772,6 +1795,15 @@ const COACH_TRANSLATIONS = {
   'Peso (kg)':'Weight (kg)','Altura':'Height',
   'Edad':'Age','Sexo':'Sex','Actividad':'Activity',
   'Cintura/Cadera':'Waist/Hip',
+  'Moderada':'Moderate','Ligera':'Light','Sedentario':'Sedentary',
+  'Activo':'Active','Alta':'High','Muy alta':'Very high',
+  'Moderada (3-4 días/semana)':'Moderate (3-4 days/week)',
+  'Ligero (1-2 días/semana)':'Light (1-2 days/week)',
+  'Sedentario (poco o nada de ejercicio)':'Sedentary (little or no exercise)',
+  'Activo (5-6 días/semana)':'Active (5-6 days/week)',
+  'Alta (5-6 días/semana)':'High (5-6 days/week)',
+  'Muy alta (atleta, 2x día)':'Very high (athlete, 2x/day)',
+  'Hombre':'Male','Mujer':'Female','Masculino':'Male','Femenino':'Female',
   'Sin datos':'No data',
   'años':'years',
   'Lesiones:':'Injuries:','Dieta:':'Diet:','No come:':'Cannot eat:','Obs:':'Notes:',
@@ -2538,8 +2570,8 @@ async function verCliente(id){
   <!-- TAB: RESUMEN -->
   <div class="ctab-panel on" id="ctab_resumen">
     <div class="g2" style="margin-bottom:12px">
-    <div class="sec"><div class="sec-hdr">${tc('Macros internos')} <span style="color:#f87171;font-size:9px">${tc('SOLO COACH')}</span></div>${mb2('Prot','#3b82f6',c.prot,c.prot*4,c.kcal_internas)}${mb2('Carbs','#a78bfa',c.carbs,c.carbs*4,c.kcal_internas)}${mb2('Grasa','#f97316',c.fat,c.fat*9,c.kcal_internas)}<div style="font-size:11px;color:var(--tx3);margin-top:4px">${c.kcal_internas} ${tc('kcal/día')}</div></div>
-    <div class="sec"><div class="sec-hdr">${tc('Peso')}</div>${c.pesos.slice(-4).map((p,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--br)"><span style="font-size:12px;color:var(--tx3)">${tc('Sem')} ${i+1}</span><span style="font-size:13px;color:var(--sv);font-weight:700">${p.peso}kg</span></div>`).join('')||`<div style="font-size:12px;color:var(--tx3)">${tc('Sin registros')}</div>`}</div>
+    <div class="sec"><div class="sec-hdr">${tc('Macros internos')} <span style="color:#f87171;font-size:9px">${tc('SOLO COACH')}</span></div>${mb2('Prot','#3b82f6',c.prot,c.prot*4,c.kcal_internas)}${mb2('Carbs','#a78bfa',c.carbs,c.carbs*4,c.kcal_internas)}${mb2(COACH_LANG==='en'?'Fat':'Grasa','#f97316',c.fat,c.fat*9,c.kcal_internas)}<div style="font-size:11px;color:var(--tx3);margin-top:4px">${c.kcal_internas} ${tc('kcal/día')}</div></div>
+    <div class="sec"><div class="sec-hdr">${COACH_LANG==='en'?'Weight':'Peso'}</div>${c.pesos.slice(-4).map((p,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--br)"><span style="font-size:12px;color:var(--tx3)">${tc('Sem')} ${i+1}</span><span style="font-size:13px;color:var(--sv);font-weight:700">${p.peso}kg</span></div>`).join('')||`<div style="font-size:12px;color:var(--tx3)">${tc('Sin registros')}</div>`}</div>
   </div>
   
     <div class="sec" style="margin-bottom:12px" id="coach_sub_sec">
@@ -6531,9 +6563,75 @@ function hPerfil(){
       </button>
     </div>
     <div style="font-size:10px;color:var(--tx3);margin-top:8px;text-align:center">También puedes cambiarlo en la pantalla de inicio de sesión</div>
+  </div>
+
+  <!-- Sección cuenta -->
+  <div style="margin:0 14px 24px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:16px">
+    <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">🔐 ${t('Mi cuenta')}</div>
+
+    <!-- Cambiar usuario -->
+    <div style="margin-bottom:14px">
+      <div class="form-lbl">${t('Usuario actual')}</div>
+      <div style="font-size:15px;font-weight:700;color:var(--blg);margin-bottom:10px">@${USER.username}</div>
+      <div class="form-lbl">${t('Nuevo usuario')}</div>
+      <input class="inp" id="acc_new_user" placeholder="${t('Mínimo 4 caracteres')}" style="margin-bottom:8px"/>
+      <div class="form-lbl">${t('Confirmar con contraseña actual')}</div>
+      <input class="inp" id="acc_pass_confirm_user" type="password" placeholder="${t('Tu contraseña actual')}" style="margin-bottom:8px"/>
+      <button onclick="cambiarUsuario()" style="width:100%;padding:11px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">✓ ${t('Cambiar usuario')}</button>
+      <div id="acc_user_msg" style="font-size:12px;text-align:center;margin-top:6px;height:18px"></div>
+    </div>
+
+    <div style="border-top:0.5px solid var(--br);margin-bottom:14px"></div>
+
+    <!-- Cambiar contraseña -->
+    <div>
+      <div class="form-lbl">${t('Contraseña actual')}</div>
+      <input class="inp" id="acc_pass_old" type="password" placeholder="••••••" style="margin-bottom:8px"/>
+      <div class="form-lbl">${t('Nueva contraseña')}</div>
+      <input class="inp" id="acc_pass_new" type="password" placeholder="${t('Mínimo 6 caracteres')}" style="margin-bottom:8px"/>
+      <div class="form-lbl">${t('Repetir contraseña')}</div>
+      <input class="inp" id="acc_pass_rep" type="password" placeholder="${t('Repite la nueva contraseña')}" style="margin-bottom:8px"/>
+      <button onclick="cambiarContrasena()" style="width:100%;padding:11px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">✓ ${t('Cambiar contraseña')}</button>
+      <div id="acc_pass_msg" style="font-size:12px;text-align:center;margin-top:6px;height:18px"></div>
+    </div>
   </div>`;
 }
 
+
+async function cambiarUsuario(){
+  const newUser = document.getElementById('acc_new_user')?.value?.trim();
+  const pass = document.getElementById('acc_pass_confirm_user')?.value;
+  const msg = document.getElementById('acc_user_msg');
+  if(!newUser || newUser.length < 4){ msg.style.color='#f87171'; msg.textContent=t('El usuario debe tener al menos 4 caracteres'); return; }
+  if(!pass){ msg.style.color='#f87171'; msg.textContent=t('Escribe tu contraseña actual para confirmar'); return; }
+  try{
+    await api('/auth/cambiar-usuario',{method:'POST',body:JSON.stringify({new_username:newUser, password:pass})});
+    USER.username = newUser;
+    localStorage.setItem('wm_user', JSON.stringify(USER));
+    msg.style.color='#86efac'; msg.textContent='✓ '+t('Usuario actualizado');
+    document.getElementById('acc_new_user').value='';
+    document.getElementById('acc_pass_confirm_user').value='';
+  }catch(e){ msg.style.color='#f87171'; msg.textContent=e.error||t('Error al cambiar usuario'); }
+}
+
+async function cambiarContrasena(){
+  const old = document.getElementById('acc_pass_old')?.value;
+  const newP = document.getElementById('acc_pass_new')?.value;
+  const rep = document.getElementById('acc_pass_rep')?.value;
+  const msg = document.getElementById('acc_pass_msg');
+  if(!old){ msg.style.color='#f87171'; msg.textContent=t('Escribe tu contraseña actual'); return; }
+  if(!newP || newP.length < 6){ msg.style.color='#f87171'; msg.textContent=t('La nueva contraseña debe tener al menos 6 caracteres'); return; }
+  if(newP !== rep){ msg.style.color='#f87171'; msg.textContent=t('Las contraseñas no coinciden'); return; }
+  try{
+    await api('/auth/cambiar-password',{method:'POST',body:JSON.stringify({old_password:old, new_password:newP})});
+    msg.style.color='#86efac'; msg.textContent='✓ '+t('Contraseña actualizada');
+    // Update saved credentials if remember me was on
+    if(localStorage.getItem('wm_saved_pass')) localStorage.setItem('wm_saved_pass', newP);
+    document.getElementById('acc_pass_old').value='';
+    document.getElementById('acc_pass_new').value='';
+    document.getElementById('acc_pass_rep').value='';
+  }catch(e){ msg.style.color='#f87171'; msg.textContent=e.error||t('Error al cambiar contraseña'); }
+}
 
 async function guardarPerfil(){
   const msg=document.getElementById('pf_msg');
