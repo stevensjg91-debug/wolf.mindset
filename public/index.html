@@ -137,7 +137,7 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
 
 /* COMPONENTS */
 .sec{background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:15px;margin-bottom:12px}
-.sec-hdr{font-size:11px;font-weight:600;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+@media(min-width:700px){.mobile-only{display:none!important}}.sec-hdr{font-size:11px;font-weight:600;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
 .sec-act{font-size:12px;color:var(--blg);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;font-weight:600}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:14px}
@@ -678,17 +678,15 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
             <span id="notif_badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;line-height:1">0</span>
           </div>
           <!-- Language toggle — visible on mobile where sidebar is hidden -->
-          <div style="display:flex;gap:3px;align-items:center">
-            <button id="topbar_lang_es" onclick="setCoachLang('es')" style="padding:3px 7px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:none;color:#fff;font-size:10px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;opacity:0.4;transition:.2s">ES</button>
-            <button id="topbar_lang_en" onclick="setCoachLang('en')" style="padding:3px 7px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:none;color:#fff;font-size:10px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;opacity:0.4;transition:.2s">EN</button>
+          <div style="display:flex;gap:2px;align-items:center" id="topbar_lang_wrap" class="mobile-only">
+            <button id="topbar_lang_es" onclick="setCoachLang('es')" style="padding:2px 6px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:none;color:#fff;font-size:9px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;opacity:0.4;line-height:1.6">ES</button>
+            <button id="topbar_lang_en" onclick="setCoachLang('en')" style="padding:2px 6px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:none;color:#fff;font-size:9px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;opacity:0.4;line-height:1.6">EN</button>
           </div>
-          <div style="display:flex;align-items:center;gap:8px" id="cRight">
-            <div style="position:relative;cursor:pointer" onclick="document.getElementById('coach_foto_input').click()" title="Cambiar foto de perfil">
-              <div id="coach_topbar_avatar" style="width:28px;height:28px;border-radius:50%;background:var(--bl2);overflow:hidden;border:1.5px solid rgba(59,130,246,.4);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">
-                ${USER?.foto_perfil ? `<img src="${USER.foto_perfil}" style="width:100%;height:100%;object-fit:cover"/>` : USER?.nombre?.[0]?.toUpperCase()||'C'}
-              </div>
+          <div style="display:flex;align-items:center;gap:6px" id="cRight">
+            <div style="position:relative;cursor:pointer" onclick="document.getElementById('coach_foto_input').click()" title="Cambiar foto">
+              <div id="coach_topbar_avatar" style="width:30px;height:30px;border-radius:50%;background:var(--bl2);overflow:hidden;border:1.5px solid rgba(59,130,246,.4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">C</div>
             </div>
-            <span style="font-size:12px;color:var(--tx3)">${USER?.nombre||'Coach'}</span>
+            <span id="coach_topbar_nombre" style="font-size:12px;color:var(--tx3);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:none">Coach</span>
             <input type="file" id="coach_foto_input" accept="image/*" style="display:none" onchange="subirFotoCoach(this)"/>
           </div>
         </div>
@@ -2323,7 +2321,7 @@ async function doLogin(){
     }
     localStorage.setItem('wm_token',TOKEN);localStorage.setItem('wm_user',JSON.stringify(USER));
     if(USER.role==='coach'){
-      show('sCoach');renderCoach('clientes');setTimeout(()=>{setCoachLang(COACH_LANG);},200);
+      show('sCoach');renderCoach('clientes');setTimeout(()=>{setCoachLang(COACH_LANG);updateCoachTopbar();},200);
       if(isMobile())document.getElementById('coachMobileNav').style.display='flex';
       // Mostrar Mi Equipo solo al coach admin (username 'wolf')
       const sniEq=document.getElementById('sni_equipo');
@@ -2434,7 +2432,7 @@ if(savedPass){ const lp=document.getElementById('lp'); if(lp)lp.value=savedPass;
 // AUTO LOGIN
 if(TOKEN&&USER){
   if(USER.role==='coach'){
-    show('sCoach');renderCoach('clientes');setTimeout(()=>{setCoachLang(COACH_LANG);},200);
+    show('sCoach');renderCoach('clientes');setTimeout(()=>{setCoachLang(COACH_LANG);updateCoachTopbar();},200);
     setTimeout(checkPendientes,1000);
   } else {
     show('sCliente');
@@ -6639,6 +6637,23 @@ function hPerfil(){
 
 
 // ── FOTO DE PERFIL ──────────────────────────────────────────────
+function updateCoachTopbar() {
+  const av = document.getElementById('coach_topbar_avatar');
+  const nm = document.getElementById('coach_topbar_nombre');
+  if(!av || !USER) return;
+  // Avatar
+  if(USER.foto_perfil) {
+    av.innerHTML = `<img src="${USER.foto_perfil}" style="width:100%;height:100%;object-fit:cover"/>`;
+  } else {
+    av.textContent = (USER.nombre||'C')[0].toUpperCase();
+  }
+  // Name — only show on desktop (hidden on mobile via CSS)
+  if(nm) {
+    nm.textContent = USER.nombre || USER.username || 'Coach';
+    nm.style.display = window.innerWidth > 600 ? 'inline' : 'none';
+  }
+}
+
 async function subirFotoCoach(input) {
   const file = input.files[0];
   if(!file) return;
@@ -6658,9 +6673,7 @@ async function subirFotoCoach(input) {
         await api('/me/foto', {method:'POST', body:JSON.stringify({foto: base64})});
         USER.foto_perfil = base64;
         localStorage.setItem('wm_user', JSON.stringify(USER));
-        // Update topbar avatar
-        const av = document.getElementById('coach_topbar_avatar');
-        if(av) av.innerHTML = `<img src="${base64}" style="width:100%;height:100%;object-fit:cover"/>`;
+        updateCoachTopbar();
       } catch(err) { alert('Error al subir foto'); }
     };
     img.src = e.target.result;
