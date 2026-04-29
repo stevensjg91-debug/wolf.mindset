@@ -27,6 +27,8 @@ async function initDB() {
   try { db.run("ALTER TABLE users ADD COLUMN telefono TEXT DEFAULT ''"); } catch(e) {}
   // NUEVO: idioma preferido del coach
   try { db.run("ALTER TABLE users ADD COLUMN lang TEXT DEFAULT 'es'"); } catch(e) {}
+  // NUEVO: foto de perfil (base64)
+  try { db.run("ALTER TABLE users ADD COLUMN foto_perfil TEXT DEFAULT NULL"); } catch(e) {}
 
   db.run(`CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, objetivo TEXT DEFAULT 'Volumen', nivel TEXT DEFAULT 'Intermedio', semanas INTEGER DEFAULT 1, kcal_internas INTEGER DEFAULT 2500, prot INTEGER DEFAULT 160, carbs INTEGER DEFAULT 280, fat INTEGER DEFAULT 80, comida_libre TEXT DEFAULT 'Elige lo que mas te apetezca.', mensaje_semana TEXT DEFAULT '', notas_coach TEXT DEFAULT '', peso_actual REAL DEFAULT 0, altura INTEGER DEFAULT 0, edad INTEGER DEFAULT 0, sexo TEXT DEFAULT 'Hombre', actividad TEXT DEFAULT 'Moderada', cintura_actual REAL DEFAULT 0, cadera REAL DEFAULT 0, observaciones TEXT DEFAULT '', dieta_tipo TEXT DEFAULT 'Omnivoro', alimentos_no TEXT DEFAULT '', lesiones TEXT DEFAULT '')`);
 
