@@ -654,7 +654,6 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
         <button class="sni" onclick="cNav('progreso',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n-coach="Progreso">Progreso</span></button>
         <button class="sni" onclick="cNav('ia',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 015 5c0 2.4-1.7 4.4-4 4.9V14H7v-2.1C4.7 11.4 3 0.4 3 7a5 5 0 015-5z" stroke="currentColor" stroke-width="1.3"/></svg><span data-i18n-coach="Asistente IA">Asistente IA</span></button>
         <button class="sni" id="sni_equipo" onclick="cNav('equipo',this)" style="display:none"><svg viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 13c0-2.76 2.24-5 4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M15 13c0-2.76-2.24-5-4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 8v5M6 10h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>Mi equipo</span></button>
-        <button class="sni" onclick="cNav('cuenta',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M2 14c0-3.31 2.69-6 6-6s6 2.69 6 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M11 10l1 1M13 9l-2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span data-i18n-coach="Mi cuenta">Mi cuenta</span></button>
       </div>
       <button class="sb-out" onclick="doLogout()"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Cerrar sesión</button>
       <!-- Selector idioma coach -->
@@ -684,8 +683,8 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
       <!-- PANEL NOTIFICACIONES COACH -->
       <div id="notif_panel_coach" style="display:none;position:absolute;top:48px;right:12px;width:320px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.4);max-height:420px;overflow-y:auto">
         <div style="padding:12px 14px;border-bottom:0.5px solid var(--br);display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;font-weight:700;color:var(--sv)">${tc('Notificaciones')}</span>
-          <button onclick="marcarTodasLeidasCoach()" style="background:none;border:none;color:var(--blg);font-size:11px;cursor:pointer;font-family:'Inter',sans-serif">${tc('Marcar todas leídas')}</button>
+          <span style="font-size:12px;font-weight:700;color:var(--sv)">Notificaciones</span>
+          <button onclick="marcarTodasLeidasCoach()" style="background:none;border:none;color:var(--blg);font-size:11px;cursor:pointer;font-family:'Inter',sans-serif">Marcar todas leídas</button>
         </div>
         <div id="notif_list_coach"><div style="padding:16px;font-size:13px;color:var(--tx3);text-align:center">Cargando...</div></div>
       </div>
@@ -1665,7 +1664,7 @@ function setLang(lang) {
     else if(klTab === 'dieta') el.innerHTML = hDieta();
     else if(klTab === 'progreso') { el.innerHTML = hProgreso2(); setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100); }
     else if(klTab === 'logros') el.innerHTML = hBadgesCliente();
-    else if(klTab === 'perfil') { el.innerHTML = hPerfil(); setTimeout(cargarDatosCuenta, 50); }
+    else if(klTab === 'perfil') el.innerHTML = hPerfil();
     else if(klTab === 'asistente') { el.innerHTML = hAsistente(); }
     applyLang(el);
   }
@@ -1740,249 +1739,17 @@ const COACH_TRANSLATIONS = {
   // Objetivos cliente
   'Volumen':'Bulk','Definición':'Cutting','Fuerza':'Strength',
   'Recomposición':'Body recomp','Perder peso':'Lose weight',
-  // Perfil cliente / tabs / historial
-  'Volver':'Back','Reasignar':'Reassign','Resumen':'Summary','Rutina':'Routine','Historial':'History','Dieta':'Diet','Progreso':'Progress',
-  'Macros internos':'Internal macros','SOLO COACH':'COACH ONLY','Peso':'Weight','Sin registros':'No records','Sin registros de peso aún.':'No weight records yet.',
-  'Suscripción':'Subscription','Duración':'Duration','Precio (€)':'Price (€)','Notas internas (opcional)':'Internal notes (optional)',
-  '✓ Activar / Renovar':'✓ Activate / renew','Datos personales del cliente':'Client personal data','Altura':'Height','Edad':'Age','Sexo':'Sex','Actividad':'Activity','Cintura/Cadera':'Waist/Hip',
-  'Sin datos':'No data','Lesiones:':'Injuries:','Dieta:':'Diet:','No come:':'Does not eat:','Obs:':'Notes:',
-  'Ajustar datos':'Adjust data','Calculadora de macros — ajusta y se recalcula solo':'Macro calculator — adjust and it recalculates automatically','Recalcular':'Recalculate',
-  'Kcal totales':'Total kcal','Proteína (g)':'Protein (g)','Grasas (g)':'Fats (g)','Carbos (g)':'Carbs (g)','Comida libre':'Free meal','Mensaje motivacional':'Motivational message','Notas coach':'Coach notes',
-  'Rutina asignada':'Assigned routine','RUTINA ASIGNADA':'ASSIGNED ROUTINE','ejercicios':'exercises','Sin ejercicios aún.':'No exercises yet.','Sin días. Pulsa + Día para empezar.':'No days yet. Press + Day to start.',
-  'Editando ejercicio':'Editing exercise','Cerrar':'Close','Series':'Sets','Reps':'Reps','Peso obj. (kg)':'Target weight (kg)','Descanso (s)':'Rest (s)','Usar RIR':'Use RIR','Principal':'Main','Nota al cliente':'Note to client',
-  'Historial de entrenos':'Workout history','HISTORIAL DE ENTRENOS':'WORKOUT HISTORY','Cargando sesiones del cliente':'Loading client sessions','Sin sesiones aún.':'No sessions yet.','El cliente debe completar al menos un entreno':'Client must complete at least one workout','Error cargando sesiones.':'Error loading sessions.',
-  'Incompleto':'Incomplete','Completado':'Completed','entrenos':'workouts','Sin entrenos aún.':'No workouts yet.','Main exercise progress':'Main exercise progress',
-  'Dieta asignada':'Assigned diet','Sin dieta asignada. Usa el Creador de Dieta IA.':'No diet assigned. Use the AI Diet Builder.','Fotos de progreso':'Progress photos','Revisión semanal':'Weekly review','Evolución de peso':'Weight progress',
-  'Míos':'Mine','Todos':'All','Socia':'Partner','Total':'Total','Sem':'Week','Semana':'Week','mes':'month','meses':'months','años':'years','grasa':'body fat',
-  'Solicitudes pendientes':'Pending requests','Asistente IA Coach':'AI Coach Assistant','Mi equipo':'My team',
-  // IA Coach screen exact strings
-  'IA privada del coach':'Private Coach AI','IA PRIVADA DEL COACH':'PRIVATE COACH AI',
-  'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.':'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.',
-  '🔄 Recargar ejercicios (112)':'🔄 Reload exercises (112)',
-  '🔄 Recargar exercises (112)':'🔄 Reload exercises (112)',
-  '🖼️ Descargar imágenes ejercicios':'🖼️ Download exercise images',
-  '🖼️ Gestionar imágenes ejercicios':'🖼️ Manage exercise images',
-  'Gestionar imágenes de ejercicios':'Manage exercise images',
-  '➕ Crear ejercicio nuevo':'➕ Create new exercise',
-  'Añade ejercicios personalizados que no están en la biblioteca.':'Add custom exercises that are not in the library.',
-  'Nombre':'Name','Grupo':'Group','Músculos':'Muscles','Dificultad':'Difficulty',
-  'URL imagen/GIF (opcional)':'Image/GIF URL (optional)',
-  '✓ Crear ejercicio':'✓ Create exercise',
-  '🖼️ Añadir imagen a un ejercicio':'🖼️ Add image to an exercise',
-  'Pega la URL de una imagen o GIF. Solo visible para ti como coach hasta que la guardes.':'Paste the URL of an image or GIF. Only visible to you as coach until you save it.',
-  'Todos los grupos':'All groups','Buscar ejercicio...':'Search exercise...',
-  'procesando...':'processing...',
-  'Ej: genera rutina para Carlos, 4 días, volumen...':'Ex: generate a routine for Carlos, 4 days, bulking...',
-  'Enviar':'Send',
 };
-
-
-
-// Refuerzo final traducción coach: cubre textos dinámicos ES↔EN sin tocar lógica de la app
-Object.assign(COACH_TRANSLATIONS, {
-  // Empty states / clients
-  'Sin clientes aún':'No clients yet',
-  'Crea el primero desde "Nuevo cliente"':'Create the first one from "New client"',
-  'Crea el primero desde "New client"':'Create the first one from "New client"',
-  'No clients yet':'No clients yet',
-  'Create the first one from "New client"':'Create the first one from "New client"',
-  'Todos':'All','Míos':'Mine','Socia':'Partner',
-
-  // Create routine / diet selectors
-  'SELECCIONA CLIENTE':'SELECT CLIENT',
-  '1. SELECCIONA CLIENTE':'1. SELECT CLIENT',
-  '-- Elige cliente --':'-- Choose client --',
-  '-- Choose client --':'-- Choose client --',
-  'ELIGE CLIENTE':'CHOOSE CLIENT',
-
-  // New client screen
-  'CREAR NUEVO CLIENTE':'CREATE NEW CLIENT',
-  'Crear nuevo cliente':'Create new client',
-  'NAME COMPLETO':'FULL NAME',
-  'NOMBRE COMPLETO':'FULL NAME',
-  'FULL NAME':'FULL NAME',
-  'USUARIO (LOGIN)':'USERNAME (LOGIN)',
-  'CONTRASEÑA':'PASSWORD',
-  'PASSWORD':'PASSWORD',
-  'GOAL':'GOAL',
-  'LEVEL':'LEVEL',
-  'ASIGNAR A COACH':'ASSIGN TO COACH',
-  'ASSIGN TO COACH':'ASSIGN TO COACH',
-  'Crear cliente':'Create client',
-  'Create client':'Create client',
-  'Min 6 chars':'Min 6 chars',
-
-  // Progress dashboard
-  'DASHBOARD CLIENTES':'CLIENT DASHBOARD',
-  'CLIENT DASHBOARD':'CLIENT DASHBOARD',
-  'CLIENTE':'CLIENT',
-  'CLIENT':'CLIENT',
-  'ÚLTIMA SESIÓN':'LAST SESSION',
-  'LAST SESSION':'LAST SESSION',
-  'ATENCIÓN':'ATTENTION',
-  'ATTENTION':'ATTENTION',
-  'ACTIVOS':'ACTIVE',
-  'ACTIVE':'ACTIVE',
-  'Avisos':'Alerts',
-  '🔔 Avisos':'🔔 Alerts',
-  'Actualizar':'Refresh',
-  '↻ Actualizar':'↻ Refresh',
-  'SUBSCRIPTION':'SUBSCRIPTION',
-
-  // AI Coach
-  'Asistente IA Coach':'AI Coach Assistant',
-  'AI Coach Assistant':'AI Coach Assistant',
-  'IA privada del coach':'Private Coach AI',
-  'IA PRIVADA DEL COACH':'PRIVATE COACH AI',
-  'PRIVATE COACH AI':'PRIVATE COACH AI',
-  'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.':'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.',
-  'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.':'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.',
-  'Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?':'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?',
-  'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?':'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?',
-  'Mi cuenta':'My account',
-  'Datos personales':'Personal details',
-  'Tu nombre':'Your name',
-  'Nombre de usuario':'Username',
-  'Cambiar contraseña':'Change password',
-  'Contraseña actual':'Current password',
-  'Nueva contraseña':'New password',
-  'Mínimo 6 caracteres':'Minimum 6 characters',
-  'Repetir nueva contraseña':'Repeat new password',
-  'Repite la nueva contraseña':'Repeat new password',
-  'Guardar cambios':'Save changes',
-  'Cambios guardados':'Changes saved',
-  'Las contraseñas no coinciden':'Passwords do not match',
-  'Introduce tu contraseña actual':'Enter your current password',
-  'Guardando...':'Saving...',
-  'Error al guardar':'Error saving',
-  'La IA usa automáticamente las kcal, macros, intolerancias y preferencias del cliente. Solo tienes que indicar los alimentos disponibles y el número de comidas.':'The AI automatically uses the client\'s kcal, macros, intolerances and preferences. Just specify the available foods and number of meals.',
-  'Alimentos disponibles':'Available foods',
-  'Nuevo alimento':'New food',
-  'Limpiar todo':'Clear all',
-  'Toca una categoría para añadir alimentos →':'Tap a category to add foods →',
-  'Proteínas':'Proteins',
-  'Carbos':'Carbs',
-  'Grasas':'Fats',
-  'Verduras':'Vegetables',
-  'Frutas':'Fruits',
-  'Bebidas':'Drinks',
-  'Mis favoritos':'My favourites',
-  'Guardar como favorito':'Save as favourite',
-  'Nº de comidas':'No. of meals',
-  'comidas':'meals',
-  'Ajuste calórico':'Calorie adjustment',
-  'opcional — usa el del cliente por defecto':'optional — uses client\'s default',
-  'Automático según objetivo del cliente':'Automatic based on client\'s goal',
-  'Forzar mantenimiento':'Force maintenance',
-  'Forzar déficit (-300 kcal)':'Force deficit (-300 kcal)',
-  'Forzar déficit agresivo (-500 kcal)':'Force aggressive deficit (-500 kcal)',
-  'Forzar superávit (+300 kcal)':'Force surplus (+300 kcal)',
-  'Notas adicionales (opcional)':'Additional notes (optional)',
-  'Ej: prefiere desayunos rápidos, cena antes de las 20h...':'E.g. prefers quick breakfasts, dinner before 8pm...',
-  'Analíticas / déficits (opcional)':'Blood work / deficiencies (optional)',
-  'La IA recomendará suplementación':'The AI will recommend supplementation',
-  'Ej: Vitamina D baja (18 ng/ml), ferritina 12, B12 deficiente, omega-3 bajo...':'E.g. Low Vitamin D (18 ng/ml), ferritin 12, B12 deficient, low omega-3...',
-  'Generar plan personalizado':'Generate personalised plan',
-  'Vista previa del plan':'Plan preview',
-  'Editar cantidades':'Edit amounts',
-  'Publicar al cliente':'Publish to client',
-  'Sin objetivo':'No goal',
-  'Actividad:':'Activity:',
-  'No puede:':'Cannot eat:',
-  'Lesiones:':'Injuries:',
-  'Deficiencias:':'Deficiencies:',
-  'Sin comidas. Publica una dieta primero desde el Creador IA.':'No meals. Publish a diet first from the AI Builder.',
-  'Sin comidas. Añade la primera.':'No meals yet. Add the first one.',
-  'Notificaciones':'Notifications',
-  'Marcar todas leídas':'Mark all as read',
-  '🔄 Recargar ejercicios (112)':'🔄 Reload exercises (112)',
-  '🔄 Reload exercises (112)':'🔄 Reload exercises (112)',
-  'Descargar imágenes ejercicios':'Download exercise images',
-  '🖼️ Descargar imágenes ejercicios':'🖼️ Download exercise images',
-  '🖼️ Download exercise images':'🖼️ Download exercise images',
-  '🏋️ Gestionar ejercicios':'🏋️ Manage exercises',
-  '🏋️ Manage exercises':'🏋️ Manage exercises',
-  'Gestionar ejercicios':'Manage exercises',
-  'Manage exercises':'Manage exercises',
-  'Crear ejercicio nuevo':'Create new exercise',
-  'Create new exercise':'Create new exercise',
-  'Añade ejercicios personalizados que no están en la biblioteca.':'Add custom exercises that are not in the library.',
-  'Add custom exercises that are not in the library.':'Add custom exercises that are not in the library.',
-  'Añadir imagen a un ejercicio':'Add image to an exercise',
-  'Add image to an exercise':'Add image to an exercise',
-  'Pega la URL de una imagen o GIF. Solo visible para ti como coach hasta que la guardes.':'Paste the URL of an image or GIF. Only visible to you as coach until saved.',
-  'Paste the URL of an image or GIF. Only visible to you as coach until saved.':'Paste the URL of an image or GIF. Only visible to you as coach until saved.',
-  'Todos los grupos':'All groups',
-  'All groups':'All groups',
-  'Buscar ejercicio...':'Search exercise...',
-  'Search exercise...':'Search exercise...',
-  'Ej: genera rutina para Carlos, 4 días, volumen...':'Ex: generate a routine for Carlos, 4 days, bulking...',
-  'Ex: generate a routine for Carlos, 4 days, bulking...':'Ex: generate a routine for Carlos, 4 days, bulking...',
-
-  // Common form labels / values
-  'NAME COMPLETO':'FULL NAME',
-  'Nombre completo':'Full name',
-  'Nombre completo *':'Full name *',
-  'Usuario':'Username',
-  'Usuario para acceder *':'Username *',
-  'Contraseña':'Password',
-  'Contraseña *':'Password *',
-  'Objetivo':'Goal',
-  'Nivel':'Level',
-  'Asignar a coach':'Assign to coach',
-  'Volumen':'Bulking',
-  'Definición':'Cutting',
-  'Intermedio':'Intermediate',
-  'Principiante':'Beginner',
-  'Avanzado':'Advanced',
-  'Log out':'Log out'
-});
-
-// Traducciones inversas extra para cuando el panel ya está renderizado en inglés y se pulsa ES
-const COACH_REVERSE_EXTRA = {
-  'Clients':'Clientes','Create routine':'Crear rutina','Create diet':'Crear dieta','New client':'Nuevo cliente','Pending':'Pendientes','Progress':'Progreso','AI Assistant':'Asistente IA','Log out':'Cerrar sesión',
-  'No clients yet':'Sin clientes aún','Create the first one from "New client"':'Crea el primero desde "Nuevo cliente"',
-  'SELECT CLIENT':'SELECCIONA CLIENTE','1. SELECT CLIENT':'1. SELECCIONA CLIENTE','-- Choose client --':'-- Elige cliente --','CHOOSE CLIENT':'ELIGE CLIENTE',
-  'CREATE NEW CLIENT':'CREAR NUEVO CLIENTE','Create new client':'Crear nuevo cliente','FULL NAME':'NOMBRE COMPLETO','USERNAME (LOGIN)':'USUARIO (LOGIN)','PASSWORD':'CONTRASEÑA','GOAL':'OBJETIVO','LEVEL':'NIVEL','ASSIGN TO COACH':'ASIGNAR A COACH','Create client':'Crear cliente',
-  'Client dashboard':'Dashboard clientes','CLIENT DASHBOARD':'DASHBOARD CLIENTES','CLIENT':'CLIENTE','LAST SESSION':'ÚLTIMA SESIÓN','ATTENTION':'ATENCIÓN','ACTIVE':'ACTIVOS','Alerts':'Avisos','🔔 Alerts':'🔔 Avisos','Refresh':'Actualizar','↻ Refresh':'↻ Actualizar',
-  'AI Coach Assistant':'Asistente IA Coach','Private Coach AI':'IA privada del coach','PRIVATE COACH AI':'IA PRIVADA DEL COACH',
-  'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.':'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.',
-  'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?':'Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?',
-  'Reload exercises':'Recargar ejercicios','🔄 Reload exercises (112)':'🔄 Recargar ejercicios (112)','Download exercise images':'Descargar imágenes ejercicios','🖼️ Download exercise images':'🖼️ Descargar imágenes ejercicios',
-  'Ex: generate a routine for Carlos, 4 days, bulking...':'Ej: genera rutina para Carlos, 4 días, volumen...',
-  'Full name':'Nombre completo','Full name *':'Nombre completo *','Username':'Usuario','Username *':'Usuario para acceder *','Password':'Contraseña','Password *':'Contraseña *','Goal':'Objetivo','Level':'Nivel','Assign to coach':'Asignar a coach',
-  'Bulking':'Volumen','Cutting':'Definición','Intermediate':'Intermedio','Beginner':'Principiante','Advanced':'Avanzado','Mine':'Míos','All':'Todos','Partner':'Socia','Send':'Enviar'
-};
-
-function buildCoachReverseTranslations(){
-  const rev = {};
-  Object.entries(COACH_TRANSLATIONS || {}).forEach(([es,en]) => {
-    if(en && !rev[en]) rev[en] = es;
-  });
-  Object.assign(rev, COACH_REVERSE_EXTRA || {});
-  Object.assign(rev, {
-    'Clients':'Clientes','Create routine':'Crear rutina','Create diet':'Crear dieta','New client':'Nuevo cliente','Pending':'Pendientes','Progress':'Progreso','AI Assistant':'Asistente IA','Log out':'Cerrar sesión',
-    'AI Coach Assistant':'Asistente IA Coach','Private Coach AI':'IA privada del coach','PRIVATE COACH AI':'IA PRIVADA DEL COACH',
-    'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.':'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.',
-    'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?':'Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?',
-    '🔄 Reload exercises (112)':'🔄 Recargar ejercicios (112)','🔄 Recargar exercises (112)':'🔄 Recargar ejercicios (112)',
-    '🖼️ Download exercise images':'🖼️ Descargar imágenes ejercicios','🖼️ Manage exercise images':'🖼️ Gestionar imágenes ejercicios',
-    'Ex: generate a routine for Carlos, 4 days, bulking...':'Ej: genera rutina para Carlos, 4 días, volumen...',
-    'Send':'Enviar','processing...':'procesando...'
-  });
-  return rev;
-}
 
 function tc(text) {
-  if(!text) return text;
-  if(COACH_LANG === 'en') return COACH_TRANSLATIONS[text] || TRANSLATIONS[text] || text;
-  const rev = buildCoachReverseTranslations();
-  return rev[text] || text;
+  if(COACH_LANG === 'es') return text;
+  return COACH_TRANSLATIONS[text] || TRANSLATIONS[text] || text;
 }
 
 function setCoachLang(lang) {
   COACH_LANG = lang;
   localStorage.setItem('wm_coach_lang', lang);
+  // Actualizar botones del selector
   const esBtn = document.getElementById('coach_lang_es');
   const enBtn = document.getElementById('coach_lang_en');
   if(esBtn) {
@@ -1995,60 +1762,40 @@ function setCoachLang(lang) {
     enBtn.style.background = lang==='en' ? 'rgba(255,255,255,.15)' : 'none';
     enBtn.style.opacity = lang==='en' ? '1' : '0.4';
   }
+  // Re-renderizar panel coach si está activo
   if(document.getElementById('sCoach')?.classList.contains('on')) {
-    if(window._lastClienteId && document.getElementById('ctab_resumen')) {
-      verCliente(window._lastClienteId);
-    } else {
-      renderCoach(currentCoachTab || 'clientes');
-    }
+    renderCoach(currentCoachTab || 'clientes');
   }
-  setTimeout(()=>applyCoachLang(document.getElementById('sCoach')), 80);
-  setTimeout(()=>applyCoachLang(document.getElementById('sCoach')), 350);
+  // Traducir nav estática del coach
+  applyCoachLang(document.getElementById('sCoach'));
+  // Refrescar chips de alimentos si el coach cambia idioma dentro del generador de dietas.
+  try {
+    if(typeof dbActualizarSelected === 'function') dbActualizarSelected();
+    if(_dbCatActiva !== null) {
+      const activeCatBtn = document.querySelector(`[data-cat="${_dbCatActiva}"]`);
+      const cat = _dbCatActiva;
+      _dbCatActiva = null;
+      if(activeCatBtn && typeof dbToggleCat === 'function') dbToggleCat(cat, activeCatBtn);
+    }
+  } catch(e) {}
 }
 
 function applyCoachLang(el) {
-  if(!el) return;
-  const dict = COACH_LANG === 'en' ? (COACH_TRANSLATIONS || {}) : buildCoachReverseTranslations();
-  const keys = Object.keys(dict).filter(Boolean).sort((a,b)=>b.length-a.length);
-  const translateText = (txt) => {
-    let out = txt || '';
-    const trimmed = out.trim();
-    if(dict[trimmed]) return out.replace(trimmed, dict[trimmed]);
-    keys.forEach(k => {
-      if(out.includes(k)) out = out.split(k).join(dict[k]);
-    });
-    return out;
-  };
-
-  el.querySelectorAll('[data-i18n-coach]').forEach(e2 => {
-    const key = e2.getAttribute('data-i18n-coach');
-    const next = dict[key] || dict[(e2.textContent || '').trim()];
-    if(next) e2.textContent = next;
-  });
-
-  el.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(inp => {
-    inp.placeholder = translateText(inp.placeholder || '');
-  });
-  el.querySelectorAll('[title]').forEach(ti => {
-    ti.title = translateText(ti.title || '');
-  });
-
-  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
-    acceptNode(node) {
-      const parent = node.parentElement;
-      if(!parent) return NodeFilter.FILTER_REJECT;
-      const tag = parent.tagName;
-      if(['SCRIPT','STYLE','TEXTAREA','INPUT','SELECT','OPTION'].includes(tag)) return NodeFilter.FILTER_REJECT;
-      if(!node.textContent || !node.textContent.trim()) return NodeFilter.FILTER_REJECT;
-      return NodeFilter.FILTER_ACCEPT;
-    }
-  });
+  if(!el || COACH_LANG === 'es') return;
+  // Traducir todos los textos visibles
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
   const nodes = [];
   while(walker.nextNode()) nodes.push(walker.currentNode);
   nodes.forEach(node => {
-    const original = node.textContent;
-    const translated = translateText(original);
-    if(translated !== original) node.textContent = translated;
+    const trimmed = node.textContent.trim();
+    if(trimmed && COACH_TRANSLATIONS[trimmed]) {
+      node.textContent = node.textContent.replace(trimmed, COACH_TRANSLATIONS[trimmed]);
+    }
+  });
+  // data-i18n-coach
+  el.querySelectorAll('[data-i18n-coach]').forEach(e2 => {
+    const key = e2.getAttribute('data-i18n-coach');
+    if(COACH_TRANSLATIONS[key]) e2.textContent = COACH_TRANSLATIONS[key];
   });
 }
 
@@ -2250,24 +1997,20 @@ if(TOKEN&&USER){
 }
 
 // ═══ COACH NAV ════════════════════════════════════════
-let currentCoachTab='clientes';
-const TITLES={clientes:'Clientes',nuevo:'Nuevo cliente',pendientes:'Solicitudes pendientes',rutinas:'Crear rutina','dieta-builder':'Crear dieta',progreso:'Progreso',ia:'Asistente IA Coach',cuenta:'Mi cuenta'};
+const TITLES={clientes:'Clientes',nuevo:'Nuevo cliente',pendientes:'Solicitudes pendientes',rutinas:'Crear rutina','dieta-builder':'Crear dieta',progreso:'Progreso',ia:'Asistente IA Coach'};
 function cNav(s,btn){
-  currentCoachTab=s; window._lastClienteId=null;
-  document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
-  document.getElementById('cTitle').textContent=tc(TITLES[s]||s);
+  document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  document.getElementById('cTitle').textContent=TITLES[s]||s;
   renderCoach(s);
 }
 function cNavM(s,btn){
-  currentCoachTab=s; window._lastClienteId=null;
-  document.querySelectorAll('#coachMobileNav .bni').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
-  document.getElementById('cTitle').textContent=tc(TITLES[s]||s);
+  document.querySelectorAll('#coachMobileNav .bni').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  document.getElementById('cTitle').textContent=TITLES[s]||s;
   renderCoach(s);
 }
 
 // ═══ COACH RENDER ════════════════════════════════════
 async function renderCoach(s){
-  currentCoachTab=s;
   const el=document.getElementById('cContent');
   if(s==='clientes'){const cl=await api('/clientes');window._clientesCache=cl;el.innerHTML=hClientes(cl);}
   else if(s==='nuevo'){el.innerHTML=hNuevo();}
@@ -2286,9 +2029,6 @@ async function renderCoach(s){
     else{btn.textContent='🖼️ Descargar imágenes ejercicios';}
  }).catch(()=>{});
   }
-  else if(s==='cuenta'){el.innerHTML=hCuentaCoach();setTimeout(cargarDatosCuentaCoach,50);}
-  document.getElementById('cTitle').textContent = tc(TITLES[s] || s);
-  applyCoachLang(el);
 }
 
 function hClientes(cl){
@@ -2362,7 +2102,7 @@ function filtrarClientes(filtro){
   window._clienteFilter = filtro;
   // Re-renderizar con el mismo listado en cache
   if(window._clientesCache) {
-    document.getElementById('cContent').innerHTML = hClientes(window._clientesCache); applyCoachLang(document.getElementById('cContent'));
+    document.getElementById('cContent').innerHTML = hClientes(window._clientesCache);
   }
 }
 
@@ -2640,8 +2380,6 @@ async function verCliente(id){
   </div>`;
 
   window._cid=c.id;
-  document.getElementById('cTitle').textContent = tc('Progreso');
-  applyCoachLang(document.getElementById('cContent'));
 
   // Tab Resumen: cargar suscripción y macros
   cargarSuscripcionCliente(id);
@@ -2682,7 +2420,6 @@ async function verCliente(id){
           '</div>'
         ).join('')+'</div>';
     }).join('');
-    applyCoachLang(wrap);
   }).catch(()=>{});
 
   // Peso evolución (para tab Progreso)
@@ -2878,7 +2615,6 @@ function switchClienteTab(tab, btn) {
           ).join('')+
         '</div>';
       }).join('');
-      applyCoachLang(wrap);
 
       // Cargar gráficas de progreso
       const c = window._coachClienteActual;
@@ -2926,7 +2662,6 @@ function switchClienteTab(tab, btn) {
       // ya está en modo edición, ok
     }
   }
-  applyCoachLang(document.getElementById('cContent'));
 }
 
 async function guardarDatos(id){
@@ -3076,7 +2811,7 @@ function renderEditarDietaCoach(c){
   const edit = document.getElementById('coach_dieta_edit');
   if(!edit) return;
   if(!c.comidas.length){
-    edit.innerHTML = `<div style="font-size:13px;color:var(--tx3)">${tc('Sin comidas. Publica una dieta primero desde el Creador IA.')}</div>`;
+    edit.innerHTML = '<div style="font-size:13px;color:var(--tx3)">Sin comidas. Publica una dieta primero desde el Creador IA.</div>';
     return;
   }
 
@@ -4099,93 +3834,98 @@ let dbState={clienteId:null,comidaId:null,comidaNombre:''};
 
 function hDietaBuilder(){return`
   <div class="sec" style="margin-bottom:12px">
-    <div class="sec-hdr">${tc('1. Selecciona cliente')}</div>
-    <select class="inp" id="db_cl" onchange="dbSelCliente(this.value)" style="margin-bottom:0"><option value="">${tc('-- Elige cliente --')}</option></select>
+    <div class="sec-hdr">1. Selecciona cliente</div>
+    <select class="inp" id="db_cl" onchange="dbSelCliente(this.value)" style="margin-bottom:0"><option value="">-- Elige cliente --</option></select>
   </div>
   <div id="db_wrap" style="display:none">
     <div class="sec" style="margin-bottom:12px;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.2)">
-      <div class="sec-hdr">🤖 ${tc('Generar plan de dieta con IA')}</div>
+      <div class="sec-hdr">🤖 Generar plan de dieta con IA</div>
       <div id="db_client_hint"></div>
-      <div style="font-size:12px;color:var(--tx3);margin-bottom:12px;line-height:1.6">${tc('La IA usa automáticamente las kcal, macros, intolerancias y preferencias del cliente. Solo tienes que indicar los alimentos disponibles y el número de comidas.')}</div>
+      <div style="font-size:12px;color:var(--tx3);margin-bottom:12px;line-height:1.6">La IA usa automáticamente las kcal, macros, intolerancias y preferencias del cliente. Solo tienes que indicar los alimentos disponibles y el número de comidas.</div>
 
       <div class="form-lbl" style="display:flex;align-items:center;justify-content:space-between">
-        ${tc('Alimentos disponibles')}
+        Alimentos disponibles
         <div style="display:flex;align-items:center;gap:12px">
-          <button onclick="dbNuevoAlimento()" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;font-weight:700">+ ${tc('Nuevo alimento')}</button>
-          <button onclick="dbLimpiarAlimentos()" style="font-size:11px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation">✕ ${tc('Limpiar todo')}</button>
+          <button onclick="dbNuevoAlimento()" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;font-weight:700">+ Nuevo alimento</button>
+          <button onclick="dbLimpiarAlimentos()" style="font-size:11px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation">✕ Limpiar todo</button>
         </div>
       </div>
 
+      <!-- Chips seleccionados visibles -->
       <div id="db_selected_chips" style="display:flex;flex-wrap:wrap;gap:5px;min-height:32px;padding:6px;background:var(--s2);border:0.5px solid var(--br);border-radius:10px;margin-bottom:8px">
-        <span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">${tc('Toca una categoría para añadir alimentos →')}</span>
+        <span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">Tap a category to add foods →</span>
       </div>
 
+      <!-- Categorías -->
       <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
-        <button onclick="dbToggleCat(0,this)" data-cat="0" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥩 ${tc('Proteínas')}</button>
-        <button onclick="dbToggleCat(1,this)" data-cat="1" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🌾 ${tc('Carbos')}</button>
-        <button onclick="dbToggleCat(2,this)" data-cat="2" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥑 ${tc('Grasas')}</button>
-        <button onclick="dbToggleCat(3,this)" data-cat="3" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥦 ${tc('Verduras')}</button>
-        <button onclick="dbToggleCat(4,this)" data-cat="4" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🍎 ${tc('Frutas')}</button>
-        <button onclick="dbToggleCat(5,this)" data-cat="5" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">☕ ${tc('Bebidas')}</button>
+        <button onclick="dbToggleCat(0,this)" data-cat="0" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥩 Proteínas</button>
+        <button onclick="dbToggleCat(1,this)" data-cat="1" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🌾 Carbos</button>
+        <button onclick="dbToggleCat(2,this)" data-cat="2" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥑 Grasas</button>
+        <button onclick="dbToggleCat(3,this)" data-cat="3" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🥦 Verduras</button>
+        <button onclick="dbToggleCat(4,this)" data-cat="4" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">🍎 Frutas</button>
+        <button onclick="dbToggleCat(5,this)" data-cat="5" style="padding:5px 12px;border-radius:20px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">☕ Bebidas</button>
       </div>
 
+      <!-- Lista de alimentos de la categoría activa -->
       <div id="db_alim_chips" style="display:none;flex-wrap:wrap;gap:5px;padding:8px;background:var(--s2);border:0.5px solid var(--br);border-radius:10px;margin-bottom:8px;max-height:140px;overflow-y:auto"></div>
 
+      <!-- Favoritos guardados -->
       <div id="db_favoritos_wrap" style="display:none;margin-bottom:6px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-          <div style="font-size:10px;color:var(--amb);font-weight:700;text-transform:uppercase;letter-spacing:.08em">⭐ ${tc('Mis favoritos')}</div>
+          <div style="font-size:10px;color:var(--amb);font-weight:700;text-transform:uppercase;letter-spacing:.08em">⭐ Mis favoritos</div>
         </div>
         <div id="db_favoritos_chips" style="display:flex;flex-wrap:wrap;gap:5px"></div>
       </div>
 
+      <!-- Campo manual oculto - sync automático -->
       <input type="hidden" id="db_alimentos_input"/>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <button onclick="dbGuardarFavoritos()" id="btn_guardar_fav" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;display:none">⭐ ${tc('Guardar como favorito')}</button>
+        <button onclick="dbGuardarFavoritos()" id="btn_guardar_fav" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;display:none">⭐ Save as favourite</button>
         <div style="font-size:11px;color:var(--tx3)" id="db_count_lbl"></div>
       </div>
 
       <div class="g2" style="gap:8px;margin-bottom:10px">
         <div>
-          <div class="form-lbl">${tc('Nº de comidas')}</div>
+          <div class="form-lbl">Nº de comidas</div>
           <select class="inp" id="db_num_comidas" style="margin-bottom:0">
-            <option value="2">2 ${tc('comidas')}</option>
-            <option value="3">3 ${tc('comidas')}</option>
-            <option value="4" selected>4 ${tc('comidas')}</option>
-            <option value="5">5 ${tc('comidas')}</option>
-            <option value="6">6 ${tc('comidas')}</option>
+            <option value="2">2 comidas</option>
+            <option value="3">3 comidas</option>
+            <option value="4" selected>4 comidas</option>
+            <option value="5">5 comidas</option>
+            <option value="6">6 comidas</option>
           </select>
         </div>
         <div>
-          <div class="form-lbl">${tc('Ajuste calórico')} <span style="font-size:10px;color:var(--tx3);font-weight:400">(${tc('opcional — usa el del cliente por defecto')})</span></div>
+          <div class="form-lbl">Ajuste calórico <span style="font-size:10px;color:var(--tx3);font-weight:400">(opcional — usa el del cliente por defecto)</span></div>
           <select class="inp" id="db_objetivo_cal" style="margin-bottom:0">
-            <option value="auto">${tc('Automático según objetivo del cliente')}</option>
-            <option value="mantenimiento">${tc('Forzar mantenimiento')}</option>
-            <option value="deficit">${tc('Forzar déficit (-300 kcal)')}</option>
-            <option value="deficit_agresivo">${tc('Forzar déficit agresivo (-500 kcal)')}</option>
-            <option value="superavit">${tc('Forzar superávit (+300 kcal)')}</option>
+            <option value="auto">Automático según objetivo del cliente</option>
+            <option value="mantenimiento">Forzar mantenimiento</option>
+            <option value="deficit">Forzar déficit (-300 kcal)</option>
+            <option value="deficit_agresivo">Forzar déficit agresivo (-500 kcal)</option>
+            <option value="superavit">Forzar superávit (+300 kcal)</option>
           </select>
         </div>
       </div>
 
-      <div class="form-lbl">${tc('Notas adicionales (opcional)')}</div>
-      <input class="inp" id="db_notas_extra" placeholder="${tc('Ej: prefiere desayunos rápidos, cena antes de las 20h...')}" style="margin-bottom:10px"/>
+      <div class="form-lbl">Notas adicionales (opcional)</div>
+      <input class="inp" id="db_notas_extra" placeholder="Ej: prefiere desayunos rápidos, cena antes de las 20h..." style="margin-bottom:10px"/>
 
       <div class="form-lbl" style="display:flex;align-items:center;gap:6px">
-        🧪 ${tc('Analíticas / déficits (opcional)')}
-        <span style="font-size:10px;color:var(--tx3);font-weight:400">${tc('La IA recomendará suplementación')}</span>
+        🧪 Analíticas / déficits (opcional)
+        <span style="font-size:10px;color:var(--tx3);font-weight:400">La IA recomendará suplementación</span>
       </div>
-      <textarea class="ta" id="db_analiticas" placeholder="${tc('Ej: Vitamina D baja (18 ng/ml), ferritina 12, B12 deficiente, omega-3 bajo...')}" style="min-height:60px;margin-bottom:12px"></textarea>
+      <textarea class="ta" id="db_analiticas" placeholder="Ej: Vitamina D baja (18 ng/ml), ferritina 12, B12 deficiente, omega-3 bajo..." style="min-height:60px;margin-bottom:12px"></textarea>
 
-      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="dbGenerarIANuevo()">⚡ ${tc('Generar plan personalizado')}</button>
+      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="dbGenerarIANuevo()">⚡ Generar plan personalizado</button>
       <div id="db_ia_result" style="margin-top:12px"></div>
     </div>
 
     <div id="db_plan_preview" style="display:none">
       <div class="sec" style="margin-bottom:12px">
-        <div class="sec-hdr">${tc('Vista previa del plan')}</div>
+        <div class="sec-hdr">Vista previa del plan</div>
         <div style="display:flex;gap:8px;margin-bottom:12px">
-          <button class="btn" style="flex:1;padding:10px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);font-size:13px" onclick="dbEditarPlan()">✏️ ${tc('Editar cantidades')}</button>
-          <button class="btn" style="flex:1;padding:10px;background:var(--gn);font-size:13px" id="btn_publicar_dieta_ia" onclick="dbPublicarPlan()">✓ ${tc('Publicar al cliente')}</button>
+          <button class="btn" style="flex:1;padding:10px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);font-size:13px" onclick="dbEditarPlan()">✏️ Editar cantidades</button>
+          <button class="btn" style="flex:1;padding:10px;background:var(--gn);font-size:13px" id="btn_publicar_dieta_ia" onclick="dbPublicarPlan()">✓ Publicar al cliente</button>
         </div>
         <div id="db_plan_html"></div>
       </div>
@@ -4221,15 +3961,15 @@ async function dbSelCliente(id){
       <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:6px">${c.nombre}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:var(--tx3);margin-bottom:6px">
         <div>⚡ <b style="color:var(--sv2)">${kcal} kcal</b></div>
-        <div>🎯 ${c.objetivo||tc('Sin objetivo')}</div>
+        <div>🎯 ${c.objetivo||'Sin objetivo'}</div>
         <div>🥗 ${c.dieta_tipo||'Omnívoro'}</div>
-        <div>📊 ${c.nivel||tc('Principiante')}</div>
+        <div>📊 ${c.nivel||'Principiante'}</div>
         <div>⚖️ ${c.peso_actual||'—'}kg · ${c.altura||'—'}cm</div>
-        <div>🔥 ${tc('Actividad:')} ${c.actividad||'—'}</div>
+        <div>🔥 Actividad: ${c.actividad||'—'}</div>
       </div>
-      ${c.alimentos_no?`<div style="font-size:11px;color:#fca5a5;margin-bottom:4px">❌ ${tc('No puede:')} ${c.alimentos_no}</div>`:''}
-      ${c.lesiones?`<div style="font-size:11px;color:#fbbf24;margin-bottom:4px">⚠️ ${tc('Lesiones:')} ${c.lesiones}</div>`:''}
-      ${c.deficiencias?`<div style="font-size:11px;color:#c084fc;margin-top:4px">🧪 ${tc('Deficiencias:')} ${c.deficiencias}</div>`:''}
+      ${c.alimentos_no?`<div style="font-size:11px;color:#fca5a5;margin-bottom:4px">❌ No puede: ${c.alimentos_no}</div>`:''}
+      ${c.lesiones?`<div style="font-size:11px;color:#fbbf24;margin-bottom:4px">⚠️ Lesiones: ${c.lesiones}</div>`:''}
+      ${c.deficiencias?`<div style="font-size:11px;color:#c084fc;margin-top:4px">🧪 Deficiencias: ${c.deficiencias}</div>`:''}
     </div>`;
     // Set to auto — the IA will derive from client objetivo
     const objCal = document.getElementById('db_objetivo_cal');
@@ -4246,7 +3986,8 @@ async function dbLoadComidas(){
   const c=await api('/clientes/'+dbState.clienteId);
   const mIcons=['☀️','🕐','🍽️','🌅','🌙','🥗'];
   const catColors={'Proteína':'#3b82f6','Carbohidrato':'#a78bfa','Verdura':'#22c55e','Grasa saludable':'#f59e0b','Lácteo':'#ec4899'};
-  listEl.innerHTML=c.comidas.length?c.comidas.map((m,mi)=>`    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;margin-bottom:10px;overflow:hidden">
+  listEl.innerHTML=c.comidas.length?c.comidas.map((m,mi)=>`
+    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;margin-bottom:10px;overflow:hidden">
       <div style="padding:11px 13px;display:flex;align-items:center;justify-content:space-between;${m.items.length?'border-bottom:0.5px solid var(--br)':''}">
         <div class="fl"><span style="font-size:20px;margin-right:8px">${mIcons[mi]||'🍽️'}</span><span style="font-size:14px;font-weight:700;color:var(--sv)">${m.nombre}</span></div>
         <button class="btn btn-sm" onclick="dbOpenAlim(${m.id},'${m.nombre}')">+ Alimento</button>
@@ -4258,7 +3999,7 @@ async function dbLoadComidas(){
         <span style="font-size:11px;color:var(--tx3)">g</span>
         <button onclick="dbDelAlim(${it.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px">✕</button>
       </div>`).join('')}
-    </div>`).join(''):`<div style="font-size:13px;color:var(--tx3)">${tc('Sin comidas. Añade la primera.')}</div>`;
+    </div>`).join(''):'<div style="font-size:13px;color:var(--tx3)">Sin comidas. Añade la primera.</div>';
 }
 
 async function dbAddComida(){
@@ -4926,41 +4667,42 @@ document.addEventListener('keydown', e => {
 
 
 // ═══ IA COACH ═════════════════════════════════════════
-function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">${tc('IA privada del coach')}</div>${tc('Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.')}</div>
+function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">IA privada del coach</div>Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.</div>
 <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-  <button id="btn_img_status" class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="abrirGestorImagenes()">${tc('🏋️ Gestionar ejercicios')}</button>
+  <button class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="reloadEjercicios()">🔄 Recargar ejercicios (112)</button>
+  <button id="btn_img_status" class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="abrirGestorImagenes()">🖼️ Gestionar imágenes ejercicios</button>
 </div>
 
-<!-- EXERCISE MANAGER -->
+<!-- GESTOR DE IMÁGENES -->
 <div id="gestor_imagenes" style="display:none;margin-bottom:12px">
   <div class="sec">
-    <div class="sec-hdr">${tc('Gestionar ejercicios')}</div>
+    <div class="sec-hdr">Gestionar imágenes de ejercicios</div>
     
-    <!-- Create new exercise -->
+    <!-- Crear ejercicio nuevo -->
     <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px;margin-bottom:12px">
-      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">➕ ${tc('Crear ejercicio nuevo')}</div>
-      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">${tc('Añade ejercicios personalizados que no están en la biblioteca.')}</div>
+      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">➕ Crear ejercicio nuevo</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">Añade ejercicios personalizados que no están en la biblioteca.</div>
       <div class="g2" style="gap:8px;margin-bottom:8px">
-        <div><div class="form-lbl">${tc('Nombre')}</div><input class="inp" id="new_ex_nombre" placeholder="Bench Press (Barbell)" style="margin-bottom:0"/></div>
-        <div><div class="form-lbl">${tc('Grupo')}</div><select class="inp" id="new_ex_grupo" style="margin-bottom:0"><option>Chest</option><option>Back</option><option>Shoulders</option><option>Biceps</option><option>Triceps</option><option>Legs</option><option>Abs</option></select></div>
-        <div><div class="form-lbl">${tc('Músculos')}</div><input class="inp" id="new_ex_musculos" placeholder="${tc('Pectorales, tríceps')}" style="margin-bottom:0"/></div>
-        <div><div class="form-lbl">${tc('Dificultad')}</div><select class="inp" id="new_ex_dif" style="margin-bottom:0"><option>${tc('Principiante')}</option><option selected>${tc('Intermedio')}</option><option>${tc('Avanzado')}</option></select></div>
+        <div><div class="form-lbl">Nombre</div><input class="inp" id="new_ex_nombre" placeholder="Bench Press (Barbell)" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl">Grupo</div><select class="inp" id="new_ex_grupo" style="margin-bottom:0"><option>Chest</option><option>Back</option><option>Shoulders</option><option>Biceps</option><option>Triceps</option><option>Legs</option><option>Abs</option></select></div>
+        <div><div class="form-lbl">Músculos</div><input class="inp" id="new_ex_musculos" placeholder="Pectorales, tríceps" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl">Dificultad</div><select class="inp" id="new_ex_dif" style="margin-bottom:0"><option>Principiante</option><option selected>Intermedio</option><option>Avanzado</option></select></div>
       </div>
-      <input class="inp" id="new_ex_imagen" placeholder="${tc('URL imagen/GIF (opcional)')}" style="margin-bottom:8px"/>
-      <button class="btn btn-sm" onclick="crearEjercicioManual()">✓ ${tc('Crear ejercicio')}</button>
+      <input class="inp" id="new_ex_imagen" placeholder="URL imagen/GIF (opcional)" style="margin-bottom:8px"/>
+      <button class="btn btn-sm" onclick="crearEjercicioManual()">✓ Crear ejercicio</button>
       <span id="new_ex_msg" style="font-size:12px;margin-left:10px"></span>
     </div>
 
-    <!-- Edit existing exercise image -->
+    <!-- Editar imagen de ejercicio existente -->
     <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px">
-      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🖼️ ${tc('Añadir imagen a un ejercicio')}</div>
-      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">${tc('Pega la URL de una imagen o GIF. Solo visible para ti como coach hasta que la guardes.')}</div>
+      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🖼️ Añadir imagen a un ejercicio</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">Pega la URL de una imagen o GIF. Solo visible para ti como coach hasta que la guardes.</div>
       <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
         <select class="inp" id="edit_ex_grupo_filter" onchange="filtrarEjerciciosGestor()" style="flex:1;min-width:120px;margin-bottom:0">
-          <option value="All">${tc('Todos los grupos')}</option>
+          <option value="All">Todos los grupos</option>
           <option>Chest</option><option>Back</option><option>Shoulders</option><option>Biceps</option><option>Triceps</option><option>Legs</option><option>Abs</option>
         </select>
-        <input class="inp" id="edit_ex_buscar" placeholder="${tc('Buscar ejercicio...')}" style="flex:2;min-width:140px;margin-bottom:0" oninput="filtrarEjerciciosGestor()"/>
+        <input class="inp" id="edit_ex_buscar" placeholder="Buscar ejercicio..." style="flex:2;min-width:140px;margin-bottom:0" oninput="filtrarEjerciciosGestor()"/>
       </div>
       <div id="gestor_lista" style="max-height:400px;overflow-y:auto"></div>
     </div>
@@ -4969,12 +4711,12 @@ function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div 
 
 <div class="sec" style="display:flex;flex-direction:column;height:480px">
   <div class="chat-msgs" id="iaMsgs" style="flex:1;background:var(--b);border:0.5px solid var(--br);border-radius:10px;padding:11px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
-    <div class="msg msg-b"><div class="msg-sender">WolfMindset IA</div>${tc('Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?')}</div>
+    <div class="msg msg-b"><div class="msg-sender">WolfMindset IA</div>Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?</div>
   </div>
-  <div class="typing" id="iaTyping">${tc('procesando...')}</div>
+  <div class="typing" id="iaTyping">procesando...</div>
   <div style="display:flex;gap:8px">
-    <input class="inp" id="iaIn" placeholder="${tc('Ej: genera rutina para Carlos, 4 días, volumen...')}" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')sendIA()"/>
-    <button class="btn" onclick="sendIA()">${tc('Enviar')}</button>
+    <input class="inp" id="iaIn" placeholder="Ej: genera rutina para Carlos, 4 días, volumen..." style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')sendIA()"/>
+    <button class="btn" onclick="sendIA()">Enviar</button>
   </div>
 </div>`;}
 
@@ -5024,7 +4766,7 @@ function renderKL(){
   else if(klTab==='asistente'){el.innerHTML=hAsistente();chatH=[{role:'assistant',content:`${LANG==='en'?'Hi':'Hola'} ${CD.nombre.split(' ')[0]}, ${LANG==='en'?'here to help. What do you need?':'aquí para ayudarte. ¿Qué necesitas?'}`}];}
   else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100);}
   else if(klTab==='logros')el.innerHTML=hBadgesCliente();
-  else if(klTab==='perfil'){el.innerHTML=hPerfil();setTimeout(cargarDatosCuenta,50);}
+  else if(klTab==='perfil')el.innerHTML=hPerfil();
   // Aplicar traducción + nav bar
   if(LANG!=='es') {
     setTimeout(()=>{
@@ -6392,86 +6134,19 @@ function hPerfil(){
     <div id="pf_msg" style="font-size:13px;text-align:center;margin-top:8px;height:20px"></div>
   </div>
 
-  <!-- Selector de idioma -->
-  <div style="margin:14px 14px 0;background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px">
-    <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🌐 ${t('Idioma / Language')}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <button onclick="setLangLogin('es');setLang('es')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='es'?'var(--bl2)':'var(--br)'};background:${LANG==='es'?'rgba(59,130,246,.12)':'none'};color:${LANG==='es'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🇪🇸 Español</button>
-      <button onclick="setLangLogin('en');setLang('en')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='en'?'var(--bl2)':'var(--br)'};background:${LANG==='en'?'rgba(59,130,246,.12)':'none'};color:${LANG==='en'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🇬🇧 English</button>
-    </div>
-    <div style="font-size:10px;color:var(--tx3);margin-top:8px;text-align:center">${t('También puedes cambiarlo en la pantalla de inicio de sesión')}</div>
-  </div>
-
-  <!-- Account settings -->
+  <!-- Selector de idioma movido al login -->
   <div style="margin:14px 14px 20px;background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px">
-    <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">🔐 ${t('Cuenta')}</div>
-
-    <div style="margin-bottom:10px"><div class="form-lbl">${t('Nombre completo')}</div>
-      <input class="inp" id="acc_nombre" placeholder="${t('Tu nombre')}" style="margin-bottom:0"/>
+    <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🌐 Idioma / Language</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button onclick="setLangLogin('es');setLang('es')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='es'?'var(--bl2)':'var(--br)'};background:${LANG==='es'?'rgba(59,130,246,.12)':'none'};color:${LANG==='es'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+        🇪🇸 Español
+      </button>
+      <button onclick="setLangLogin('en');setLang('en')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='en'?'var(--bl2)':'var(--br)'};background:${LANG==='en'?'rgba(59,130,246,.12)':'none'};color:${LANG==='en'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+        🇬🇧 English
+      </button>
     </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">${t('Usuario para acceder')}</div>
-      <input class="inp" id="acc_username" placeholder="${t('Nombre de usuario')}" style="margin-bottom:0" autocomplete="username"/>
-    </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">${t('Email')}</div>
-      <input class="inp" id="acc_email" type="email" placeholder="email@example.com" style="margin-bottom:0"/>
-    </div>
-
-    <div style="border-top:0.5px solid var(--br);margin:12px 0"></div>
-    <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🔑 ${t('Cambiar contraseña')}</div>
-
-    <div style="margin-bottom:8px"><div class="form-lbl">${t('Contraseña actual')}</div>
-      <input class="inp" id="acc_pass_actual" type="password" placeholder="••••••••" style="margin-bottom:0" autocomplete="current-password"/>
-    </div>
-    <div style="margin-bottom:8px"><div class="form-lbl">${t('Nueva contraseña')}</div>
-      <input class="inp" id="acc_pass_nueva" type="password" placeholder="${t('Mínimo 6 caracteres')}" style="margin-bottom:0" autocomplete="new-password"/>
-    </div>
-    <div style="margin-bottom:14px"><div class="form-lbl">${t('Repetir nueva contraseña')}</div>
-      <input class="inp" id="acc_pass_rep" type="password" placeholder="${t('Repite la nueva contraseña')}" style="margin-bottom:0" autocomplete="new-password"/>
-    </div>
-
-    <div id="acc_msg" style="font-size:12px;text-align:center;margin-bottom:8px;min-height:18px"></div>
-    <button class="btn" style="width:100%;padding:12px;font-size:14px" onclick="guardarCuenta()">${t('Guardar cambios')}</button>
+    <div style="font-size:10px;color:var(--tx3);margin-top:8px;text-align:center">También puedes cambiarlo en la pantalla de inicio de sesión</div>
   </div>`;
-}
-
-async function cargarDatosCuenta(){
-  try {
-    const me = await api('/me');
-    const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val||''; };
-    set('acc_nombre', me.nombre);
-    set('acc_username', me.username);
-    set('acc_email', me.email);
-  } catch(e) {}
-}
-
-async function guardarCuenta(){
-  const msg = document.getElementById('acc_msg');
-  const get = id => document.getElementById(id)?.value?.trim() || '';
-  const nombre = get('acc_nombre');
-  const username = get('acc_username');
-  const email = get('acc_email');
-  const pass_actual = get('acc_pass_actual');
-  const pass_nueva = get('acc_pass_nueva');
-  const pass_rep = get('acc_pass_rep');
-
-  if(pass_nueva && pass_nueva !== pass_rep) {
-    msg.style.color='#f87171'; msg.textContent = t('Las contraseñas no coinciden'); return;
-  }
-  if(pass_nueva && !pass_actual) {
-    msg.style.color='#f87171'; msg.textContent = t('Introduce tu contraseña actual'); return;
-  }
-
-  try {
-    msg.style.color='var(--tx3)'; msg.textContent = t('Guardando...');
-    const body = { nombre, username, email };
-    if(pass_nueva) { body.password_actual = pass_actual; body.password_nueva = pass_nueva; }
-    const r = await api('/me', { method:'PUT', body: JSON.stringify(body) });
-    if(r.error) { msg.style.color='#f87171'; msg.textContent = r.error; return; }
-    msg.style.color='#86efac'; msg.textContent = '✓ ' + t('Cambios guardados');
-    // Clear password fields
-    ['acc_pass_actual','acc_pass_nueva','acc_pass_rep'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-    setTimeout(()=>{ msg.textContent=''; }, 2500);
-  } catch(e) { msg.style.color='#f87171'; msg.textContent = t('Error al guardar'); }
 }
 
 
@@ -8473,7 +8148,8 @@ function editarImagenEjercicio(nombre, urlActual){
 async function dbGenerarIANuevo(){
   const res = document.getElementById('db_ia_result');
   if(!dbState.clienteId){ res.innerHTML='<div style="color:#f87171;font-size:13px">Selecciona un cliente primero</div>'; return; }
-  const alimentos = [..._dbSeleccionados].join(', ') || document.getElementById('db_alimentos_input')?.value?.trim() || '';
+  const alimentos = dbFoodsForAI() || document.getElementById('db_alimentos_input')?.value?.trim() || '';
+  const idiomaPlan = COACH_LANG === 'en' ? 'English' : 'Spanish';
   if(!alimentos){ res.innerHTML='<div style="color:#f87171;font-size:13px">Escribe los alimentos disponibles</div>'; return; }
   const numComidas = document.getElementById('db_num_comidas').value;
   const objCalSel = document.getElementById('db_objetivo_cal').value;
@@ -8519,6 +8195,9 @@ async function dbGenerarIANuevo(){
 
   const prompt = `Eres un nutricionista deportivo experto. Crea un plan de dieta para este cliente y responde SOLO con JSON válido, sin texto adicional.
 
+IDIOMA OBLIGATORIO DEL PLAN: ${idiomaPlan}.
+Todos los nombres de comidas, alimentos, variaciones, notas, ajustes, suplementación, motivos y frase motivadora deben estar en ${idiomaPlan}.
+
 ═══ DATOS DEL CLIENTE ═══
 - Nombre: ${c.nombre}
 - Objetivo: ${c.objetivo} (${kcalLabel})
@@ -8540,6 +8219,8 @@ async function dbGenerarIANuevo(){
 ${alimentos}
 
 USA ÚNICAMENTE estos alimentos. No inventes ni añadas ninguno que no esté en esta lista.
+Si el idioma obligatorio es English, usa exactamente los nombres ingleses de esta lista en el JSON final.
+Si el idioma obligatorio es Spanish, usa los nombres españoles de esta lista en el JSON final.
 
 ═══ REGLAS DE SENTIDO CULINARIO (OBLIGATORIAS) ═══
 
@@ -8615,7 +8296,7 @@ RESPONDE EXACTAMENTE en este formato JSON:
   try {
     const d = await api('/ia/chat', {method:'POST', body:JSON.stringify({
       messages:[{role:'user', content:prompt}],
-      system:`Eres un nutricionista deportivo experto. Responde SIEMPRE con JSON válido y compacto, sin texto adicional, sin bloques de código markdown. Todas las cantidades en crudo. Máximo 2 variaciones por comida, máximo 4 alimentos cada una. Clasifica cada alimento antes de combinarlo. Aplica criterio culinario real: cada comida debe ser un plato que existe y tiene sentido. Si no puedes hacer una variación coherente, no la incluyas. Sigue estrictamente las reglas del prompt.`
+      system:`Eres un nutricionista deportivo experto. Responde SIEMPRE con JSON válido y compacto, sin texto adicional, sin bloques de código markdown. Todas las cantidades en crudo. Máximo 2 variaciones por comida, máximo 4 alimentos cada una. Clasifica cada alimento antes de combinarlo. Aplica criterio culinario real: cada comida debe ser un plato que existe y tiene sentido. Si no puedes hacer una variación coherente, no la incluyas. Sigue estrictamente las reglas del prompt. Idioma obligatorio de toda la respuesta: ${idiomaPlan}.`
     })});
 
     let plan;
@@ -9316,6 +8997,105 @@ const DB_ALIMENTOS = {
   5: ['Agua','Agua con gas','Café solo','Café americano','Café con leche desnatada','Café con leche semidesnatada','Té verde','Té negro','Infusión','Manzanilla','Poleo menta','Coca-Cola Zero','Pepsi Max','Aquarius Zero','Monster Ultra / Zero','Red Bull Sugarfree','Bebida vegetal sin azúcar']
 };
 
+// Traducción segura de alimentos para el panel coach.
+// IMPORTANTE: DB_ALIMENTOS se mantiene en español como valor interno para no romper dietas guardadas.
+// En inglés solo cambia lo visible y lo que se envía a la IA cuando COACH_LANG === 'en'.
+const FOOD_TRANSLATIONS = {
+  'Pollo (pechuga)': 'Chicken breast',
+  'Muslo de pollo': 'Chicken thigh',
+  'Pavo': 'Turkey',
+  'Salmón': 'Salmon',
+  'Atún': 'Tuna',
+  'Merluza': 'Hake',
+  'Gambas': 'Shrimp',
+  'Huevos enteros': 'Whole eggs',
+  'Claras de huevo': 'Egg whites',
+  'Ternera magra': 'Lean beef',
+  'Cerdo (aguja)': 'Pork shoulder',
+  'Whey protein': 'Whey protein',
+  'Caseína': 'Casein',
+  'Requesón': 'Cottage cheese',
+  'Yogur proteico': 'High-protein yogurt',
+  'Jamón cocido 95%': 'Cooked ham 95%',
+  'Fiambre pavo 95%': 'Turkey slices 95%',
+  'Queso fresco 0%': 'Fresh cheese 0%',
+
+  'Arroz blanco': 'White rice',
+  'Arroz integral': 'Brown rice',
+  'Avena': 'Oats',
+  'Patata': 'Potato',
+  'Boniato': 'Sweet potato',
+  'Pan integral': 'Whole wheat bread',
+  'Pasta integral': 'Whole wheat pasta',
+  'Quinoa': 'Quinoa',
+  'Lentejas': 'Lentils',
+  'Garbanzos': 'Chickpeas',
+  'Maíz': 'Corn',
+  'Pan de molde integral': 'Whole wheat sliced bread',
+
+  'Aceite de oliva': 'Olive oil',
+  'Aguacate': 'Avocado',
+  'Guacamole': 'Guacamole',
+  'Nueces': 'Walnuts',
+  'Almendras': 'Almonds',
+  'Anacardos': 'Cashews',
+  'Cacahuetes': 'Peanuts',
+  'Crema de cacahuete': 'Peanut butter',
+  'Queso gouda': 'Gouda cheese',
+  'Leche entera': 'Whole milk',
+
+  'Brócoli': 'Broccoli',
+  'Espinacas': 'Spinach',
+  'Lechuga': 'Lettuce',
+  'Tomate': 'Tomato',
+  'Pepino': 'Cucumber',
+  'Cebolla': 'Onion',
+  'Ajo': 'Garlic',
+  'Pimiento': 'Bell pepper',
+  'Champiñones': 'Mushrooms',
+  'Zanahoria': 'Carrot',
+  'Calabacín': 'Zucchini',
+  'Judías verdes': 'Green beans',
+  'Ensalada mixta': 'Mixed salad',
+
+  'Plátano': 'Banana',
+  'Manzana': 'Apple',
+  'Naranja': 'Orange',
+  'Fresas': 'Strawberries',
+  'Arándanos': 'Blueberries',
+  'Mango': 'Mango',
+  'Piña': 'Pineapple',
+  'Piña en lata': 'Canned pineapple',
+  'Uvas': 'Grapes',
+  'Melocotón': 'Peach',
+
+  'Agua': 'Water',
+  'Agua con gas': 'Sparkling water',
+  'Café solo': 'Black coffee',
+  'Café americano': 'Americano coffee',
+  'Café con leche desnatada': 'Coffee with skimmed milk',
+  'Café con leche semidesnatada': 'Coffee with semi-skimmed milk',
+  'Té verde': 'Green tea',
+  'Té negro': 'Black tea',
+  'Infusión': 'Herbal tea',
+  'Manzanilla': 'Chamomile tea',
+  'Poleo menta': 'Pennyroyal mint tea',
+  'Coca-Cola Zero': 'Coca-Cola Zero',
+  'Pepsi Max': 'Pepsi Max',
+  'Aquarius Zero': 'Aquarius Zero',
+  'Monster Ultra / Zero': 'Monster Ultra / Zero',
+  'Red Bull Sugarfree': 'Red Bull Sugarfree',
+  'Bebida vegetal sin azúcar': 'Unsweetened plant-based drink'
+};
+
+function dbFoodLabel(nombre){
+  return COACH_LANG === 'en' ? (FOOD_TRANSLATIONS[nombre] || nombre) : nombre;
+}
+
+function dbFoodsForAI(){
+  return [..._dbSeleccionados].map(dbFoodLabel).join(', ');
+}
+
 let _dbCatActiva = null;
 let _dbSeleccionados = new Set();
 
@@ -9370,8 +9150,9 @@ function dbToggleCat(catIdx, btn){
   chips.style.display = 'flex';
   chips.innerHTML = alims.map(a=>{
     const sel = _dbSeleccionados.has(a);
+    const label = dbFoodLabel(a);
     return `<button onclick="dbToggleAlim('${a.replace(/'/g,"\'")}',this)"
-      style="padding:5px 12px;border-radius:20px;border:0.5px solid ${sel?'var(--bl2)':'rgba(255,255,255,.15)'};background:${sel?'rgba(37,99,235,.25)':'rgba(255,255,255,.05)'};color:${sel?'#93c5fd':'var(--sv3)'};font-size:12px;cursor:pointer;touch-action:manipulation;white-space:nowrap;${sel?'font-weight:700':''}">${sel?'✓ ':''} ${a}</button>`;
+      style="padding:5px 12px;border-radius:20px;border:0.5px solid ${sel?'var(--bl2)':'rgba(255,255,255,.15)'};background:${sel?'rgba(37,99,235,.25)':'rgba(255,255,255,.05)'};color:${sel?'#93c5fd':'var(--sv3)'};font-size:12px;cursor:pointer;touch-action:manipulation;white-space:nowrap;${sel?'font-weight:700':''}">${sel?'✓ ':''} ${label}</button>`;
   }).join('');
 }
 
@@ -9400,7 +9181,7 @@ function dbActualizarSelected(){
   if(!wrap) return;
   const arr = [..._dbSeleccionados];
   if(!arr.length){
-    wrap.innerHTML = '<span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">Tap a category to add foods →</span>';
+    wrap.innerHTML = `<span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">${COACH_LANG === 'en' ? 'Tap a category to add foods →' : 'Toca una categoría para añadir alimentos →'}</span>`;
     if(countLbl) countLbl.textContent = '';
     if(favBtn) favBtn.style.display = 'none';
     if(inp) inp.value = '';
@@ -9408,12 +9189,12 @@ function dbActualizarSelected(){
   }
   wrap.innerHTML = arr.map(a=>`
     <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:rgba(37,99,235,.2);border:0.5px solid var(--bl2);color:#93c5fd;font-size:12px;font-weight:600">
-      ${a}
+      ${dbFoodLabel(a)}
       <button onclick="dbQuitarAlim('${a.replace(/'/g,"\'")}',this)" style="background:none;border:none;color:#93c5fd;cursor:pointer;font-size:12px;padding:0;line-height:1;touch-action:manipulation">×</button>
     </span>`).join('');
-  if(countLbl) countLbl.textContent = arr.length+' foods';
+  if(countLbl) countLbl.textContent = arr.length + (COACH_LANG === 'en' ? ' foods' : ' alimentos');
   if(favBtn) favBtn.style.display = 'block';
-  if(inp) inp.value = arr.join(', ');
+  if(inp) inp.value = arr.map(dbFoodLabel).join(', ');
 }
 
 function dbQuitarAlim(nombre){
@@ -9481,99 +9262,5 @@ function dbEliminarFav(nombre, btn){
 }
 
 </script>
-<script>
-(function(){
-  const ES_TO_EN = {
-    '1. SELECCIONA CLIENTE':'1. SELECT CLIENT','SELECCIONA CLIENTE':'SELECT CLIENT','-- Elige cliente --':'-- Choose client --',
-    'DASHBOARD CLIENTES':'CLIENT DASHBOARD','CLIENTES':'CLIENTS','ACTIVOS':'ACTIVE','ATENCIÓN':'ATTENTION','CLIENTE':'CLIENT','ÚLTIMA SESIÓN':'LAST SESSION','SUSCRIPCIÓN':'SUBSCRIPTION','Avisos':'Alerts','Actualizar':'Refresh','↻ Actualizar':'↻ Refresh',
-    'Crear nuevo cliente':'Create new client','CREAR NUEVO CLIENTE':'CREATE NEW CLIENT','NOMBRE COMPLETO':'FULL NAME','NAME COMPLETO':'FULL NAME','USUARIO (LOGIN)':'USERNAME (LOGIN)','CONTRASEÑA':'PASSWORD','OBJETIVO':'GOAL','NIVEL':'LEVEL','ASIGNAR A COACH':'ASSIGN TO COACH','Crear cliente':'Create client',
-    'Sin clientes aún':'No clients yet','Crea el primero desde "Nuevo cliente"':'Create the first one from "New client"','Crea el primero desde "New client"':'Create the first one from "New client"',
-    'Clientes':'Clients','Crear rutina':'Create routine','Crear dieta':'Create diet','Nuevo cliente':'New client','Pendientes':'Pending','Progreso':'Progress','Asistente IA':'AI Assistant','Cerrar sesión':'Log out',
-    'IA PRIVADA DEL COACH':'PRIVATE COACH AI','IA privada del coach':'Private Coach AI','Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.':'Generate complete routines and diets, analyze progress, or request specific adjustments for any client.','Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?':'Hi coach, ready to go. I can generate complete routines and diets, analyze progress and suggest adjustments. What do you need?','Descargar imágenes ejercicios':'Download exercise images','Ej: genera rutina para Carlos, 4 días, volumen...':'Ex: generate a routine for Carlos, 4 days, bulking...','Enviar':'Send'
-  };
-  const EN_TO_ES = Object.fromEntries(Object.entries(ES_TO_EN).map(([k,v])=>[v,k]));
-  Object.assign(EN_TO_ES, {'Clients':'Clientes','Create routine':'Crear rutina','Create diet':'Crear dieta','New client':'Nuevo cliente','Pending':'Pendientes','Progress':'Progreso','AI Assistant':'Asistente IA','Log out':'Cerrar sesión','CLIENTS':'CLIENTES','ACTIVE':'ACTIVOS','ATTENTION':'ATENCIÓN','CLIENT':'CLIENTE','LAST SESSION':'ÚLTIMA SESIÓN','SUBSCRIPTION':'SUSCRIPCIÓN','Alerts':'Avisos','Refresh':'Actualizar','No clients yet':'Sin clientes aún'});
-  function lang(){try{return window.COACH_LANG || localStorage.getItem('wm_coach_lang') || 'es'}catch(e){return 'es'}}
-  function dict(){return lang()==='en'?ES_TO_EN:EN_TO_ES}
-  function tr(s){if(!s)return s;let out=String(s),m=dict(),t=out.trim();if(m[t])return out.replace(t,m[t]);Object.keys(m).sort((a,b)=>b.length-a.length).forEach(k=>{if(out.includes(k))out=out.split(k).join(m[k])});return out}
-  function run(root){root=root||document.getElementById('sCoach');if(!root)return;root.querySelectorAll('[data-i18n-coach]').forEach(el=>{let n=tr(el.getAttribute('data-i18n-coach')||el.textContent);if(n&&el.textContent!==n)el.textContent=n});root.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(el=>{let n=tr(el.placeholder);if(n!==el.placeholder)el.placeholder=n});root.querySelectorAll('option').forEach(el=>{let n=tr(el.textContent);if(n!==el.textContent)el.textContent=n});const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){let p=node.parentElement;if(!p||['SCRIPT','STYLE','TEXTAREA','INPUT'].includes(p.tagName)||!node.textContent.trim())return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}}),nodes=[];while(w.nextNode())nodes.push(w.currentNode);nodes.forEach(node=>{let n=tr(node.textContent);if(n!==node.textContent)node.textContent=n})}
-  const oldApply=window.applyCoachLang;window.applyCoachLang=function(el){try{oldApply&&oldApply(el)}catch(e){}try{run(el)}catch(e){}};
-  const oldSet=window.setCoachLang;window.setCoachLang=function(l){try{oldSet&&oldSet(l)}catch(e){}[50,200,600].forEach(ms=>setTimeout(()=>run(),ms))};
-  if(window.cNav){const old=window.cNav;window.cNav=async function(){const r=await old.apply(this,arguments);[50,200].forEach(ms=>setTimeout(()=>run(),ms));return r}}
-  document.addEventListener('DOMContentLoaded',()=>[300,900].forEach(ms=>setTimeout(()=>run(),ms)));
-})();
-
-// ═══ COACH ACCOUNT SETTINGS ═══════════════════════════════════════
-function hCuentaCoach(){
-  return`
-  <div style="max-width:520px;margin:0 auto;padding:8px 0 40px">
-    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:18px;margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">👤 ${tc('Datos personales')}</div>
-      <div style="margin-bottom:10px"><div class="form-lbl">${tc('Nombre completo')}</div>
-        <input class="inp" id="cacc_nombre" placeholder="${tc('Tu nombre')}" style="margin-bottom:0"/>
-      </div>
-      <div style="margin-bottom:10px"><div class="form-lbl">${tc('Usuario para acceder')}</div>
-        <input class="inp" id="cacc_username" placeholder="${tc('Nombre de usuario')}" style="margin-bottom:0" autocomplete="username"/>
-      </div>
-      <div style="margin-bottom:0"><div class="form-lbl">${tc('Email')}</div>
-        <input class="inp" id="cacc_email" type="email" placeholder="email@example.com" style="margin-bottom:0"/>
-      </div>
-    </div>
-
-    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:18px;margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">🔑 ${tc('Cambiar contraseña')}</div>
-      <div style="margin-bottom:8px"><div class="form-lbl">${tc('Contraseña actual')}</div>
-        <input class="inp" id="cacc_pass_actual" type="password" placeholder="••••••••" style="margin-bottom:0" autocomplete="current-password"/>
-      </div>
-      <div style="margin-bottom:8px"><div class="form-lbl">${tc('Nueva contraseña')}</div>
-        <input class="inp" id="cacc_pass_nueva" type="password" placeholder="${tc('Mínimo 6 caracteres')}" style="margin-bottom:0" autocomplete="new-password"/>
-      </div>
-      <div style="margin-bottom:0"><div class="form-lbl">${tc('Repetir nueva contraseña')}</div>
-        <input class="inp" id="cacc_pass_rep" type="password" placeholder="${tc('Repite la nueva contraseña')}" style="margin-bottom:0" autocomplete="new-password"/>
-      </div>
-    </div>
-
-    <div id="cacc_msg" style="font-size:13px;text-align:center;margin-bottom:10px;min-height:18px"></div>
-    <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarCuentaCoach()">✓ ${tc('Guardar cambios')}</button>
-  </div>`;
-}
-
-async function cargarDatosCuentaCoach(){
-  try {
-    const me = await api('/me');
-    const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
-    set('cacc_nombre', me.nombre);
-    set('cacc_username', me.username);
-    set('cacc_email', me.email);
-  } catch(e) {}
-}
-
-async function guardarCuentaCoach(){
-  const msg = document.getElementById('cacc_msg');
-  const get = id => document.getElementById(id)?.value?.trim() || '';
-  const nombre = get('cacc_nombre');
-  const username = get('cacc_username');
-  const email = get('cacc_email');
-  const pass_actual = get('cacc_pass_actual');
-  const pass_nueva = get('cacc_pass_nueva');
-  const pass_rep = get('cacc_pass_rep');
-
-  if(pass_nueva && pass_nueva !== pass_rep){
-    msg.style.color='#f87171'; msg.textContent = tc('Las contraseñas no coinciden'); return;
-  }
-  if(pass_nueva && !pass_actual){
-    msg.style.color='#f87171'; msg.textContent = tc('Introduce tu contraseña actual'); return;
-  }
-  try {
-    msg.style.color='var(--tx3)'; msg.textContent = tc('Guardando...');
-    const body = { nombre, username, email };
-    if(pass_nueva){ body.password_actual = pass_actual; body.password_nueva = pass_nueva; }
-    const r = await api('/me', { method:'PUT', body: JSON.stringify(body) });
-    if(r.error){ msg.style.color='#f87171'; msg.textContent = r.error; return; }
-    msg.style.color='#86efac'; msg.textContent = '✓ ' + tc('Cambios guardados');
-    ['cacc_pass_actual','cacc_pass_nueva','cacc_pass_rep'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-    setTimeout(()=>{ msg.textContent=''; }, 2500);
-  } catch(e){ msg.style.color='#f87171'; msg.textContent = tc('Error al guardar'); }
-}
-
-</script>
+</body>
+</html>
