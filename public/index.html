@@ -2416,10 +2416,12 @@ async function renderCoach(s){
   fetch('/api/images-status').then(r=>r.json()).then(d=>{
     const btn=document.getElementById('btn_img_status');
     if(!btn)return;
-    if(d.count>0){btn.textContent=`✓ ${d.count} imágenes en BD`;btn.style.color='#86efac';}
-    else{btn.textContent='🖼️ Descargar imágenes ejercicios';}
+    if(d.count>0){btn.textContent=`✓ ${d.count} ${COACH_LANG==='en'?'images in DB':'imágenes en BD'}`;btn.style.color='#86efac';}
+    else{btn.textContent=tc('🖼️ Descargar imágenes ejercicios');}
  }).catch(()=>{});
   }
+  // Re-apply static translations after every render
+  setTimeout(()=>{ applyCoachLang(document.getElementById('sCoach')); applyCoachLang(document.getElementById('cContent')); },50);
 }
 
 function hClientes(cl){
@@ -2447,7 +2449,7 @@ function hClientes(cl){
   // Stats
   const misCls = cl.filter(c => !c.coach_id || c.coach_id === USER.id).length;
   const otrosCls = cl.filter(c => c.coach_id && c.coach_id !== USER.id).length;
-  const otroCoachNombre = Object.values(coachColors).find((v,i) => i > 0)?.label || 'Socia';
+  const otroCoachNombre = Object.values(coachColors).find((v,i) => i > 0)?.label || 'Partner';
 
   return`
   <!-- Stats -->
@@ -3506,7 +3508,7 @@ async function crearCliente(){
   if(!n||!u||!p){msg.style.color='#f87171';msg.textContent=COACH_LANG==='en'?'Fill in all fields':'Rellena todos los campos';return;}
   try{
     await api('/auth/register-cliente',{method:'POST',body:JSON.stringify({username:u,password:p,nombre:n,objetivo:document.getElementById('nc_o').value,nivel:document.getElementById('nc_nv').value,coach_id:coachId})});
-    msg.style.color='#86efac';msg.textContent=`✓ ${n} creado. Login: ${u}`;
+    msg.style.color='#86efac';msg.textContent=COACH_LANG==='en'?`✓ ${n} created. Login: ${u}`:`✓ ${n} creado. Login: ${u}`;
   }catch(e){msg.style.color='#f87171';msg.textContent=e.error||'Error';}
 }
 
@@ -3693,7 +3695,7 @@ let rbState={clienteId:null,diaId:null,diaNombre:'',diaOpen:{}};
 function hRutinas(){return`
   <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr">1. ${tc('Selecciona cliente')}</div>
-    <select class="inp" id="rb_cl" onchange="rbSelCliente(this.value)" style="margin-bottom:0"><option value="">-- Elige cliente --</option></select>
+    <select class="inp" id="rb_cl" onchange="rbSelCliente(this.value)" style="margin-bottom:0"><option value="">${COACH_LANG==='en'?'-- Choose client --':'-- Elige cliente --'}</option></select>
   </div>
   <div id="rb_dias_wrap" style="display:none">
     <div class="sec" style="margin-bottom:12px">
@@ -3866,6 +3868,8 @@ function rbToggleDia(id){rbState.diaOpen[id]=!rbState.diaOpen[id];const b=docume
 function rbAddDia(){
   const panel = document.getElementById('rb_dia_panel');
   if(!panel){ alert('Error: panel no encontrado'); return; }
+  // Apply language translations to static panel
+  applyCoachLang(panel);
   panel.style.cssText = 'display:flex!important;position:fixed;inset:0;background:rgba(9,9,11,.95);z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:20px';
 }
 
@@ -4212,7 +4216,7 @@ let dbState={clienteId:null,comidaId:null,comidaNombre:''};
 function hDietaBuilder(){return`
   <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr">1. Selecciona cliente</div>
-    <select class="inp" id="db_cl" onchange="dbSelCliente(this.value)" style="margin-bottom:0"><option value="">${tc('-- Elige cliente --')}</option></select>
+    <select class="inp" id="db_cl" onchange="dbSelCliente(this.value)" style="margin-bottom:0"><option value="">${COACH_LANG==='en'?'-- Choose client --':'-- Elige cliente --'}</option></select>
   </div>
   <div id="db_wrap" style="display:none">
     <div class="sec" style="margin-bottom:12px;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.2)">
@@ -4436,7 +4440,7 @@ function hProgreso(cl){
   <div id="sub_alertas_wrap"></div>
   <div id="adherencia_alertas_wrap"></div>
   <div class="sec">
-    <div class="sec-hdr">📊 ${tc('Dashboard clientes')}
+    <div class="sec-hdr">📊 ${COACH_LANG==='en'?'Client dashboard':'Dashboard clientes'}
       <div style="display:flex;gap:6px">
         <button class="btn btn-sm" onclick="enviarAvisosVencimiento()" style="font-size:11px">🔔 ${COACH_LANG==='en'?'Alerts':'Avisos'}</button>
         <button class="btn btn-sm" onclick="cargarDashboard()" style="font-size:11px;background:var(--bl2)">↺ ${COACH_LANG==='en'?'Refresh':'Actualizar'}</button>
@@ -4459,7 +4463,7 @@ function hProgreso(cl){
     </div>
     <!-- Tabla clientes con semáforo -->
     <table style="width:100%;border-collapse:collapse">
-      <tr>${['','Cliente',tc('Progreso'),tc('Última sesión'),tc('Sem'),tc('Suscripción')].map(h=>`<th style="text-align:left;padding:5px 8px;font-size:10px;font-weight:700;color:var(--tx3);border-bottom:0.5px solid var(--br);text-transform:uppercase;letter-spacing:.07em">${h}</th>`).join('')}</tr>
+      <tr>${['',COACH_LANG==='en'?'Client':'Cliente',tc('Progreso'),tc('Última sesión'),COACH_LANG==='en'?'Wk':'Sem',COACH_LANG==='en'?'Subscription':'Suscripción'].map(h=>`<th style="text-align:left;padding:5px 8px;font-size:10px;font-weight:700;color:var(--tx3);border-bottom:0.5px solid var(--br);text-transform:uppercase;letter-spacing:.07em">${h}</th>`).join('')}</tr>
       ${cl.map((c,i)=>{const a=ac(i);return`<tr onclick="verCliente(${c.id})" style="cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.02)'" onmouseout="this.style.background='none'">
         <td style="padding:9px 6px;width:28px"><span id="semaforo_${c.id}" title="${tc('Cargando...')}" style="font-size:18px">⏳</span></td>
         <td style="padding:9px 8px"><div class="fl"><div class="av" style="width:26px;height:26px;font-size:10px;background:${a.bg};color:${a.tx};border-color:${a.br};margin-right:7px">${ini(c.nombre)}</div><div><div style="font-size:13px;font-weight:700;color:var(--sv)">${c.nombre}</div><div style="font-size:10px;color:var(--tx3)">${tc(c.objetivo)}</div></div></div></td>
