@@ -655,7 +655,7 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
         <button class="sni" onclick="cNav('ia',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 015 5c0 2.4-1.7 4.4-4 4.9V14H7v-2.1C4.7 11.4 3 0.4 3 7a5 5 0 015-5z" stroke="currentColor" stroke-width="1.3"/></svg><span data-i18n-coach="Asistente IA">Asistente IA</span></button>
         <button class="sni" id="sni_equipo" onclick="cNav('equipo',this)" style="display:none"><svg viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 13c0-2.76 2.24-5 4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M15 13c0-2.76-2.24-5-4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 8v5M6 10h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>Mi equipo</span></button>
       </div>
-      <button class="sb-out" onclick="doLogout()"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Cerrar sesión</button>
+      <button class="sb-out" onclick="doLogout()"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n-coach="Cerrar sesión">Cerrar sesión</span></button>
       <!-- Selector idioma coach -->
       <div style="display:flex;gap:6px;padding:10px 12px 14px;border-top:0.5px solid var(--br);margin-top:4px">
         <button id="coach_lang_es" onclick="setCoachLang('es')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);cursor:pointer;transition:.2s">
@@ -670,7 +670,7 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
       <div class="topbar">
         <div class="topbar-left">
           <img class="topbar-logo" src="/logo.png" alt="W" onerror="this.style.display='none'"/>
-          <div class="topbar-title" id="cTitle">Clientes</div>
+          <div class="topbar-title" id="cTitle" data-i18n-coach="Clientes">Clientes</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
           <div style="position:relative;cursor:pointer" onclick="toggleNotifCoach()" id="notif_bell_wrap">
@@ -683,21 +683,21 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
       <!-- PANEL NOTIFICACIONES COACH -->
       <div id="notif_panel_coach" style="display:none;position:absolute;top:48px;right:12px;width:320px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.4);max-height:420px;overflow-y:auto">
         <div style="padding:12px 14px;border-bottom:0.5px solid var(--br);display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;font-weight:700;color:var(--sv)">Notificaciones</span>
-          <button onclick="marcarTodasLeidasCoach()" style="background:none;border:none;color:var(--blg);font-size:11px;cursor:pointer;font-family:'Inter',sans-serif">Marcar todas leídas</button>
+          <span style="font-size:12px;font-weight:700;color:var(--sv)" data-i18n-coach="Notificaciones">Notificaciones</span>
+          <button onclick="marcarTodasLeidasCoach()" style="background:none;border:none;color:var(--blg);font-size:11px;cursor:pointer;font-family:'Inter',sans-serif" data-i18n-coach="Marcar todas leídas">Marcar todas leídas</button>
         </div>
-        <div id="notif_list_coach"><div style="padding:16px;font-size:13px;color:var(--tx3);text-align:center">Cargando...</div></div>
+        <div id="notif_list_coach"><div style="padding:16px;font-size:13px;color:var(--tx3);text-align:center" data-i18n-coach="Cargando...">Cargando...</div></div>
       </div>
       <div class="scroll" id="cContent" style="padding:16px"></div>
     </div>
   </div>
   <!-- COACH MOBILE NAV -->
   <div class="bnav-bar" id="coachMobileNav" style="display:none">
-    <button class="bni on" id="cbni0" onclick="cNavM('clientes',this)"><svg viewBox="0 0 20 20" fill="none"><circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 17c0-3.87 2.69-7 6-7s6 3.13 6 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="bni-lbl">Clientes</span></button>
-    <button class="bni" id="cbni1" onclick="cNavM('rutinas',this)"><svg viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 10h6M7 7h4M7 13h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="bni-lbl">Rutinas</span></button>
+    <button class="bni on" id="cbni0" onclick="cNavM('clientes',this)"><svg viewBox="0 0 20 20" fill="none"><circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 17c0-3.87 2.69-7 6-7s6 3.13 6 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="bni-lbl" data-i18n-coach="Clientes">Clientes</span></button>
+    <button class="bni" id="cbni1" onclick="cNavM('rutinas',this)"><svg viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 10h6M7 7h4M7 13h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="bni-lbl" data-i18n-coach="Rutinas">Rutinas</span></button>
     <button class="bni" id="cbni2" onclick="cNavM('dieta-builder',this)"><svg viewBox="0 0 20 20" fill="none"><path d="M10 3v4M7 5c0 3 1 5 3 5s3-2 3-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5 10h10l-1.5 7h-7L5 10z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span class="bni-lbl" data-i18n="Dieta">Dieta</span></button>
-    <button class="bni" onclick="cNavM('pendientes',this)"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="bni-lbl">Solicitudes</span></button>
-    <button class="bni" id="cbni3" onclick="cNavM('nuevo',this)"><svg viewBox="0 0 20 20" fill="none"><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M2 17c0-4 3.13-7 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M15 12v6M12 15h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="bni-lbl">+ Cliente</span></button>
+    <button class="bni" onclick="cNavM('pendientes',this)"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="bni-lbl" data-i18n-coach="Solicitudes">Solicitudes</span></button>
+    <button class="bni" id="cbni3" onclick="cNavM('nuevo',this)"><svg viewBox="0 0 20 20" fill="none"><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M2 17c0-4 3.13-7 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M15 12v6M12 15h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="bni-lbl" data-i18n-coach="+ Cliente">+ Cliente</span></button>
     <button class="bni" onclick="doLogout()"><svg viewBox="0 0 20 20" fill="none"><path d="M8 3H5a1 1 0 00-1 1v12a1 1 0 001 1h3M13 14l3-4-3-4M16 10H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="bni-lbl" data-i18n="Salir">Salir</span></button>
   </div>
 </div>
@@ -805,34 +805,34 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
 <!-- PANEL AÑADIR DÍA - STATIC HTML -->
 <div id="rb_dia_panel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(9,9,11,.95);z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:20px">
   <div style="background:#111113;border:0.5px solid #27272a;border-radius:16px;padding:20px;width:100%;max-width:420px">
-    <div style="font-size:10px;color:#93c5fd;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Añadir día de entreno</div>
-    <div style="font-size:11px;color:#52525b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Nombre del día</div>
+    <div style="font-size:10px;color:#93c5fd;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px" data-i18n-coach="Añadir día de entreno">Añadir día de entreno</div>
+    <div style="font-size:11px;color:#52525b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px" data-i18n-coach="Nombre del día">Nombre del día</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-      <button onclick="document.getElementById('rb_dia_nombre').value='Lunes'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Lunes</button>
-      <button onclick="document.getElementById('rb_dia_nombre').value='Martes'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Martes</button>
-      <button onclick="document.getElementById('rb_dia_nombre').value='Miércoles'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Miércoles</button>
-      <button onclick="document.getElementById('rb_dia_nombre').value='Jueves'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Jueves</button>
-      <button onclick="document.getElementById('rb_dia_nombre').value='Viernes'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Viernes</button>
-      <button onclick="document.getElementById('rb_dia_nombre').value='Sábado'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Sábado</button>
-      <button onclick="document.getElementById('rb_dia_nombre').value='Día A'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Día A</button>
-      <button onclick="document.getElementById('rb_dia_nombre').value='Día B'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Día B</button>
+      <button onclick="document.getElementById('rb_dia_nombre').value=tc('Lunes')||'Lunes'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Lunes">Lunes</span></button>
+      <button onclick="document.getElementById('rb_dia_nombre').value=tc('Martes')||'Martes'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Martes">Martes</span></button>
+      <button onclick="document.getElementById('rb_dia_nombre').value=tc('Miércoles')||'Miércoles'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Miércoles">Miércoles</span></button>
+      <button onclick="document.getElementById('rb_dia_nombre').value=tc('Jueves')||'Jueves'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Jueves">Jueves</span></button>
+      <button onclick="document.getElementById('rb_dia_nombre').value=tc('Viernes')||'Viernes'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Viernes">Viernes</span></button>
+      <button onclick="document.getElementById('rb_dia_nombre').value=tc('Sábado')||'Sábado'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Sábado">Sábado</span></button>
+      <button onclick="document.getElementById('rb_dia_nombre').value=tc('Día A')||'Día A'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Día A">Día A</span></button>
+      <button onclick="document.getElementById('rb_dia_nombre').value=tc('Día B')||'Día B'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Día B">Día B</span></button>
     </div>
-    <input id="rb_dia_nombre" placeholder="Ej: Lunes, Día A..." style="width:100%;padding:10px 12px;border:0.5px solid #27272a;border-radius:10px;background:rgba(255,255,255,.03);color:#fafafa;font-size:14px;font-family:inherit;margin-bottom:12px;box-sizing:border-box"/>
-    <div style="font-size:11px;color:#52525b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Grupo muscular</div>
+    <input id="rb_dia_nombre" data-placeholder-coach-en="E.g. Monday, Day A..." placeholder="Ej: Lunes, Día A..." style="width:100%;padding:10px 12px;border:0.5px solid #27272a;border-radius:10px;background:rgba(255,255,255,.03);color:#fafafa;font-size:14px;font-family:inherit;margin-bottom:12px;box-sizing:border-box"/>
+    <div style="font-size:11px;color:#52525b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px" data-i18n-coach="Grupo muscular">Grupo muscular</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-      <button onclick="document.getElementById('rb_dia_grupo').value='Pecho + Tríceps'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Pecho + Tríceps</button>
-      <button onclick="document.getElementById('rb_dia_grupo').value='Espalda + Bíceps'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Espalda + Bíceps</button>
-      <button onclick="document.getElementById('rb_dia_grupo').value='Hombros + Brazos'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Hombros + Brazos</button>
-      <button onclick="document.getElementById('rb_dia_grupo').value='Piernas'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Piernas</button>
-      <button onclick="document.getElementById('rb_dia_grupo').value='Full Body'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Full Body</button>
-      <button onclick="document.getElementById('rb_dia_grupo').value='Empuje'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Empuje</button>
-      <button onclick="document.getElementById('rb_dia_grupo').value='Tirón'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Tirón</button>
-      <button onclick="document.getElementById('rb_dia_grupo').value='Cardio'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit">Cardio</button>
+      <button onclick="document.getElementById('rb_dia_grupo').value=tc('Pecho + Tríceps')||'Pecho + Tríceps'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Pecho + Tríceps">Pecho + Tríceps</span></button>
+      <button onclick="document.getElementById('rb_dia_grupo').value=tc('Espalda + Bíceps')||'Espalda + Bíceps'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Espalda + Bíceps">Espalda + Bíceps</span></button>
+      <button onclick="document.getElementById('rb_dia_grupo').value=tc('Hombros + Brazos')||'Hombros + Brazos'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Hombros + Brazos">Hombros + Brazos</span></button>
+      <button onclick="document.getElementById('rb_dia_grupo').value=tc('Piernas')||'Piernas'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Piernas">Piernas</span></button>
+      <button onclick="document.getElementById('rb_dia_grupo').value='Full Body'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Full Body">Full Body</span></button>
+      <button onclick="document.getElementById('rb_dia_grupo').value=tc('Empuje')||'Empuje'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Empuje">Empuje</span></button>
+      <button onclick="document.getElementById('rb_dia_grupo').value=tc('Tirón')||'Tirón'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Tirón">Tirón</span></button>
+      <button onclick="document.getElementById('rb_dia_grupo').value='Cardio'" style="padding:7px 11px;border:0.5px solid #27272a;border-radius:8px;background:#18181b;color:#a1a1aa;font-size:12px;cursor:pointer;font-family:inherit"><span data-i18n-coach="Cardio">Cardio</span></button>
     </div>
-    <input id="rb_dia_grupo" placeholder="Ej: Pecho + Tríceps..." style="width:100%;padding:10px 12px;border:0.5px solid #27272a;border-radius:10px;background:rgba(255,255,255,.03);color:#fafafa;font-size:14px;font-family:inherit;margin-bottom:14px;box-sizing:border-box"/>
+    <input id="rb_dia_grupo" data-placeholder-coach-en="E.g. Chest + Triceps..." placeholder="Ej: Pecho + Tríceps..." style="width:100%;padding:10px 12px;border:0.5px solid #27272a;border-radius:10px;background:rgba(255,255,255,.03);color:#fafafa;font-size:14px;font-family:inherit;margin-bottom:14px;box-sizing:border-box"/>
     <div style="display:flex;gap:10px">
-      <button id="rb_dia_btn" onclick="rbConfirmDia()" style="flex:1;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">✓ Añadir día</button>
-      <button onclick="document.getElementById('rb_dia_panel').style.display='none'" style="padding:12px 16px;border:0.5px solid #27272a;border-radius:10px;background:none;color:#a1a1aa;cursor:pointer;font-family:inherit;font-size:14px">Cancelar</button>
+      <button id="rb_dia_btn" onclick="rbConfirmDia()" style="flex:1;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit" data-i18n-coach="✓ Añadir día">✓ Añadir día</button>
+      <button onclick="document.getElementById('rb_dia_panel').style.display='none'" style="padding:12px 16px;border:0.5px solid #27272a;border-radius:10px;background:none;color:#a1a1aa;cursor:pointer;font-family:inherit;font-size:14px" data-i18n-coach="Cancelar">Cancelar</button>
     </div>
   </div>
 </div>
@@ -2137,6 +2137,9 @@ function setCoachLang(lang) {
   }
   // Re-renderizar panel coach si está activo
   if(document.getElementById('sCoach')?.classList.contains('on')) {
+    // Update topbar title
+    const cTitleEl = document.getElementById('cTitle');
+    if(cTitleEl) cTitleEl.textContent = tc(cTitleEl.textContent) || cTitleEl.textContent;
     renderCoach(currentCoachTab || 'clientes');
   }
   // Traducir nav estática del coach
@@ -2159,6 +2162,10 @@ function applyCoachLang(el) {
   el.querySelectorAll('[data-i18n-coach]').forEach(e2 => {
     const key = e2.getAttribute('data-i18n-coach');
     if(COACH_TRANSLATIONS[key]) e2.textContent = COACH_TRANSLATIONS[key];
+  });
+  // data-placeholder-coach-en
+  el.querySelectorAll('[data-placeholder-coach-en]').forEach(inp => {
+    if(COACH_LANG === 'en') inp.placeholder = inp.getAttribute('data-placeholder-coach-en');
   });
 }
 
@@ -2806,9 +2813,9 @@ function tabEntrenoToggleDia(diaId) {
 }
 
 async function tabEntrenoNuevoDia(clienteId) {
-  const nombre = prompt('Nombre del día (ej: Día A, Empuje, Lunes...):');
+  const nombre = prompt(COACH_LANG==='en'?'Day name (e.g. Day A, Push, Monday...):':'Nombre del día (ej: Día A, Empuje, Lunes...):')
   if(!nombre) return;
-  const grupo = prompt('Grupo muscular (ej: Pecho/Hombro/Tríceps, Piernas...):') || 'General';
+  const grupo = prompt(COACH_LANG==='en'?'Muscle group (e.g. Chest/Shoulder/Triceps, Legs...):':'Grupo muscular (ej: Pecho/Hombro/Tríceps, Piernas...):') || 'General';
   await api('/clientes/'+clienteId+'/dias', {
     method:'POST', body:JSON.stringify({nombre, grupo, orden: 0})
   });
@@ -2820,7 +2827,7 @@ async function tabEntrenoNuevoDia(clienteId) {
 }
 
 async function tabEntrenoDelDia(diaId) {
-  if(!confirm('¿Eliminar este día y todos sus ejercicios?')) return;
+  if(!confirm(tc('¿Eliminar este día y todos sus ejercicios?'))) return;
   await api('/dias/'+diaId, {method:'DELETE'});
   const clienteId = window._coachClienteId;
   const c = await api('/clientes/'+clienteId);
@@ -2951,8 +2958,8 @@ function switchClienteTab(tab, btn) {
             '</div>'+
             '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'+
               (incompleto
-                ? '<span class="badge" style="background:rgba(245,158,11,.15);color:var(--amb);border:0.5px solid rgba(245,158,11,.3)">⚠ Incompleto</span>'
-                : '<span class="badge b-gn">✓ Completado</span>')+
+                ? '<span class="badge" style="background:rgba(245,158,11,.15);color:var(--amb);border:0.5px solid rgba(245,158,11,.3)">⚠ '+tc('Incompleto')+'</span>'
+                : '<span class="badge b-gn">✓ '+(COACH_LANG==='en'?'Completed':'Completado')+'</span>')+
               (valoracion ? '<span style="font-size:20px" title="'+valoracion+'">'+valoracion.split(' ')[0]+'</span>' : '')+
               '<span style="font-size:10px;color:var(--tx3)">'+totalSeries+' series</span>'+
             '</div>'+
@@ -2980,7 +2987,7 @@ function switchClienteTab(tab, btn) {
       // Gráficas de progreso eliminadas
       }
     }).catch(()=>{
-      if(wrap) wrap.innerHTML = '<div style="font-size:13px;color:#f87171;padding:20px;text-align:center">Error cargando sesiones.</div>';
+      if(wrap) wrap.innerHTML = `<div style="font-size:13px;color:#f87171;padding:20px;text-align:center">${tc('Error cargando sesiones.')}</div>`;
     });
   }
   if(tab === 'entreno') {
@@ -3032,7 +3039,7 @@ async function guardarDatos(id){
     clienteDatosModoVer(btn);
   } catch(e){
     btn.textContent='Error'; btn.disabled=false;
-    setTimeout(()=>{btn.textContent='Guardar';},2000);
+    setTimeout(()=>{btn.textContent=tc('Guardar');},2000);
   }
 }
 
@@ -3042,7 +3049,7 @@ function clienteDatosModoVer(btn){
   if(sec){ sec.querySelectorAll('input,select,textarea').forEach(el=>{ el.disabled=true; el.style.opacity='.7'; }); }
   // Change button to Editar
   if(btn){
-    btn.textContent='✏️ Editar';
+    btn.textContent=tc('✏️ Editar');
     btn.style.background='var(--bl2)';
     btn.disabled=false;
     btn.onclick = function(){ clienteDatosModoEditar(this); };
@@ -3249,12 +3256,12 @@ function actualizarBarraMacros(){
 async function rebalancearAutomatico(){
   const macro = document.getElementById('auto_macro')?.value;
   const delta = parseFloat(document.getElementById('auto_delta')?.value||'0');
-  if(!delta){ alert('Escribe un valor de cambio (ej: -200 o +30)'); return; }
+  if(!delta){ alert(COACH_LANG==='en'?'Enter a change value (e.g. -200 or +30)':'Escribe un valor de cambio (ej: -200 o +30)'); return; }
   const c = window._coachClienteActual;
   if(!c || !c.comidas.length) return;
 
   const btn = event.target;
-  btn.textContent='⏳ Calculando...'; btn.disabled=true;
+  btn.textContent='⏳ '+(COACH_LANG==='en'?'Calculating...':'Calculando...'); btn.disabled=true;
 
   // Calcular factor de ajuste proporcional
   // Para cada alimento, identificar si es del tipo de macro a ajustar
@@ -3268,7 +3275,7 @@ async function rebalancearAutomatico(){
 
   // Qué queremos tener
   const macroObjetivo = macroActual + delta;
-  if(macroObjetivo <= 0){ alert('El ajuste dejaría el plan sin ese macro. Reduce el cambio.'); btn.textContent='🔧 Aplicar ajuste'; btn.disabled=false; return; }
+  if(macroObjetivo <= 0){ alert(tc('El ajuste dejaría el plan sin ese macro. Reduce el cambio.')); btn.textContent='🔧 '+tc('Aplicar ajuste'); btn.disabled=false; return; }
 
   const factor = macroObjetivo / Math.max(macroActual, 1);
 
@@ -3298,18 +3305,18 @@ async function rebalancearAutomatico(){
 
   await Promise.all(promesas);
   renderEditarDietaCoach(c);
-  btn.textContent='✓ Aplicado'; btn.disabled=false;
-  setTimeout(()=>{ btn.textContent='🔧 Aplicar ajuste'; }, 1500);
+  btn.textContent='✓ '+(COACH_LANG==='en'?'Applied':'Aplicado'); btn.disabled=false;
+  setTimeout(()=>{ btn.textContent='🔧 '+tc('Aplicar ajuste'); }, 1500);
 }
 
 async function rebalancearConIA(){
   const instruccion = document.getElementById('coach_ia_ajuste')?.value?.trim();
-  if(!instruccion){ alert('Escribe qué ajuste quieres hacer'); return; }
+  if(!instruccion){ alert(tc('Escribe qué ajuste quieres hacer')); return; }
   const c = window._coachClienteActual;
   if(!c || !c.comidas.length) return;
 
   const btn = event.target;
-  btn.textContent='⏳ Rebalanceando...'; btn.disabled=true;
+  btn.textContent='⏳ '+(COACH_LANG==='en'?'Rebalancing...':'Rebalanceando...'); btn.disabled=true;
 
   const planActual = c.comidas.map(m=>({
     nombre: m.nombre,
@@ -3427,7 +3434,7 @@ async function guardarDietaCoach(){
 }
 
 async function borrarDietaCoach(){
-  if(!confirm('¿Borrar toda la dieta de este cliente?')) return;
+  if(!confirm(tc('¿Borrar toda la dieta de este cliente?'))) return;
   const c = window._coachClienteActual;
   if(!c) return;
   for(const m of c.comidas) await api('/comidas/'+m.id, {method:'DELETE'});
@@ -3488,12 +3495,12 @@ async function reasignarCoach(clienteId){
     const c = window._coachClienteActual;
     const actual = c.coach_id || USER.id;
     const opciones = coaches.map((co,i) => `${i+1}. ${co.nombre||co.username} (@${co.username})${co.id===actual?' ← actual':''}`).join('\n');
-    const idx = prompt(`Reasignar "${c.nombre}" a:\n\n${opciones}\n\nEscribe el número:`);
+    const idx = prompt(COACH_LANG==='en'?`Reassign "${c.nombre}" to:\n\n${opciones}\n\nEnter the number:`:`Reasignar "${c.nombre}" a:\n\n${opciones}\n\nEscribe el número:`);
     if(!idx) return;
     const coach = coaches[parseInt(idx)-1];
-    if(!coach){alert('Número inválido');return;}
+    if(!coach){alert(COACH_LANG==='en'?'Invalid number':'Número inválido');return;}
     await api('/clientes/'+clienteId+'/asignar-coach',{method:'POST',body:JSON.stringify({coach_id:coach.id})});
-    alert(`✓ ${c.nombre} asignado a ${coach.nombre||coach.username}`);
+    alert(COACH_LANG==='en'?`✓ ${c.nombre} assigned to ${coach.nombre||coach.username}`:`✓ ${c.nombre} asignado a ${coach.nombre||coach.username}`);
     verCliente(clienteId); // Recargar
   }catch(e){alert('Error: '+(e.error||e.message||'No se pudo reasignar'));}
 }
@@ -3664,7 +3671,7 @@ let rbState={clienteId:null,diaId:null,diaNombre:'',diaOpen:{}};
 
 function hRutinas(){return`
   <div class="sec" style="margin-bottom:12px">
-    <div class="sec-hdr">1. Selecciona cliente</div>
+    <div class="sec-hdr">1. ${tc('Selecciona cliente')}</div>
     <select class="inp" id="rb_cl" onchange="rbSelCliente(this.value)" style="margin-bottom:0"><option value="">-- Elige cliente --</option></select>
   </div>
   <div id="rb_dias_wrap" style="display:none">
@@ -3761,11 +3768,11 @@ async function rbSelCliente(id){
 async function rbLoadDias(){
   const c=await api('/clientes/'+rbState.clienteId);
   const wrap=document.getElementById('rb_dias_list');
-  if(!c.dias.length){wrap.innerHTML='<div style="font-size:13px;color:var(--tx3)">Sin días. Añade el primero arriba.</div>';return;}
+  if(!c.dias.length){wrap.innerHTML=`<div style="font-size:13px;color:var(--tx3)">${tc('Sin días. Añade el primero arriba.')}</div>`;return;}
   wrap.innerHTML=c.dias.map((d,i)=>`
     <div class="dia-card">
       <div class="dia-hdr" onclick="rbToggleDia(${d.id})">
-        <div class="dia-hdr-left"><div class="dia-nombre">${d.nombre}</div><div class="dia-grupo">${t(d.grupo)||d.grupo} · ${d.ejercicios.length} ejercicios</div></div>
+        <div class="dia-hdr-left"><div class="dia-nombre">${d.nombre}</div><div class="dia-grupo">${tc(d.grupo)||d.grupo} · ${d.ejercicios.length}${COACH_LANG==='en'?' exercises':' ejercicios'}</div></div>
         <div style="display:flex;align-items:center;gap:8px">
           <button class="btn btn-sm" onclick="event.stopPropagation();rbOpenEx(${d.id},'${d.nombre}')">+ Ejercicio</button>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="color:var(--tx3)"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -3776,7 +3783,7 @@ async function rbLoadDias(){
           <div class="ex-row-img" style="background:${EX_COLORS[e.musculos?.split(',')[0]?.trim()]||'var(--s3)'}">${EX_EMOJIS[e.musculos?.includes('Cuád')?'Piernas':e.musculos?.includes('Dorsal')?'Espalda':'Pecho']||'💪'}</div>
           <div class="ex-row-info"><div class="ex-row-nombre">${e.nombre}</div><div class="ex-row-detail">${e.series}×${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''} · ${e.descanso}s${e.rir!=null?' · RIR '+e.rir:''}</div>${e.es_principal?`<span style="font-size:10px;color:var(--amb);font-weight:700">⭐ Principal</span>`:''}${e.nota_coach?`<div style="font-size:10px;color:var(--amb);font-weight:600;margin-top:2px">📝 ${e.nota_coach}</div>`:''}</div>
           <div style="display:flex;gap:4px"><button onclick="rbEditEx(${e.id})" style="background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);border-radius:6px;color:var(--blg);cursor:pointer;font-size:12px;padding:4px 8px;font-weight:600">✏️</button><button onclick="rbDelEx(${e.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:16px;padding:4px">✕</button></div>
-        </div>`).join('')||'<div style="font-size:12px;color:var(--tx3);padding:8px 0">Sin ejercicios. Pulsa + Ejercicio.</div>'}
+        </div>`).join('')||`<div style="font-size:12px;color:var(--tx3);padding:8px 0">${tc('Sin ejercicios aún.')}</div>`}
       </div>
     </div>`).join('');
 }
@@ -3789,7 +3796,7 @@ async function rbBuscar(){
   if(b)p.append('buscar',b);
   const exs=await api('/ejercicios-db?'+p);
   if(!exs.length){
-    document.getElementById('rb_ex_lista').innerHTML='<div style="color:var(--tx3);font-size:13px;padding:20px;text-align:center">Sin resultados</div>';
+    document.getElementById('rb_ex_lista').innerHTML=`<div style="color:var(--tx3);font-size:13px;padding:20px;text-align:center">${tc('Sin resultados')}</div>`;
     return;
   }
   // Group alphabetically
@@ -3846,13 +3853,13 @@ async function rbConfirmDia(){
   const g = document.getElementById('rb_dia_grupo').value.trim();
   if(!n||!g) return;
   const btn = document.getElementById('rb_dia_btn');
-  btn.textContent='Guardando...'; btn.disabled=true;
+  btn.textContent=(COACH_LANG==='en'?'Saving...':'Guardando...'); btn.disabled=true;
   try {
     await api('/clientes/'+rbState.clienteId+'/dias',{method:'POST',body:JSON.stringify({nombre:n,grupo:g})});
     document.getElementById('rb_dia_panel').style.display='none';
     document.getElementById('rb_dia_nombre').value='';
     document.getElementById('rb_dia_grupo').value='';
-    btn.textContent='✓ Añadir día'; btn.disabled=false;
+    btn.textContent=tc('✓ Añadir día'); btn.disabled=false;
     await rbLoadDias();
   } catch(e) { btn.textContent='Error'; btn.disabled=false; }
 }
@@ -3903,7 +3910,7 @@ async function rbConfirmAdd(){
 
   const btn = document.getElementById('rb_add_btn');
   if(!btn) return;
-  btn.innerHTML = '⏳ Guardando...';
+  btn.innerHTML = '⏳ '+(COACH_LANG==='en'?'Saving...':'Guardando...');
   btn.disabled = true;
 
   try {
@@ -3911,7 +3918,7 @@ async function rbConfirmAdd(){
       nombre,musculos,series,reps,peso_objetivo:peso,descanso,rir,es_principal:esPrincipal,youtube_url:youtube,nota_coach:nota
     })});
     if(res && res.error){ throw new Error(res.error); }
-    btn.innerHTML = '✓ Añadir ejercicio';
+    btn.innerHTML = '✓ '+tc('Añadir ejercicio');
     btn.disabled = false;
     document.getElementById('rb_add_panel').style.display='none';
     rbState.diaOpen[diaId]=true;
@@ -3924,15 +3931,15 @@ async function rbConfirmAdd(){
 }
 
 async function rbDelEx(id){
-  if(!confirm('¿Eliminar?'))return;
+  if(!confirm(tc('¿Eliminar?')))return;
   await api('/ejercicios/'+id,{method:'DELETE'});
   await rbLoadDias();
 }
 
 async function rbGenerarIA(){
   const res=document.getElementById('rb_ia_result');
-  if(!rbState.clienteId){res.innerHTML='<div style="color:#f87171;font-size:13px">Selecciona un cliente primero</div>';return;}
-  res.innerHTML='<div class="ia-chip"><div class="ia-chip-title">Generando rutina...</div></div>';
+  if(!rbState.clienteId){res.innerHTML=`<div style="color:#f87171;font-size:13px">${tc('Selecciona un cliente primero')}</div>`;return;}
+  res.innerHTML=`<div class="ia-chip"><div class="ia-chip-title">${COACH_LANG==='en'?'Generating routine...':'Generando rutina...'}</div></div>`;
   const c=await api('/clientes/'+rbState.clienteId);
   try{
     const semanas = c.semanas || 1;
@@ -3947,8 +3954,8 @@ ${c.observaciones?'Observaciones: '+c.observaciones:''}
 Días disponibles: 4.
 Para cada día indica: nombre del día, grupo muscular, y lista de ejercicios con series × reps, peso orientativo inicial en kg, descanso en segundos, y RIR objetivo (2-3 para volumen, 1-2 para intensidad).
 Aplica periodización ondulante: varía intensidad y volumen entre días. Sé específico y práctico.`}],system:COACH_LANG==='en'?'You are an expert in periodization and strength programming. Generate complete routines. Always respond in English.':'Eres un experto en periodización y programación de fuerza. Generas rutinas completas. Responde siempre en español.'})});
-    res.innerHTML=`<div class="ia-chip"><div class="ia-chip-title">Rutina generada para ${c.nombre}</div><div class="ia-result-body" style="white-space:pre-line">${d.reply}</div></div>`;
-  }catch(e){res.innerHTML='<div style="color:#f87171;font-size:13px">Error generando. Verifica la API key.</div>';}
+    res.innerHTML=`<div class="ia-chip"><div class="ia-chip-title">${COACH_LANG==='en'?'Routine generated for':'Rutina generada para'} ${c.nombre}</div><div class="ia-result-body" style="white-space:pre-line">${d.reply}</div></div>`;
+  }catch(e){res.innerHTML=`<div style="color:#f87171;font-size:13px">${COACH_LANG==='en'?'Error generating. Check the API key.':'Error generando. Verifica la API key.'}</div>`;}
 }
 
 
@@ -3956,50 +3963,50 @@ Aplica periodización ondulante: varía intensidad y volumen entre días. Sé es
 function hEquipo(){
   const isAdmin = USER.username === 'wolf';
   return`
-  <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.08em;color:var(--sv);margin-bottom:4px">Mi equipo</div>
-  <div style="font-size:13px;color:var(--tx3);margin-bottom:20px">Coaches de WolfMindset</div>
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.08em;color:var(--sv);margin-bottom:4px">${tc('Mi equipo')}</div>
+  <div style="font-size:13px;color:var(--tx3);margin-bottom:20px">${tc('Coaches de WolfMindset')}</div>
 
   <!-- LISTA DE COACHES -->
   <div id="equipo_lista" style="margin-bottom:24px">
-    <div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">Cargando...</div>
+    <div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">${tc('Cargando...')}</div>
   </div>
 
   <!-- CREAR NUEVO COACH — solo admin wolf -->
   ${isAdmin ? `
   <div style="background:var(--s);border:0.5px solid var(--br);border-radius:16px;padding:18px">
-    <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:14px">➕ Añadir nuevo coach</div>
+    <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:14px">${tc('➕ Añadir nuevo coach')}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
       <div>
-        <div class="form-lbl">Nombre completo</div>
+        <div class="form-lbl">${tc('Nombre completo')}</div>
         <input class="inp" id="eq_nombre" type="text" placeholder="Ej: María García" style="margin-bottom:0"/>
       </div>
       <div>
-        <div class="form-lbl">Usuario (login)</div>
+        <div class="form-lbl">${tc('Usuario (login)')}</div>
         <input class="inp" id="eq_user" type="text" placeholder="Ej: maria" style="margin-bottom:0"/>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
       <div>
-        <div class="form-lbl">Contraseña</div>
-        <input class="inp" id="eq_pass" type="password" placeholder="Mín 6 caracteres" style="margin-bottom:0"/>
+        <div class="form-lbl">${tc('Contraseña')}</div>
+        <input class="inp" id="eq_pass" type="password" placeholder="${tc('Mín 6 caracteres')}" style="margin-bottom:0"/>
       </div>
       <div>
-        <div class="form-lbl">Email (opcional)</div>
+        <div class="form-lbl">${tc('Email (opcional)')}</div>
         <input class="inp" id="eq_email" type="email" placeholder="coach@email.com" style="margin-bottom:0"/>
       </div>
     </div>
     <div style="margin-bottom:14px">
-      <div class="form-lbl">Idioma del panel</div>
+      <div class="form-lbl">${tc('Idioma del panel')}</div>
       <select class="inp" id="eq_lang" style="margin-bottom:0">
-        <option value="es">🇪🇸 Español</option>
+        <option value="es">${tc('🇪🇸 Español')}</option>
         <option value="en">🇬🇧 English</option>
       </select>
     </div>
     <div id="eq_msg" style="display:none;font-size:13px;margin-bottom:10px;padding:8px 12px;border-radius:8px"></div>
-    <button class="btn" onclick="crearCoach()" style="width:100%;padding:12px">✓ Crear coach</button>
+    <button class="btn" onclick="crearCoach()" style="width:100%;padding:12px">✓ ${tc('Crear coach') || (COACH_LANG==='en'?'Create coach':'Crear coach')}</button>
   </div>` : `
   <div style="background:var(--s);border:0.5px solid var(--br);border-radius:12px;padding:14px;text-align:center">
-    <div style="font-size:13px;color:var(--tx3)">Solo el administrador puede crear nuevos coaches.</div>
+    <div style="font-size:13px;color:var(--tx3)">${tc('Solo el administrador puede crear nuevos coaches.')}</div>
   </div>`}`;
 }
 
@@ -4009,7 +4016,7 @@ async function initEquipo(){
     const lista = document.getElementById('equipo_lista');
     if(!lista) return;
     if(!coaches || !coaches.length){
-      lista.innerHTML='<div style="font-size:13px;color:var(--tx3);padding:12px;text-align:center">Solo tú por ahora.</div>';
+      lista.innerHTML=`<div style="font-size:13px;color:var(--tx3);padding:12px;text-align:center">${tc('Solo tú por ahora.')}</div>`;
       return;
     }
     lista.innerHTML=`
@@ -4020,7 +4027,7 @@ async function initEquipo(){
             <div style="width:38px;height:38px;border-radius:50%;background:var(--bl2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff">${c.nombre?c.nombre[0].toUpperCase():'C'}</div>
             <div>
               <div style="font-size:14px;font-weight:700;color:var(--sv)">${c.nombre||c.username}</div>
-              <div style="font-size:11px;color:var(--tx3)">@${c.username} · ${c.lang==='en'?'🇬🇧 English':'🇪🇸 Español'}</div>
+              <div style="font-size:11px;color:var(--tx3)">@${c.username} · ${c.lang==='en'?'🇬🇧 English':'🇪🇸 '+(COACH_LANG==='en'?'Spanish':'Español')}</div>
             </div>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
@@ -4030,7 +4037,7 @@ async function initEquipo(){
         </div>`).join('')}`;
   }catch(e){
     const lista=document.getElementById('equipo_lista');
-    if(lista) lista.innerHTML='<div style="font-size:13px;color:#fca5a5;padding:12px">Error cargando coaches. Actualiza el backend.</div>';
+    if(lista) lista.innerHTML=`<div style="font-size:13px;color:#fca5a5;padding:12px">${tc('Error cargando coaches. Actualiza el backend.')}</div>`;
   }
 }
 
@@ -4042,13 +4049,13 @@ async function crearCoach(){
   const lang=document.getElementById('eq_lang').value;
   const msg=document.getElementById('eq_msg');
 
-  if(!nombre||!user||!pass){msg.style.display='block';msg.style.background='rgba(239,68,68,.1)';msg.style.color='#fca5a5';msg.textContent='Nombre, usuario y contraseña son obligatorios.';return;}
-  if(pass.length<6){msg.style.display='block';msg.style.background='rgba(239,68,68,.1)';msg.style.color='#fca5a5';msg.textContent='La contraseña debe tener al menos 6 caracteres.';return;}
+  if(!nombre||!user||!pass){msg.style.display='block';msg.style.background='rgba(239,68,68,.1)';msg.style.color='#fca5a5';msg.textContent=COACH_LANG==='en'?'Name, username and password are required.':'Nombre, usuario y contraseña son obligatorios.';return;}
+  if(pass.length<6){msg.style.display='block';msg.style.background='rgba(239,68,68,.1)';msg.style.color='#fca5a5';msg.textContent=COACH_LANG==='en'?'Password must be at least 6 characters.':'La contraseña debe tener al menos 6 caracteres.';return;}
 
   try{
     await api('/coaches',{method:'POST',body:JSON.stringify({nombre,username:user,password:pass,email,lang})});
     msg.style.display='block';msg.style.background='rgba(34,197,94,.1)';msg.style.color='#86efac';
-    msg.textContent=`✓ Coach "${nombre}" creado. Login: ${user}`;
+    msg.textContent=COACH_LANG==='en'?`✓ Coach "${nombre}" created. Login: ${user}`:`✓ Coach "${nombre}" creado. Login: ${user}`;
     document.getElementById('eq_nombre').value='';
     document.getElementById('eq_user').value='';
     document.getElementById('eq_pass').value='';
@@ -4061,16 +4068,16 @@ async function crearCoach(){
 }
 
 async function resetCoachPass(id, nombre){
-  const newPass=prompt(`Nueva contraseña para ${nombre} (mín 6 chars):`);
-  if(!newPass||newPass.length<6){alert('Contraseña demasiado corta.');return;}
+  const newPass=prompt(COACH_LANG==='en'?`New password for ${nombre} (min 6 chars):` :`Nueva contraseña para ${nombre} (mín 6 chars):`);
+  if(!newPass||newPass.length<6){alert(COACH_LANG==='en'?'Password too short.':'Contraseña demasiado corta.');return;}
   try{
     await api('/coaches/'+id+'/reset-password',{method:'POST',body:JSON.stringify({newPassword:newPass})});
-    alert(`✓ Contraseña de ${nombre} actualizada.`);
+    alert(COACH_LANG==='en'?`✓ Password for ${nombre} updated.`:`✓ Contraseña de ${nombre} actualizada.`);
   }catch(e){alert('Error: '+(e.error||'No se pudo actualizar'));}
 }
 
 async function eliminarCoach(id, nombre){
-  if(!confirm(`¿Eliminar el coach "${nombre}"? Sus clientes NO se eliminarán.`)) return;
+  if(!confirm(COACH_LANG==='en'?`Delete coach "${nombre}"? Their clients will NOT be deleted.`:`¿Eliminar el coach "${nombre}"? Sus clientes NO se eliminarán.`)) return;
   try{
     await api('/coaches/'+id,{method:'DELETE'});
     initEquipo();
@@ -4081,10 +4088,10 @@ let rbExFilter = null; // null = no filter, object = {avoid:[], beginner:[], adv
 
 async function rbFiltrarIA(){
   const msgEl = document.getElementById('rb_ia_filter_msg');
-  if(!rbState.clienteId){ msgEl.style.display='block'; msgEl.innerHTML='<div style="color:#f87171;font-size:12px">Selecciona un cliente primero</div>'; return; }
+  if(!rbState.clienteId){ msgEl.style.display='block'; msgEl.innerHTML=`<div style="color:#f87171;font-size:12px">${tc('Selecciona un cliente primero')}</div>`; return; }
   
   msgEl.style.display='block';
-  msgEl.innerHTML='<div class="ia-chip" style="padding:8px 12px;font-size:12px"><div class="ia-chip-title">Analizando perfil del cliente...</div></div>';
+  msgEl.innerHTML=`<div class="ia-chip" style="padding:8px 12px;font-size:12px"><div class="ia-chip-title">${COACH_LANG==='en'?'Analysing client profile...':'Analizando perfil del cliente...'}</div></div>`;
   
   try {
     const c = await api('/clientes/'+rbState.clienteId);
@@ -4184,19 +4191,19 @@ let dbState={clienteId:null,comidaId:null,comidaNombre:''};
 function hDietaBuilder(){return`
   <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr">1. Selecciona cliente</div>
-    <select class="inp" id="db_cl" onchange="dbSelCliente(this.value)" style="margin-bottom:0"><option value="">-- Elige cliente --</option></select>
+    <select class="inp" id="db_cl" onchange="dbSelCliente(this.value)" style="margin-bottom:0"><option value="">${tc('-- Elige cliente --')}</option></select>
   </div>
   <div id="db_wrap" style="display:none">
     <div class="sec" style="margin-bottom:12px;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.2)">
-      <div class="sec-hdr">🤖 Generar plan de dieta con IA</div>
+      <div class="sec-hdr">🤖 ${COACH_LANG==='en'?'Generate AI diet plan':'Generar plan de dieta con IA'}</div>
       <div id="db_client_hint"></div>
-      <div style="font-size:12px;color:var(--tx3);margin-bottom:12px;line-height:1.6">La IA usa automáticamente las kcal, macros, intolerancias y preferencias del cliente. Solo tienes que indicar los alimentos disponibles y el número de comidas.</div>
+      <div style="font-size:12px;color:var(--tx3);margin-bottom:12px;line-height:1.6">${tc('La IA usa automáticamente las kcal, macros, intolerancias y preferencias del cliente. Solo tienes que indicar los alimentos disponibles y el número de comidas.')}</div>
 
       <div class="form-lbl" style="display:flex;align-items:center;justify-content:space-between">
-        Alimentos disponibles
+        ${tc('Alimentos disponibles')}
         <div style="display:flex;align-items:center;gap:12px">
-          <button onclick="dbNuevoAlimento()" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;font-weight:700">+ Nuevo alimento</button>
-          <button onclick="dbLimpiarAlimentos()" style="font-size:11px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation">✕ Limpiar todo</button>
+          <button onclick="dbNuevoAlimento()" style="font-size:11px;color:var(--gnb);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation;font-weight:700">${tc('+ Nuevo alimento')}</button>
+          <button onclick="dbLimpiarAlimentos()" style="font-size:11px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:0;touch-action:manipulation">${tc('✕ Limpiar todo')}</button>
         </div>
       </div>
 
@@ -4235,46 +4242,46 @@ function hDietaBuilder(){return`
 
       <div class="g2" style="gap:8px;margin-bottom:10px">
         <div>
-          <div class="form-lbl">Nº de comidas</div>
+          <div class="form-lbl">${COACH_LANG==='en'?'No. of meals':'Nº de comidas'}</div>
           <select class="inp" id="db_num_comidas" style="margin-bottom:0">
-            <option value="2">2 comidas</option>
-            <option value="3">3 comidas</option>
-            <option value="4" selected>4 comidas</option>
-            <option value="5">5 comidas</option>
-            <option value="6">6 comidas</option>
+            <option value="2">${COACH_LANG==='en'?'2 meals':'2 comidas'}</option>
+            <option value="3">${COACH_LANG==='en'?'3 meals':'3 comidas'}</option>
+            <option value="4" selected>${COACH_LANG==='en'?'4 meals':'4 comidas'}</option>
+            <option value="5">${COACH_LANG==='en'?'5 meals':'5 comidas'}</option>
+            <option value="6">${COACH_LANG==='en'?'6 meals':'6 comidas'}</option>
           </select>
         </div>
         <div>
-          <div class="form-lbl">Ajuste calórico <span style="font-size:10px;color:var(--tx3);font-weight:400">(opcional — usa el del cliente por defecto)</span></div>
+          <div class="form-lbl">${tc('Ajuste calórico')} <span style="font-size:10px;color:var(--tx3);font-weight:400">${tc('(opcional — usa el del cliente por defecto)')}</span></div>
           <select class="inp" id="db_objetivo_cal" style="margin-bottom:0">
-            <option value="auto">Automático según objetivo del cliente</option>
-            <option value="mantenimiento">Forzar mantenimiento</option>
-            <option value="deficit">Forzar déficit (-300 kcal)</option>
-            <option value="deficit_agresivo">Forzar déficit agresivo (-500 kcal)</option>
-            <option value="superavit">Forzar superávit (+300 kcal)</option>
+            <option value="auto">${tc('Automático según objetivo del cliente')}</option>
+            <option value="mantenimiento">${COACH_LANG==='en'?'Force maintenance':'Forzar mantenimiento'}</option>
+            <option value="deficit">${tc('Forzar déficit (-300 kcal)')}</option>
+            <option value="deficit_agresivo">${tc('Forzar déficit agresivo (-500 kcal)')}</option>
+            <option value="superavit">${tc('Forzar superávit (+300 kcal)')}</option>
           </select>
         </div>
       </div>
 
-      <div class="form-lbl">Notas adicionales (opcional)</div>
-      <input class="inp" id="db_notas_extra" placeholder="Ej: prefiere desayunos rápidos, cena antes de las 20h..." style="margin-bottom:10px"/>
+      <div class="form-lbl">${tc('Notas adicionales (opcional)')}</div>
+      <input class="inp" id="db_notas_extra" placeholder="${COACH_LANG==='en'?'E.g. prefers quick breakfasts, dinner before 8pm...':'Ej: prefiere desayunos rápidos, cena antes de las 20h...'}" style="margin-bottom:10px"/>
 
       <div class="form-lbl" style="display:flex;align-items:center;gap:6px">
-        🧪 Analíticas / déficits (opcional)
-        <span style="font-size:10px;color:var(--tx3);font-weight:400">La IA recomendará suplementación</span>
+        ${tc('🧪 Analíticas / déficits (opcional)')}
+        <span style="font-size:10px;color:var(--tx3);font-weight:400">${tc('La IA recomendará suplementación')}</span>
       </div>
-      <textarea class="ta" id="db_analiticas" placeholder="Ej: Vitamina D baja (18 ng/ml), ferritina 12, B12 deficiente, omega-3 bajo..." style="min-height:60px;margin-bottom:12px"></textarea>
+      <textarea class="ta" id="db_analiticas" placeholder="${COACH_LANG==='en'?'E.g. low Vitamin D (18 ng/ml), ferritin 12, B12 deficient, low omega-3...':'Ej: Vitamina D baja (18 ng/ml), ferritina 12, B12 deficiente, omega-3 bajo...'}" style="min-height:60px;margin-bottom:12px"></textarea>
 
-      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="dbGenerarIANuevo()">⚡ Generar plan personalizado</button>
+      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="dbGenerarIANuevo()">⚡ ${tc('Generar plan personalizado') || (COACH_LANG==='en'?'Generate personalised plan':'Generar plan personalizado')}</button>
       <div id="db_ia_result" style="margin-top:12px"></div>
     </div>
 
     <div id="db_plan_preview" style="display:none">
       <div class="sec" style="margin-bottom:12px">
-        <div class="sec-hdr">Vista previa del plan</div>
+        <div class="sec-hdr">${tc('Vista previa del plan') || (COACH_LANG==='en'?'Plan preview':'Vista previa del plan')}</div>
         <div style="display:flex;gap:8px;margin-bottom:12px">
-          <button class="btn" style="flex:1;padding:10px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);font-size:13px" onclick="dbEditarPlan()">✏️ Editar cantidades</button>
-          <button class="btn" style="flex:1;padding:10px;background:var(--gn);font-size:13px" id="btn_publicar_dieta_ia" onclick="dbPublicarPlan()">✓ Publicar al cliente</button>
+          <button class="btn" style="flex:1;padding:10px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);font-size:13px" onclick="dbEditarPlan()">✏️ ${tc('Editar cantidades') || (COACH_LANG==='en'?'Edit quantities':'Editar cantidades')}</button>
+          <button class="btn" style="flex:1;padding:10px;background:var(--gn);font-size:13px" id="btn_publicar_dieta_ia" onclick="dbPublicarPlan()">✓ ${tc('Publicar al cliente') || (COACH_LANG==='en'?'Publish to client':'Publicar al cliente')}</button>
         </div>
         <div id="db_plan_html"></div>
       </div>
@@ -4348,7 +4355,7 @@ async function dbLoadComidas(){
         <span style="font-size:11px;color:var(--tx3)">g</span>
         <button onclick="dbDelAlim(${it.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px">✕</button>
       </div>`).join('')}
-    </div>`).join(''):'<div style="font-size:13px;color:var(--tx3)">Sin comidas. Añade la primera.</div>';
+    </div>`).join(''):`<div style="font-size:13px;color:var(--tx3)">${tc('Sin comidas. Añade la primera.')}</div>`;
 }
 
 async function dbAddComida(){
@@ -4378,7 +4385,7 @@ async function dbBuscar(){
       <div class="alim-nombre">${a.nombre}</div>
       <div class="alim-macros">Por 100g: ${a.proteinas}g P · ${a.carbos}g C · ${a.grasas}g G</div>
       <button class="alim-add" onclick="dbAddAlim('${a.nombre.replace(/'/g,"\\'")}')">+ Añadir</button>
-    </div>`).join('')||'<div style="color:var(--tx3);font-size:13px;padding:16px;text-align:center">Sin resultados</div>';
+    </div>`).join('')||`<div style="color:var(--tx3);font-size:13px;padding:16px;text-align:center">${tc('Sin resultados')}</div>`;
 }
 
 async function dbAddAlim(nombre){
@@ -4393,12 +4400,12 @@ async function dbGenerarIA(){
   const res=document.getElementById('db_ia_result');
   if(!dbState.clienteId){res.innerHTML='<div style="color:#f87171;font-size:13px">Selecciona un cliente primero</div>';return;}
   const alimentos=document.getElementById('db_alimentos_input').value.trim();
-  if(!alimentos){res.innerHTML='<div style="color:#f87171;font-size:13px">Escribe los alimentos disponibles</div>';return;}
-  res.innerHTML='<div class="ia-chip"><div class="ia-chip-title">Generando dieta...</div></div>';
+  if(!alimentos){res.innerHTML=`<div style="color:#f87171;font-size:13px">${COACH_LANG==='en'?'Enter the available foods':'Escribe los alimentos disponibles'}</div>`;return;}
+  res.innerHTML=`<div class="ia-chip"><div class="ia-chip-title">${COACH_LANG==='en'?'Generating diet...':'Generando dieta...'}</div></div>`;
   const c=await api('/clientes/'+dbState.clienteId);
   try{
     const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:[{role:'user',content:`Genera un plan de dieta para ${c.nombre}. Objetivo: ${c.objetivo}. Nivel: ${c.nivel}. Calorías objetivo: ${c.kcal_internas} kcal. Proteína: ${c.prot}g. Carbos: ${c.carbs}g. Grasas: ${c.fat}g. Alimentos disponibles: ${alimentos}. Crea 5 comidas (desayuno, media mañana, comida, merienda, cena) con alimentos en gramos en crudo. NO menciones calorías al cliente.`}],system:'Eres un nutricionista deportivo experto. Genera planes de dieta flexibles, prácticos y adaptados al objetivo. Cantidades en gramos en crudo. '+(COACH_LANG==='en'?'Always respond in English.':'Responde en español.')})});
-    res.innerHTML=`<div class="ia-chip"><div class="ia-chip-title">Dieta generada para ${c.nombre}</div><div class="ia-result-body" style="white-space:pre-line">${d.reply}</div></div>`;
+    res.innerHTML=`<div class="ia-chip"><div class="ia-chip-title">${COACH_LANG==='en'?'Diet generated for':'Dieta generada para'} ${c.nombre}</div><div class="ia-result-body" style="white-space:pre-line">${d.reply}</div></div>`;
   }catch(e){res.innerHTML='<div style="color:#f87171;font-size:13px">Error generando. Verifica la API key.</div>';}
 }
 
@@ -4617,7 +4624,7 @@ function calcular1RM(peso, reps) {
 // ── APLICAR TODOS LOS AJUSTES SUGERIDOS DE UNA VEZ ────────────────────
 async function aplicarTodosAjustes(clienteId) {
   const btn = event?.target;
-  if(btn) { btn.textContent = '⏳ Aplicando...'; btn.disabled = true; }
+  if(btn) { btn.textContent = '⏳ '+(COACH_LANG==='en'?'Applying...':'Aplicando...'); btn.disabled = true; }
 
   try {
     const c = window._coachClienteActual;
@@ -4672,10 +4679,10 @@ async function aplicarTodosAjustes(clienteId) {
     window._coachClienteActual = cActualizado;
 
     if(btn) {
-      btn.textContent = aplicados > 0 ? `✓ ${aplicados} ajustes aplicados` : '✓ Sin cambios';
+      btn.textContent = aplicados > 0 ? `✓ ${aplicados} ${COACH_LANG==='en'?'adjustments applied':'ajustes aplicados'}` : '✓ '+(COACH_LANG==='en'?'No changes':'Sin cambios');
       btn.style.background = 'var(--gn)';
       setTimeout(() => {
-        btn.textContent = '⚡ Aplicar todos los ajustes'; btn.disabled = false;
+        btn.textContent = '⚡ '+tc('Aplicar todos los ajustes'); btn.disabled = false;
         btn.style.background = '';
         // Recargar revisión semanal
         cargarRevisionSemanal(clienteId, cActualizado);
@@ -4694,7 +4701,7 @@ async function cargarMetricasAvanzadas(clienteId) {
 
   try {
     const sesiones = await api('/clientes/'+clienteId+'/sesiones');
-    if(!sesiones.length) { wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3)">Sin sesiones aún.</div>'; return; }
+    if(!sesiones.length) { wrap.innerHTML = `<div style="font-size:13px;color:var(--tx3)">${tc('Sin sesiones aún.')}</div>`; return; }
 
     // PRs por ejercicio (mejor peso × reps)
     const prs = {};
@@ -4736,7 +4743,7 @@ async function cargarMetricasAvanzadas(clienteId) {
     // PRs y 1RM estimados
     if(prsFiltrados.length) {
       html += `<div class="sec" style="margin-bottom:12px">
-        <div class="sec-hdr">🏆 PRs & 1RM estimado</div>
+        <div class="sec-hdr">${tc('🏆 PRs & 1RM estimado')}</div>
         ${prsFiltrados.map(([nombre, datos]) => {
           const esPrincipal = principales.includes(nombre);
           const fechaStr = new Date(datos.fecha).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
@@ -4758,7 +4765,7 @@ async function cargarMetricasAvanzadas(clienteId) {
     if(semanas.length) {
       const maxTon = Math.max(...semanas.map(s=>s[1]));
       html += `<div class="sec" style="margin-bottom:12px">
-        <div class="sec-hdr">⚡ Tonelaje semanal</div>
+        <div class="sec-hdr">${tc('⚡ Tonelaje semanal')}</div>
         ${semanas.map(([fecha, ton]) => {
           const pct = Math.round(ton/maxTon*100);
           const col = pct > 80 ? 'var(--gnb)' : pct > 50 ? 'var(--amb)' : '#fca5a5';
@@ -4800,12 +4807,12 @@ async function cargarMetricasAvanzadas(clienteId) {
     };
 
     html += `<div class="sec" style="margin-bottom:12px">
-      <div class="sec-hdr">📊 Esta semana vs anterior</div>
+      <div class="sec-hdr">${tc('📊 Esta semana vs anterior')}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         ${[
-          ['Sesiones', stA.sesCount, stB.sesCount],
-          ['Series', stA.series, stB.series],
-          ['Tonelaje', stA.ton+'kg', stB.ton ? stB.ton+'kg' : null],
+          [COACH_LANG==='en'?'Sessions':'Sesiones', stA.sesCount, stB.sesCount],
+          [COACH_LANG==='en'?'Sets':'Series', stA.series, stB.series],
+          [COACH_LANG==='en'?'Tonnage':'Tonelaje', stA.ton+'kg', stB.ton ? stB.ton+'kg' : null],
         ].map(([lbl, actual, anterior]) => {
           const d = diff(typeof actual==='number'?actual:parseInt(actual), typeof anterior==='number'?anterior:(anterior?parseInt(anterior):0));
           return `<div style="background:var(--s3);border-radius:10px;padding:10px;text-align:center">
@@ -4824,27 +4831,27 @@ async function cargarMetricasAvanzadas(clienteId) {
         const ultimo = checkins[0];
         const suenoBar = v => '█'.repeat(v) + '░'.repeat(5-v);
         html += `<div class="sec" style="margin-bottom:12px">
-          <div class="sec-hdr">📋 Último check-in del cliente</div>
+          <div class="sec-hdr">${tc('📋 Último check-in del cliente')}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
             <div style="background:var(--s3);border-radius:10px;padding:10px">
-              <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">😴 Sueño</div>
+              <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">${tc('😴 Sueño')}</div>
               <div style="font-size:13px;font-weight:700;color:var(--sv)">${último ? suenoBar(ultimo.sueno||0) : '—'}</div>
               <div style="font-size:18px;font-weight:800;color:var(--sv)">${ultimo.sueno||'—'}/5</div>
             </div>
             <div style="background:var(--s3);border-radius:10px;padding:10px">
-              <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">⚡ Energía</div>
+              <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">${tc('⚡ Energía')}</div>
               <div style="font-size:13px;font-weight:700;color:var(--sv)">${ultimo ? suenoBar(ultimo.energia||0) : '—'}</div>
               <div style="font-size:18px;font-weight:800;color:var(--sv)">${ultimo.energia||'—'}/5</div>
             </div>
           </div>
-          ${checkins.length > 1 ? `<div style="font-size:10px;color:var(--tx3)">Últimas ${checkins.length} semanas · Sueño medio: ${(checkins.reduce((a,c)=>a+(c.sueno||0),0)/checkins.length).toFixed(1)} · Energía media: ${(checkins.reduce((a,c)=>a+(c.energia||0),0)/checkins.length).toFixed(1)}</div>` : ''}
+          ${checkins.length > 1 ? `<div style="font-size:10px;color:var(--tx3)">${COACH_LANG==='en'?'Last':'Últimas'} ${checkins.length} ${COACH_LANG==='en'?'weeks':'semanas'} · Sueño medio: ${(checkins.reduce((a,c)=>a+(c.sueno||0),0)/checkins.length).toFixed(1)} · Energía media: ${(checkins.reduce((a,c)=>a+(c.energia||0),0)/checkins.length).toFixed(1)}</div>` : ''}
         </div>`;
       }
     } catch(e){}
 
-    wrap.innerHTML = html || '<div style="font-size:13px;color:var(--tx3)">Sin datos suficientes.</div>';
+    wrap.innerHTML = html || `<div style="font-size:13px;color:var(--tx3)">${tc('Sin datos suficientes.')}</div>`;
 
-  } catch(e) { wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3)">Error cargando métricas.</div>'; }
+  } catch(e) { wrap.innerHTML = `<div style="font-size:13px;color:var(--tx3)">${tc('Error cargando métricas.')}</div>`; }
 }
 
 async function enviarAvisosVencimiento() {
@@ -4852,7 +4859,7 @@ async function enviarAvisosVencimiento() {
   btn.textContent='⏳ Enviando...'; btn.disabled=true;
   try {
     const r = await api('/suscripciones/avisar-vencimientos', {method:'POST'});
-    btn.textContent=`✓ ${r.avisados} avisos enviados`;
+    btn.textContent=COACH_LANG==='en'?`✓ ${r.avisados} alerts sent`:`✓ ${r.avisados} avisos enviados`;
     setTimeout(()=>{ btn.textContent='🔔 Enviar avisos'; btn.disabled=false; }, 3000);
   } catch(e) {
     btn.textContent='Error'; btn.disabled=false;
@@ -4962,11 +4969,11 @@ function renderNotifCoach() {
   const list = document.getElementById('notif_list_coach');
   if(!list) return;
   const notifs = window._notifCoach || [];
-  if(!notifs.length) { list.innerHTML='<div style="padding:16px;font-size:13px;color:var(--tx3);text-align:center">Sin notificaciones</div>'; return; }
+  if(!notifs.length) { list.innerHTML=`<div style="padding:16px;font-size:13px;color:var(--tx3);text-align:center">${COACH_LANG==='en'?'No notifications':'Sin notificaciones'}</div>`; return; }
   list.innerHTML = notifs.map(n=>`
     <div onclick="leerNotifCoach(${n.id},this)" style="padding:12px 14px;border-bottom:0.5px solid var(--br);cursor:pointer;background:${n.leida?'none':'rgba(59,130,246,.04)'}">
       <div style="font-size:12px;color:${n.leida?'var(--tx3)':'var(--sv)'};line-height:1.5">${n.mensaje}</div>
-      <div style="font-size:10px;color:var(--tx3);margin-top:3px">${new Date(n.created_at).toLocaleDateString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:10px;color:var(--tx3);margin-top:3px">${new Date(n.created_at).toLocaleDateString(COACH_LANG==='en'?'en-GB':'es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
     </div>`).join('');
 }
 
@@ -5303,7 +5310,7 @@ function hSeleccionDia(){
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div style="flex:1;min-width:0">
           <div style="font-size:16px;font-weight:700;color:var(--sv);margin-bottom:2px">${d.nombre}</div>
-          <div style="font-size:12px;color:var(--blg);font-weight:600">${t(d.grupo)||d.grupo}</div>
+          <div style="font-size:12px;color:var(--blg);font-weight:600">${tc(d.grupo)||d.grupo}</div>
         </div>
         <div style="background:var(--s3);border-radius:8px;padding:4px 8px;text-align:center;flex-shrink:0;margin-left:8px">
           <div style="font-size:14px;font-weight:700;color:var(--sv)">${d.ejercicios.length}</div>
@@ -7121,7 +7128,7 @@ async function crearEjercicioManual(){
   const dificultad = document.getElementById('new_ex_dif').value;
   const imagen = document.getElementById('new_ex_imagen').value.trim();
   const msg = document.getElementById('new_ex_msg');
-  if(!nombre){ msg.style.color='#f87171'; msg.textContent='Nombre obligatorio'; return; }
+  if(!nombre){ msg.style.color='#f87171'; msg.textContent=COACH_LANG==='en'?'Name is required':'Nombre obligatorio'; return; }
   try {
     // Insertar en ejercicios_db via reload no funciona, usamos un endpoint directo
     const r = await fetch('/api/ejercicios-db-add', {
@@ -7135,7 +7142,7 @@ async function crearEjercicioManual(){
         body: JSON.stringify({ imagen_url: imagen })
       });
     }
-    msg.style.color='#86efac'; msg.textContent='✓ Creado';
+    msg.style.color='#86efac'; msg.textContent=COACH_LANG==='en'?'✓ Created':'✓ Creado';
     document.getElementById('new_ex_nombre').value='';
     document.getElementById('new_ex_musculos').value='';
     document.getElementById('new_ex_imagen').value='';
@@ -7736,7 +7743,7 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
 
   } catch(err) {
     console.log('Error revision semanal:', err);
-    wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3)">Error cargando revisión.</div>';
+    wrap.innerHTML = `<div style="font-size:13px;color:var(--tx3)">${tc('Error cargando revisión.')}</div>`;
   }
 }
 
@@ -7806,7 +7813,7 @@ async function guardarBorrador(clienteId) {
 
 async function publicarSemana(clienteId) {
   const btn = event.target;
-  if(!confirm('¿Publicar los cambios? El cliente verá la nueva rutina inmediatamente.')) return;
+  if(!confirm(COACH_LANG==='en'?'Publish changes? The client will see the new routine immediately.':'¿Publicar los cambios? El cliente verá la nueva rutina inmediatamente.')) return;
   btn.textContent = '⏳ Publicando...'; btn.disabled = true;
   try {
     // First save current state as borrador, then publish
@@ -8205,7 +8212,7 @@ async function borrarEjercicioDb(id, nombre){
     if(r.ok){
       await filtrarEjerciciosGestor();
     } else {
-      alert('Error al eliminar. Inténtalo de nuevo.');
+      alert(COACH_LANG==='en'?'Delete failed. Please try again.':'Error al eliminar. Inténtalo de nuevo.');
     }
   }catch(e){
     alert('Error de conexión.');
@@ -8707,8 +8714,8 @@ async function dbPublicarPlan(){
     const result = document.getElementById('db_ia_result');
     if(result){
       result.innerHTML = `<div class="ia-chip" style="border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08)">
-        <div class="ia-chip-title" style="color:var(--gnb)">Dieta publicada</div>
-        La dieta se ha guardado en el perfil del cliente. Puedes volver a entrar al cliente y verla en sus comidas.
+        <div class="ia-chip-title" style="color:var(--gnb)">${COACH_LANG==='en'?'Diet published':'Dieta publicada'}</div>
+        ${COACH_LANG==='en'?'The diet has been saved in the client profile. You can return to the client and view it in their meals.':'La dieta se ha guardado en el perfil del cliente. Puedes volver a entrar al cliente y verla en sus comidas.'}
       </div>`;
     }
 
@@ -8831,7 +8838,7 @@ function dbEditarPlan(){
   const esVeg = window._planDietaCliente?.dieta_tipo==='Vegano'||window._planDietaCliente?.dieta_tipo==='Vegetariano';
   const accent = esVeg?'#22c55e':'#3b82f6';
 
-  let html = `<div style="margin-bottom:8px;font-size:12px;color:var(--tx3)">Edita cantidades directamente. Los cambios se guardan al publicar.</div>`;
+  let html = `<div style="margin-bottom:8px;font-size:12px;color:var(--tx3)">${COACH_LANG==='en'?'Edit quantities directly. Changes are saved when publishing.':'Edita cantidades directamente. Los cambios se guardan al publicar.'}</div>`;
 
   plan.comidas.forEach((m,mi)=>{
     html += `<div style="background:var(--s2);border-radius:12px;padding:12px;margin-bottom:10px;border:0.5px solid var(--br)">
@@ -8849,7 +8856,7 @@ function dbEditarPlan(){
     </div>`;
   });
 
-  html += `<button onclick="dbGuardarEdicion()" class="btn" style="width:100%;padding:11px;background:var(--bl2)">✓ Confirmar cambios</button>`;
+  html += `<button onclick="dbGuardarEdicion()" class="btn" style="width:100%;padding:11px;background:var(--bl2)">✓ ${COACH_LANG==='en'?'Confirm changes':'Confirmar cambios'}</button>`;
   planDiv.innerHTML = html;
 }
 
@@ -9348,9 +9355,9 @@ function dbCargarCustomAlimentos(){
 dbCargarCustomAlimentos();
 
 function dbNuevoAlimento(){
-  const nombre = prompt("Nombre del alimento nuevo:","");
+  const nombre = prompt(COACH_LANG==='en'?"New food name:":"Nombre del alimento nuevo:","");
   if(!nombre || !nombre.trim()) return;
-  const catTxt = prompt("Categoría:\n1 = Proteínas\n2 = Carbos\n3 = Grasas\n4 = Verduras\n5 = Frutas\n6 = Bebidas","1");
+  const catTxt = prompt(COACH_LANG==='en'?"Category:\n1 = Proteins\n2 = Carbs\n3 = Fats\n4 = Vegetables\n5 = Fruits\n6 = Drinks":"Categoría:\n1 = Proteínas\n2 = Carbos\n3 = Grasas\n4 = Verduras\n5 = Frutas\n6 = Bebidas","1");
   const catMap = {"1":0,"2":1,"3":2,"4":3,"5":4,"6":5};
   const cat = catMap[(catTxt||"1").trim()] ?? 0;
   const alimento = nombre.trim();
@@ -9417,7 +9424,7 @@ function dbActualizarSelected(){
   if(!wrap) return;
   const arr = [..._dbSeleccionados];
   if(!arr.length){
-    wrap.innerHTML = '<span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">Tap a category to add foods →</span>';
+    wrap.innerHTML = `<span id="db_empty_hint" style="font-size:11px;color:var(--tx3);align-self:center">${COACH_LANG==='en'?'Tap a category to add foods →':'Toca una categoría para añadir alimentos →'}</span>`;
     if(countLbl) countLbl.textContent = '';
     if(favBtn) favBtn.style.display = 'none';
     if(inp) inp.value = '';
@@ -9428,7 +9435,7 @@ function dbActualizarSelected(){
       ${a}
       <button onclick="dbQuitarAlim('${a.replace(/'/g,"\'")}',this)" style="background:none;border:none;color:#93c5fd;cursor:pointer;font-size:12px;padding:0;line-height:1;touch-action:manipulation">×</button>
     </span>`).join('');
-  if(countLbl) countLbl.textContent = arr.length+' foods';
+  if(countLbl) countLbl.textContent = arr.length+(COACH_LANG==='en'?' foods':' alimentos');
   if(favBtn) favBtn.style.display = 'block';
   if(inp) inp.value = arr.join(', ');
 }
@@ -9462,7 +9469,7 @@ function dbGuardarFavoritos(){
   localStorage.setItem('wm_alim_favs', JSON.stringify(updated));
   dbCargarFavoritos();
   const btn = document.getElementById('btn_guardar_fav');
-  if(btn){ btn.textContent='✓ Saved as favourite'; setTimeout(()=>btn.textContent='⭐ Save as favourite',2000); }
+  if(btn){ btn.textContent=tc('✓ Saved as favourite'); setTimeout(()=>btn.textContent=tc('⭐ Save as favourite'),2000); }
 }
 
 function dbCargarFavoritos(){
