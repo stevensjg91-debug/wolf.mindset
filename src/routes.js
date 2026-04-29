@@ -976,7 +976,7 @@ router.post('/notificaciones/coach', (req, res) => {
 // ── ACCOUNT SETTINGS ─────────────────────────────────────────────────
 router.get('/me', (req, res) => {
   try {
-    const user = dbGet('SELECT id, username, nombre, email, telefono, role FROM users WHERE id=?', [req.user.id]);
+    const user = dbGet('SELECT id, username, nombre, email, telefono, role, foto_perfil FROM users WHERE id=?', [req.user.id]);
     if(!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1014,6 +1014,55 @@ router.put('/me', (req, res) => {
 
     saveToDisk();
     res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── FOTO DE PERFIL ───────────────────────────────────────────────────
+// Subir/actualizar foto de perfil (cualquier usuario autenticado)
+router.post('/me/foto', (req, res) => {
+  try {
+    const { foto } = req.body; // base64 data URL: "data:image/jpeg;base64,..."
+    if(!foto) return res.status(400).json({ error: 'No foto provided' });
+    // Limit size: ~800KB base64 ≈ ~600KB image — enough for a profile pic
+    if(foto.length > 1200000) return res.status(400).json({ error: 'Image too large. Max ~800KB' });
+    dbRun('UPDATE users SET foto_perfil=? WHERE id=?', [foto, req.user.id]);
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Obtener foto de perfil de cualquier usuario (para que el cliente vea a su coach)
+router.get('/usuarios/:id/foto', (req, res) => {
+  try {
+    const user = dbGet('SELECT foto_perfil FROM users WHERE id=?', [req.params.id]);
+    if(!user) return res.status(404).json({ error: 'Not found' });
+    res.json({ foto: user.foto_perfil || null });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Obtener foto del coach asignado al cliente (para mostrarse en el asistente)
+router.get('/mi-coach/foto', (req, res) => {
+  try {
+    if(req.user.role !== 'cliente') return res.status(403).json({ error: 'Solo clientes' });
+    const cliente = dbGet('SELECT coach_id FROM clientes WHERE user_id=?', [req.user.id]);
+    let coachId = cliente?.coach_id;
+    // Si no tiene coach asignado, devolver el primer coach
+    if(!coachId) {
+      const coach = dbGet("SELECT id FROM users WHERE role='coach' LIMIT 1");
+      coachId = coach?.id;
+    }
+    if(!coachId) return res.json({ foto: null, nombre: null });
+    const coach = dbGet('SELECT foto_perfil, nombre FROM users WHERE id=?', [coachId]);
+    res.json({ foto: coach?.foto_perfil || null, nombre: coach?.nombre || 'Coach' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/me también devuelve foto_perfil
+// (ya existe el endpoint, lo extendemos devolviendo la foto)
+router.get('/mi-foto', (req, res) => {
+  try {
+    const user = dbGet('SELECT foto_perfil FROM users WHERE id=?', [req.user.id]);
+    res.json({ foto: user?.foto_perfil || null });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
