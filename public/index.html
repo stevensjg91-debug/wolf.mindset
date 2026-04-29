@@ -129,10 +129,10 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
 
 /* BOTTOM NAV */
 .bnav-bar{position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(17,17,19,.98);border-top:0.5px solid var(--br);display:flex;padding:8px 0 max(10px,env(safe-area-inset-bottom));backdrop-filter:blur(20px)}
-.bni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;border:none;background:none;padding:4px;font-family:'Inter',sans-serif}
-.bni svg{width:22px;height:22px;color:var(--tx3)}
+.bni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;border:none;background:none;padding:3px 2px;font-family:'Inter',sans-serif;min-width:0}
+.bni svg{width:20px;height:20px;color:var(--tx3)}
 .bni.on svg{color:var(--bl)}
-.bni-lbl{font-size:10px;color:var(--tx3);font-weight:500}
+.bni-lbl{font-size:9px;color:var(--tx3);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52px}
 .bni.on .bni-lbl{color:var(--bl)}
 
 /* COMPONENTS */
@@ -672,7 +672,9 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
           <img class="topbar-logo" src="/logo.png" alt="W" onerror="this.style.display='none'"/>
           <div class="topbar-title" id="cTitle" data-i18n-coach="Clientes">Clientes</div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <!-- Lang toggle pill - only on mobile, sidebar has full toggle on desktop -->
+          <button id="mobile_lang_pill" onclick="setCoachLang(COACH_LANG==='es'?'en':'es')" style="display:none;padding:2px 8px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:10px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:.05em">ES</button>
           <div style="position:relative;cursor:pointer" onclick="toggleNotifCoach()" id="notif_bell_wrap">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tx3)" stroke-width="1.8" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             <span id="notif_badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;line-height:1">0</span>
@@ -706,10 +708,6 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
     <button class="bni" onclick="cNavM('pendientes',this)"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="bni-lbl" data-i18n-coach="Solicitudes">Solicitudes</span></button>
     <button class="bni" id="cbni3" onclick="cNavM('nuevo',this)"><svg viewBox="0 0 20 20" fill="none"><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M2 17c0-4 3.13-7 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M15 12v6M12 15h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="bni-lbl" data-i18n-coach="+ Cliente">+ Cliente</span></button>
     <button class="bni" onclick="doLogout()"><svg viewBox="0 0 20 20" fill="none"><path d="M8 3H5a1 1 0 00-1 1v12a1 1 0 001 1h3M13 14l3-4-3-4M16 10H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="bni-lbl" data-i18n="Salir">Salir</span></button>
-    <button class="bni" onclick="setCoachLang(COACH_LANG==='es'?'en':'es')" id="mobile_lang_btn" style="min-width:44px">
-      <span style="font-size:14px">🌐</span>
-      <span class="bni-lbl" id="mobile_lang_lbl">ES</span>
-    </button>
   </div>
 </div>
 
@@ -2184,9 +2182,12 @@ function setCoachLang(lang) {
     btn.style.opacity = active ? '1' : '0.4';
   });
 
-  // Update mobile nav language button
-  const mobileLangLbl = document.getElementById('mobile_lang_lbl');
-  if(mobileLangLbl) mobileLangLbl.textContent = lang.toUpperCase();
+  // Update mobile lang pill
+  const mobilePill = document.getElementById('mobile_lang_pill');
+  if(mobilePill) {
+    mobilePill.textContent = lang.toUpperCase();
+    mobilePill.style.display = window.innerWidth < 768 ? 'block' : 'none';
+  }
 
   // Re-render coach panel if active
   if(document.getElementById('sCoach')?.classList.contains('on')) {
@@ -6642,7 +6643,13 @@ function hPerfil(){
 function updateCoachTopbar() {
   const av = document.getElementById('coach_topbar_avatar');
   const nm = document.getElementById('coach_topbar_nombre');
+  const pill = document.getElementById('mobile_lang_pill');
   if(!av || !USER) return;
+  // Show lang pill only on mobile
+  if(pill) {
+    pill.textContent = COACH_LANG.toUpperCase();
+    pill.style.display = window.innerWidth < 768 ? 'block' : 'none';
+  }
   // Avatar
   if(USER.foto_perfil) {
     av.innerHTML = `<img src="${USER.foto_perfil}" style="width:100%;height:100%;object-fit:cover"/>`;
