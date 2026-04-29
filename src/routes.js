@@ -1017,6 +1017,14 @@ router.put('/me', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── COACHES LIST ─────────────────────────────────────────────────────
+router.get('/coaches', coachOnly, (req, res) => {
+  try {
+    const coaches = dbAll("SELECT id, username, nombre, email, lang, foto_perfil FROM users WHERE role='coach' ORDER BY id ASC");
+    res.json(coaches);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── FOTO DE PERFIL ───────────────────────────────────────────────────
 // Subir/actualizar foto de perfil (cualquier usuario autenticado)
 router.post('/me/foto', (req, res) => {
