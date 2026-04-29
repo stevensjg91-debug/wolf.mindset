@@ -2119,10 +2119,14 @@ function tc(text) {
   return COACH_TRANSLATIONS[text] || TRANSLATIONS[text] || text;
 }
 
+// Track active coach tab globally
+let _coachTabActual = 'clientes';
+
 function setCoachLang(lang) {
   COACH_LANG = lang;
   localStorage.setItem('wm_coach_lang', lang);
-  // Actualizar botones del selector
+
+  // Update language toggle buttons
   const esBtn = document.getElementById('coach_lang_es');
   const enBtn = document.getElementById('coach_lang_en');
   if(esBtn) {
@@ -2135,38 +2139,53 @@ function setCoachLang(lang) {
     enBtn.style.background = lang==='en' ? 'rgba(255,255,255,.15)' : 'none';
     enBtn.style.opacity = lang==='en' ? '1' : '0.4';
   }
-  // Re-renderizar panel coach si está activo
+
+  // Re-render coach panel if active
   if(document.getElementById('sCoach')?.classList.contains('on')) {
     // Update topbar title
     const cTitleEl = document.getElementById('cTitle');
-    if(cTitleEl) cTitleEl.textContent = tc(cTitleEl.textContent) || cTitleEl.textContent;
-    renderCoach(currentCoachTab || 'clientes');
+    if(cTitleEl) {
+      const titles = {clientes:tc('Clientes'),nuevo:tc('Nuevo cliente'),pendientes:tc('Solicitudes pendientes'),rutinas:tc('Crear rutina'),'dieta-builder':tc('Crear dieta'),progreso:tc('Progreso'),ia:tc('Asistente IA Coach'),equipo:tc('Mi equipo')};
+      cTitleEl.textContent = titles[_coachTabActual] || cTitleEl.textContent;
+    }
+    // Re-render the current section
+    renderCoach(_coachTabActual);
   }
-  // Traducir nav estática del coach
+
+  // Translate static sidebar nav items
   applyCoachLang(document.getElementById('sCoach'));
 }
 
 function applyCoachLang(el) {
-  if(!el || COACH_LANG === 'es') return;
-  // Traducir todos los textos visibles
-  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
-  const nodes = [];
-  while(walker.nextNode()) nodes.push(walker.currentNode);
-  nodes.forEach(node => {
-    const trimmed = node.textContent.trim();
-    if(trimmed && COACH_TRANSLATIONS[trimmed]) {
-      node.textContent = node.textContent.replace(trimmed, COACH_TRANSLATIONS[trimmed]);
-    }
-  });
-  // data-i18n-coach
+  if(!el) return;
+  const isEN = COACH_LANG === 'en';
+
+  // 1. data-i18n-coach attributes (sidebar nav spans, buttons)
   el.querySelectorAll('[data-i18n-coach]').forEach(e2 => {
     const key = e2.getAttribute('data-i18n-coach');
-    if(COACH_TRANSLATIONS[key]) e2.textContent = COACH_TRANSLATIONS[key];
+    const translated = isEN ? (COACH_TRANSLATIONS[key] || key) : key;
+    e2.textContent = translated;
   });
-  // data-placeholder-coach-en
+
+  // 2. data-placeholder-coach-en (input placeholders)
   el.querySelectorAll('[data-placeholder-coach-en]').forEach(inp => {
-    if(COACH_LANG === 'en') inp.placeholder = inp.getAttribute('data-placeholder-coach-en');
+    inp.placeholder = isEN
+      ? inp.getAttribute('data-placeholder-coach-en')
+      : (inp.getAttribute('data-placeholder-coach-es') || inp.getAttribute('data-placeholder-coach-en'));
   });
+
+  // 3. Translate plain text nodes that match COACH_TRANSLATIONS exactly
+  if(isEN) {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+    const nodes = [];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node => {
+      const trimmed = node.textContent.trim();
+      if(trimmed && COACH_TRANSLATIONS[trimmed] && node.parentElement && !node.parentElement.closest('[data-i18n-coach]')) {
+        node.textContent = node.textContent.replace(trimmed, COACH_TRANSLATIONS[trimmed]);
+      }
+    });
+  }
 }
 
 // EMOJIS Y COLORES
@@ -2369,11 +2388,13 @@ if(TOKEN&&USER){
 // ═══ COACH NAV ════════════════════════════════════════
 function getTitles(){return{clientes:tc('Clientes'),nuevo:tc('Nuevo cliente'),pendientes:tc('Solicitudes pendientes'),rutinas:tc('Crear rutina'),'dieta-builder':tc('Crear dieta'),progreso:tc('Progreso'),ia:tc('Asistente IA Coach')};}
 function cNav(s,btn){
+  _coachTabActual = s;
   document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
   document.getElementById('cTitle').textContent=getTitles()[s]||s;
   renderCoach(s);
 }
 function cNavM(s,btn){
+  _coachTabActual = s;
   document.querySelectorAll('#coachMobileNav .bni').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
   document.getElementById('cTitle').textContent=getTitles()[s]||s;
   renderCoach(s);
