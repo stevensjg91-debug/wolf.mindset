@@ -3805,8 +3805,10 @@ let rbState={clienteId:null,diaId:null,diaNombre:'',diaOpen:{}};
 
 function hRutinas(){return`
   <div class="sec" style="margin-bottom:12px">
-    <div class="sec-hdr">1. ${tc('Selecciona cliente')}</div>
-    <select class="inp" id="rb_cl" onchange="rbSelCliente(this.value)" style="margin-bottom:0"><option value="">${COACH_LANG==='en'?'-- Choose client --':'-- Elige cliente --'}</option></select>
+    <div class="sec-hdr" style="margin-bottom:10px">1. ${tc('Selecciona cliente')}</div>
+    <input class="inp" id="rb_cl_buscar" placeholder="${COACH_LANG==='en'?'Search client...':'Buscar cliente...'}" oninput="rbFiltrarTarjetas()" style="margin-bottom:10px;font-size:13px"/>
+    <div id="rb_cl_grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px"></div>
+    <input type="hidden" id="rb_cl" value=""/>
   </div>
   <div id="rb_dias_wrap" style="display:none">
     <div class="sec" style="margin-bottom:12px">
@@ -3886,10 +3888,48 @@ function hRutinas(){return`
 
 async function initRutinas(){
   const cl=await api('/clientes');
-  const sel=document.getElementById('rb_cl');
-  cl.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;sel.appendChild(o);});
+  window._rbClientes=cl;
+  rbRenderTarjetas(cl);
   // Load saved exercise configs
   try{ window.exConfig=await api('/ejercicios-config'); }catch(e){ window.exConfig={}; }
+}
+
+function rbRenderTarjetas(clientes){
+  const grid=document.getElementById('rb_cl_grid');
+  if(!grid)return;
+  if(!clientes.length){grid.innerHTML=`<div style="font-size:13px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div>`;return;}
+  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e3a5f','#374151'];
+  const selId=document.getElementById('rb_cl')?.value;
+  grid.innerHTML=clientes.map((c,i)=>{
+    const initials=(c.nombre||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    const col=colors[i%colors.length];
+    const objetivo=c.objetivo||'—';
+    const semanas=c.semanas_activo!=null?c.semanas_activo+(COACH_LANG==='en'?' wk':' sem'):'';
+    const sel=String(c.id)===String(selId);
+    return`<div onclick="rbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:14px;padding:13px 11px 11px;cursor:pointer;transition:.15s;position:relative;">
+      <div style="width:38px;height:38px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;margin-bottom:9px;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em">${initials}</div>
+      <div style="font-size:13px;font-weight:600;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${c.nombre}</div>
+      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${objetivo}</div>
+      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(37,99,235,.12);color:var(--blg);border:0.5px solid rgba(59,130,246,.2)">${semanas}</span>`:''}
+      ${sel?`<div style="position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function rbFiltrarTarjetas(){
+  const q=(document.getElementById('rb_cl_buscar')?.value||'').toLowerCase();
+  const cl=(window._rbClientes||[]).filter(c=>!q||(c.nombre||'').toLowerCase().includes(q));
+  rbRenderTarjetas(cl);
+}
+
+function rbSelTarjeta(id,card){
+  document.querySelectorAll('#rb_cl_grid > div').forEach(d=>{ d.style.border='0.5px solid var(--br)'; d.querySelector('[style*="border-radius:50%;background:var(--bl)"]')?.remove(); });
+  card.style.border='2px solid var(--bl)';
+  const chk=document.createElement('div');
+  chk.innerHTML=`<div style="position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`;
+  card.appendChild(chk.firstChild);
+  document.getElementById('rb_cl').value=id;
+  rbSelCliente(id);
 }
 
 async function rbSelCliente(id){
@@ -4372,8 +4412,10 @@ let dbState={clienteId:null,comidaId:null,comidaNombre:''};
 
 function hDietaBuilder(){return`
   <div class="sec" style="margin-bottom:12px">
-    <div class="sec-hdr">1. ${COACH_LANG==='en'?'Select client':'Selecciona cliente'}</div>
-    <select class="inp" id="db_cl" onchange="dbSelCliente(this.value)" style="margin-bottom:0"><option value="">${COACH_LANG==='en'?'-- Choose client --':'-- Elige cliente --'}</option></select>
+    <div class="sec-hdr" style="margin-bottom:10px">1. ${COACH_LANG==='en'?'Select client':'Selecciona cliente'}</div>
+    <input class="inp" id="db_cl_buscar" placeholder="${COACH_LANG==='en'?'Search client...':'Buscar cliente...'}" oninput="dbFiltrarTarjetas()" style="margin-bottom:10px;font-size:13px"/>
+    <div id="db_cl_grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px"></div>
+    <input type="hidden" id="db_cl" value=""/>
   </div>
   <div id="db_wrap" style="display:none">
     <div class="sec" style="margin-bottom:12px;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.2)">
@@ -4472,8 +4514,46 @@ function hDietaBuilder(){return`
 
 async function initDietaBuilder(){
   const cl=await api('/clientes');
-  const sel=document.getElementById('db_cl');
-  cl.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;sel.appendChild(o);});
+  window._dbClientes=cl;
+  dbRenderTarjetas(cl);
+}
+
+function dbRenderTarjetas(clientes){
+  const grid=document.getElementById('db_cl_grid');
+  if(!grid)return;
+  if(!clientes.length){grid.innerHTML=`<div style="font-size:13px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div>`;return;}
+  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e3a5f','#374151'];
+  const selId=document.getElementById('db_cl')?.value;
+  grid.innerHTML=clientes.map((c,i)=>{
+    const initials=(c.nombre||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    const col=colors[i%colors.length];
+    const objetivo=c.objetivo||'—';
+    const semanas=c.semanas_activo!=null?c.semanas_activo+(COACH_LANG==='en'?' wk':' sem'):'';
+    const sel=String(c.id)===String(selId);
+    return`<div onclick="dbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:14px;padding:13px 11px 11px;cursor:pointer;transition:.15s;position:relative;">
+      <div style="width:38px;height:38px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;margin-bottom:9px;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em">${initials}</div>
+      <div style="font-size:13px;font-weight:600;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${c.nombre}</div>
+      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${objetivo}</div>
+      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(37,99,235,.12);color:var(--blg);border:0.5px solid rgba(59,130,246,.2)">${semanas}</span>`:''}
+      ${sel?`<div style="position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function dbFiltrarTarjetas(){
+  const q=(document.getElementById('db_cl_buscar')?.value||'').toLowerCase();
+  const cl=(window._dbClientes||[]).filter(c=>!q||(c.nombre||'').toLowerCase().includes(q));
+  dbRenderTarjetas(cl);
+}
+
+function dbSelTarjeta(id,card){
+  document.querySelectorAll('#db_cl_grid > div').forEach(d=>{ d.style.border='0.5px solid var(--br)'; d.querySelector('[style*="border-radius:50%;background:var(--bl)"]')?.remove(); });
+  card.style.border='2px solid var(--bl)';
+  const chk=document.createElement('div');
+  chk.innerHTML=`<div style="position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`;
+  card.appendChild(chk.firstChild);
+  document.getElementById('db_cl').value=id;
+  dbSelCliente(id);
 }
 
 async function dbSelCliente(id){
