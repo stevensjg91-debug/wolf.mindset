@@ -10316,16 +10316,50 @@ async function coachAnalizarSemana(fi, fechas){
     grupos[fecha][f.tipo||'frente']=f;
   });
   const gActual = grupos[fechas[fi]];
-  const fotosDespues = Object.values(gActual)
-    .filter(f=>f.url&&f.url.startsWith('data:'))
-    .map(f=>({b64:f.url.split(',')[1],mt:f.url.split(';')[0].split(':')[1],tipo:f.tipo}));
+
+  // Helper: convierte URL (base64 o servidor) a {b64, mt}
+  async function urlToB64(url){
+    if(!url) return null;
+    if(url.startsWith('data:')){
+      return { b64: url.split(',')[1], mt: url.split(';')[0].split(':')[1] };
+    }
+    try {
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      return await new Promise(res => {
+        const r = new FileReader();
+        r.onload = () => res({ b64: r.result.split(',')[1], mt: blob.type||'image/jpeg' });
+        r.readAsDataURL(blob);
+      });
+    } catch(e){ return null; }
+  }
+
+  const fotosDespuesRaw = Object.values(gActual).filter(f=>f.url);
+  const fotosDespues = (await Promise.all(
+    fotosDespuesRaw.map(async f => {
+      const conv = await urlToB64(f.url);
+      return conv ? { ...conv, tipo: f.tipo } : null;
+    })
+  )).filter(Boolean);
+
   let fotosAntes = [];
   if(fi>0){
     const gAnterior = grupos[fechas[fi-1]];
-    fotosAntes = Object.values(gAnterior)
-      .filter(f=>f.url&&f.url.startsWith('data:'))
-      .map(f=>({b64:f.url.split(',')[1],mt:f.url.split(';')[0].split(':')[1],tipo:f.tipo}));
+    const fotosAntesRaw = Object.values(gAnterior).filter(f=>f.url);
+    fotosAntes = (await Promise.all(
+      fotosAntesRaw.map(async f => {
+        const conv = await urlToB64(f.url);
+        return conv ? { ...conv, tipo: f.tipo } : null;
+      })
+    )).filter(Boolean);
   }
+  if(!fotosDespues.length){
+    resultDiv.innerHTML='<div style="font-size:12px;color:#fca5a5;padding:10px;background:rgba(239,68,68,.08);border:0.5px solid rgba(239,68,68,.3);border-radius:8px">⚠️ '+(COACH_LANG==='en'?'Could not load photos. Try reloading the page.':'No se pudieron cargar las fotos. Recarga la página e inténtalo de nuevo.')+'</div>';
+    btn.textContent = COACH_LANG==='en'?'✦ Retry':'✦ Reintentar';
+    btn.disabled = false;
+    return;
+  }
+
   try {
     const d = await api('/ia/comparar-fotos',{
       method:'POST',
