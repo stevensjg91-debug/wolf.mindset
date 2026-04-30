@@ -345,6 +345,58 @@ router.post('/ia/foto', async (req, res) => {
   } catch(e) { res.status(500).json({ error: 'Error IA foto' }); }
 });
 
+// ── COMPARAR DOS SEMANAS DE FOTOS (Coach → IA → Mensaje editable) ──────────
+router.post('/ia/comparar-fotos', coachOnly, async (req, res) => {
+  const { fotosAntes, fotosDespues, clienteNombre, objetivo, nivel, semanaAntes, semanaDespues, lang } = req.body;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
+
+  try {
+    const isEn = lang === 'en';
+    const content = [];
+
+    // Añadir fotos "antes"
+    const labelAntes = isEn ? `Week ${semanaAntes} (BEFORE):` : `Semana ${semanaAntes} (ANTES):`;
+    content.push({ type: 'text', text: labelAntes });
+    for (const f of (fotosAntes || [])) {
+      if (f.b64 && f.mt) {
+        content.push({ type: 'image', source: { type: 'base64', media_type: f.mt, data: f.b64 } });
+      }
+    }
+
+    // Añadir fotos "después"
+    const labelDespues = isEn ? `Week ${semanaDespues} (NOW):` : `Semana ${semanaDespues} (AHORA):`;
+    content.push({ type: 'text', text: labelDespues });
+    for (const f of (fotosDespues || [])) {
+      if (f.b64 && f.mt) {
+        content.push({ type: 'image', source: { type: 'base64', media_type: f.mt, data: f.b64 } });
+      }
+    }
+
+    const instruccion = isEn
+      ? `Compare the BEFORE and NOW photos of ${clienteNombre} (Goal: ${objetivo}, Level: ${nivel}). Write a motivational coach message (4-6 sentences) that: 1) highlights 2-3 specific visible improvements, 2) celebrates a clear strong point, 3) honestly points out 1-2 areas to keep working on, 4) ends with a motivating push. Tone: direct, warm, like a real coach who knows them. No mention of AI or technology. Write in plain text, no markdown, no asterisks.`
+      : `Compara las fotos ANTES y AHORA de ${clienteNombre} (Objetivo: ${objetivo}, Nivel: ${nivel}). Escribe un mensaje motivacional de coach (4-6 frases) que: 1) destaque 2-3 mejoras visibles y concretas, 2) celebre un punto fuerte claro, 3) señale honestamente 1-2 áreas a seguir trabajando, 4) termine con un empuje motivador. Tono: directo, cercano, como un coach real que lo conoce. Sin mencionar IA ni tecnología. Texto plano, sin markdown, sin asteriscos.`;
+
+    content.push({ type: 'text', text: instruccion });
+
+    const system = isEn
+      ? 'You are an expert WolfMindset fitness coach. You analyze client progress photos with a trained, motivating eye. You write personalized messages that make clients feel seen and motivated. Never mention AI or technology.'
+      : 'Eres un coach de fitness experto de WolfMindset. Analizas fotos de progreso con ojo entrenado y motivador. Escribes mensajes personalizados que hacen que el cliente se sienta visto y motivado. Nunca menciones IA ni tecnología.';
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 600, system, messages: [{ role: 'user', content }] })
+    });
+
+    const data = await response.json();
+    if (data.error) return res.status(500).json({ error: data.error.message });
+    res.json({ reply: data.content[0].text });
+  } catch(e) {
+    res.status(500).json({ error: e.message || 'Error comparando fotos' });
+  }
+});
+
 // ── EJERCICIOS CONFIG ──────────────────────────────────────────────
 router.get('/ejercicios-config', coachOnly, (req, res) => {
   const configs = dbAll('SELECT * FROM ejercicios_config', []);
