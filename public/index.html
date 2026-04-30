@@ -2417,13 +2417,19 @@ async function cargarNotificacionesCliente() {
   try {
     const notifs = await api('/notificaciones');
     const noLeidas = notifs.filter(n=>!n.leida);
-    // Mostrar la notificación más reciente no leída como banner
-    if(noLeidas.length > 0) {
-      const ultima = noLeidas[0];
-      if(ultima.tipo !== 'vencimiento_proximo') { // el vencimiento ya se muestra aparte
-        // Marcarla como leída automáticamente después de mostrarla
-        setTimeout(()=>api('/notificaciones/'+ultima.id+'/leer',{method:'PUT'}).catch(()=>{}), 5000);
-      }
+
+    // Notificaciones de vencimiento: mostrar como banner
+    const notifVenc = noLeidas.find(n => n.tipo === 'vencimiento_proximo' || n.tipo === 'suscripcion_vencida');
+    if(notifVenc) {
+      const esVencida = notifVenc.tipo === 'suscripcion_vencida';
+      mostrarBannerSub(notifVenc.mensaje, esVencida ? 'error' : 'warning');
+      setTimeout(()=>api('/notificaciones/'+notifVenc.id+'/leer',{method:'PUT'}).catch(()=>{}), 8000);
+    }
+
+    // Otras notificaciones no leidas (peso, foto, etc.)
+    const otraNoLeida = noLeidas.find(n => n.tipo !== 'vencimiento_proximo' && n.tipo !== 'suscripcion_vencida');
+    if(otraNoLeida) {
+      setTimeout(()=>api('/notificaciones/'+otraNoLeida.id+'/leer',{method:'PUT'}).catch(()=>{}), 5000);
     }
   } catch(e) {}
 }
@@ -5074,12 +5080,25 @@ async function cargarSuscripcionCliente(clienteId) {
 
     if(badge) { badge.textContent=estadoTexto; badge.style.color=diasColor; badge.style.fontWeight='600'; badge.style.fontSize='11px'; badge.style.textTransform='none'; badge.style.letterSpacing='0'; }
 
+    // Calcular días contratados totales
+    const _diasContratados = s.fecha_inicio && s.fecha_fin
+      ? Math.ceil((new Date(s.fecha_fin) - new Date(s.fecha_inicio)) / (1000*60*60*24))
+      : null;
+
     info.innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
-          <div style="font-size:18px;font-weight:700;color:${diasColor}">${s.vencida ? '0' : s.dias_restantes}</div>
-          <div style="font-size:10px;color:var(--tx3)">${tc('días restantes')}</div>
+          <div style="font-size:11px;color:var(--tx3);margin-bottom:2px">${COACH_LANG==='en'?'contracted':'contratados'}</div>
+          <div style="font-size:18px;font-weight:700;color:var(--sv)">${_diasContratados ?? '—'}</div>
+          <div style="font-size:10px;color:var(--tx3)">${COACH_LANG==='en'?'days':'días'}</div>
         </div>
+        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:11px;color:var(--tx3);margin-bottom:2px">${COACH_LANG==='en'?'remaining':'restantes'}</div>
+          <div style="font-size:18px;font-weight:700;color:${diasColor}">${s.vencida ? '0' : s.dias_restantes}</div>
+          <div style="font-size:10px;color:var(--tx3)">${COACH_LANG==='en'?'days':'días'}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
         <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
           <div style="font-size:12px;font-weight:700;color:var(--sv)">${s.fecha_inicio?.split('-').reverse().join('/') || '—'}</div>
           <div style="font-size:10px;color:var(--tx3)">${COACH_LANG==='en'?'start':'inicio'}</div>
