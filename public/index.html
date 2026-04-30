@@ -2138,6 +2138,29 @@ const COACH_TRANSLATIONS = {
   'Crear rutina':'Create routine',
   'Crear dieta':'Create diet',
   'Asistente IA Coach':'AI Coach Assistant',
+  'Mensajes':'Messages',
+
+  // ── Panel mensajes coach ──
+  'Sin mensajes aún':'No messages yet',
+  'Cuando un cliente te escriba aparecerá aquí':'When a client messages you it will appear here',
+  'Ver ficha':'View profile',
+  'Escribe tu respuesta...':'Write your reply...',
+  'escribiendo...':'typing...',
+  'auto':'auto',
+
+  // ── Análisis foto grasa ──
+  'Est. body fat':'Est. body fat',
+  'Grasa est.':'Est. body fat',
+  'Mejora':'Improvement',
+  'Revisa y edita antes de enviar':'Review and edit before sending',
+  'Publicar al cliente':'Send to client',
+  'Descartar':'Discard',
+  'Aparecerá en las fotos del cliente como mensaje de tu coach':'Will appear on client photos as a coach message',
+  '↺ Volver a analizar':'↺ Re-analyze',
+  '✦ Analizar vs semana anterior':'✦ Analyze vs prev. week',
+  '✦ Analizar con IA':'✦ Analyze with AI',
+  'Error al analizar. Inténtalo de nuevo.':'Error analyzing. Try again.',
+  '✦ Reintentar':'✦ Retry',
 
   // ── Suscripciones vencimiento ──
   '⚠️ Próximas a vencer':'⚠️ Expiring soon',
@@ -3057,7 +3080,7 @@ function switchClienteTab(tab, btn) {
         const valoracion = s.valoracion || '';
         const notasCliente = {};
         s.series.forEach(sr=>{ if(sr.nota_cliente && !notasCliente[sr.ejercicio_nombre]) notasCliente[sr.ejercicio_nombre]=sr.nota_cliente; });
-        const fecha = new Date(s.fecha).toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        const fecha = new Date(s.fecha).toLocaleDateString(COACH_LANG==='en'?'en-GB':'es-ES',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
         const durStr = s.duracion_min ? ' · '+s.duracion_min+' min' : '';
         const totalSeries = s.series.length;
         return '<div style="background:var(--s2);border:0.5px solid '+(incompleto?'rgba(245,158,11,.4)':'rgba(34,197,94,.2)')+';border-radius:12px;padding:13px;margin-bottom:10px">'+
@@ -6929,7 +6952,7 @@ function hProgreso2(){return`<div style="padding-top:8px">
   <div id="fotos_timeline" style="padding:0 14px"></div>
 
   <div id="fAn" style="padding:0 14px 10px"></div>
-  ${CD.fotos&&CD.fotos.length?`<div class="sec-lbl">Valoraciones anteriores</div><div style="padding:0 14px">${CD.fotos.map(f=>`<div class="ia-chip" style="margin-bottom:10px"><div class="ia-chip-title">${new Date(f.fecha).toLocaleDateString('es-ES')}</div><div class="ia-result-body">${f.analysis}</div></div>`).join('')}</div>`:''}
+  ${CD.fotos&&CD.fotos.length?`<div class="sec-lbl">${t('Valoraciones anteriores')}</div><div style="padding:0 14px">${CD.fotos.map(f=>`<div class="ia-chip" style="margin-bottom:10px"><div class="ia-chip-title">${new Date(f.fecha).toLocaleDateString(LANG==='en'?'en-GB':'es-ES')}</div><div class="ia-result-body">${f.analysis}</div></div>`).join('')}</div>`:''}
 </div>`;}
 
 async function guardarPeso(){
@@ -7011,7 +7034,10 @@ function renderPesoTendencia(){
   const esBueno = (esBajar && diff < 0) || (!esBajar && diff > 0);
   const trendColor = Math.abs(diff) < 0.3 ? '#a1a1aa' : esBueno ? '#22c55e' : '#f59e0b';
   const trendIcon = diff < -0.3 ? '↘' : diff > 0.3 ? '↗' : '→';
-  const trendLabel = diff < -0.3 ? `${Math.abs(diff).toFixed(1)}kg menos` : diff > 0.3 ? `+${diff.toFixed(1)}kg` : 'Peso estable';
+  const trendLabel = diff < -0.3
+    ? `${Math.abs(diff).toFixed(1)}kg ${LANG==='en'?'less':'menos'}`
+    : diff > 0.3 ? `+${diff.toFixed(1)}kg`
+    : (LANG==='en'?'Stable weight':'Peso estable');
 
   // Eje Y (3 labels)
   const yLabels = [minP, (minP+maxP)/2, maxP].map(v=>`
@@ -7030,11 +7056,19 @@ function renderPesoTendencia(){
   // Puntos
   const dots = pesos.map((p,i)=>`<circle cx="${scX(i).toFixed(1)}" cy="${scY(p.peso).toFixed(1)}" r="2.5" fill="#3b82f6" opacity=".7"/>`).join('');
 
+  const trendColorName = trendColor==='#22c55e'?(LANG==='en'?'green':'verde'):trendColor==='#f59e0b'?(LANG==='en'?'amber':'ámbar'):(LANG==='en'?'grey':'gris');
+  const legendText = LANG==='en'
+    ? `Blue line: actual records · ${trendColorName.charAt(0).toUpperCase()+trendColorName.slice(1)} line: smoothed trend`
+    : `Línea azul: registros reales · Línea ${trendColorName}: tendencia suavizada`;
+  const recordsText = LANG==='en'
+    ? `${pesos.length} records · ${pesos[0]?.peso||'?'}kg → ${pesos[pesos.length-1]?.peso||'?'}kg`
+    : `${pesos.length} registros · ${pesos[0]?.peso||'?'}kg → ${pesos[pesos.length-1]?.peso||'?'}kg`;
+
   wrap.innerHTML = `
-    <div class="sec-lbl" style="margin-bottom:6px">📈 Tendencia de peso</div>
+    <div class="sec-lbl" style="margin-bottom:6px">${t('📈 Tendencia de peso')}</div>
     <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:10px 12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div style="font-size:11px;color:var(--tx3)">${pesos.length} registros · ${pesos[0]?.peso||'?'}kg → ${pesos[pesos.length-1]?.peso||'?'}kg</div>
+        <div style="font-size:11px;color:var(--tx3)">${recordsText}</div>
         <div style="font-size:13px;font-weight:700;color:${trendColor}">${trendIcon} ${trendLabel}</div>
       </div>
       <svg width="100%" viewBox="0 0 ${W} ${H}" style="overflow:visible">
@@ -7050,7 +7084,7 @@ function renderPesoTendencia(){
         <path d="${tendPath}" stroke="${trendColor}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         ${dots}
       </svg>
-      <div style="font-size:9px;color:var(--tx3);margin-top:4px">Línea azul: registros reales · Línea ${trendColor==='#22c55e'?'verde':trendColor==='#f59e0b'?'ámbar':'gris'}: tendencia suavizada</div>
+      <div style="font-size:9px;color:var(--tx3);margin-top:4px">${legendText}</div>
     </div>`;
 }
 
@@ -8040,53 +8074,63 @@ async function cargarGraficasCliente(){
       });
     });
 
-    // Cargar sesiones para PRs
+    const sesiones = await api('/clientes/'+CD.id+'/sesiones').catch(()=>[]);
     let prsHtml = '';
-    try {
-      const sesiones = await api('/clientes/'+CD.id+'/sesiones');
-      if(sesiones.length) {
-        const prs = {};
-        sesiones.forEach(s=>{
-          s.series.forEach(sr=>{
-            const p = sr.peso_real||0, r = sr.reps_real||0;
-            if(!p) return;
-            const rm1 = calcular1RM(p, r);
-            if(!prs[sr.ejercicio_nombre] || rm1 > prs[sr.ejercicio_nombre].rm1) {
-              prs[sr.ejercicio_nombre] = { rm1, peso:p, reps:r, fecha:s.fecha };
-            }
-          });
-        });
-        const prsList = Object.entries(prs)
-          .sort((a,b)=>{ const pa=principales.includes(a[0])?1:0, pb=principales.includes(b[0])?1:0; return pb-pa; })
-          .slice(0,8);
-        if(prsList.length) {
-          prsHtml = `<div class="sec-lbl" style="margin-top:4px">🏆 Mis marcas personales</div>
-            <div style="padding:0 14px 8px">
-              ${prsList.map(([nom, d])=>{
-                const esPrincipal = principales.includes(nom);
-                const fechaStr = new Date(d.fecha).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'2-digit'});
-                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid var(--br)">
-                  <div>
-                    <div style="font-size:12px;font-weight:700;color:var(--sv)">${esPrincipal?'⭐ ':''}${nom}</div>
-                    <div style="font-size:10px;color:var(--tx3)">${d.peso}kg × ${d.reps} reps · ${fechaStr}</div>
-                  </div>
-                  <div style="text-align:right;flex-shrink:0;margin-left:10px">
-                    <div style="font-size:16px;font-weight:800;color:var(--gnb)">${d.rm1}kg</div>
-                    <div style="font-size:9px;color:var(--tx3)">1RM est.</div>
-                  </div>
-                </div>`;
-              }).join('')}
-            </div>`;
-        }
-      }
-    } catch(e){}
+    let graficasHtml = '';
 
-    if(!principales.length){
-      wrap.innerHTML = prsHtml;
-      return;
+    if(sesiones.length) {
+      const prs = {};
+      const historial = {}; // { nombre: [{fecha, peso, reps}] }
+
+      sesiones.forEach(s=>{
+        s.series.forEach(sr=>{
+          const p = sr.peso_real||0, r = sr.reps_real||0;
+          if(!p) return;
+          const rm1 = calcular1RM(p, r);
+          if(!prs[sr.ejercicio_nombre] || rm1 > prs[sr.ejercicio_nombre].rm1) {
+            prs[sr.ejercicio_nombre] = { rm1, peso:p, reps:r, fecha:s.fecha };
+          }
+          if(!historial[sr.ejercicio_nombre]) historial[sr.ejercicio_nombre] = [];
+          historial[sr.ejercicio_nombre].push({ fecha:s.fecha, peso_real:p, reps_real:r, rir:sr.rir });
+        });
+      });
+
+      // ── PRs ──────────────────────────────────────────────────────
+      const prsList = Object.entries(prs)
+        .sort((a,b)=>{ const pa=principales.includes(a[0])?1:0, pb=principales.includes(b[0])?1:0; return pb-pa; })
+        .slice(0,8);
+      if(prsList.length) {
+        const locale = LANG==='en'?'en-GB':'es-ES';
+        prsHtml = `<div class="sec-lbl" style="margin-top:4px">${t('🏆 Mis marcas personales')}</div>
+          <div style="padding:0 14px 8px">
+            ${prsList.map(([nom, d])=>{
+              const esPrincipal = principales.includes(nom);
+              const fechaStr = new Date(d.fecha).toLocaleDateString(locale,{day:'numeric',month:'short',year:'2-digit'});
+              return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid var(--br)">
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:var(--sv)">${esPrincipal?'⭐ ':''}${nom}</div>
+                  <div style="font-size:10px;color:var(--tx3)">${d.peso}kg × ${d.reps} ${t('reps')} · ${fechaStr}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;margin-left:10px">
+                  <div style="font-size:16px;font-weight:800;color:var(--gnb)">${d.rm1}kg</div>
+                  <div style="font-size:9px;color:var(--tx3)">${t('1RM est.')}</div>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>`;
+      }
+
+      // ── Gráficas ejercicios principales ──────────────────────────
+      const principalesConHistorial = principales.filter(n => historial[n] && historial[n].length >= 2);
+      if(principalesConHistorial.length) {
+        graficasHtml = `<div class="sec-lbl" style="margin-top:4px">${t('Progreso ejercicios principales')}</div>
+          <div style="padding:0 14px 8px">
+            ${principalesConHistorial.slice(0,4).map(nom => renderGraficaSVG(nom, historial[nom])).join('')}
+          </div>`;
+      }
     }
 
-    wrap.innerHTML = prsHtml;
+    wrap.innerHTML = prsHtml + graficasHtml;
 
   } catch(e){ console.log('Error graficas:', e); }
 }
@@ -8143,17 +8187,14 @@ function renderGraficaSVG(nombre, data){
   const diffColor = diff > 0 ? '#86efac' : diff < 0 ? '#fca5a5' : '#a1a1aa';
 
   return `<div style="background:var(--s);border:0.5px solid var(--br);border-radius:12px;padding:12px;margin-bottom:10px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div>
-        <div style="font-size:12px;font-weight:700;color:var(--sv)">${nombre}</div>
-        <div style="font-size:11px;color:var(--tx3)">${puntos.length} sesión${puntos.length!==1?'es':''}</div>
-      </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <div style="font-size:12px;font-weight:700;color:var(--sv)">${nombre}</div>
       <div style="text-align:right">
-        <div style="font-size:18px;font-weight:700;color:var(--sv)">${last[1].peso}kg</div>
-        ${diffStr?`<div style="font-size:11px;font-weight:600;color:${diffColor}">${diffStr}</div>`:''}
-        ${last[1].rir!=null?`<div style="font-size:10px;color:var(--blg)">RIR ${last[1].rir}</div>`:''}
+        <span style="font-size:16px;font-weight:800;color:var(--sv)">${last[1].peso}kg</span>
+        ${diffStr?` <span style="font-size:11px;font-weight:600;color:${diffColor}">${diffStr}</span>`:''}
       </div>
     </div>
+    <div style="font-size:10px;color:var(--tx3);margin-bottom:8px">${puntos.length} ${LANG==='en'?(puntos.length===1?'session':'sessions'):(puntos.length===1?'sesión':'sesiones')}${last[1].rir!=null?' · RIR '+last[1].rir:''}</div>
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;overflow:visible">
       <defs>
         <linearGradient id="grad_${nombre.replace(/\s/g,'_')}" x1="0" y1="0" x2="0" y2="1">
@@ -8705,7 +8746,7 @@ async function sugerirProgresionIA(clienteId) {
     // Summarize last 4 sessions
     const resumenSesiones = sesiones.slice(0, 4).map(s => {
       const series = s.series.map(sr => `${sr.ejercicio_nombre}: ${sr.peso_real}kg×${sr.reps_real}${sr.rir != null ? ' RIR'+sr.rir : ''}`).join(', ');
-      return `${s.dia_nombre} (${new Date(s.fecha).toLocaleDateString('es-ES')}): ${series}`;
+      return `${s.dia_nombre} (${new Date(s.fecha).toLocaleDateString(LANG==='en'?'en-GB':'es-ES')}): ${series}`;
     }).join('\n');
 
     const ejerciciosPlan = (cliente.dias || []).flatMap(d =>
@@ -9986,7 +10027,7 @@ function renderFotosProgreso(){
             <div style="position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--s2)">
               <img id="sbs_antes" src="${fotoA.url}" style="width:100%;height:100%;object-fit:cover"/>
               <div style="position:absolute;bottom:0;left:0;right:0;padding:6px;background:linear-gradient(transparent,rgba(0,0,0,.7));text-align:center">
-                <div style="font-size:9px;color:#fff;font-weight:700">${new Date(fechas[0]+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</div>
+                <div style="font-size:9px;color:#fff;font-weight:700">${new Date(fechas[0]+'T12:00:00').toLocaleDateString(LANG==='en'?'en-GB':'es-ES',{day:'numeric',month:'short'})}</div>
               </div>
             </div>
           </div>
@@ -9995,7 +10036,7 @@ function renderFotosProgreso(){
             <div style="position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--s2);border:1.5px solid rgba(34,197,94,.4)">
               <img id="sbs_ahora" src="${fotoB.url}" style="width:100%;height:100%;object-fit:cover"/>
               <div style="position:absolute;bottom:0;left:0;right:0;padding:6px;background:linear-gradient(transparent,rgba(0,0,0,.7));text-align:center">
-                <div style="font-size:9px;color:#fff;font-weight:700">${new Date(fechas[fechas.length-1]+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</div>
+                <div style="font-size:9px;color:#fff;font-weight:700">${new Date(fechas[fechas.length-1]+'T12:00:00').toLocaleDateString(LANG==='en'?'en-GB':'es-ES',{day:'numeric',month:'short'})}</div>
               </div>
             </div>
           </div>
@@ -10013,7 +10054,7 @@ function renderFotosProgreso(){
 
   timelineEl.innerHTML = sideBySideHtml + fechas.map((fecha, fi) => {
     const g = grupos[fecha];
-    const dateStr = new Date(fecha+'T12:00:00').toLocaleDateString('es-ES', {day:'numeric', month:'long', year:'numeric'});
+    const dateStr = new Date(fecha+'T12:00:00').toLocaleDateString(LANG==='en'?'en-GB':'es-ES', {day:'numeric', month:'long', year:'numeric'});
     const tipoOrder = ['frente','posterior','costado'];
     const hasAnalysis = Object.values(g).some(f=>f.analysis);
     return '<div style="margin-bottom:20px">'+
@@ -10089,7 +10130,7 @@ function renderCoachFotos(fotos){
   const fechas = Object.keys(grupos).sort();
   wrap.innerHTML = fechas.map((fecha,fi)=>{
     const g = grupos[fecha];
-    const dateStr = new Date(fecha+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+    const dateStr = new Date(fecha+'T12:00:00').toLocaleDateString(COACH_LANG==='en'?'en-GB':'es-ES',{day:'numeric',month:'long',year:'numeric'});
     const tipos = ['frente','posterior','costado'];
     const fotosHtml = tipos.map(tipo=>{
       const f = g[tipo];
@@ -10157,15 +10198,49 @@ async function coachAnalizarSemana(fi, fechas){
         nivel: CD.nivel,
         semanaAntes: fi>0?fi:null,
         semanaDespues: fi+1,
-        lang: COACH_LANG||'es'
+        lang: COACH_LANG||'es',
+        // Pedir estimación de grasa corporal
+        pedirGrasa: true,
+        peso: CD.peso_actual,
+        altura: CD.altura,
+        edad: CD.edad,
+        sexo: CD.sexo
       })
     });
-    const draft = (d.reply||'').replace(/\*\*([^*]+)\*\*/g,'$1').replace(/##[^\n]+/g,'').trim();
+
+    const rawReply = d.reply||'';
+
+    // Intentar extraer métricas estructuradas del texto
+    let grasaEstimada = null;
+    const grasaMatch = rawReply.match(/grasa[^\d]*?(\d{1,2}(?:[.,]\d)?)\s*%/i) ||
+                       rawReply.match(/body fat[^\d]*?(\d{1,2}(?:[.,]\d)?)\s*%/i) ||
+                       rawReply.match(/(\d{1,2}(?:[.,]\d)?)\s*%\s*(?:de\s+)?(?:grasa|fat)/i);
+    if(grasaMatch) grasaEstimada = parseFloat(grasaMatch[1].replace(',','.'));
+
+    let mejoraMatch = rawReply.match(/(\d{1,3})\s*%\s*(?:de\s+)?(?:mejora|improvement|progreso|progress)/i);
+    const mejoraEstimada = mejoraMatch ? parseInt(mejoraMatch[1]) : null;
+
+    const draft = rawReply.replace(/\*\*([^*]+)\*\*/g,'$1').replace(/##[^\n]+/g,'').trim();
     const allFotoIds = Object.values(gActual).filter(f=>f.id).map(f=>f.id);
+
+    // Métricas visuales si se detectaron
+    const metricasHtml = (grasaEstimada||mejoraEstimada) ? `
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        ${grasaEstimada ? `<div style="flex:1;background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:var(--blg)">${grasaEstimada}%</div>
+          <div style="font-size:9px;color:var(--tx3);margin-top:2px">${COACH_LANG==='en'?'Est. body fat':'Grasa est.'}</div>
+        </div>` : ''}
+        ${mejoraEstimada ? `<div style="flex:1;background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:var(--gnb)">${mejoraEstimada}%</div>
+          <div style="font-size:9px;color:var(--tx3);margin-top:2px">${COACH_LANG==='en'?'Improvement':'Mejora'}</div>
+        </div>` : ''}
+      </div>` : '';
+
     resultDiv.innerHTML =
       '<div style="background:rgba(37,99,235,.05);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;padding:12px;margin-bottom:6px">'
+      +metricasHtml
       +'<div style="font-size:10px;font-weight:700;color:var(--blg);margin-bottom:8px">📝 '+(COACH_LANG==='en'?'Edit before sending to client':'Revisa y edita antes de enviar')+'</div>'
-      +'<textarea id="cfa_ta_'+fi+'" style="width:100%;background:var(--s1);border:0.5px solid var(--br);border-radius:8px;padding:10px;color:var(--tx1);font-size:12px;line-height:1.7;resize:vertical;min-height:120px;font-family:inherit;box-sizing:border-box">'+draft+'</textarea>'
+      +'<textarea id="cfa_ta_'+fi+'" style="width:100%;background:rgba(0,0,0,.2);border:0.5px solid var(--br);border-radius:8px;padding:10px;color:var(--sv);font-size:12px;line-height:1.7;resize:vertical;min-height:120px;font-family:inherit;box-sizing:border-box">'+draft+'</textarea>'
       +'<div style="display:flex;gap:8px;margin-top:8px">'
       +'<button onclick="coachPublicarMensaje('+fi+','+JSON.stringify(allFotoIds)+')" style="flex:2;padding:10px;background:var(--gn);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'✓ Send to client':'✓ Publicar al cliente')+'</button>'
       +'<button onclick="document.getElementById(\'cfa_result_'+fi+'\').innerHTML=\'\'" style="flex:1;padding:10px;background:none;border:0.5px solid var(--br);border-radius:8px;color:var(--tx3);font-size:12px;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'Discard':'Descartar')+'</button>'
@@ -10175,7 +10250,7 @@ async function coachAnalizarSemana(fi, fechas){
     btn.textContent = COACH_LANG==='en'?'↺ Re-analyze':'↺ Volver a analizar';
     btn.disabled = false;
   } catch(e){
-    resultDiv.innerHTML='<div style="font-size:12px;color:var(--rojo);padding:8px">'+(COACH_LANG==='en'?'Error analyzing. Try again.':'Error al analizar. Inténtalo de nuevo.')+'</div>';
+    resultDiv.innerHTML='<div style="font-size:12px;color:#fca5a5;padding:8px;background:rgba(239,68,68,.08);border-radius:8px">'+(COACH_LANG==='en'?'Error analyzing. Try again.':'Error al analizar. Inténtalo de nuevo.')+'</div>';
     btn.textContent = COACH_LANG==='en'?'✦ Retry':'✦ Reintentar';
     btn.disabled = false;
   }
