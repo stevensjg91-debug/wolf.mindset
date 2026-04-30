@@ -2336,9 +2336,7 @@ async function doLogin(){
       const sniEq=document.getElementById('sni_equipo');
       if(sniEq) sniEq.style.display='flex';
       cargarNotificacionesCoach();
-      // Polling badge mensajes cada 20s
-      if(window._coachMsgBadgeInt) clearInterval(window._coachMsgBadgeInt);
-      window._coachMsgBadgeInt = setInterval(cargarNotificacionesCoach, 20000);
+      iniciarSSE();
       // Auto-verificar vencimientos al entrar
       api('/suscripciones/avisar-vencimientos', {method:'POST'}).catch(()=>{});
     } else {
@@ -2352,6 +2350,7 @@ async function doLogin(){
       // Verificar suscripción antes de mostrar la app
       await verificarSuscripcionCliente(data.user.clienteId);
       klNav('entreno',document.getElementById('bni0'));
+      iniciarSSE();
     setTimeout(checkRecordatorios,2000);
     // Pedir permiso de notificaciones
     setTimeout(async()=>{
@@ -2451,7 +2450,7 @@ async function cargarNotificacionesCliente() {
   } catch(e) {}
 }
 
-function doLogout(){TOKEN=null;USER=null;CD=null;localStorage.removeItem('wm_token');localStorage.removeItem('wm_user');show('sLogin');}
+function doLogout(){cerrarSSE();TOKEN=null;USER=null;CD=null;localStorage.removeItem('wm_token');localStorage.removeItem('wm_user');show('sLogin');}
 
 // PRE-FILL SAVED CREDENTIALS
 const savedUser = localStorage.getItem('wm_saved_user');
@@ -5169,6 +5168,83 @@ async function cancelarSuscripcion(clienteId) {
 }
 
 // ── NOTIFICACIONES COACH ──────────────────────────────────────────
+// ── SSE — Eventos en tiempo real ─────────────────────────────────────
+let _sseSource = null;
+
+function iniciarSSE(){
+  if(!TOKEN) return;
+  cerrarSSE(); // cerrar conexión previa si la hay
+
+  const url = (API||'') + '/api/eventos?token=' + encodeURIComponent(TOKEN);
+  _sseSource = new EventSource(url);
+
+  // ── Notificación recibida (cualquier tipo) ──
+  _sseSource.addEventListener('notificacion', e => {
+    try {
+      const data = JSON.parse(e.data);
+      if(USER && USER.role === 'coach') {
+        cargarNotificacionesCoach();
+      } else {
+        // Cliente: procesar notificación según tipo
+        const tipo = data.tipo || '';
+        if(tipo === 'vencimiento_proximo' || tipo === 'suscripcion_vencida') {
+          mostrarBannerSub(data.mensaje, tipo === 'suscripcion_vencida' ? 'error' : 'warning');
+        }
+        // Mostrar badge en la campana si existiera en cliente (futuro)
+      }
+    } catch(err) {}
+  });
+
+  // ── Badge de mensajes del coach actualizado ──
+  _sseSource.addEventListener('badge_msgs', e => {
+    // Refrescar badge sin hacer polling
+    cargarNotificacionesCoach();
+    // Si estamos en la sección mensajes, refrescar la lista
+    if(window._coachTabActual === 'mensajes') {
+      if(window._coachMsgThread) {
+        coachMsgsLoadThread(window._coachMsgThread, false);
+      } else {
+        coachMsgsLoadList();
+      }
+    }
+  });
+
+  // ── Mensaje nuevo recibido por el cliente ──
+  _sseSource.addEventListener('mensaje_nuevo', e => {
+    try {
+      const data = JSON.parse(e.data);
+      // Añadir al historial del chat y re-renderizar si está abierto
+      if(data.de_coach) {
+        const msg = {
+          role: 'assistant',
+          content: data.contenido,
+          sender: window._coachNombreAsistente || 'Coach',
+          ts: new Date(data.created_at).getTime(),
+          via: data.via_ia ? 'ia' : 'coach',
+          id: data.id
+        };
+        _chatMsgs.push(msg);
+        _chatSave();
+        // Solo re-renderizar si el tab asistente está visible
+        if(document.getElementById('chatMsgs')) _chatRenderAll();
+      }
+    } catch(err) {}
+  });
+
+  _sseSource.onerror = () => {
+    // Reconexión automática en 5s si se cae (Railway reinicia, etc.)
+    cerrarSSE();
+    setTimeout(()=>{ if(TOKEN) iniciarSSE(); }, 5000);
+  };
+}
+
+function cerrarSSE(){
+  if(_sseSource){
+    _sseSource.close();
+    _sseSource = null;
+  }
+}
+
 async function cargarNotificacionesCoach() {
   try {
     const notifs = await api('/notificaciones');
@@ -6543,17 +6619,10 @@ function _chatAfterRender(){
   _chatRenderAll();
   _chatCheckCoachOnline();
   _chatLoadFromServer();
-  // Polling cada 15s para mensajes nuevos del coach mientras el tab está abierto
+  // El polling manual se elimina — SSE maneja las actualizaciones en tiempo real.
+  // Solo mantenemos un refresco inicial al abrir el tab.
   if(_chatPolling) clearInterval(_chatPolling);
-  _chatPolling = setInterval(()=>{
-    if(document.getElementById('chatMsgs')) {
-      _chatLoadFromServer();
-      _chatCheckCoachOnline();
-    } else {
-      clearInterval(_chatPolling);
-      _chatPolling = null;
-    }
-  }, 15000);
+  _chatPolling = null;
 }
 
 function _chatClear(){
