@@ -35,7 +35,7 @@ function ensureTrainingTrackingSchema() {
 }
 
 router.get('/clientes', coachOnly, (req, res) => {
-  const clientes = dbAll(`SELECT c.*, u.nombre, u.username,
+  const clientes = dbAll(`SELECT c.*, u.nombre, u.username, u.foto_perfil,
     (SELECT peso FROM peso_registros WHERE cliente_id=c.id ORDER BY rowid DESC LIMIT 1) as peso_actual,
     (SELECT grasa FROM peso_registros WHERE cliente_id=c.id ORDER BY rowid DESC LIMIT 1) as grasa_actual,
     (SELECT COUNT(*) FROM fotos WHERE cliente_id=c.id) as fotos_count
@@ -49,7 +49,7 @@ router.get('/clientes/:id', (req, res) => {
     const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
     if (!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
   }
-  const c = dbGet('SELECT c.*, u.nombre, u.username FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [id]);
+  const c = dbGet('SELECT c.*, u.nombre, u.username, u.foto_perfil FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [id]);
   if (!c) return res.status(404).json({ error: 'No encontrado' });
   const pesos = dbAll('SELECT * FROM peso_registros WHERE cliente_id=? ORDER BY rowid ASC', [id]);
   const dias = dbAll('SELECT * FROM dias_entreno WHERE cliente_id=? ORDER BY orden', [id]);
@@ -1022,6 +1022,32 @@ router.get('/coaches', coachOnly, (req, res) => {
   try {
     const coaches = dbAll("SELECT id, username, nombre, email, lang, foto_perfil FROM users WHERE role='coach' ORDER BY id ASC");
     res.json(coaches);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/coaches', coachOnly, (req, res) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const { nombre, username, password, email, lang } = req.body;
+    if(!nombre || !username || !password) return res.status(400).json({ error: 'nombre, username y password son obligatorios' });
+    if(password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    const existing = dbGet('SELECT id FROM users WHERE username=?', [username]);
+    if(existing) return res.status(400).json({ error: 'Ese usuario ya existe' });
+    const hash = bcrypt.hashSync(password, 10);
+    const r = dbRun('INSERT INTO users (username, password, role, nombre, email, lang) VALUES (?,?,?,?,?,?)',
+      [username, hash, 'coach', nombre, email||'', lang||'es']);
+    saveToDisk();
+    res.json({ ok: true, id: r.lastInsertRowid });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete('/coaches/:id', coachOnly, (req, res) => {
+  try {
+    const id = req.params.id;
+    if(String(id) === String(req.user.id)) return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' });
+    dbRun('DELETE FROM users WHERE id=? AND role=\'coach\'', [id]);
+    saveToDisk();
+    res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
