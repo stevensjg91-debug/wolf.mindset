@@ -332,35 +332,17 @@ router.post('/ia/chat', async (req, res) => {
 });
 
 router.post('/ia/foto', async (req, res) => {
-  const { imageBase64, mediaType, system, extraImages } = req.body;
+  const { imageBase64, mediaType, system } = req.body;
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'API key no configurada en Railway Variables' });
-  if (!imageBase64 || !mediaType) return res.status(400).json({ error: 'imageBase64 y mediaType son obligatorios' });
   try {
-    // Construir contenido con imagen principal + extras si los hay
-    const content = [
-      { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }
-    ];
-    if (Array.isArray(extraImages)) {
-      extraImages.forEach(ei => {
-        if (ei.b64 && ei.mt) {
-          if (ei.tipo) content.push({ type: 'text', text: `Foto ${ei.tipo}:` });
-          content.push({ type: 'image', source: { type: 'base64', media_type: ei.mt, data: ei.b64 } });
-        }
-      });
-    }
-    content.push({ type: 'text', text: 'Valora el progreso físico.' });
-
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 800, system, messages: [{ role: 'user', content }] })
+      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 800, system, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }, { type: 'text', text: 'Valora el progreso fisico.' }] }] })
     });
     const data = await response.json();
-    if (data.error) return res.status(500).json({ error: data.error.message });
-    if (!data.content || !data.content[0]) return res.status(500).json({ error: 'Respuesta vacía de la IA' });
     res.json({ reply: data.content[0].text });
-  } catch(e) { res.status(500).json({ error: e.message || 'Error IA foto' }); }
+  } catch(e) { res.status(500).json({ error: 'Error IA foto' }); }
 });
 
 // ── COMPARAR DOS SEMANAS DE FOTOS (Coach → IA → Mensaje editable) ──────────
@@ -1228,6 +1210,171 @@ router.get('/mi-foto', (req, res) => {
   try {
     const user = dbGet('SELECT foto_perfil FROM users WHERE id=?', [req.user.id]);
     res.json({ foto: user?.foto_perfil || null });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ═══ MENSAJES (chat cliente ↔ coach) ══════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Rastrea cuándo fue el último request del coach para el endpoint /mensajes/estado
+const _coachLastSeen = {};
+router.use((req, res, next) => {
+  if (req.user && req.user.role === 'coach') _coachLastSeen[req.user.id] = Date.now();
+  next();
+});
+
+// Helper: cliente_id del usuario autenticado
+function getClienteIdPropio(userId) {
+  const c = dbGet('SELECT id FROM clientes WHERE user_id=?', [userId]);
+  return c ? c.id : null;
+}
+
+// Helper: coach asignado al cliente (o primer coach si no tiene)
+function getCoachIdDeCliente(clienteId) {
+  const c = dbGet('SELECT coach_id FROM clientes WHERE id=?', [clienteId]);
+  if (c && c.coach_id) return c.coach_id;
+  const coach = dbGet("SELECT id FROM users WHERE role='coach' LIMIT 1");
+  return coach ? coach.id : null;
+}
+
+// ── GET /mensajes/no-leidos ───────────────────────────────────────────────────
+// Badge del coach: cuántos mensajes de clientes no ha leído.
+router.get('/mensajes/no-leidos', coachOnly, (req, res) => {
+  try {
+    const row = dbGet(`
+      SELECT COUNT(*) as c FROM mensajes m
+      JOIN clientes cl ON cl.id = m.cliente_id
+      WHERE m.de_coach = 0 AND m.leido = 0
+        AND (cl.coach_id = ? OR cl.coach_id IS NULL)
+    `, [req.user.id]);
+    res.json({ count: row ? row.c : 0 });
+  } catch(e) { res.json({ count: 0 }); }
+});
+
+// ── GET /mensajes/estado ──────────────────────────────────────────────────────
+// El cliente pregunta si su coach estuvo activo en los últimos 3 minutos.
+router.get('/mensajes/estado', (req, res) => {
+  try {
+    if (req.user.role !== 'cliente') return res.json({ online: true });
+    const clienteId = getClienteIdPropio(req.user.id);
+    const coachId   = clienteId ? getCoachIdDeCliente(clienteId) : null;
+    if (!coachId) return res.json({ online: false });
+    const online = (Date.now() - (_coachLastSeen[coachId] || 0)) < 3 * 60 * 1000;
+    res.json({ online });
+  } catch(e) { res.json({ online: false }); }
+});
+
+// ── GET /mensajes/conversaciones ──────────────────────────────────────────────
+// Lista de conversaciones del coach: un item por cliente con último mensaje y no leídos.
+router.get('/mensajes/conversaciones', coachOnly, (req, res) => {
+  try {
+    const convs = dbAll(`
+      SELECT
+        cl.id            AS cliente_id,
+        u.nombre         AS cliente_nombre,
+        u.foto_perfil    AS cliente_foto,
+        u.username       AS cliente_username,
+        (SELECT contenido  FROM mensajes WHERE cliente_id=cl.id ORDER BY created_at DESC LIMIT 1) AS ultimo_msg,
+        (SELECT created_at FROM mensajes WHERE cliente_id=cl.id ORDER BY created_at DESC LIMIT 1) AS ultimo_ts,
+        (SELECT COUNT(*)   FROM mensajes WHERE cliente_id=cl.id AND de_coach=0 AND leido=0)       AS no_leidos
+      FROM clientes cl
+      JOIN users u ON u.id = cl.user_id
+      WHERE (cl.coach_id = ? OR cl.coach_id IS NULL)
+        AND EXISTS (SELECT 1 FROM mensajes WHERE cliente_id = cl.id)
+      ORDER BY ultimo_ts DESC
+    `, [req.user.id]);
+    res.json(convs);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /mensajes/:clienteId ──────────────────────────────────────────────────
+// Hilo completo. El cliente solo puede ver el suyo.
+router.get('/mensajes/:clienteId', (req, res) => {
+  try {
+    const clienteId = parseInt(req.params.clienteId, 10);
+    if (req.user.role === 'cliente') {
+      const propio = getClienteIdPropio(req.user.id);
+      if (propio !== clienteId) return res.status(403).json({ error: 'Sin acceso' });
+    }
+    const msgs = dbAll(`
+      SELECT m.id, m.contenido, m.de_coach, m.via_ia, m.leido, m.created_at,
+             u.nombre AS cliente_nombre
+      FROM mensajes m
+      JOIN clientes cl ON cl.id = m.cliente_id
+      JOIN users    u  ON u.id  = cl.user_id
+      WHERE m.cliente_id = ?
+      ORDER BY m.created_at ASC
+    `, [clienteId]);
+    res.json(msgs);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /mensajes ────────────────────────────────────────────────────────────
+// Enviar mensaje. Coach: de_coach=1. Cliente: de_coach=0 → notifica al coach.
+// via_ia=1 cuando la IA responde en nombre del coach (solo interno, cliente no lo ve).
+router.post('/mensajes', (req, res) => {
+  try {
+    const { contenido, via_ia } = req.body;
+    let { cliente_id, de_coach } = req.body;
+
+    if (!contenido || !contenido.trim()) {
+      const msg = req.user.lang === 'en' ? 'Message cannot be empty' : 'El mensaje no puede estar vacío';
+      return res.status(400).json({ error: msg });
+    }
+
+    if (req.user.role === 'cliente') {
+      cliente_id = getClienteIdPropio(req.user.id);
+      de_coach   = 0;
+      if (!cliente_id) {
+        const msg = req.user.lang === 'en' ? 'Client profile not found' : 'Perfil de cliente no encontrado';
+        return res.status(404).json({ error: msg });
+      }
+    } else {
+      cliente_id = parseInt(cliente_id, 10);
+      de_coach   = 1;
+      if (!cliente_id) {
+        const msg = req.user.lang === 'en' ? 'cliente_id required' : 'cliente_id requerido';
+        return res.status(400).json({ error: msg });
+      }
+    }
+
+    const r = dbRun(
+      'INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido) VALUES (?,?,?,?,?)',
+      [cliente_id, de_coach ? 1 : 0, via_ia ? 1 : 0, contenido.trim(), 0]
+    );
+
+    // Notificar al coach cuando el cliente escribe
+    if (!de_coach) {
+      const coachId = getCoachIdDeCliente(cliente_id);
+      if (coachId) {
+        try {
+          const coach = dbGet('SELECT lang FROM users WHERE id=?', [coachId]);
+          const isEn  = (coach && coach.lang === 'en');
+          const nombreCliente = getNombreCliente(cliente_id);
+          const msgNotif = isEn
+            ? `💬 ${nombreCliente} has sent you a message`
+            : `💬 ${nombreCliente} te ha enviado un mensaje`;
+          crearNotificacion(coachId, 'mensaje_cliente', msgNotif);
+        } catch(e) {}
+      }
+    }
+
+    saveToDisk();
+    res.json({ ok: true, id: r.lastInsertRowid });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PUT /mensajes/:clienteId/leer ─────────────────────────────────────────────
+// El coach abre el hilo → marca todos los mensajes del cliente como leídos.
+router.put('/mensajes/:clienteId/leer', coachOnly, (req, res) => {
+  try {
+    dbRun(
+      'UPDATE mensajes SET leido=1 WHERE cliente_id=? AND de_coach=0 AND leido=0',
+      [parseInt(req.params.clienteId, 10)]
+    );
+    saveToDisk();
+    res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
