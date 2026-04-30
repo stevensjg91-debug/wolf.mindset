@@ -135,6 +135,10 @@ async function initDB() {
     fecha_inicio TEXT, fecha_fin TEXT,
     estado TEXT DEFAULT 'activa'
   )`);
+  // Migraciones defensivas: añadir columnas si la tabla ya existía sin ellas
+  try { db.run("ALTER TABLE suscripciones ADD COLUMN precio REAL DEFAULT 0"); } catch(e) {}
+  try { db.run("ALTER TABLE suscripciones ADD COLUMN notas TEXT DEFAULT ''"); } catch(e) {}
+  try { db.run("ALTER TABLE suscripciones ADD COLUMN renovado_at TEXT"); } catch(e) {}
 }
 
 function dbRun(sql, params = []) {
