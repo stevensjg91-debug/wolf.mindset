@@ -9600,10 +9600,9 @@ function renderCoachFotos(fotos){
   const wrap = document.getElementById('coach_fotos_timeline');
   if(!wrap) return;
   if(!fotos||!fotos.length){
-    wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3);padding:4px 0">El cliente aún no ha subido fotos.</div>';
+    wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3);padding:4px 0">'+(COACH_LANG==='en'?'The client has not uploaded photos yet.':'El cliente aún no ha subido fotos.')+'</div>';
     return;
   }
-  // Group by date
   const grupos = {};
   fotos.forEach(f=>{
     const fecha = (f.fecha||'').split('T')[0].split(' ')[0] || 'Sin fecha';
@@ -9618,23 +9617,123 @@ function renderCoachFotos(fotos){
     const fotosHtml = tipos.map(tipo=>{
       const f = g[tipo];
       if(f&&f.url){
-        return '<div style="position:relative;aspect-ratio:3/4;border-radius:8px;overflow:hidden;background:var(--s2)">'
-          +'<img src="'+f.url+'" style="width:100%;height:100%;object-fit:cover"/>'
-          +'<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.65);padding:3px;text-align:center;font-size:8px;font-weight:700;color:#fff;text-transform:uppercase">'+tipo+'</div>'
-          +'</div>';
+        return '<div style="position:relative;aspect-ratio:3/4;border-radius:8px;overflow:hidden;background:var(--s2)"><img src="'+f.url+'" style="width:100%;height:100%;object-fit:cover"/><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.65);padding:3px;text-align:center;font-size:8px;font-weight:700;color:#fff;text-transform:uppercase">'+tipo+'</div></div>';
       }
       return '<div style="aspect-ratio:3/4;border-radius:8px;border:1px dashed rgba(255,255,255,.1);background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--tx3);text-transform:uppercase">'+tipo+'</div>';
     }).join('');
     const pubAnalysis = Object.values(g).find(f=>f.published_analysis)?.published_analysis||'';
-    return '<div style="margin-bottom:14px">'
+    const allFotoIds = Object.values(g).filter(f=>f.id).map(f=>f.id);
+    const tieneFotoAnterior = fi > 0;
+    const btnLabel = tieneFotoAnterior
+      ? (COACH_LANG==='en'?'✦ Analyze vs prev. week':'✦ Analizar vs semana anterior')
+      : (COACH_LANG==='en'?'✦ Analyze with AI':'✦ Analizar con IA');
+    return '<div style="margin-bottom:18px" id="coachfoto_bloque_'+fi+'">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-      +'<div style="font-size:11px;font-weight:700;color:var(--blg)">📅 '+dateStr+' · Semana '+(fi+1)+'</div>'
-      +'<div style="flex:1;height:0.5px;background:var(--br)"></div></div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:6px">'+fotosHtml+'</div>'
-      +(pubAnalysis?'<div style="background:rgba(37,99,235,.06);border:0.5px solid rgba(59,130,246,.2);border-radius:8px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:var(--blg);margin-bottom:5px">💬 Tu coach</div><div style="font-size:12px;color:var(--sv2);line-height:1.7">'+pubAnalysis+'</div></div>':'')
+      +'<div style="font-size:11px;font-weight:700;color:var(--blg)">📅 '+dateStr+' · '+(COACH_LANG==='en'?'Week ':'Semana ')+(fi+1)+'</div>'
+      +'<div style="flex:1;height:0.5px;background:var(--br)"></div>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">'+fotosHtml+'</div>'
+      +'<button onclick="coachAnalizarSemana('+fi+','+JSON.stringify(fechas)+')" id="cfa_btn_'+fi+'" style="width:100%;padding:9px;border:0.5px solid rgba(59,130,246,.3);border-radius:9px;background:rgba(37,99,235,.07);color:var(--blg);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:8px">'+btnLabel+'</button>'
+      +'<div id="cfa_result_'+fi+'"></div>'
+      +(pubAnalysis
+        ?'<div style="background:rgba(37,99,235,.06);border:0.5px solid rgba(59,130,246,.2);border-radius:8px;padding:10px 12px">'
+          +'<div style="font-size:10px;font-weight:700;color:var(--blg);margin-bottom:5px">💬 '+(COACH_LANG==='en'?'Coach message':'Mensaje de tu coach')+'</div>'
+          +'<div style="font-size:12px;color:var(--sv2);line-height:1.7" id="cfa_pub_'+fi+'">'+pubAnalysis+'</div>'
+          +'<button onclick="coachEditarPublicado('+fi+','+JSON.stringify(allFotoIds)+')" style="margin-top:8px;padding:5px 12px;border:0.5px solid var(--br);border-radius:7px;background:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'Edit':'Editar')+'</button>'
+          +'</div>'
+        :'')
       +'</div>';
   }).join('');
 }
+
+async function coachAnalizarSemana(fi, fechas){
+  const btn = document.getElementById('cfa_btn_'+fi);
+  const resultDiv = document.getElementById('cfa_result_'+fi);
+  if(!btn||!resultDiv) return;
+  btn.disabled = true;
+  btn.textContent = COACH_LANG==='en'?'⏳ Analyzing...':'⏳ Analizando...';
+  const fotos = CD.fotos||[];
+  const grupos = {};
+  fotos.forEach(f=>{
+    const fecha=(f.fecha||'').split('T')[0].split(' ')[0]||'Sin fecha';
+    if(!grupos[fecha]) grupos[fecha]={};
+    grupos[fecha][f.tipo||'frente']=f;
+  });
+  const gActual = grupos[fechas[fi]];
+  const fotosDespues = Object.values(gActual)
+    .filter(f=>f.url&&f.url.startsWith('data:'))
+    .map(f=>({b64:f.url.split(',')[1],mt:f.url.split(';')[0].split(':')[1],tipo:f.tipo}));
+  let fotosAntes = [];
+  if(fi>0){
+    const gAnterior = grupos[fechas[fi-1]];
+    fotosAntes = Object.values(gAnterior)
+      .filter(f=>f.url&&f.url.startsWith('data:'))
+      .map(f=>({b64:f.url.split(',')[1],mt:f.url.split(';')[0].split(':')[1],tipo:f.tipo}));
+  }
+  try {
+    const d = await api('/ia/comparar-fotos',{
+      method:'POST',
+      body:JSON.stringify({
+        fotosAntes, fotosDespues,
+        clienteNombre: CD.nombre,
+        objetivo: CD.objetivo,
+        nivel: CD.nivel,
+        semanaAntes: fi>0?fi:null,
+        semanaDespues: fi+1,
+        lang: COACH_LANG||'es'
+      })
+    });
+    const draft = (d.reply||'').replace(/\*\*([^*]+)\*\*/g,'$1').replace(/##[^\n]+/g,'').trim();
+    const allFotoIds = Object.values(gActual).filter(f=>f.id).map(f=>f.id);
+    resultDiv.innerHTML =
+      '<div style="background:rgba(37,99,235,.05);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;padding:12px;margin-bottom:6px">'
+      +'<div style="font-size:10px;font-weight:700;color:var(--blg);margin-bottom:8px">📝 '+(COACH_LANG==='en'?'Edit before sending to client':'Revisa y edita antes de enviar')+'</div>'
+      +'<textarea id="cfa_ta_'+fi+'" style="width:100%;background:var(--s1);border:0.5px solid var(--br);border-radius:8px;padding:10px;color:var(--tx1);font-size:12px;line-height:1.7;resize:vertical;min-height:120px;font-family:inherit;box-sizing:border-box">'+draft+'</textarea>'
+      +'<div style="display:flex;gap:8px;margin-top:8px">'
+      +'<button onclick="coachPublicarMensaje('+fi+','+JSON.stringify(allFotoIds)+')" style="flex:2;padding:10px;background:var(--gn);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'✓ Send to client':'✓ Publicar al cliente')+'</button>'
+      +'<button onclick="document.getElementById(\'cfa_result_'+fi+'\').innerHTML=\'\'" style="flex:1;padding:10px;background:none;border:0.5px solid var(--br);border-radius:8px;color:var(--tx3);font-size:12px;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'Discard':'Descartar')+'</button>'
+      +'</div>'
+      +'<div style="font-size:10px;color:var(--tx3);margin-top:6px;text-align:center">'+(COACH_LANG==='en'?'Will appear on client\'s photos as a coach message':'Aparecerá en las fotos del cliente como mensaje de tu coach')+'</div>'
+      +'</div>';
+    btn.textContent = COACH_LANG==='en'?'↺ Re-analyze':'↺ Volver a analizar';
+    btn.disabled = false;
+  } catch(e){
+    resultDiv.innerHTML='<div style="font-size:12px;color:var(--rojo);padding:8px">'+(COACH_LANG==='en'?'Error analyzing. Try again.':'Error al analizar. Inténtalo de nuevo.')+'</div>';
+    btn.textContent = COACH_LANG==='en'?'✦ Retry':'✦ Reintentar';
+    btn.disabled = false;
+  }
+}
+
+async function coachPublicarMensaje(fi, fotoIds){
+  const ta = document.getElementById('cfa_ta_'+fi);
+  if(!ta) return;
+  const texto = ta.value.trim();
+  if(!texto) return;
+  try {
+    for(const fid of fotoIds){
+      await api('/fotos/'+fid+'/publicar',{method:'POST',body:JSON.stringify({texto})});
+    }
+    await loadCD(CD.id);
+    renderCoachFotos(CD.fotos);
+  } catch(e){ alert(COACH_LANG==='en'?'Error publishing':'Error al publicar'); }
+}
+
+function coachEditarPublicado(fi, fotoIds){
+  const pubDiv = document.getElementById('cfa_pub_'+fi);
+  if(!pubDiv) return;
+  const textoActual = pubDiv.textContent||'';
+  const resultDiv = document.getElementById('cfa_result_'+fi);
+  if(!resultDiv) return;
+  resultDiv.innerHTML =
+    '<div style="background:rgba(37,99,235,.05);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;padding:12px;margin-bottom:6px">'
+    +'<div style="font-size:10px;font-weight:700;color:var(--amb);margin-bottom:8px">✏️ '+(COACH_LANG==='en'?'Edit published message':'Editar mensaje publicado')+'</div>'
+    +'<textarea id="cfa_ta_'+fi+'" style="width:100%;background:var(--s1);border:0.5px solid var(--br);border-radius:8px;padding:10px;color:var(--tx1);font-size:12px;line-height:1.7;resize:vertical;min-height:100px;font-family:inherit;box-sizing:border-box">'+textoActual+'</textarea>'
+    +'<div style="display:flex;gap:8px;margin-top:8px">'
+    +'<button onclick="coachPublicarMensaje('+fi+','+JSON.stringify(fotoIds)+')" style="flex:2;padding:10px;background:var(--amb);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'✓ Update':'✓ Actualizar')+'</button>'
+    +'<button onclick="document.getElementById(\'cfa_result_'+fi+'\').innerHTML=\'\'" style="flex:1;padding:10px;background:none;border:0.5px solid var(--br);border-radius:8px;color:var(--tx3);font-size:12px;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'Cancel':'Cancelar')+'</button>'
+    +'</div></div>';
+}
+
 
 
 function getMuscleMapSVG(nombre){
