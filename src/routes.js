@@ -34,16 +34,42 @@ function ensureTrainingTrackingSchema() {
   try { dbRun("ALTER TABLE series_log ADD COLUMN nota_cliente TEXT DEFAULT ''"); } catch(e) {}
 }
 
-// Control para no lanzar el chequeo de vencimientos más de una vez por día
+// Mensajes de suscripción bilingues
+function msgSub(lang, tipo, dias) {
+  const en = lang === 'en';
+  if(tipo === 'activada') return en
+    ? `✅ Your subscription is active! You have full access. Let's go! 💪🔥`
+    : `✅ ¡Tu suscripción está activa! Tienes acceso completo. ¡A por ello! 💪🔥`;
+  if(tipo === 'activada_fecha') return (d) => en
+    ? `✅ Your subscription is active until ${d}! Full access granted. Let's go! 💪🔥`
+    : `✅ ¡Tu suscripción está activa hasta el ${d}! Tienes acceso completo. ¡A por ello! 💪🔥`;
+  if(tipo === 'cancelada') return en
+    ? `❌ Your subscription has been cancelled. Contact your coach to renew it. We’ll be here when you’re ready! 💪`
+    : `❌ Tu suscripción ha sido cancelada. Si quieres renovar, contacta con tu coach. ¡Aquí seguimos cuando quieras! 💪`;
+  if(tipo === 'vencida') return en
+    ? `🔴 Your subscription has expired. Don’t stop training! Contact your coach to renew and get back on track. 💪`
+    : `🔴 Tu suscripción ha vencido. ¡No te quedes sin entrenar! Habla con tu coach para renovarla. 💪`;
+  if(tipo === 'pronto') {
+    if(dias === 1) return en
+      ? `⏳ Your subscription expires tomorrow! Talk to your coach today to renew and keep your momentum going. 💪`
+      : `⏳ ¡Mañana vence tu suscripción! Habla hoy con tu coach para renovarla y seguir sin pausas. 💪`;
+    return en
+      ? `⏳ Your subscription expires in ${dias} day${dias>1?'s':''}. Renew with your coach to keep progressing! 💪`
+      : `⏳ Tu suscripción vence en ${dias} día${dias>1?'s':''}. ¡Renueva con tu coach para seguir avanzando! 💪`;
+  }
+  return '';
+}
+
+// Chequeo automático de vencimientos (una vez al día)
 let _ultimoChequeoVencimientos = null;
 
 function chequearVencimientosAuto() {
   const hoy = new Date().toISOString().split('T')[0];
-  if(_ultimoChequeoVencimientos === hoy) return; // ya se ejecutó hoy
+  if(_ultimoChequeoVencimientos === hoy) return;
   _ultimoChequeoVencimientos = hoy;
   try {
     const subs = dbAll(`
-      SELECT s.*, c.id as cliente_id, u.id as user_id, u.nombre
+      SELECT s.*, c.id as cliente_id, u.id as user_id, u.lang
       FROM suscripciones s
       JOIN clientes c ON s.cliente_id = c.id
       JOIN users u ON c.user_id = u.id
@@ -52,20 +78,16 @@ function chequearVencimientosAuto() {
     const hoyStr = new Date().toISOString().split('T')[0];
     subs.forEach(s => {
       const dias = diasRestantes(s.fecha_fin);
-      // Notificar al cliente si quedan 7, 5, 3 o 1 días
       if([7, 5, 3, 1].includes(dias)) {
         const yaAviso = dbGet(`SELECT id FROM notificaciones WHERE user_id=? AND tipo='vencimiento_proximo' AND DATE(created_at)=DATE('now')`, [s.user_id]);
         if(!yaAviso) {
-          crearNotificacion(s.user_id, 'vencimiento_proximo',
-            `⚠️ Tu suscripción vence en ${dias} día${dias>1?'s':''}. Contacta con tu coach para renovarla.`);
+          crearNotificacion(s.user_id, 'vencimiento_proximo', msgSub(s.lang||'es', 'pronto', dias));
         }
       }
-      // Marcar como vencida y bloquear si ya pasó la fecha
       if(s.fecha_fin < hoyStr && s.estado === 'activa') {
         dbRun("UPDATE suscripciones SET estado='vencida' WHERE cliente_id=?", [s.cliente_id]);
         dbRun("UPDATE users SET estado='bloqueado' WHERE id=?", [s.user_id]);
-        crearNotificacion(s.user_id, 'suscripcion_vencida',
-          `🔴 Tu suscripción ha vencido. Contacta con tu coach para renovarla y recuperar el acceso.`);
+        crearNotificacion(s.user_id, 'suscripcion_vencida', msgSub(s.lang||'es', 'vencida', 0));
       }
     });
     saveToDisk();
@@ -73,7 +95,6 @@ function chequearVencimientosAuto() {
 }
 
 router.get('/clientes', coachOnly, (req, res) => {
-  // Trigger automático al cargar clientes (una vez por día)
   chequearVencimientosAuto();
   const clientes = dbAll(`SELECT c.*, u.nombre, u.username, u.foto_perfil,
     (SELECT peso FROM peso_registros WHERE cliente_id=c.id ORDER BY rowid DESC LIMIT 1) as peso_actual,
@@ -782,7 +803,7 @@ router.post('/clientes/:id/suscripcion', coachOnly, (req, res) => {
     dbRun(`CREATE TABLE IF NOT EXISTS suscripciones (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER UNIQUE NOT NULL, estado TEXT DEFAULT 'activa', fecha_inicio TEXT NOT NULL, fecha_fin TEXT NOT NULL, precio REAL DEFAULT 0, notas TEXT DEFAULT '', renovado_at TEXT)`);
     dbRun(`CREATE TABLE IF NOT EXISTS notificaciones (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, tipo TEXT NOT NULL, mensaje TEXT NOT NULL, leida INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP)`);
 
-    const c = dbGet('SELECT c.id, u.id as user_id, u.nombre FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [clienteId]);
+    const c = dbGet('SELECT c.id, u.id as user_id, u.nombre, u.lang FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [clienteId]);
     if(!c) return res.status(404).json({ error: 'Cliente no encontrado' });
 
     // Calcular fechas
@@ -807,7 +828,7 @@ router.post('/clientes/:id/suscripcion', coachOnly, (req, res) => {
 
     // Notificar al cliente
     crearNotificacion(c.user_id, 'suscripcion_renovada',
-      `✅ Tu suscripción ha sido activada hasta el ${fechaFinStr.split('-').reverse().join('/')}. ¡Bienvenido!`);
+      msgSub(c.lang||'es', 'activada_fecha', 0)(fechaFinStr.split('-').reverse().join('/')));
 
     saveToDisk();
     res.json({ ok: true, fecha_fin: fechaFinStr });
@@ -820,14 +841,14 @@ router.post('/clientes/:id/suscripcion', coachOnly, (req, res) => {
 router.put('/clientes/:id/suscripcion/cancelar', coachOnly, (req, res) => {
   try {
     const clienteId = req.params.id;
-    const c = dbGet('SELECT c.id, u.id as user_id, u.nombre FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [clienteId]);
+    const c = dbGet('SELECT c.id, u.id as user_id, u.nombre, u.lang FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [clienteId]);
     if(!c) return res.status(404).json({ error: 'Cliente no encontrado' });
 
     dbRun("UPDATE suscripciones SET estado='cancelada' WHERE cliente_id=?", [clienteId]);
     dbRun("UPDATE users SET estado='bloqueado' WHERE id=?", [c.user_id]);
 
     crearNotificacion(c.user_id, 'suscripcion_cancelada',
-      `❌ Tu suscripción ha sido cancelada. Contacta con tu coach para renovarla.`);
+      msgSub(c.lang||'es', 'cancelada', 0));
 
     saveToDisk();
     res.json({ ok: true });
@@ -840,7 +861,7 @@ router.put('/clientes/:id/suscripcion/cancelar', coachOnly, (req, res) => {
 router.post('/suscripciones/avisar-vencimientos', coachOnly, (req, res) => {
   try {
     const subs = dbAll(`
-      SELECT s.*, c.id as cliente_id, u.id as user_id, u.nombre
+      SELECT s.*, c.id as cliente_id, u.id as user_id, u.nombre, u.lang
       FROM suscripciones s
       JOIN clientes c ON s.cliente_id = c.id
       JOIN users u ON c.user_id = u.id
@@ -859,7 +880,7 @@ router.post('/suscripciones/avisar-vencimientos', coachOnly, (req, res) => {
         const yaAviso = dbGet(`SELECT id FROM notificaciones WHERE user_id=? AND tipo='vencimiento_proximo' AND DATE(created_at)=DATE('now')`, [s.user_id]);
         if(!yaAviso) {
           crearNotificacion(s.user_id, 'vencimiento_proximo',
-            `⚠️ Tu suscripción vence en ${dias} día${dias>1?'s':''}. Contacta con tu coach para renovar.`);
+            msgSub(s.lang||'es', 'pronto', dias));
           avisados++;
         }
       }
@@ -869,7 +890,7 @@ router.post('/suscripciones/avisar-vencimientos', coachOnly, (req, res) => {
         dbRun("UPDATE suscripciones SET estado='vencida' WHERE cliente_id=?", [s.cliente_id]);
         dbRun("UPDATE users SET estado='bloqueado' WHERE id=?", [s.user_id]);
         crearNotificacion(s.user_id, 'suscripcion_vencida',
-          `🔴 Tu suscripción ha vencido. Contacta con tu coach para renovarla y recuperar el acceso.`);
+          msgSub(s.lang||'es', 'vencida', 0));
       }
     });
 
