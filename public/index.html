@@ -5112,7 +5112,7 @@ async function renovarSuscripcion(clienteId) {
     await cargarSuscripcionCliente(clienteId);
     btn.textContent='✓ Activar / Renovar'; btn.disabled=false;
   } catch(e) {
-    alert('Error: '+e.message);
+    alert('Error: '+(e.error || e.message || 'Error desconocido'));
     btn.textContent='✓ Activar / Renovar'; btn.disabled=false;
   }
 }
@@ -5126,7 +5126,7 @@ async function cancelarSuscripcion(clienteId) {
     await cargarSuscripcionCliente(clienteId);
     btn.textContent=tc('Cancelar suscripción'); btn.disabled=false;
   } catch(e) {
-    alert('Error: '+e.message);
+    alert('Error: '+(e.error || e.message || 'Error desconocido'));
     btn.textContent=tc('Cancelar suscripción'); btn.disabled=false;
   }
 }
