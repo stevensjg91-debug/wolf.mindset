@@ -2881,7 +2881,7 @@ async function verCliente(id){
       const prev = arr[i-1];
       const tendencia = prev ? (p.peso > prev.peso ? '<span style="color:#f87171">▲</span>' : '<span style="color:#86efac">▼</span>') : '';
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--br)">'+
-        '<span style="font-size:12px;color:var(--tx3)">${tc("Sem")} '+(i+1)+'</span>'+
+        `<span style="font-size:12px;color:var(--tx3)">${COACH_LANG==='en'?'Wk':'Sem'} ${i+1}</span>`+
         tendencia+
         '<span style="font-size:14px;font-weight:700;color:var(--sv)">'+p.peso+'kg</span>'+
         (p.grasa ? '<span style="font-size:11px;color:var(--tx3)">'+p.grasa+'% '+( COACH_LANG==='en'?'fat':'grasa')+'</span>' : '')+
@@ -7862,9 +7862,9 @@ async function rbConfirmEdit(exId){
 // ═══ REVISIÓN SEMANAL ═══════════════════════════════════════════
 // Volumen semanal recomendado por grupo muscular y nivel
 const VOL_RECOMENDADO = {
-  Principiante: { min:10, max:12, desc:'10-12 series/semana/grupo' },
-  Intermedio:   { min:14, max:16, desc:'14-16 series/semana/grupo' },
-  Avanzado:     { min:16, max:20, desc:'16-20+ series/semana/grupo' },
+  Principiante: { min:10, max:12, desc: COACH_LANG==='en'?'10-12 sets/week/group':'10-12 series/semana/grupo' },
+  Intermedio:   { min:14, max:16, desc: COACH_LANG==='en'?'14-16 sets/week/group':'14-16 series/semana/grupo' },
+  Avanzado:     { min:16, max:20, desc: COACH_LANG==='en'?'16-20+ sets/week/group':'16-20+ series/semana/grupo' },
 };
 
 // Calcula progresión sugerida basada en RIR real vs objetivo
@@ -7884,10 +7884,10 @@ function calcularProgresion(pesoActual, repsReales, rirReal, rirObjetivo, nivel)
     nota = `RIR ${rirReal} (obj ${rirObjetivo}) → +2.5kg`;
   } else if (diff === 0) {
     // En el objetivo — mantener
-    nota = `RIR ${rirReal} ✓ mantener peso`;
+    nota = `RIR ${rirReal} ✓ ${COACH_LANG==='en'?'keep weight':'mantener peso'}`;
   } else if (diff === -1) {
     // Justo al límite — mantener o bajar 2.5
-    nota = `RIR ${rirReal} (obj ${rirObjetivo}) → mantener o -2.5kg`;
+    nota = `RIR ${rirReal} (obj ${rirObjetivo}) → ${COACH_LANG==='en'?'keep or -2.5kg':'mantener o -2.5kg'}`;
   } else {
     // No llegó al objetivo — bajar carga
     nuevoPeso = Math.max(0, pesoActual - 2.5);
@@ -7967,7 +7967,7 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
     const diasConEjercicios = (clienteData.dias || []).filter(d => d.ejercicios.length > 0);
     
     if (!diasConEjercicios.length) {
-      wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3)">Sin rutina asignada.</div>';
+      wrap.innerHTML = `<div style="font-size:13px;color:var(--tx3)">${COACH_LANG==='en'?'No routine assigned.':'Sin rutina asignada.'}</div>`;
       return;
     }
 
@@ -7983,15 +7983,15 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
       });
     });
 
-    if (estado) estado.textContent = totalAjustes > 0 ? `· ${totalAjustes} ajuste${totalAjustes > 1 ? 's' : ''} sugerido${totalAjustes > 1 ? 's' : ''}` : '· Al día';
+    if (estado) estado.textContent = totalAjustes > 0 ? `· ${totalAjustes} ajuste${totalAjustes > 1 ? 's' : ''} ${COACH_LANG==='en'?'adjustment':'ajuste'}${totalAjustes > 1 ? 's' : ''} ${COACH_LANG==='en'?'suggested':'sugerido'}${totalAjustes > 1 ? 's' : ''}` : (COACH_LANG==='en'?'· Up to date':'· Al día');
 
     // Volume warning
     let volWarnings = '';
     Object.entries(volPorGrupo).forEach(([grupo, series]) => {
       if (series < volRec.min) {
-        volWarnings += `<span style="background:rgba(245,158,11,.1);border:0.5px solid rgba(245,158,11,.2);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--amb);margin-right:5px;margin-bottom:4px;display:inline-block">${grupo}: ${series} series (mín ${volRec.min})</span>`;
+        volWarnings += `<span style="background:rgba(245,158,11,.1);border:0.5px solid rgba(245,158,11,.2);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--amb);margin-right:5px;margin-bottom:4px;display:inline-block">${grupo}: ${series} ${COACH_LANG==='en'?'sets':'series'} (min ${volRec.min})</span>`;
       } else if (series > volRec.max) {
-        volWarnings += `<span style="background:rgba(239,68,68,.08);border:0.5px solid rgba(239,68,68,.2);border-radius:6px;padding:2px 8px;font-size:11px;color:#fca5a5;margin-right:5px;margin-bottom:4px;display:inline-block">${grupo}: ${series} series (máx ${volRec.max})</span>`;
+        volWarnings += `<span style="background:rgba(239,68,68,.08);border:0.5px solid rgba(239,68,68,.2);border-radius:6px;padding:2px 8px;font-size:11px;color:#fca5a5;margin-right:5px;margin-bottom:4px;display:inline-block">${grupo}: ${series} ${COACH_LANG==='en'?'sets':'series'} (max ${volRec.max})</span>`;
       }
     });
 
@@ -7999,7 +7999,7 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
 
     // Volume summary
     html += `<div style="margin-bottom:14px">
-      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Volumen esta semana · ${nivel} (${volRec.desc})</div>
+      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">${COACH_LANG==='en'?'Volume this week':'Volumen esta semana'} · ${tc(nivel)} (${volRec.desc})</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px">`;
     
     Object.entries(volPorGrupo).forEach(([grupo, series]) => {
@@ -8009,13 +8009,13 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
     });
     
     if (!Object.keys(volPorGrupo).length) {
-      html += '<span style="font-size:12px;color:var(--tx3)">Sin datos de esta semana</span>';
+      html += `<span style="font-size:12px;color:var(--tx3)">${COACH_LANG==='en'?'No data this week':'Sin datos de esta semana'}</span>`;
     }
     
     html += `</div></div>`;
 
     // Per-exercise progression
-    html += `<div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Progresión de carga</div>`;
+    html += `<div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">${COACH_LANG==='en'?'Load progression':'Progresión de carga'}</div>`;
 
     diasConEjercicios.forEach(d => {
       html += `<div style="margin-bottom:14px">
@@ -8047,7 +8047,7 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
             <div style="flex:1">
               <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:2px">${e.nombre}</div>
-              ${ult ? `<div style="font-size:11px;color:var(--sv3)">Último: ${ult.peso_real}kg×${ult.reps_real}${ult.rir != null ? ' · RIR '+ult.rir : ''}</div>` : '<div style="font-size:11px;color:var(--tx3)">Sin datos aún</div>'}
+              ${ult ? `<div style="font-size:11px;color:var(--sv3)">${COACH_LANG==='en'?'Last':'Último'}: ${ult.peso_real}kg×${ult.reps_real}${ult.rir != null ? ' · RIR '+ult.rir : ''}</div>` : '<div style="font-size:11px;color:var(--tx3)">Sin datos aún</div>'}
               ${notaProg ? `<div style="font-size:11px;color:${colorProg};font-weight:600;margin-top:1px">${iconProg} ${notaProg}</div>` : ''}
             </div>
           </div>
@@ -8092,8 +8092,8 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
 
     // Action buttons
     html += `<div style="display:flex;gap:8px;margin-top:4px">
-      <button class="btn" style="flex:1;padding:11px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="guardarBorrador(${clienteId})">💾 Guardar borrador</button>
-      <button class="btn" style="flex:1;padding:11px;background:var(--gn)" onclick="publicarSemana(${clienteId})">✓ Publicar semana</button>
+      <button class="btn" style="flex:1;padding:11px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="guardarBorrador(${clienteId})">${COACH_LANG==='en'?'💾 Save draft':'💾 Guardar borrador'}</button>
+      <button class="btn" style="flex:1;padding:11px;background:var(--gn)" onclick="publicarSemana(${clienteId})">${COACH_LANG==='en'?'✓ Publish week':'✓ Publicar semana'}</button>
     </div>
     <button style="width:100%;margin-top:8px;padding:11px;background:rgba(245,158,11,.12);border:0.5px solid rgba(245,158,11,.3);border-radius:10px;color:var(--amb);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit" onclick="aplicarTodosAjustes(${clienteId})">⚡ Aplicar todos los ajustes sugeridos</button>
     <div style="margin-top:6px;font-size:11px;color:var(--tx3);text-align:center">El cliente no verá los cambios hasta que pulses "Publicar semana"</div>
