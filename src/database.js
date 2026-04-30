@@ -25,9 +25,7 @@ async function initDB() {
   try { db.run("ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE users ADD COLUMN estado TEXT DEFAULT 'activo'"); } catch(e) {}
   try { db.run("ALTER TABLE users ADD COLUMN telefono TEXT DEFAULT ''"); } catch(e) {}
-  // NUEVO: idioma preferido del coach
   try { db.run("ALTER TABLE users ADD COLUMN lang TEXT DEFAULT 'es'"); } catch(e) {}
-  // NUEVO: foto de perfil (base64)
   try { db.run("ALTER TABLE users ADD COLUMN foto_perfil TEXT DEFAULT NULL"); } catch(e) {}
 
   db.run(`CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, objetivo TEXT DEFAULT 'Volumen', nivel TEXT DEFAULT 'Intermedio', semanas INTEGER DEFAULT 1, kcal_internas INTEGER DEFAULT 2500, prot INTEGER DEFAULT 160, carbs INTEGER DEFAULT 280, fat INTEGER DEFAULT 80, comida_libre TEXT DEFAULT 'Elige lo que mas te apetezca.', mensaje_semana TEXT DEFAULT '', notas_coach TEXT DEFAULT '', peso_actual REAL DEFAULT 0, altura INTEGER DEFAULT 0, edad INTEGER DEFAULT 0, sexo TEXT DEFAULT 'Hombre', actividad TEXT DEFAULT 'Moderada', cintura_actual REAL DEFAULT 0, cadera REAL DEFAULT 0, observaciones TEXT DEFAULT '', dieta_tipo TEXT DEFAULT 'Omnivoro', alimentos_no TEXT DEFAULT '', lesiones TEXT DEFAULT '')`);
@@ -38,7 +36,6 @@ async function initDB() {
   try { db.run("ALTER TABLE clientes ADD COLUMN alimentos_no TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE clientes ADD COLUMN lesiones TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE clientes ADD COLUMN deficiencias TEXT DEFAULT ''"); } catch(e) {}
-  // NUEVO: coach asignado
   try { db.run("ALTER TABLE clientes ADD COLUMN coach_id INTEGER DEFAULT NULL"); } catch(e) {}
 
   db.run(`CREATE TABLE IF NOT EXISTS peso_registros (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, peso REAL, grasa REAL, cintura REAL, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)`);
@@ -135,10 +132,22 @@ async function initDB() {
     fecha_inicio TEXT, fecha_fin TEXT,
     estado TEXT DEFAULT 'activa'
   )`);
-  // Migraciones defensivas: añadir columnas si la tabla ya existía sin ellas
   try { db.run("ALTER TABLE suscripciones ADD COLUMN precio REAL DEFAULT 0"); } catch(e) {}
   try { db.run("ALTER TABLE suscripciones ADD COLUMN notas TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE suscripciones ADD COLUMN renovado_at TEXT"); } catch(e) {}
+
+  // ── MENSAJES (chat cliente ↔ coach) ──────────────────────────────
+  db.run(`CREATE TABLE IF NOT EXISTS mensajes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER NOT NULL,
+    de_coach   INTEGER NOT NULL DEFAULT 0,
+    via_ia     INTEGER NOT NULL DEFAULT 0,
+    contenido  TEXT    NOT NULL,
+    leido      INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_mensajes_cliente  ON mensajes(cliente_id, created_at)'); } catch(e) {}
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_mensajes_noleidos ON mensajes(cliente_id, leido, de_coach)'); } catch(e) {}
 }
 
 function dbRun(sql, params = []) {
