@@ -1,6 +1,7 @@
 const express = require('express');
 const { dbGet, dbAll, dbRun, saveToDisk } = require('./database');
 const { authMiddleware, coachOnly } = require('./auth');
+const { ssePush, ssePushCoaches } = require('./sse');
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -10,6 +11,8 @@ function crearNotificacion(userId, tipo, mensaje) {
   try {
     dbRun('INSERT INTO notificaciones (user_id, tipo, mensaje) VALUES (?,?,?)',
       [userId, tipo, mensaje]);
+    // Push SSE en tiempo real — si el usuario está conectado lo recibe al instante
+    ssePush(userId, 'notificacion', { tipo, mensaje, ts: Date.now() });
   } catch(e) {}
 }
 
@@ -1356,8 +1359,24 @@ router.post('/mensajes', (req, res) => {
             ? `💬 ${nombreCliente} has sent you a message`
             : `💬 ${nombreCliente} te ha enviado un mensaje`;
           crearNotificacion(coachId, 'mensaje_cliente', msgNotif);
+          // Push SSE: actualizar badge de mensajes del coach en tiempo real
+          ssePush(coachId, 'badge_msgs', { cliente_id });
         } catch(e) {}
       }
+    } else {
+      // Coach responde → push SSE al cliente para que reciba el mensaje al instante
+      try {
+        const clienteUser = dbGet('SELECT user_id FROM clientes WHERE id=?', [cliente_id]);
+        if (clienteUser) {
+          ssePush(clienteUser.user_id, 'mensaje_nuevo', {
+            id: r.lastInsertRowid,
+            contenido: contenido.trim(),
+            de_coach: 1,
+            via_ia: via_ia ? 1 : 0,
+            created_at: new Date().toISOString()
+          });
+        }
+      } catch(e) {}
     }
 
     saveToDisk();
