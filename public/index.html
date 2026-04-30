@@ -655,6 +655,7 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
         <button class="sni" onclick="cNav('dieta-builder',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2v3M5 4c0 2.5 1 4 3 4s3-1.5 3-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M4 8h8l-1 6H5L4 8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span data-i18n-coach="Crear dieta">Crear dieta</span></button>
         <button class="sni" onclick="cNav('nuevo',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="6" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M1 14c0-3.31 2.69-6 6-6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 10v4M10 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-i18n-coach="Nuevo cliente">Nuevo cliente</span></button>
         <button class="sni" id="sni_pendientes" onclick="cNav('pendientes',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span data-i18n-coach="Pendientes">Pendientes</span> <span id="badge_pend" style="display:none;background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px">0</span></button>
+        <button class="sni" id="sni_mensajes" onclick="cNav('mensajes',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 3h12a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 2V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span data-i18n-coach="Mensajes">Mensajes</span> <span id="badge_msgs" style="display:none;background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px">0</span></button>
         <button class="sni" onclick="cNav('progreso',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n-coach="Progreso">Progreso</span></button>
         <button class="sni" onclick="cNav('ia',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 015 5c0 2.4-1.7 4.4-4 4.9V14H7v-2.1C4.7 11.4 3 0.4 3 7a5 5 0 015-5z" stroke="currentColor" stroke-width="1.3"/></svg><span data-i18n-coach="Asistente IA">Asistente IA</span></button>
         <button class="sni" id="sni_equipo" onclick="cNav('equipo',this)" style="display:none"><svg viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 13c0-2.76 2.24-5 4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M15 13c0-2.76-2.24-5-4-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 8v5M6 10h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>Mi equipo</span></button>
@@ -710,6 +711,7 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
     <button class="bni" id="cbni1" onclick="cNavM('rutinas',this)"><svg viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 10h6M7 7h4M7 13h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="bni-lbl" data-i18n-coach="Rutinas">Rutinas</span></button>
     <button class="bni" id="cbni2" onclick="cNavM('dieta-builder',this)"><svg viewBox="0 0 20 20" fill="none"><path d="M10 3v4M7 5c0 3 1 5 3 5s3-2 3-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5 10h10l-1.5 7h-7L5 10z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span class="bni-lbl" data-i18n="Dieta">Dieta</span></button>
     <button class="bni" onclick="cNavM('pendientes',this)"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="bni-lbl" data-i18n-coach="Solicitudes">Solicitudes</span></button>
+    <button class="bni" id="cbni_msgs" onclick="cNavM('mensajes',this)" style="position:relative"><svg viewBox="0 0 20 20" fill="none"><path d="M3 4h14a1 1 0 011 1v8a1 1 0 01-1 1H6l-3 2V5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span class="bni-lbl" data-i18n-coach="Mensajes">Mensajes</span><span id="badge_msgs_m" style="display:none;position:absolute;top:2px;right:8px;background:#ef4444;color:#fff;font-size:8px;font-weight:700;border-radius:50%;width:14px;height:14px;line-height:14px;text-align:center">0</span></button>
     <button class="bni" id="cbni3" onclick="cNavM('nuevo',this)"><svg viewBox="0 0 20 20" fill="none"><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M2 17c0-4 3.13-7 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M15 12v6M12 15h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="bni-lbl" data-i18n-coach="+ Cliente">+ Cliente</span></button>
     <button class="bni" onclick="doLogout()"><svg viewBox="0 0 20 20" fill="none"><path d="M8 3H5a1 1 0 00-1 1v12a1 1 0 001 1h3M13 14l3-4-3-4M16 10H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="bni-lbl" data-i18n="Salir">Salir</span></button>
   </div>
@@ -2334,6 +2336,9 @@ async function doLogin(){
       const sniEq=document.getElementById('sni_equipo');
       if(sniEq) sniEq.style.display='flex';
       cargarNotificacionesCoach();
+      // Polling badge mensajes cada 20s
+      if(window._coachMsgBadgeInt) clearInterval(window._coachMsgBadgeInt);
+      window._coachMsgBadgeInt = setInterval(cargarNotificacionesCoach, 20000);
       // Auto-verificar vencimientos al entrar
       api('/suscripciones/avisar-vencimientos', {method:'POST'}).catch(()=>{});
     } else {
@@ -2469,7 +2474,7 @@ if(TOKEN&&USER){
 }
 
 // ═══ COACH NAV ════════════════════════════════════════
-function getTitles(){return{clientes:tc('Clientes'),nuevo:tc('Nuevo cliente'),pendientes:tc('Solicitudes pendientes'),rutinas:tc('Crear rutina'),'dieta-builder':tc('Crear dieta'),progreso:tc('Progreso'),ia:tc('Asistente IA Coach')};}
+function getTitles(){return{clientes:tc('Clientes'),nuevo:tc('Nuevo cliente'),pendientes:tc('Solicitudes pendientes'),rutinas:tc('Crear rutina'),'dieta-builder':tc('Crear dieta'),progreso:tc('Progreso'),ia:tc('Asistente IA Coach'),mensajes:tc('Mensajes')};}
 function cNav(s,btn){
   _coachTabActual = s;
   document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
@@ -2492,6 +2497,7 @@ async function renderCoach(s){
   else if(s==='dieta-builder'){el.innerHTML=hDietaBuilder();await initDietaBuilder();}
   else if(s==='progreso'){const cl=await api('/clientes');el.innerHTML=hProgreso(cl);cargarProgresoSubs();cargarDashboard();}
   else if(s==='pendientes'){const p=await api('/clientes-pendientes');el.innerHTML=hPendientes(p);}
+  else if(s==='mensajes'){el.innerHTML=hMensajesCoach();coachMsgsInit();}
   else if(s==='equipo'){el.innerHTML=hEquipo();initEquipo();}
   else if(s==='ia'){
   el.innerHTML=hIACoach();
@@ -5174,6 +5180,17 @@ async function cargarNotificacionesCoach() {
     }
     window._notifCoach = notifs;
   } catch(e) {}
+  // Badge de mensajes no leídos
+  try {
+    const mdata = await api('/mensajes/no-leidos').catch(()=>({count:0}));
+    const n = mdata && mdata.count ? mdata.count : 0;
+    ['badge_msgs','badge_msgs_m'].forEach(id=>{
+      const b = document.getElementById(id);
+      if(!b) return;
+      if(n > 0){ b.style.display='inline-flex'; b.textContent=n; }
+      else { b.style.display='none'; }
+    });
+  } catch(e) {}
 }
 
 function toggleNotifCoach() {
@@ -5338,7 +5355,7 @@ function renderKL(){
     return;
   }
   else if(klTab==='dieta')el.innerHTML=hDieta();
-  else if(klTab==='asistente'){el.innerHTML=hAsistente();chatH=[{role:'assistant',content:`${LANG==='en'?'Hi':'Hola'} ${CD.nombre.split(' ')[0]}, ${LANG==='en'?'here to help. What do you need?':'aquí para ayudarte. ¿Qué necesitas?'}`}];}
+  else if(klTab==='asistente'){el.innerHTML=hAsistente();setTimeout(_chatAfterRender,30);}
   else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100);}
   else if(klTab==='logros')el.innerHTML=hBadgesCliente();
   else if(klTab==='perfil')el.innerHTML=hPerfil();
@@ -6389,33 +6406,376 @@ function hDieta(){
 }
 
 
-function hAsistente(){return`<div class="chat-wrap">
-  <div style="background:rgba(37,99,235,.06);border-bottom:0.5px solid var(--br);padding:12px 14px;flex-shrink:0;display:flex;align-items:center;gap:10px">
-    <div style="width:36px;height:36px;border-radius:50%;background:rgba(37,99,235,.2);overflow:hidden;flex-shrink:0;border:1.5px solid rgba(59,130,246,.3)">
-      ${window._coachFoto ? `<img src="${window._coachFoto}" style="width:100%;height:100%;object-fit:cover"/>` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2a6 6 0 016 6c0 3-2 5.3-5 5.9V17H9v-3.1C6 13.3 4 11 4 8a6 6 0 016-6z" stroke="#93c5fd" stroke-width="1.5"/></svg></div>`}
-    </div>
-    <div><div style="font-size:14px;font-weight:700;color:var(--sv)">${window._coachNombreAsistente||'Coach WolfMindset'}</div><div style="font-size:11px;color:var(--tx3)">${t('Siempre disponible')}</div></div>
-  </div>
-  <div class="chat-msgs" id="chatMsgs">
-    <div class="msg msg-b"><div class="msg-sender">${window._coachNombreAsistente||'Coach'}</div>${LANG==='en'?'Hi':'Hola'} ${CD.nombre.split(' ')[0]}, ${LANG==='en'?'here to help with training, diet and recovery. What do you need?':' aquí para ayudarte con dudas de entreno, dieta y recuperación. ¿Qué necesitas?'}</div>
-  </div>
-  <div class="typing" id="chatTyping">escribiendo...</div>
-  <div class="chat-input-wrap">
-    <input class="chat-inp" id="chatIn" placeholder="Escribe tu pregunta..." onkeydown="if(event.key==='Enter')sendChat()"/>
-    <button class="chat-send" onclick="sendChat()"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 10l14-7-7 14V10H3z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
-  </div>
-</div>`;}
+// ── CHAT ASISTENTE (coach + IA fallback) ────────────────────────
+// Historial persistente en memoria mientras la sesión está abierta.
+// Se guarda también en localStorage para sobrevivir navegaciones entre tabs.
+// Cada mensaje tiene: {role, content, sender, ts, via}
+// via: 'coach' | 'ia'
 
-async function sendChat(){
-  const inp=document.getElementById('chatIn'),msg=inp.value.trim();if(!msg)return;inp.value='';
-  const msgs=document.getElementById('chatMsgs');
-  msgs.innerHTML+=`<div class="msg msg-u">${msg}</div>`;msgs.scrollTop=msgs.scrollHeight;
-  chatH.push({role:'user',content:msg});document.getElementById('chatTyping').style.display='block';
-  try{const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:chatH,system:`Asistente WolfMindset. Cliente: ${CD.nombre}, objetivo: ${CD.objetivo}, nivel: ${CD.nivel}, semana ${CD.semanas}. Dieta flexible con comida libre semanal. Responde sobre entreno con pesas, nutrición, recuperación. Sustituciones de alimento siempre con gramos en crudo. Si mejora en ejercicio, motívale. NUNCA menciones calorías ni que eres IA. 3-4 frases máx. Directo, motivador.`})});chatH.push({role:'assistant',content:d.reply});document.getElementById('chatTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${window._coachNombreAsistente||'Coach'}</div>${d.reply}</div>`;msgs.scrollTop=msgs.scrollHeight;}
-  catch(e){document.getElementById('chatTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${window._coachNombreAsistente||'Coach'}</div>Ahora mismo no puedo responder. Consulta con tu coach.</div>`;}
+let _chatMsgs = []; // [{role,content,sender,ts,via}]
+let _chatPolling = null;
+let _chatCoachOnline = false; // se actualiza al cargar
+
+function _chatStorageKey(){ return 'wm_chat_'+CD.id+'_'+USER.id; }
+
+function _chatSave(){
+  try{ localStorage.setItem(_chatStorageKey(), JSON.stringify(_chatMsgs.slice(-80))); }catch(e){}
 }
 
-// PROGRESO CLIENTE
+function _chatLoad(){
+  try{
+    const raw = localStorage.getItem(_chatStorageKey());
+    if(raw) _chatMsgs = JSON.parse(raw);
+  }catch(e){ _chatMsgs = []; }
+  // Si no hay historial, añadir mensaje bienvenida
+  if(!_chatMsgs.length){
+    const greeting = LANG==='en'
+      ? `Hi ${CD.nombre.split(' ')[0]}! I'm here to help with training, nutrition and recovery. Ask me anything.`
+      : `¡Hola ${CD.nombre.split(' ')[0]}! Aquí para ayudarte con entreno, dieta y recuperación. Pregúntame lo que necesites.`;
+    _chatMsgs = [{role:'assistant', content:greeting, sender:window._coachNombreAsistente||'Coach', ts:Date.now(), via:'ia'}];
+    _chatSave();
+  }
+}
+
+function _chatRenderAll(){
+  const wrap = document.getElementById('chatMsgs');
+  if(!wrap) return;
+  wrap.innerHTML = _chatMsgs.map(m => _chatBubble(m)).join('');
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function _chatBubble(m){
+  const isUser = m.role === 'user';
+  const senderLabel = isUser ? '' : `<div class="msg-sender">${m.sender||'Coach'}</div>`;
+  const time = m.ts ? `<div style="font-size:9px;opacity:.35;margin-top:3px;text-align:${isUser?'right':'left'}">${_chatFmtTime(m.ts)}</div>` : '';
+  return `<div class="msg ${isUser?'msg-u':'msg-b'}">${senderLabel}${m.content}${time}</div>`;
+}
+
+function _chatFmtTime(ts){
+  const d = new Date(ts);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  if(sameDay) return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  return d.toLocaleDateString([], {day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+
+function _chatUpdateStatus(online){
+  _chatCoachOnline = online;
+  const dot = document.getElementById('chat_status_dot');
+  const lbl = document.getElementById('chat_status_lbl');
+  if(!dot||!lbl) return;
+  dot.style.background = online ? '#22c55e' : '#52525b';
+  lbl.textContent = online
+    ? (LANG==='en' ? 'Online' : 'En línea')
+    : (LANG==='en' ? 'Usually replies soon' : 'Suele responder pronto');
+}
+
+async function _chatCheckCoachOnline(){
+  try{
+    const d = await api('/mensajes/estado').catch(()=>({online:false}));
+    _chatUpdateStatus(d && d.online);
+  }catch(e){ _chatUpdateStatus(false); }
+}
+
+// Cargar mensajes reales del coach desde el servidor
+async function _chatLoadFromServer(){
+  try{
+    const msgs = await api('/mensajes/'+CD.id).catch(()=>null);
+    if(!msgs || !msgs.length) return;
+    // Mezclar con historial local — evitar duplicados por id
+    const existingIds = new Set(_chatMsgs.filter(m=>m.id).map(m=>m.id));
+    let added = false;
+    msgs.forEach(m => {
+      if(m.id && existingIds.has(m.id)) return;
+      _chatMsgs.push({
+        id: m.id,
+        role: m.de_coach ? 'assistant' : 'user',
+        content: m.contenido,
+        sender: m.de_coach ? (window._coachNombreAsistente||'Coach') : CD.nombre,
+        ts: new Date(m.created_at||Date.now()).getTime(),
+        via: 'coach'
+      });
+      added = true;
+    });
+    if(added){
+      _chatMsgs.sort((a,b)=>(a.ts||0)-(b.ts||0));
+      _chatSave();
+      _chatRenderAll();
+    }
+  }catch(e){}
+}
+
+function hAsistente(){
+  _chatLoad();
+  return `<div class="chat-wrap">
+  <!-- Cabecera -->
+  <div style="background:var(--s);border-bottom:0.5px solid var(--br);padding:11px 14px;flex-shrink:0;display:flex;align-items:center;gap:10px">
+    <div style="position:relative;flex-shrink:0">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--bl3);overflow:hidden;border:2px solid var(--bl2)">
+        ${window._coachFoto
+          ? `<img src="${window._coachFoto}" style="width:100%;height:100%;object-fit:cover"/>`
+          : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff">${(window._coachNombreAsistente||'C')[0].toUpperCase()}</div>`}
+      </div>
+      <div id="chat_status_dot" style="position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#f59e0b;border:2px solid var(--b)"></div>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:14px;font-weight:700;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${window._coachNombreAsistente||'Coach WolfMindset'}</div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:1px" id="chat_status_lbl">${LANG==='en'?'Usually replies soon':'Suele responder pronto'}</div>
+    </div>
+    <button onclick="_chatClear()" style="background:none;border:none;color:var(--tx3);font-size:10px;cursor:pointer;font-family:inherit;padding:4px 8px;border-radius:6px;border:0.5px solid var(--br)" title="${LANG==='en'?'Clear chat':'Borrar chat'}">${LANG==='en'?'Clear':'Borrar'}</button>
+  </div>
+  <!-- Mensajes -->
+  <div class="chat-msgs" id="chatMsgs"></div>
+  <div class="typing" id="chatTyping">${LANG==='en'?'typing...':'escribiendo...'}</div>
+  <!-- Input -->
+  <div class="chat-input-wrap">
+    <input class="chat-inp" id="chatIn"
+      placeholder="${LANG==='en'?'Write your message...':'Escribe tu mensaje...'}"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"/>
+    <button class="chat-send" onclick="sendChat()">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 10l14-7-7 14V10H3z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+</div>`;
+}
+
+function _chatAfterRender(){
+  _chatRenderAll();
+  _chatCheckCoachOnline();
+  _chatLoadFromServer();
+  // Polling cada 15s para mensajes nuevos del coach mientras el tab está abierto
+  if(_chatPolling) clearInterval(_chatPolling);
+  _chatPolling = setInterval(()=>{
+    if(document.getElementById('chatMsgs')) {
+      _chatLoadFromServer();
+      _chatCheckCoachOnline();
+    } else {
+      clearInterval(_chatPolling);
+      _chatPolling = null;
+    }
+  }, 15000);
+}
+
+function _chatClear(){
+  if(!confirm(LANG==='en'?'Clear conversation history?':'¿Borrar el historial de conversación?')) return;
+  _chatMsgs = [];
+  _chatSave();
+  _chatLoad(); // reinicia con bienvenida
+  _chatRenderAll();
+}
+
+async function sendChat(){
+  const inp = document.getElementById('chatIn');
+  const msg = inp.value.trim();
+  if(!msg) return;
+  inp.value = '';
+  inp.focus();
+
+  const ts = Date.now();
+  const userMsg = {role:'user', content:msg, sender:CD.nombre, ts, via:'user'};
+  _chatMsgs.push(userMsg);
+  _chatSave();
+  _chatRenderAll();
+
+  document.getElementById('chatTyping').style.display = 'block';
+  const msgs = document.getElementById('chatMsgs');
+
+  // 1. Intentar enviar al coach real
+  let coachReplied = false;
+  if(_chatCoachOnline){
+    try{
+      const d = await api('/mensajes', {method:'POST', body:JSON.stringify({cliente_id:CD.id, contenido:msg})});
+      if(d && d.reply){
+        const coachMsg = {role:'assistant', content:d.reply, sender:window._coachNombreAsistente||'Coach', ts:Date.now(), via:'coach', id:d.id};
+        _chatMsgs.push(coachMsg);
+        _chatSave();
+        coachReplied = true;
+      }
+    }catch(e){ /* coach no disponible, caer a IA */ }
+  }
+
+  // 2. Si el coach no respondió → IA
+  if(!coachReplied){
+    // Construir contexto para la IA solo con mensajes de texto (sin metadatos)
+    chatH = _chatMsgs.slice(-20).map(m=>({role:m.role==='user'?'user':'assistant', content:m.content}));
+    try{
+      const d = await api('/ia/chat', {method:'POST', body:JSON.stringify({
+        messages: chatH,
+        system: `Eres ${window._coachNombreAsistente||'el coach'} de WolfMindset. Hablas directamente como el coach, en primera persona. Cliente: ${CD.nombre}, objetivo: ${CD.objetivo}, nivel: ${CD.nivel}, semana ${CD.semanas}. Responde sobre entreno con pesas, nutrición y recuperación. Sustituciones de alimento siempre con gramos en crudo. Si hay mejora en ejercicio, motívale. NUNCA digas que eres IA, un asistente, un bot ni ninguna variante. NUNCA menciones calorías al cliente. NUNCA digas que el coach está ocupado ni ausente. Eres el coach. 3-4 frases máx, directo y motivador. ${LANG==='en'?'Always respond in English.':''}`
+      })});
+      const iaMsg = {role:'assistant', content:d.reply, sender:window._coachNombreAsistente||'Coach', ts:Date.now(), via:'ia'};
+      _chatMsgs.push(iaMsg);
+      _chatSave();
+      chatH.push({role:'assistant', content:d.reply});
+    }catch(e){
+      const errMsg = {role:'assistant', content: LANG==='en'?'Cannot connect right now. Try again in a moment.':'No puedo conectar ahora mismo. Inténtalo en un momento.', sender:window._coachNombreAsistente||'Coach', ts:Date.now(), via:'ia'};
+      _chatMsgs.push(errMsg);
+      _chatSave();
+    }
+  }
+
+  document.getElementById('chatTyping').style.display = 'none';
+  _chatRenderAll();
+}
+
+// ══════════════════════════════════════════════════════
+// COACH — PANEL MENSAJES
+// ══════════════════════════════════════════════════════
+let _coachMsgThread = null; // clienteId activo en el hilo
+let _coachMsgPollInt = null;
+let _coachMsgCache = {}; // {clienteId: [msg,...]}
+
+function hMensajesCoach(){
+  return `<div id="coach_msgs_wrap" style="height:100%;display:flex;flex-direction:column">
+    <div id="coach_msgs_list"></div>
+    <div id="coach_msgs_thread" style="display:none;flex:1;display:flex;flex-direction:column;min-height:0"></div>
+  </div>`;
+}
+
+async function coachMsgsInit(){
+  _coachMsgThread = null;
+  await coachMsgsLoadList();
+  if(_coachMsgPollInt) clearInterval(_coachMsgPollInt);
+  _coachMsgPollInt = setInterval(async()=>{
+    if(!document.getElementById('coach_msgs_wrap')){ clearInterval(_coachMsgPollInt); return; }
+    if(_coachMsgThread) await coachMsgsLoadThread(_coachMsgThread, false);
+    else await coachMsgsLoadList();
+    cargarNotificacionesCoach();
+  }, 10000);
+}
+
+async function coachMsgsLoadList(){
+  const wrap = document.getElementById('coach_msgs_list');
+  if(!wrap) return;
+  let convs = [];
+  try { convs = await api('/mensajes/conversaciones'); } catch(e){}
+
+  if(!convs.length){
+    wrap.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--tx3)">
+      <div style="font-size:40px;margin-bottom:12px">💬</div>
+      <div style="font-size:14px;font-weight:600;color:var(--sv2)">${tc('Sin mensajes aún')}</div>
+      <div style="font-size:12px;margin-top:6px">${tc('Cuando un cliente te escriba aparecerá aquí')}</div>
+    </div>`;
+    return;
+  }
+
+  wrap.innerHTML = convs.map(c => {
+    const a = ac(c.cliente_id % 8);
+    const noLeidos = c.no_leidos || 0;
+    const hora = c.ultimo_ts ? _chatFmtTime(new Date(c.ultimo_ts).getTime()) : '';
+    return `<div onclick="coachMsgsAbrirHilo(${c.cliente_id},'${(c.cliente_nombre||'').replace(/'/g,"\\'")}','${(c.cliente_foto||'').replace(/'/g,"\\'")}','${(c.cliente_username||'').replace(/'/g,"\\'")}' )"
+      style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid var(--br);cursor:pointer;background:${noLeidos?'rgba(59,130,246,.04)':'none'};transition:.15s"
+      onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background='${noLeidos?'rgba(59,130,246,.04)':'none'}'">
+      <div style="width:44px;height:44px;border-radius:50%;background:${a.bg};color:${a.tx};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;overflow:hidden;border:1.5px solid ${noLeidos?'var(--bl2)':'var(--br)'}">
+        ${c.cliente_foto ? `<img src="${c.cliente_foto}" style="width:100%;height:100%;object-fit:cover"/>` : (c.cliente_nombre||'?')[0].toUpperCase()}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+          <div style="font-size:14px;font-weight:${noLeidos?'700':'600'};color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">${c.cliente_nombre||'Cliente'}</div>
+          <div style="font-size:10px;color:var(--tx3);flex-shrink:0;margin-left:8px">${hora}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:12px;color:${noLeidos?'var(--sv2)':'var(--tx3)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${c.ultimo_msg||''}</div>
+          ${noLeidos ? `<span style="background:var(--bl2);color:#fff;font-size:9px;font-weight:700;border-radius:50%;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:6px;padding:0 3px">${noLeidos}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function coachMsgsAbrirHilo(clienteId, nombre, foto, username){
+  _coachMsgThread = clienteId;
+  const list = document.getElementById('coach_msgs_list');
+  const thread = document.getElementById('coach_msgs_thread');
+  if(list) list.style.display = 'none';
+  if(thread){ thread.style.display = 'flex'; thread.style.flexDirection = 'column'; thread.style.flex = '1'; thread.style.minHeight = '0'; }
+
+  thread.innerHTML = `
+    <!-- Cabecera hilo -->
+    <div style="background:var(--s);border-bottom:0.5px solid var(--br);padding:11px 14px;flex-shrink:0;display:flex;align-items:center;gap:10px">
+      <button onclick="coachMsgsVolverLista()" style="background:none;border:none;color:var(--tx3);cursor:pointer;padding:4px;display:flex;align-items:center">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M12 4l-7 6 7 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div style="width:36px;height:36px;border-radius:50%;background:var(--bl3);overflow:hidden;flex-shrink:0;border:1.5px solid var(--bl2)">
+        ${foto ? `<img src="${foto}" style="width:100%;height:100%;object-fit:cover"/>` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff">${(nombre||'?')[0].toUpperCase()}</div>`}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:var(--sv)">${nombre||'Cliente'}</div>
+        <div style="font-size:11px;color:var(--tx3)">@${username||''}</div>
+      </div>
+      <button onclick="verCliente(${clienteId})" style="padding:6px 12px;background:var(--s2);border:0.5px solid var(--br);border-radius:8px;color:var(--sv2);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">${tc('Ver ficha')}</button>
+    </div>
+    <!-- Mensajes -->
+    <div id="coach_thread_msgs" class="chat-msgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px"></div>
+    <div id="coach_thread_typing" class="typing" style="padding:4px 14px 2px">${tc('escribiendo...')}</div>
+    <!-- Input -->
+    <div class="chat-input-wrap">
+      <input class="chat-inp" id="coach_thread_inp" placeholder="${tc('Escribe tu respuesta...')}"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();coachMsgsEnviar(${clienteId});}"/>
+      <button class="chat-send" onclick="coachMsgsEnviar(${clienteId})">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 10l14-7-7 14V10H3z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      </button>
+    </div>`;
+
+  await coachMsgsLoadThread(clienteId, true);
+  // Marcar como leídos
+  api('/mensajes/'+clienteId+'/leer', {method:'PUT'}).catch(()=>{});
+  cargarNotificacionesCoach();
+}
+
+async function coachMsgsLoadThread(clienteId, scrollDown){
+  const wrap = document.getElementById('coach_thread_msgs');
+  if(!wrap) return;
+  let msgs = [];
+  try { msgs = await api('/mensajes/'+clienteId); } catch(e){}
+  _coachMsgCache[clienteId] = msgs;
+
+  wrap.innerHTML = msgs.map(m => {
+    const isCoach = m.de_coach;
+    const hora = m.created_at ? _chatFmtTime(new Date(m.created_at).getTime()) : '';
+    const via = m.via_ia ? `<span style="font-size:9px;color:var(--tx3);margin-left:4px;opacity:.5">${tc('auto')}</span>` : '';
+    return `<div class="msg ${isCoach?'msg-u':'msg-b'}" style="max-width:85%">
+      ${!isCoach ? `<div class="msg-sender">${m.cliente_nombre||'Cliente'}</div>` : ''}
+      ${m.contenido}
+      <div style="font-size:9px;opacity:.4;margin-top:3px;text-align:${isCoach?'right':'left'}">${hora}${via}</div>
+    </div>`;
+  }).join('');
+
+  if(scrollDown) wrap.scrollTop = wrap.scrollHeight;
+  else {
+    // Solo scroll si estaba abajo
+    const diff = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight;
+    if(diff < 80) wrap.scrollTop = wrap.scrollHeight;
+  }
+}
+
+async function coachMsgsEnviar(clienteId){
+  const inp = document.getElementById('coach_thread_inp');
+  if(!inp) return;
+  const msg = inp.value.trim();
+  if(!msg) return;
+  inp.value = '';
+  inp.focus();
+  document.getElementById('coach_thread_typing').style.display = 'block';
+  try {
+    await api('/mensajes', {method:'POST', body:JSON.stringify({cliente_id:clienteId, contenido:msg, de_coach:true})});
+  } catch(e) {
+    // Mostrar igual en UI aunque falle el server
+  }
+  document.getElementById('coach_thread_typing').style.display = 'none';
+  await coachMsgsLoadThread(clienteId, true);
+  cargarNotificacionesCoach();
+}
+
+function coachMsgsVolverLista(){
+  _coachMsgThread = null;
+  const list = document.getElementById('coach_msgs_list');
+  const thread = document.getElementById('coach_msgs_thread');
+  if(thread) thread.style.display = 'none';
+  if(list){ list.style.display = 'block'; coachMsgsLoadList(); }
+}
+
+
 function hProgreso2(){return`<div style="padding-top:8px">
   ${CD.mensaje_semana?`<div class="motiv-card"><div style="font-size:14px;color:var(--sv2);line-height:1.7;font-weight:500">${CD.mensaje_semana}</div></div>`:''}
   <div class="stats-g">
@@ -9681,13 +10041,13 @@ function renderCoachFotos(fotos){
       +'<div style="flex:1;height:0.5px;background:var(--br)"></div>'
       +'</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">'+fotosHtml+'</div>'
-      +'<button onclick="coachAnalizarSemana('+fi+','+JSON.stringify(fechas)+')" id="cfa_btn_'+fi+'" style="width:100%;padding:9px;border:0.5px solid rgba(59,130,246,.3);border-radius:9px;background:rgba(37,99,235,.07);color:var(--blg);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:8px">'+btnLabel+'</button>'
+      +(USER&&USER.role==='coach' ? '<button onclick="coachAnalizarSemana('+fi+','+JSON.stringify(fechas)+')" id="cfa_btn_'+fi+'" style="width:100%;padding:9px;border:0.5px solid rgba(59,130,246,.3);border-radius:9px;background:rgba(37,99,235,.07);color:var(--blg);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:8px">'+btnLabel+'</button>' : '')
       +'<div id="cfa_result_'+fi+'"></div>'
       +(pubAnalysis
         ?'<div style="background:rgba(37,99,235,.06);border:0.5px solid rgba(59,130,246,.2);border-radius:8px;padding:10px 12px">'
           +'<div style="font-size:10px;font-weight:700;color:var(--blg);margin-bottom:5px">💬 '+(COACH_LANG==='en'?'Coach message':'Mensaje de tu coach')+'</div>'
           +'<div style="font-size:12px;color:var(--sv2);line-height:1.7" id="cfa_pub_'+fi+'">'+pubAnalysis+'</div>'
-          +'<button onclick="coachEditarPublicado('+fi+','+JSON.stringify(allFotoIds)+')" style="margin-top:8px;padding:5px 12px;border:0.5px solid var(--br);border-radius:7px;background:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'Edit':'Editar')+'</button>'
+          +(USER&&USER.role==='coach' ? '<button onclick="coachEditarPublicado('+fi+','+JSON.stringify(allFotoIds)+')" style="margin-top:8px;padding:5px 12px;border:0.5px solid var(--br);border-radius:7px;background:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'Edit':'Editar')+'</button>' : '')
           +'</div>'
         :'')
       +'</div>';
