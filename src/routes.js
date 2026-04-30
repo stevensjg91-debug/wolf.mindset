@@ -285,15 +285,44 @@ router.post('/clientes/:id/recetas', coachOnly, (req, res) => {
 
 router.post('/clientes/:id/fotos', (req, res) => {
   const { url, analysis, tipo } = req.body;
-  // url is full base64 image — store completely
   const r = dbRun('INSERT INTO fotos (cliente_id, url, analysis, tipo) VALUES (?, ?, ?, ?)',
     [req.params.id, url||'', analysis||'', tipo||'frente']);
+
   // Notificar al coach
   const coachId = getCoachId();
   if(coachId) {
     const nombre = getNombreCliente(req.params.id);
-    const tipoLabel = tipo === 'espalda' ? 'espalda' : tipo === 'lado' ? 'lateral' : 'frontal';
-    crearNotificacion(coachId, 'foto_subida', `📸 ${nombre} ha subido una foto de progreso (${tipoLabel})`);
+    const tipoLabel = tipo === 'posterior' ? (coachId ? 'posterior' : 'back') : tipo === 'costado' ? 'lateral' : 'frontal';
+
+    // Detectar si es la primera foto del mes — si hay fotos del mes anterior, notificar comparativa
+    const ahora = new Date();
+    const mesActual = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}`;
+    const fotosDelMes = dbAll(
+      "SELECT id FROM fotos WHERE cliente_id=? AND strftime('%Y-%m', fecha)=?",
+      [req.params.id, mesActual]
+    );
+    const mesAnterior = new Date(ahora.getFullYear(), ahora.getMonth()-1, 1);
+    const mesAnteriorStr = `${mesAnterior.getFullYear()}-${String(mesAnterior.getMonth()+1).padStart(2,'0')}`;
+    const fotosDelMesAnterior = dbAll(
+      "SELECT id FROM fotos WHERE cliente_id=? AND strftime('%Y-%m', fecha)=?",
+      [req.params.id, mesAnteriorStr]
+    );
+
+    const coach = dbGet('SELECT lang FROM users WHERE id=?', [coachId]);
+    const isEn = coach && coach.lang === 'en';
+
+    if(fotosDelMes.length <= 1 && fotosDelMesAnterior.length > 0) {
+      // Primera foto del mes con historial del mes anterior — comparativa disponible
+      const msgComparativa = isEn
+        ? `📸 ${nombre} uploaded their monthly photo. Comparison with last month available — go to their profile to analyze progress!`
+        : `📸 ${nombre} subió su foto mensual. Comparativa con el mes anterior disponible — ¡entra a su perfil para analizar el progreso!`;
+      crearNotificacion(coachId, 'foto_comparativa', msgComparativa);
+    } else {
+      const msgFoto = isEn
+        ? `📸 ${nombre} uploaded a progress photo (${tipoLabel})`
+        : `📸 ${nombre} ha subido una foto de progreso (${tipoLabel})`;
+      crearNotificacion(coachId, 'foto_subida', msgFoto);
+    }
   }
   saveToDisk();
   res.json({ id: r.lastInsertRowid });
@@ -350,7 +379,7 @@ router.post('/ia/foto', async (req, res) => {
 
 // ── COMPARAR DOS SEMANAS DE FOTOS (Coach → IA → Mensaje editable) ──────────
 router.post('/ia/comparar-fotos', coachOnly, async (req, res) => {
-  const { fotosAntes, fotosDespues, clienteNombre, objetivo, nivel, semanaAntes, semanaDespues, lang } = req.body;
+  const { fotosAntes, fotosDespues, clienteNombre, objetivo, nivel, semanaAntes, semanaDespues, lang, pedirGrasa, peso, altura, edad, sexo } = req.body;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
 
@@ -358,38 +387,51 @@ router.post('/ia/comparar-fotos', coachOnly, async (req, res) => {
     const isEn = lang === 'en';
     const content = [];
 
-    // Añadir fotos "antes"
-    const labelAntes = isEn ? `Week ${semanaAntes} (BEFORE):` : `Semana ${semanaAntes} (ANTES):`;
-    content.push({ type: 'text', text: labelAntes });
-    for (const f of (fotosAntes || [])) {
-      if (f.b64 && f.mt) {
-        content.push({ type: 'image', source: { type: 'base64', media_type: f.mt, data: f.b64 } });
+    // Fotos "antes" (solo si hay)
+    if (fotosAntes && fotosAntes.length) {
+      content.push({ type: 'text', text: isEn ? `Week ${semanaAntes} (BEFORE):` : `Semana ${semanaAntes} (ANTES):` });
+      for (const f of fotosAntes) {
+        if (f.b64 && f.mt) content.push({ type: 'image', source: { type: 'base64', media_type: f.mt, data: f.b64 } });
       }
     }
 
-    // Añadir fotos "después"
-    const labelDespues = isEn ? `Week ${semanaDespues} (NOW):` : `Semana ${semanaDespues} (AHORA):`;
-    content.push({ type: 'text', text: labelDespues });
+    // Fotos "después"
+    content.push({ type: 'text', text: isEn ? `Week ${semanaDespues} (NOW):` : `Semana ${semanaDespues} (AHORA):` });
     for (const f of (fotosDespues || [])) {
-      if (f.b64 && f.mt) {
-        content.push({ type: 'image', source: { type: 'base64', media_type: f.mt, data: f.b64 } });
-      }
+      if (f.b64 && f.mt) content.push({ type: 'image', source: { type: 'base64', media_type: f.mt, data: f.b64 } });
     }
+
+    const clienteInfo = [
+      peso   ? (isEn ? `Weight: ${peso}kg`   : `Peso: ${peso}kg`)   : '',
+      altura ? (isEn ? `Height: ${altura}cm` : `Altura: ${altura}cm`) : '',
+      edad   ? (isEn ? `Age: ${edad}`         : `Edad: ${edad}`)     : '',
+      sexo   ? (isEn ? `Sex: ${sexo}`         : `Sexo: ${sexo}`)     : ''
+    ].filter(Boolean).join(' · ');
+
+    const hayComparativa = fotosAntes && fotosAntes.length > 0;
 
     const instruccion = isEn
-      ? `Compare the BEFORE and NOW photos of ${clienteNombre} (Goal: ${objetivo}, Level: ${nivel}). Write a motivational coach message (4-6 sentences) that: 1) highlights 2-3 specific visible improvements, 2) celebrates a clear strong point, 3) honestly points out 1-2 areas to keep working on, 4) ends with a motivating push. Tone: direct, warm, like a real coach who knows them. No mention of AI or technology. Write in plain text, no markdown, no asterisks.`
-      : `Compara las fotos ANTES y AHORA de ${clienteNombre} (Objetivo: ${objetivo}, Nivel: ${nivel}). Escribe un mensaje motivacional de coach (4-6 frases) que: 1) destaque 2-3 mejoras visibles y concretas, 2) celebre un punto fuerte claro, 3) señale honestamente 1-2 áreas a seguir trabajando, 4) termine con un empuje motivador. Tono: directo, cercano, como un coach real que lo conoce. Sin mencionar IA ni tecnología. Texto plano, sin markdown, sin asteriscos.`;
+      ? `${hayComparativa ? 'Compare the BEFORE and NOW photos' : 'Analyze the physique'} of ${clienteNombre} (Goal: ${objetivo}, Level: ${nivel}${clienteInfo ? ', ' + clienteInfo : ''}).
+Write a direct coach message (4-6 sentences) that:
+1. Estimates body fat % visually — write it as "Estimated body fat: X%" somewhere in the message
+${hayComparativa ? '2. Estimates overall improvement as a percentage — write it as "Improvement: X%"\n3. Highlights 2-3 specific visible improvements\n4. Celebrates a clear strong point\n5. Points out 1-2 areas to keep working on\n6. Ends with a motivating push' : '2. Notes 2-3 positive aspects of the physique\n3. Points out 2 specific areas to focus on\n4. Ends with a concrete actionable tip'}
+Tone: direct, warm, like a real coach who knows them personally. No markdown, no asterisks, no mention of AI or technology.`
+      : `${hayComparativa ? 'Compara las fotos ANTES y AHORA' : 'Analiza el físico'} de ${clienteNombre} (Objetivo: ${objetivo}, Nivel: ${nivel}${clienteInfo ? ', ' + clienteInfo : ''}).
+Escribe un mensaje directo del coach (4-6 frases) que:
+1. Estime el porcentaje de grasa corporal visualmente — escríbelo como "Grasa estimada: X%" en algún punto del mensaje
+${hayComparativa ? '2. Estime el porcentaje de mejora global — escríbelo como "Mejora: X%"\n3. Destaque 2-3 mejoras visibles y concretas\n4. Celebre un punto fuerte claro\n5. Señale 1-2 áreas a seguir trabajando\n6. Termine con un empuje motivador' : '2. Señale 2-3 aspectos positivos del físico\n3. Indique 2 áreas concretas en las que enfocarse\n4. Termine con un consejo accionable concreto'}
+Tono: directo, cercano, como un coach real que lo conoce personalmente. Sin markdown, sin asteriscos, sin mencionar IA ni tecnología.`;
 
     content.push({ type: 'text', text: instruccion });
 
     const system = isEn
-      ? 'You are an expert WolfMindset fitness coach. You analyze client progress photos with a trained, motivating eye. You write personalized messages that make clients feel seen and motivated. Never mention AI or technology.'
-      : 'Eres un coach de fitness experto de WolfMindset. Analizas fotos de progreso con ojo entrenado y motivador. Escribes mensajes personalizados que hacen que el cliente se sienta visto y motivado. Nunca menciones IA ni tecnología.';
+      ? 'You are an expert WolfMindset fitness coach. You analyze client progress photos with a trained, motivating eye. You estimate body fat percentage visually based on muscle definition, fat distribution and overall physique — always provide a specific number. You write personalized messages that make clients feel seen and motivated. Never mention AI or technology.'
+      : 'Eres un coach de fitness experto de WolfMindset. Analizas fotos de progreso con ojo entrenado y motivador. Estimas el porcentaje de grasa corporal visualmente basándote en la definición muscular, distribución de grasa y físico general — siempre da un número específico. Escribes mensajes personalizados que hacen que el cliente se sienta visto y motivado. Nunca menciones IA ni tecnología.';
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 600, system, messages: [{ role: 'user', content }] })
+      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 700, system, messages: [{ role: 'user', content }] })
     });
 
     const data = await response.json();
