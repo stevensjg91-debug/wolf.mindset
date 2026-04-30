@@ -34,7 +34,47 @@ function ensureTrainingTrackingSchema() {
   try { dbRun("ALTER TABLE series_log ADD COLUMN nota_cliente TEXT DEFAULT ''"); } catch(e) {}
 }
 
+// Control para no lanzar el chequeo de vencimientos más de una vez por día
+let _ultimoChequeoVencimientos = null;
+
+function chequearVencimientosAuto() {
+  const hoy = new Date().toISOString().split('T')[0];
+  if(_ultimoChequeoVencimientos === hoy) return; // ya se ejecutó hoy
+  _ultimoChequeoVencimientos = hoy;
+  try {
+    const subs = dbAll(`
+      SELECT s.*, c.id as cliente_id, u.id as user_id, u.nombre
+      FROM suscripciones s
+      JOIN clientes c ON s.cliente_id = c.id
+      JOIN users u ON c.user_id = u.id
+      WHERE s.estado = 'activa'
+    `);
+    const hoyStr = new Date().toISOString().split('T')[0];
+    subs.forEach(s => {
+      const dias = diasRestantes(s.fecha_fin);
+      // Notificar al cliente si quedan 7, 5, 3 o 1 días
+      if([7, 5, 3, 1].includes(dias)) {
+        const yaAviso = dbGet(`SELECT id FROM notificaciones WHERE user_id=? AND tipo='vencimiento_proximo' AND DATE(created_at)=DATE('now')`, [s.user_id]);
+        if(!yaAviso) {
+          crearNotificacion(s.user_id, 'vencimiento_proximo',
+            `⚠️ Tu suscripción vence en ${dias} día${dias>1?'s':''}. Contacta con tu coach para renovarla.`);
+        }
+      }
+      // Marcar como vencida y bloquear si ya pasó la fecha
+      if(s.fecha_fin < hoyStr && s.estado === 'activa') {
+        dbRun("UPDATE suscripciones SET estado='vencida' WHERE cliente_id=?", [s.cliente_id]);
+        dbRun("UPDATE users SET estado='bloqueado' WHERE id=?", [s.user_id]);
+        crearNotificacion(s.user_id, 'suscripcion_vencida',
+          `🔴 Tu suscripción ha vencido. Contacta con tu coach para renovarla y recuperar el acceso.`);
+      }
+    });
+    saveToDisk();
+  } catch(e) { console.error('chequearVencimientosAuto error:', e.message); }
+}
+
 router.get('/clientes', coachOnly, (req, res) => {
+  // Trigger automático al cargar clientes (una vez por día)
+  chequearVencimientosAuto();
   const clientes = dbAll(`SELECT c.*, u.nombre, u.username, u.foto_perfil,
     (SELECT peso FROM peso_registros WHERE cliente_id=c.id ORDER BY rowid DESC LIMIT 1) as peso_actual,
     (SELECT grasa FROM peso_registros WHERE cliente_id=c.id ORDER BY rowid DESC LIMIT 1) as grasa_actual,
