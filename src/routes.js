@@ -197,9 +197,21 @@ router.post('/clientes/:id/dias', coachOnly, (req, res) => {
   res.json({ id: r.lastInsertRowid });
 });
 
+// ── EDITAR DÍA DE ENTRENO (nombre / grupo muscular) ───────────────
+router.put('/dias/:id', coachOnly, (req, res) => {
+  const { nombre, grupo } = req.body;
+  const d = dbGet('SELECT * FROM dias_entreno WHERE id=?', [req.params.id]);
+  if (!d) return res.status(404).json({ error: 'No encontrado' });
+  dbRun('UPDATE dias_entreno SET nombre=?, grupo=? WHERE id=?',
+    [nombre || d.nombre, grupo || d.grupo, req.params.id]);
+  saveToDisk();
+  res.json({ ok: true });
+});
+
 router.delete('/dias/:id', coachOnly, (req, res) => {
   dbRun('DELETE FROM ejercicios_dia WHERE dia_id=?', [req.params.id]);
   dbRun('DELETE FROM dias_entreno WHERE id=?', [req.params.id]);
+  saveToDisk();
   res.json({ ok: true });
 });
 
@@ -448,6 +460,22 @@ router.get('/ejercicios-config', coachOnly, (req, res) => {
   const map = {};
   configs.forEach(c => { map[c.nombre] = { youtube_url: c.youtube_url, imagen_url: c.imagen_url, nota_default: c.nota_default }; });
   res.json(map);
+});
+
+// ── UPLOAD IMAGEN EJERCICIO DESDE PC (base64) ─────────────────────
+router.post('/ejercicios-config/:nombre/imagen', coachOnly, (req, res) => {
+  const nombre = decodeURIComponent(req.params.nombre);
+  const { imagen_base64, media_type } = req.body;
+  if (!imagen_base64) return res.status(400).json({ error: 'imagen_base64 requerida' });
+  const dataUrl = `data:${media_type || 'image/jpeg'};base64,${imagen_base64}`;
+  const existing = dbGet('SELECT id FROM ejercicios_config WHERE nombre=?', [nombre]);
+  if (existing) {
+    dbRun('UPDATE ejercicios_config SET imagen_url=? WHERE nombre=?', [dataUrl, nombre]);
+  } else {
+    dbRun("INSERT INTO ejercicios_config (nombre, imagen_url, youtube_url, nota_default) VALUES (?,?,'','')", [nombre, dataUrl]);
+  }
+  saveToDisk();
+  res.json({ ok: true, imagen_url: dataUrl });
 });
 
 router.put('/ejercicios-config/:nombre', coachOnly, (req, res) => {
