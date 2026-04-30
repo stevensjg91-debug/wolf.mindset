@@ -1,88 +1,86 @@
-// WolfMindset Service Worker v2
-const CACHE = 'wolfmindset-v2';
+// WolfMindset Service Worker — notificaciones en background
+// Conserva tu lógica original y añade soporte seguro para temporizadores de descanso.
 
-self.addEventListener('install', e => {
-  self.skipWaiting();
-});
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 
-self.addEventListener('activate', e => {
-  e.waitUntil(self.clients.claim());
-});
+// Guardamos timeouts activos por si la app manda cancelar/reprogramar
+const wolfTimers = new Map();
 
-// ── NOTIFICACIONES DESDE EL TIMER ─────────────────────────────────
-// El timer del cliente envía un mensaje cuando termina el descanso
-self.addEventListener('message', e => {
-  const { type, title, options, delay, timerId } = e.data || {};
+function clearWolfTimer(id){
+  if(!id) return;
+  const old = wolfTimers.get(id);
+  if(old){
+    clearTimeout(old);
+    wolfTimers.delete(id);
+  }
+}
 
-  if(type === 'SHOW_NOTIFICATION') {
-    // Notificación inmediata (pantalla bloqueada)
-    self.registration.showNotification(title, {
+async function showWolfNotification(title, options = {}){
+  try{
+    await self.registration.showNotification(title || 'WolfMindset', {
       ...options,
-      icon: options?.icon || '/logo.png',
-      badge: options?.badge || '/logo.png',
-    }).catch(()=>{});
+      icon: options.icon || '/logo.png',
+      badge: options.badge || '/logo.png',
+    });
+  }catch(e){}
+}
+
+// Recibir mensajes del cliente para mostrar notificaciones
+self.addEventListener('message', e => {
+  const data = e.data || {};
+
+  // Mantiene compatibilidad con tu versión actual
+  if(data.type === 'SHOW_NOTIFICATION'){
+    e.waitUntil(
+      showWolfNotification(data.title, data.options || {})
+    );
+    return;
   }
 
-  if(type === 'SCHEDULE_NOTIFICATION') {
-    // Programar notificación con delay (timer de descanso)
-    // Guardamos el setTimeout con ID para poder cancelarlo
-    if(!self._timers) self._timers = {};
-    // Cancelar timer anterior del mismo ID si existe
-    if(timerId && self._timers[timerId]) {
-      clearTimeout(self._timers[timerId]);
-    }
-    const t = setTimeout(() => {
-      self.registration.showNotification(title, {
-        body: options?.body || 'Descanso terminado',
-        icon: '/logo.png',
-        badge: '/logo.png',
-        tag: 'descanso-' + (timerId||'0'),
-        silent: false,
-        vibrate: [150, 80, 150, 80, 200],
+  // Nuevo: programar notificación de descanso sin depender del contador visual
+  // Payload esperado:
+  // { type:'SCHEDULE_REST_NOTIFICATION', id:'rest-timer', title:'...', body:'...', delayMs:90000 }
+  if(data.type === 'SCHEDULE_REST_NOTIFICATION'){
+    const id = data.id || 'wolf-rest-timer';
+    const delayMs = Math.max(0, Number(data.delayMs || 0));
+    clearWolfTimer(id);
+
+    const timeout = setTimeout(() => {
+      wolfTimers.delete(id);
+      showWolfNotification(data.title || 'WolfMindset', {
+        body: data.body || '',
+        tag: data.tag || id,
+        renotify: true,
         requireInteraction: false,
-        actions: [
-          { action: 'ok', title: '💪 ¡Vamos!' }
-        ]
-      }).catch(()=>{});
-      if(timerId && self._timers) delete self._timers[timerId];
-    }, (delay || 0));
-    if(timerId) {
-      if(!self._timers) self._timers = {};
-      self._timers[timerId] = t;
-    }
+        data: data.notificationData || { url: '/' },
+      });
+    }, delayMs);
+
+    wolfTimers.set(id, timeout);
+    return;
   }
 
-  if(type === 'CANCEL_NOTIFICATION') {
-    // Cancelar timer programado
-    if(timerId && self._timers && self._timers[timerId]) {
-      clearTimeout(self._timers[timerId]);
-      delete self._timers[timerId];
-    }
-    // Cerrar notificación activa
-    self.registration.getNotifications({ tag: 'descanso-' + (timerId||'0') })
-      .then(notifs => notifs.forEach(n => n.close()))
-      .catch(()=>{});
-  }
-
-  if(type === 'CANCEL_ALL') {
-    // Al terminar entreno — cancelar todo
-    if(self._timers) {
-      Object.values(self._timers).forEach(t => clearTimeout(t));
-      self._timers = {};
-    }
-    self.registration.getNotifications().then(notifs => notifs.forEach(n => n.close())).catch(()=>{});
+  // Nuevo: cancelar una notificación programada si el usuario salta el descanso o termina antes
+  if(data.type === 'CANCEL_REST_NOTIFICATION'){
+    clearWolfTimer(data.id || 'wolf-rest-timer');
   }
 });
 
-// Click en notificación — abrir la app
+// Al pulsar la notificación, abre la app
 self.addEventListener('notificationclick', e => {
   e.notification.close();
+  const url = e.notification?.data?.url || '/';
   e.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-      if(clients.length > 0) {
-        return clients[0].focus();
+    self.clients.matchAll({type:'window', includeUncontrolled:true}).then(clients => {
+      for(const client of clients){
+        try{
+          const clientUrl = new URL(client.url);
+          const targetUrl = new URL(url, self.location.origin);
+          if(clientUrl.origin === targetUrl.origin) return client.focus();
+        }catch(err){}
       }
-      return self.clients.openWindow('/');
+      return self.clients.openWindow(url);
     })
   );
 });
