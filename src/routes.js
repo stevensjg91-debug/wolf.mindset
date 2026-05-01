@@ -355,7 +355,7 @@ router.post('/ia/chat', async (req, res) => {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 4000, system, messages })
+      body: JSON.stringify({ model: 'claude-opus-4-5-20250514', max_tokens: 4000, system, messages })
     });
     const data = await response.json();
     if (data.error) return res.status(500).json({ error: data.error.message });
@@ -366,15 +366,19 @@ router.post('/ia/chat', async (req, res) => {
 router.post('/ia/foto', async (req, res) => {
   const { imageBase64, mediaType, system } = req.body;
   const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'API key no configurada en las variables de entorno' });
+  if (!imageBase64 || !mediaType) return res.status(400).json({ error: 'imageBase64 y mediaType son requeridos' });
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 800, system, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }, { type: 'text', text: 'Valora el progreso fisico.' }] }] })
+      body: JSON.stringify({ model: 'claude-opus-4-5-20250514', max_tokens: 800, system, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }, { type: 'text', text: 'Valora el progreso fisico.' }] }] })
     });
     const data = await response.json();
+    if (data.error) return res.status(500).json({ error: data.error.message || 'Error de la API de IA' });
+    if (!data.content || !data.content[0]) return res.status(500).json({ error: 'Respuesta vacía de la IA' });
     res.json({ reply: data.content[0].text });
-  } catch(e) { res.status(500).json({ error: 'Error IA foto' }); }
+  } catch(e) { res.status(500).json({ error: e.message || 'Error IA foto' }); }
 });
 
 // ── COMPARAR DOS SEMANAS DE FOTOS (Coach → IA → Mensaje editable) ──────────
@@ -431,7 +435,7 @@ Tono: directo, cercano, como un coach real que lo conoce personalmente. Sin mark
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 700, system, messages: [{ role: 'user', content }] })
+      body: JSON.stringify({ model: 'claude-opus-4-5-20250514', max_tokens: 700, system, messages: [{ role: 'user', content }] })
     });
 
     const data = await response.json();
