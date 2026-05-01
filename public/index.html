@@ -1256,7 +1256,7 @@ const TRANSLATIONS = {
   'Nivel de actividad':'Activity level',
   'Nombre completo *':'Full name *',
   'Nombre del día':'Day name',
-  'Nuevo cliente':'New client','Añadir cliente':'Add client','Añadir cliente':'Add client',
+  'Nuevo cliente':'New client',
   'Omnívoro (como de todo)':'Omnivore (eat everything)',
   'Otras observaciones (opcional)':'Other notes (optional)',
   'Pecho + Tríceps':'Chest + Triceps',
@@ -2497,13 +2497,13 @@ if(TOKEN&&USER){
 function getTitles(){return{clientes:tc('Clientes'),nuevo:tc('Nuevo cliente'),pendientes:tc('Solicitudes pendientes'),rutinas:tc('Crear rutina'),'dieta-builder':tc('Crear dieta'),progreso:tc('Progreso'),ia:tc('Asistente IA Coach'),mensajes:tc('Mensajes')};}
 function cNav(s,btn){
   _coachTabActual = s;
-  document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on')); if(btn) btn.classList.add('on');
+  document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
   document.getElementById('cTitle').textContent=getTitles()[s]||s;
   renderCoach(s);
 }
 function cNavM(s,btn){
   _coachTabActual = s;
-  document.querySelectorAll('#coachMobileNav .bni').forEach(b=>b.classList.remove('on')); if(btn) btn.classList.add('on');
+  document.querySelectorAll('#coachMobileNav .bni').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
   document.getElementById('cTitle').textContent=getTitles()[s]||s;
   renderCoach(s);
 }
@@ -2533,36 +2533,8 @@ async function renderCoach(s){
   setTimeout(()=>{ applyCoachLang(document.getElementById('sCoach')); applyCoachLang(document.getElementById('cContent')); },50);
 }
 
-
-function abrirNuevoClienteDesdeClientes(){
-  _coachTabActual = 'nuevo';
-  document.querySelectorAll('#sCoach .sni').forEach(b=>b.classList.remove('on'));
-  const clientesBtn = document.querySelector('#sCoach .sni[onclick*="clientes"]');
-  if(clientesBtn) clientesBtn.classList.add('on');
-  document.querySelectorAll('#coachMobileNav .bni').forEach(b=>b.classList.remove('on'));
-  const clientesMobileBtn = document.getElementById('cbni0');
-  if(clientesMobileBtn) clientesMobileBtn.classList.add('on');
-  const title = document.getElementById('cTitle');
-  if(title) title.textContent = tc('Clientes');
-  renderCoach('nuevo');
-}
-
 function hClientes(cl){
-  if(!cl.length)return`
-  <div class="flb" style="margin-bottom:14px;align-items:center">
-    <div>
-      <div class="sec-hdr" style="margin:0">${tc('Clientes')}</div>
-      <div style="font-size:12px;color:var(--tx3);margin-top:4px">${COACH_LANG==='en'?'Manage your clients from one place.':'Gestiona tus clientes desde un solo sitio.'}</div>
-    </div>
-    <button class="btn btn-sm" onclick="abrirNuevoClienteDesdeClientes()" style="display:flex;align-items:center;gap:6px;white-space:nowrap">
-      <span style="font-size:15px">＋</span><span>${tc('Añadir cliente')}</span>
-    </button>
-  </div>
-  <div style="text-align:center;padding:60px 20px;color:var(--tx3);background:var(--s);border:0.5px solid var(--br);border-radius:14px">
-    <div style="font-size:48px;margin-bottom:14px">👤</div>
-    <div style="font-size:15px;font-weight:600;color:var(--sv2)">${tc('Sin clientes aún')}</div>
-    <div style="font-size:13px;margin-top:6px">${COACH_LANG==='en'?'Create your first client from this section.':'Crea tu primer cliente desde este apartado.'}</div>
-  </div>`;
+  if(!cl.length)return`<div style="text-align:center;padding:60px 20px;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">👤</div><div style="font-size:15px;font-weight:600;color:var(--sv2)">${tc('Sin clientes aún')}</div><div style="font-size:13px;margin-top:6px">${COACH_LANG==='en'?'Create your first client from here.':'Crea tu primer cliente desde aquí.'}</div><button class="btn" style="margin-top:16px;padding:11px 18px" onclick="abrirNuevoClienteDesdeClientes()">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button></div>`;
 
   // Colores por coach — el coach actual siempre es azul, otros son púrpura
   const coachColors = {
@@ -2589,14 +2561,12 @@ function hClientes(cl){
   const otroCoachNombre = Object.values(coachColors).find((v,i) => i > 0)?.label || 'Partner';
 
   return`
-  <div class="flb" style="margin-bottom:14px;align-items:center">
+  <div class="flb" style="margin-bottom:14px;gap:10px;align-items:center">
     <div>
-      <div class="sec-hdr" style="margin:0">${tc('Clientes')}</div>
-      <div style="font-size:12px;color:var(--tx3);margin-top:4px">${COACH_LANG==='en'?'Manage your clients from one place.':'Gestiona tus clientes desde un solo sitio.'}</div>
+      <div style="font-size:11px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.08em">${tc('Clientes')}</div>
+      <div style="font-size:13px;color:var(--sv2);margin-top:3px">${COACH_LANG==='en'?'Manage and add clients from this section.':'Gestiona y añade clientes desde este apartado.'}</div>
     </div>
-    <button class="btn btn-sm" onclick="abrirNuevoClienteDesdeClientes()" style="display:flex;align-items:center;gap:6px;white-space:nowrap">
-      <span style="font-size:15px">＋</span><span>${tc('Añadir cliente')}</span>
-    </button>
+    <button class="btn btn-sm" onclick="abrirNuevoClienteDesdeClientes()" style="white-space:nowrap">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button>
   </div>
 
   <!-- Stats -->
@@ -2644,6 +2614,15 @@ function filtrarClientes(filtro){
   if(window._clientesCache) {
     document.getElementById('cContent').innerHTML = hClientes(window._clientesCache);
   }
+}
+
+function abrirNuevoClienteDesdeClientes(){
+  const title=document.getElementById('cTitle');
+  if(title) title.textContent=tc('Clientes');
+  const el=document.getElementById('cContent');
+  if(!el) return;
+  el.innerHTML = `<div class="back-lnk" onclick="renderCoach('clientes')"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>${COACH_LANG==='en'?'Back to clients':'Volver a clientes'}</div>` + hNuevo();
+  setTimeout(()=>{ applyCoachLang(document.getElementById('cContent')); },50);
 }
 
 async function verCliente(id){
@@ -5477,6 +5456,7 @@ document.addEventListener('keydown', e => {
 function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">${COACH_LANG==='en'?'Private AI coach assistant':'IA privada del coach'}</div>${COACH_LANG==='en'?'Generate full routines and diets, analyse progress or request specific adjustments for any client.':'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.'}</div>
 <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
   
+  <button class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="abrirGestorImagenes()">🏋️ ${COACH_LANG==='en'?'Edit exercises':'Editar ejercicios'}</button>
 </div>
 
 <!-- GESTOR DE IMÁGENES -->
@@ -5585,7 +5565,7 @@ function renderKL(){
 // ENTRENO CLIENTE (estilo Strong)
 // ═══ ENTRENO CLIENTE - ESTILO STRONG ══════════════════
 let activeInput = null; // {ei, si, field} — qué celda está activa
-let runningTimers = {}; // ei_si -> {interval, secs, total, paused}
+let runningTimers = {}; // ei_si -> {interval, secs, total, paused, endAt} — usa hora real para que no se congele al bloquear pantalla
 let workoutStartTime = null;
 let workoutTimerInt = null;
 let doneShown = false;
@@ -5640,8 +5620,8 @@ function hNotifBanner(){
   return`<div style="background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.3);border-radius:14px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
     <span style="font-size:22px;flex-shrink:0">🔔</span>
     <div style="flex:1">
-      <div style="font-size:12px;font-weight:700;color:var(--amb);margin-bottom:2px">Activa las notificaciones</div>
-      <div style="font-size:11px;color:var(--tx3)">Para que suene el timer aunque la pantalla esté bloqueada</div>
+      <div style="font-size:12px;font-weight:700;color:var(--amb);margin-bottom:2px">${t('Activa las notificaciones')}</div>
+      <div style="font-size:11px;color:var(--tx3)">${t('Para que suene el timer aunque la pantalla esté bloqueada')}</div>
     </div>
     <button onclick="activarNotificaciones(this)" style="padding:6px 12px;background:var(--amb);border:none;border-radius:8px;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">${t('Activar')}</button>
   </div>`;
@@ -5656,7 +5636,7 @@ async function activarNotificaciones(btn){
   if(ok) {
     // Confirmar que funcionó
     setTimeout(()=>{
-      try { new Notification('🐺 WolfMindset', { body: '¡Notificaciones activadas! Te avisaremos cuando termine el descanso.', icon:'/logo.png' }); } catch(e){}
+      try { new Notification('🐺 WolfMindset', { body: t('¡Notificaciones activadas! Te avisaremos cuando termine el descanso.'), icon:'/logo.png' }); } catch(e){}
     }, 500);
   }
 }
@@ -5965,7 +5945,8 @@ function hEntreno(){
     const seriesRows=e._series.map((s,si)=>{
       const timerKey=`${ei}_${si}`;
       const rt=runningTimers[timerKey];
-      const timerPct=rt?Math.round((rt.secs/rt.total)*100):0;
+      const timerSecs=rt?getTimerRemaining(rt):0;
+      const timerPct=rt?Math.round((timerSecs/rt.total)*100):0;
       return`<div class="strong-serie-wrap" id="sw_${ei}_${si}">
         <div class="strong-serie-row ${s.done?'done':''}" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px 1fr 1fr'}">
           <div class="strong-serie-num">${si+1}</div>
@@ -5978,8 +5959,8 @@ function hEntreno(){
           ${e.rir!=null?(si===e._series.length-1?`<button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='rir'?'active':''}" onclick="openKeyboard(${ei},${si},'rir')" style="font-size:13px">${s.rir_real!=null?s.rir_real:e.rir}</button>`:'<div></div>'):'<div></div>'}
         </div>
         ${s.done?`<div class="strong-timer-bar" id="tb_${ei}_${si}">
-          <div class="strong-timer-fill ${rt&&rt.secs<=10?'urg':''}" id="tf_${ei}_${si}" style="width:${timerPct}%"></div>
-          <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(rt.secs):'1:30'}</span>
+          <div class="strong-timer-fill ${rt&&timerSecs<=10?'urg':''}" id="tf_${ei}_${si}" style="width:${timerPct}%"></div>
+          <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(getTimerRemaining(rt)):'1:30'}</span>
         </div>`:''}
       </div>`;
     }).join('');
@@ -6184,8 +6165,11 @@ function kbPause(){
     if(btn)btn.textContent='⏸ Pausar';
     resumeTimer(ei,si);
   }else{
+    rt.secs = getTimerRemaining(rt);
     rt.paused=true;
     clearInterval(rt.interval);
+    cancelarNotificacionDescanso(key);
+    updateTimerBar(ei, si, rt);
     const btn=document.getElementById('kb_pause_btn');
     if(btn)btn.textContent='▶ Reanudar';
   }
@@ -6269,6 +6253,35 @@ async function guardarSesion(){
   }
 }
 
+function getTimerRemaining(rt){
+  if(!rt) return 0;
+  if(rt.paused) return Math.max(0, Math.ceil(rt.secs || 0));
+  if(rt.endAt) return Math.max(0, Math.ceil((rt.endAt - Date.now()) / 1000));
+  return Math.max(0, Math.ceil(rt.secs || 0));
+}
+
+function tickTimerInline(ei, si, key){
+  const rt = runningTimers[key];
+  if(!rt) return;
+  if(rt.paused){
+    updateTimerBar(ei, si, rt);
+    return;
+  }
+  rt.secs = getTimerRemaining(rt);
+  updateTimerBar(ei, si, rt);
+  if(rt.secs <= 0){
+    if(rt.interval) clearInterval(rt.interval);
+    delete runningTimers[key];
+    updateTimerBar(ei, si, null);
+    if(!doneShown) {
+      soundBell();
+      vibrate([150,80,150]);
+      const exNow = CD?.dias[activeDia]?.ejercicios[ei];
+      notificarDescansoTerminado(exNow?.nombre||'');
+    }
+  }
+}
+
 function startTimerInline(ei, si, total){
   // Stop ALL other running timers first
   Object.keys(runningTimers).forEach(k=>{
@@ -6283,48 +6296,40 @@ function startTimerInline(ei, si, total){
     }
   });
   const key=`${ei}_${si}`;
-  if(runningTimers[key])clearInterval(runningTimers[key].interval);
-  runningTimers[key]={secs:total, total, paused:false, interval:null};
+  if(runningTimers[key]){
+    clearInterval(runningTimers[key].interval);
+    cancelarNotificacionDescanso(key);
+  }
 
-  // Programar notificación desde el SW (funciona con pantalla bloqueada)
+  const safeTotal = Math.max(1, parseInt(total || 90, 10));
+  runningTimers[key]={secs:safeTotal, total:safeTotal, paused:false, interval:null, endAt:Date.now() + safeTotal*1000};
+
+  // Programar notificación desde el SW (mejor que setInterval cuando se bloquea la pantalla)
   const exNow = CD?.dias[activeDia]?.ejercicios[ei];
-  if(!doneShown) programarNotificacionDescanso(exNow?.nombre||'', total, key);
+  if(!doneShown) programarNotificacionDescanso(exNow?.nombre||'', safeTotal, key);
 
-  runningTimers[key].interval=setInterval(()=>{
-    const rt=runningTimers[key];
-    if(rt.paused)return;
-    rt.secs--;
-    updateTimerBar(ei,si,rt);
-    if(rt.secs<=0){
-      clearInterval(rt.interval);
-      delete runningTimers[key];
-      updateTimerBar(ei,si,null);
-      // Solo notificar si el entreno NO ha terminado aún
-      if(!doneShown) {
-        soundBell();
-        vibrate([150,80,150]);
-        const exNow2 = CD?.dias[activeDia]?.ejercicios[ei];
-        notificarDescansoTerminado(exNow2?.nombre||'');
-      }
-    }
-  },1000);
+  tickTimerInline(ei, si, key);
+  runningTimers[key].interval=setInterval(()=>tickTimerInline(ei, si, key), 1000);
 }
 
 function resumeTimer(ei,si){
   const key=`${ei}_${si}`;
   const rt=runningTimers[key];
   if(!rt)return;
-  rt.interval=setInterval(()=>{
-    if(rt.paused)return;
-    rt.secs--;
-    updateTimerBar(ei,si,rt);
-    if(rt.secs<=0){clearInterval(rt.interval);delete runningTimers[key];updateTimerBar(ei,si,null);}
-  },1000);
+  if(rt.interval) clearInterval(rt.interval);
+  rt.paused=false;
+  rt.secs=Math.max(1, getTimerRemaining(rt));
+  rt.endAt=Date.now() + rt.secs*1000;
+  const exNow = CD?.dias[activeDia]?.ejercicios[ei];
+  if(!doneShown) programarNotificacionDescanso(exNow?.nombre||'', rt.secs, key);
+  tickTimerInline(ei, si, key);
+  rt.interval=setInterval(()=>tickTimerInline(ei, si, key),1000);
 }
 
 function stopTimer(ei,si){
   const key=`${ei}_${si}`;
   if(runningTimers[key]){clearInterval(runningTimers[key].interval);delete runningTimers[key];}
+  cancelarNotificacionDescanso(key);
   updateTimerBar(ei,si,null);
 }
 
@@ -6339,10 +6344,12 @@ function updateTimerBar(ei,si,rt){
   }
   // Asegurar que la barra es visible
   if(bar)bar.style.display='flex';
-  const pct=Math.round((rt.secs/rt.total)*100);
+  const secs = getTimerRemaining(rt);
+  rt.secs = secs;
+  const pct=Math.max(0, Math.min(100, Math.round((secs/rt.total)*100)));
   fill.style.width=pct+'%';
-  fill.className='strong-timer-fill'+(rt.secs<=10?' urg':'');
-  label.textContent=fmt(rt.secs);
+  fill.className='strong-timer-fill'+(secs<=10?' urg':'');
+  label.textContent=fmt(secs);
 }
 
 function rerenderSerieRow(ei,si){
@@ -6355,7 +6362,8 @@ function rerenderSerieRow(ei,si){
   if(!row)return;
   const key=`${ei}_${si}`;
   const rt=runningTimers[key];
-  const timerPct=rt?Math.round((rt.secs/rt.total)*100):100;
+  const timerSecs=rt?getTimerRemaining(rt):0;
+  const timerPct=rt?Math.round((timerSecs/rt.total)*100):100;
   row.innerHTML=`<div class="strong-serie-row ${s.done?'done':''}" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px 1fr 1fr'}">
     <div class="strong-serie-num">${si+1}</div>
     <div class="strong-serie-prev">${s.peso||0} × ${s.reps_real||s.reps||10}</div>
@@ -6368,7 +6376,7 @@ function rerenderSerieRow(ei,si){
   </div>
   ${s.done?`<div class="strong-timer-bar" id="tb_${ei}_${si}" ${!rt?'style="display:none"':''}>
     <div class="strong-timer-fill${rt&&rt.secs<=10?' urg':''}" id="tf_${ei}_${si}" style="width:${timerPct}%"></div>
-    <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(rt.secs):fmt(e.descanso||90)}</span>
+    <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(getTimerRemaining(rt)):fmt(e.descanso||90)}</span>
   </div>`:''}`;
 }
 
@@ -9025,11 +9033,20 @@ async function pedirPermisosNotificacion(){
 }
 
 function swMsg(data){
-  if(navigator.serviceWorker?.controller){
+  if(!('serviceWorker' in navigator)) return false;
+  if(navigator.serviceWorker.controller){
     navigator.serviceWorker.controller.postMessage(data);
     return true;
   }
-  return false;
+  // En la primera carga puede estar registrado pero aún no controlar la página.
+  // Lo mandamos al SW activo cuando esté listo para no perder timers/notificaciones.
+  navigator.serviceWorker.ready
+    .then(reg => {
+      const target = reg.active || navigator.serviceWorker.controller;
+      if(target) target.postMessage(data);
+    })
+    .catch(()=>{});
+  return true;
 }
 
 function notificarDescansoTerminado(nombreEjercicio){
@@ -9050,7 +9067,13 @@ function programarNotificacionDescanso(nombreEjercicio, segundos, timerId){
   const body = nombreEjercicio
     ? (LANG==='en' ? `Next set of ${nombreEjercicio}` : `Siguiente serie de ${nombreEjercicio}`)
     : (LANG==='en' ? 'Rest done' : 'Descanso terminado');
-  swMsg({ type: 'SCHEDULE_NOTIFICATION', title, options: { body }, delay: segundos*1000, timerId });
+  swMsg({
+    type: 'SCHEDULE_NOTIFICATION',
+    title,
+    options: { body, icon:'/logo.png', badge:'/logo.png', tag:'descanso-'+timerId, renotify:true, silent:false, requireInteraction:false, vibrate:[150,80,150] },
+    delay: segundos*1000,
+    timerId
+  });
 }
 
 function cancelarNotificacionDescanso(timerId){
@@ -10046,41 +10069,12 @@ async function uploadFotoTipo(event, tipo){
   reader.readAsDataURL(file);
 }
 
-function getFotosAnalisisDisponibles(){
-  // 1) Fotos subidas en esta sesión (antes de recargar)
-  const subidas = Object.entries(_fotosSubidas||{}).filter(([tipo,f]) => f && f.b64 && f.mt);
-  if(subidas.length) return subidas;
-
-  // 2) Fallback seguro: usar las últimas fotos ya guardadas en el cliente
-  const fotosGuardadas = (CD?.fotos||[]).filter(f => f && f.url && String(f.url).startsWith('data:'));
-  if(!fotosGuardadas.length) return [];
-
-  // Analizar la última fecha disponible, no todas las fotos antiguas
-  const fechas = [...new Set(fotosGuardadas.map(f => (f.fecha ? String(f.fecha).split('T')[0].split(' ')[0] : 'sin_fecha')))].sort();
-  const ultimaFecha = fechas[fechas.length-1];
-  const ultimas = fotosGuardadas.filter(f => (f.fecha ? String(f.fecha).split('T')[0].split(' ')[0] : 'sin_fecha') === ultimaFecha);
-
-  return ultimas.map(f => {
-    const full = String(f.url);
-    const mt = (full.split(';')[0]||'').split(':')[1] || 'image/jpeg';
-    const b64 = full.includes(',') ? full.split(',')[1] : '';
-    return [f.tipo||'frente', { b64, mt, url: full, id: f.id }];
-  }).filter(([tipo,f]) => f.b64 && f.mt);
-}
-
 async function analizarFotos(){
   const btn = document.getElementById('btn_analizar_fotos');
-  const fotos = getFotosAnalisisDisponibles();
-  if(!fotos.length){
-    const msg = COACH_LANG==='en'
-      ? 'Upload or save at least one progress photo before analyzing.'
-      : 'Sube o guarda al menos una foto de progreso antes de analizar.';
-    const box = document.getElementById('fAn');
-    if(box) box.innerHTML = `<div style="padding:10px 14px;background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.3);border-radius:8px;font-size:12px;color:var(--amb);margin:0 14px">⚠️ ${msg}</div>`;
-    return;
-  }
+  const fotos = Object.entries(_fotosSubidas);
+  if(!fotos.length) return;
 
-  btn.textContent = COACH_LANG==='en'?'⏳ Analyzing...':'⏳ Analizando...'; btn.disabled = true;
+  btn.textContent = '⏳ Analizando...'; btn.disabled = true;
 
   document.getElementById('fLoad').style.display='block';
   document.getElementById('fAn').innerHTML='';
