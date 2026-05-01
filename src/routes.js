@@ -6,6 +6,16 @@ const { ssePush, ssePushCoaches } = require('./sse');
 const router = express.Router();
 router.use(authMiddleware);
 
+// Ensure push_subscriptions table exists
+try {
+  dbRun(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    subscription TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+} catch(e) {}
+
 // ── HELPERS ───────────────────────────────────────────────────────────
 function crearNotificacion(userId, tipo, mensaje) {
   try {
@@ -13,6 +23,10 @@ function crearNotificacion(userId, tipo, mensaje) {
       [userId, tipo, mensaje]);
     // Push SSE en tiempo real — si el usuario está conectado lo recibe al instante
     ssePush(userId, 'notificacion', { tipo, mensaje, ts: Date.now() });
+    // Web Push — llega aunque la pantalla esté apagada o el PC bloqueado
+    if(global.sendPushToUser) {
+      global.sendPushToUser(userId, 'WolfMindset 🐺', mensaje, '/');
+    }
   } catch(e) {}
 }
 
@@ -117,16 +131,7 @@ router.get('/clientes/:id', (req, res) => {
   if (!c) return res.status(404).json({ error: 'No encontrado' });
   const pesos = dbAll('SELECT * FROM peso_registros WHERE cliente_id=? ORDER BY rowid ASC', [id]);
   const dias = dbAll('SELECT * FROM dias_entreno WHERE cliente_id=? ORDER BY orden', [id]);
-  dias.forEach(d => {
-    d.ejercicios = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=? ORDER BY orden', [d.id]);
-    // Fill imagen_url from ejercicios_config if not set directly on the exercise
-    d.ejercicios.forEach(e => {
-      if (!e.imagen_url) {
-        const cfg = dbGet('SELECT imagen_url FROM ejercicios_config WHERE nombre=?', [e.nombre]);
-        if (cfg && cfg.imagen_url) e.imagen_url = cfg.imagen_url;
-      }
-    });
-  });
+  dias.forEach(d => { d.ejercicios = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=? ORDER BY orden', [d.id]); });
   const comidas = dbAll('SELECT * FROM comidas WHERE cliente_id=? ORDER BY orden', [id]);
   const planMeta = dbGet('SELECT * FROM plan_meta WHERE cliente_id=?', [id]);
   comidas.forEach(m => { m.items = dbAll('SELECT * FROM alimentos WHERE comida_id=? ORDER BY orden', [m.id]); });
@@ -474,11 +479,6 @@ router.put('/ejercicios-config/:nombre', coachOnly, (req, res) => {
     dbRun('INSERT INTO ejercicios_config (nombre, youtube_url, imagen_url, nota_default) VALUES (?,?,?,?)',
       [nombre, youtube_url||'', imagen_url||'', nota_default||'']);
   }
-  // Sync imagen_url to all ejercicios_dia with this name so clients see it immediately
-  if (imagen_url !== undefined) {
-    dbRun('UPDATE ejercicios_dia SET imagen_url=? WHERE nombre=?', [imagen_url||'', nombre]);
-  }
-  saveToDisk();
   res.json({ ok: true });
 });
 
@@ -1455,6 +1455,42 @@ router.put('/mensajes/:clienteId/leer', coachOnly, (req, res) => {
     saveToDisk();
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PUSH SUBSCRIPTIONS ───────────────────────────────────────────────────────
+// El cliente registra su dispositivo para recibir push
+router.post('/push/subscribe', (req, res) => {
+  const { subscription } = req.body;
+  if(!subscription || !subscription.endpoint) return res.status(400).json({ error: 'Invalid subscription' });
+  try {
+    // Delete old subscription for same endpoint (re-registration)
+    dbRun('DELETE FROM push_subscriptions WHERE user_id=? AND subscription LIKE ?',
+      [req.user.id, '%' + subscription.endpoint.slice(-40) + '%']);
+    dbRun('INSERT INTO push_subscriptions (user_id, subscription) VALUES (?,?)',
+      [req.user.id, JSON.stringify(subscription)]);
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete('/push/unsubscribe', (req, res) => {
+  try {
+    const { endpoint } = req.body;
+    if(endpoint) {
+      dbRun('DELETE FROM push_subscriptions WHERE user_id=? AND subscription LIKE ?',
+        [req.user.id, '%' + endpoint.slice(-40) + '%']);
+    } else {
+      dbRun('DELETE FROM push_subscriptions WHERE user_id=?', [req.user.id]);
+    }
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Devolver la clave pública VAPID al cliente para que pueda suscribirse
+router.get('/push/vapid-key', (req, res) => {
+  const key = process.env.VAPID_PUBLIC_KEY || 'BGXVsTmH4dCRzJk2vPoqMX08DtwH_EBk2fF42nIQGfubO9utSacLfZxCF4wTBQxDrH50S_8aZuUg5oKppHqF51A';
+  res.json({ publicKey: key });
 });
 
 module.exports = router;
