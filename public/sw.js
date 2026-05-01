@@ -1,79 +1,82 @@
-// WolfMindset Service Worker
-// Mantiene notificaciones locales del timer de descanso aunque la pantalla se bloquee.
-const WM_VERSION = 'wm-sw-2026-04-30-v2';
-const timers = new Map();
+// WolfMindset Service Worker — notificaciones en background
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 
-self.addEventListener('install', event => {
-  self.skipWaiting();
-});
+// ── Temporizadores programados ────────────────────────────────────
+const _timers = {};
 
-self.addEventListener('activate', event => {
-  event.waitUntil(self.clients.claim());
-});
+self.addEventListener('message', e => {
+  if(!e.data) return;
 
-function clearTimer(timerId){
-  if(!timerId) return;
-  const existing = timers.get(timerId);
-  if(existing){
-    clearTimeout(existing);
-    timers.delete(timerId);
-  }
-}
-
-function showWolfNotification(title, options = {}){
-  const finalOptions = {
-    icon: '/logo.png',
-    badge: '/logo.png',
-    silent: false,
-    requireInteraction: false,
-    ...options
-  };
-  return self.registration.showNotification(title || '🐺 WolfMindset', finalOptions);
-}
-
-self.addEventListener('message', event => {
-  const data = event.data || {};
-
-  if(data.type === 'SKIP_WAITING'){
+  if(e.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
     return;
   }
 
-  if(data.type === 'SHOW_NOTIFICATION'){
-    event.waitUntil(showWolfNotification(data.title, data.options || {}));
+  if(e.data.type === 'SHOW_NOTIFICATION'){
+    e.waitUntil(
+      self.registration.showNotification(e.data.title, {
+        ...e.data.options,
+        icon: '/logo.png',
+        badge: '/logo.png',
+      })
+    );
     return;
   }
 
-  if(data.type === 'SCHEDULE_NOTIFICATION'){
-    const timerId = data.timerId || 'default';
-    const delay = Math.max(0, Number(data.delay || 0));
-    clearTimer(timerId);
-    const timeoutId = setTimeout(() => {
-      timers.delete(timerId);
-      showWolfNotification(data.title, data.options || {});
+  // Temporizador con delay — para descansos entre series
+  if(e.data.type === 'SCHEDULE_NOTIFICATION'){
+    const { title, options, delay, timerId } = e.data;
+    // Cancelar timer previo con el mismo id si existía
+    if(_timers[timerId]) { clearTimeout(_timers[timerId]); delete _timers[timerId]; }
+    _timers[timerId] = setTimeout(() => {
+      delete _timers[timerId];
+      self.registration.showNotification(title, {
+        ...options,
+        icon: '/logo.png',
+        badge: '/logo.png',
+      });
     }, delay);
-    timers.set(timerId, timeoutId);
     return;
   }
 
-  if(data.type === 'CANCEL_NOTIFICATION'){
-    clearTimer(data.timerId || 'default');
+  if(e.data.type === 'CANCEL_NOTIFICATION'){
+    const { timerId } = e.data;
+    if(_timers[timerId]) { clearTimeout(_timers[timerId]); delete _timers[timerId]; }
     return;
   }
 
-  if(data.type === 'CANCEL_ALL'){
-    timers.forEach(timeoutId => clearTimeout(timeoutId));
-    timers.clear();
+  if(e.data.type === 'CANCEL_ALL'){
+    Object.keys(_timers).forEach(k => { clearTimeout(_timers[k]); delete _timers[k]; });
+    return;
   }
 });
 
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-  event.waitUntil((async () => {
-    const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const client of allClients) {
-      if ('focus' in client) return client.focus();
-    }
-    if (self.clients.openWindow) return self.clients.openWindow('/');
-  })());
+// ── Push del servidor (pantalla apagada, PC bloqueado, app cerrada) ──
+self.addEventListener('push', e => {
+  let data = { title: 'WolfMindset 🐺', body: '', url: '/' };
+  try { data = { ...data, ...e.data.json() }; } catch(err) {}
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/logo.png',
+      badge: '/logo.png',
+      data: { url: data.url },
+      vibrate: [200, 100, 200],
+      requireInteraction: false,
+    })
+  );
+});
+
+// ── Al pulsar la notificación, abre/enfoca la app ─────────────────
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = e.notification.data?.url || '/';
+  e.waitUntil(
+    self.clients.matchAll({type:'window', includeUncontrolled:true}).then(clients => {
+      const match = clients.find(c => c.url.includes(self.location.origin));
+      if(match) return match.focus();
+      return self.clients.openWindow(url);
+    })
+  );
 });
