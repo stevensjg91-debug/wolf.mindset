@@ -7647,17 +7647,23 @@ async function filtrarEjerciciosGestor(){
   const lista = document.getElementById('gestor_lista');
   if(!lista) return;
   if(!exs.length){ lista.innerHTML=`<div style="color:var(--tx3);font-size:13px;padding:12px">${tc('Sin resultados')}</div>`; return; }
+  // Update global exConfig so renderExImg picks up fresh data
+  window.exConfig = configs;
   lista.innerHTML = exs.map(e => {
     const cfg = configs[e.nombre] || {};
     const imgUrl = cfg.imagen_url || '';
+    // If base64, show placeholder text in input instead of the raw data
+    const inputVal = imgUrl.startsWith('data:') ? '' : imgUrl;
+    const inputPlaceholder = imgUrl.startsWith('data:')
+      ? (COACH_LANG==='en' ? '✅ Custom image uploaded' : '✅ Imagen subida')
+      : (COACH_LANG==='en' ? 'Image or GIF URL...' : 'URL de imagen o GIF...');
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--br)">
-      <div style="width:44px;height:44px;border-radius:8px;overflow:hidden;background:${EX_GROUP_COLORS[e.grupo]||'var(--s3)'};flex-shrink:0;display:flex;align-items:center;justify-content:center">
-        ${imgUrl ? `<img src="${imgUrl}" style="width:44px;height:44px;object-fit:cover" onerror="this.style.display='none'"/>` : `<span style="font-size:20px">${EX_GROUP_EMOJI[e.grupo]||'💪'}</span>`}
-      </div>
+      ${renderExImg(e.nombre, 44, e.grupo)}
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:4px">${e.nombre} <span style="font-size:10px;color:var(--tx3);font-weight:400">${e.grupo}</span></div>
-        <div style="display:flex;gap:6px">
-          <input id="img_url_${e.id}" value="${imgUrl}" placeholder="${COACH_LANG==='en'?'Image or GIF URL...':'URL de imagen o GIF...'}" style="flex:1;padding:5px 8px;border:0.5px solid var(--br);border-radius:7px;background:var(--s3);color:var(--tx);font-size:12px;font-family:'Inter',sans-serif" onkeydown="if(event.key==='Enter')guardarImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id})"/>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input id="img_url_${e.id}" value="${inputVal}" placeholder="${inputPlaceholder}" style="flex:1;padding:5px 8px;border:0.5px solid var(--br);border-radius:7px;background:var(--s3);color:${imgUrl.startsWith('data:')?'var(--gnb)':'var(--tx)'};font-size:12px;font-family:'Inter',sans-serif" onkeydown="if(event.key==='Enter')guardarImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id})"/>
+          <label style="padding:5px 8px;background:var(--s3);color:var(--tx3);border:0.5px solid var(--br);border-radius:7px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center" title="${COACH_LANG==='en'?'Upload image':'Subir imagen'}">📁<input type="file" accept="image/*" style="display:none" onchange="subirImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id},this)"/></label>
           <button onclick="guardarImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id})" style="padding:5px 10px;background:var(--bl2);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${tc('Guardar')}</button>
           <button onclick="borrarEjercicioDb(${e.id},'${e.nombre.replace(/'/g,"\'")}')" style="padding:5px 8px;background:rgba(239,68,68,.12);color:#fca5a5;border:0.5px solid rgba(239,68,68,.25);border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit;flex-shrink:0" title="${COACH_LANG==='en'?'Delete exercise':'Eliminar ejercicio'}">✕</button>
         </div>
