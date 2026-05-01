@@ -1,5 +1,3 @@
-
-
 /* ─────────────────────────────────────────────────────────────
    Extracted from public/index.html - Phase 2 JS split
    Keep loaded with: <script src="/app.js"></script>
@@ -85,6 +83,38 @@ function setRegLang(lang) {
   document.querySelectorAll('#sRegistro input[data-placeholder-en], #sRegistro textarea[data-placeholder-en]').forEach(el => {
     el.placeholder = el.getAttribute('data-placeholder-' + lang);
   });
+
+  // Update food chips labels
+  document.querySelectorAll('#sRegistro .reg-food-chip[data-reg-i18n-' + lang + ']').forEach(btn => {
+    btn.textContent = btn.getAttribute('data-reg-i18n-' + lang);
+  });
+
+  // Update food category headers
+  document.querySelectorAll('#sRegistro [data-reg-i18n-' + lang + ']').forEach(el => {
+    if(!el.classList.contains('reg-food-chip')) el.textContent = el.getAttribute('data-reg-i18n-' + lang);
+  });
+
+  // Update help text
+  const helpEl = document.getElementById('reg_foods_like_help');
+  if(helpEl) helpEl.textContent = lang === 'en'
+    ? 'Check the foods you usually eat. Your coach will see them when creating your diet.'
+    : 'Marca los alimentos que sueles comer. Tu coach los verá al crear tu dieta.';
+
+  // Update meal select options
+  document.querySelectorAll('#reg_num_comidas option[data-' + lang + ']').forEach(opt => {
+    opt.textContent = opt.getAttribute('data-' + lang);
+  });
+
+  // Re-sync selected chips' stored values to new language
+  if(_regFoodsSelected.size > 0) {
+    _regFoodsSelected.clear();
+    document.querySelectorAll('.reg-food-chip.on').forEach(btn => {
+      const val = btn.getAttribute('data-reg-i18n-' + lang) || btn.textContent;
+      _regFoodsSelected.add(val);
+    });
+    const inp = document.getElementById('reg_alimentos_pref');
+    if(inp) inp.value = [..._regFoodsSelected].join(', ');
+  }
 }
 
 // Init on page load
@@ -7399,6 +7429,23 @@ function regToggleFoodChip(btn, nombre){
   const inp=document.getElementById('reg_alimentos_pref');
   if(inp) inp.value=[..._regFoodsSelected].join(', ');
 }
+// Bilingual chip: stores the correct name depending on current _regLang
+function regToggleFoodChipBilingual(btn, nombreEs, nombreEn){
+  if(!btn) return;
+  const nombre = _regLang === 'en' ? nombreEn : nombreEs;
+  const other = _regLang === 'en' ? nombreEs : nombreEn;
+  if(_regFoodsSelected.has(other)) _regFoodsSelected.delete(other);
+  if(_regFoodsSelected.has(nombre)){
+    _regFoodsSelected.delete(nombre);
+    btn.classList.remove('on');
+  } else {
+    _regFoodsSelected.add(nombre);
+    btn.classList.add('on');
+  }
+  const inp=document.getElementById('reg_alimentos_pref');
+  if(inp) inp.value=[..._regFoodsSelected].join(', ');
+}
+
 function regGetDietPrefsText(){
   const comidas = document.getElementById('reg_num_comidas')?.value || '';
   const chips = [..._regFoodsSelected];
@@ -10044,21 +10091,21 @@ function isLegDay(grupo){
 
 // ═══ ALIMENTOS CHIPS ═══════════════════════════════
 const DB_ALIMENTOS = {
-  0: ['Pollo (pechuga)','Muslo de pollo','Pavo','Salmón','Atún','Merluza','Gambas','Huevos enteros','Claras de huevo','Ternera magra','Cerdo (aguja)','Whey protein','Caseína','Requesón','Yogur proteico','Jamón cocido 95%','Fiambre pavo 95%','Queso fresco 0%'],
-  1: ['Arroz blanco','Arroz integral','Avena','Patata','Boniato','Pan integral','Pasta integral','Quinoa','Lentejas','Garbanzos','Maíz','Pan de molde integral'],
-  2: ['Aceite de oliva','Aguacate','Guacamole','Nueces','Almendras','Anacardos','Cacahuetes','Crema de cacahuete','Queso gouda','Leche entera'],
-  3: ['Brócoli','Espinacas','Lechuga','Tomate','Pepino','Cebolla','Ajo','Pimiento','Champiñones','Zanahoria','Calabacín','Judías verdes','Ensalada mixta'],
-  4: ['Plátano','Manzana','Naranja','Fresas','Arándanos','Mango','Piña','Piña en lata','Uvas','Melocotón'],
-  5: ['Agua','Agua con gas','Café solo','Café americano','Café con leche desnatada','Café con leche semidesnatada','Té verde','Té negro','Infusión','Manzanilla','Poleo menta','Coca-Cola Zero','Pepsi Max','Aquarius Zero','Monster Ultra / Zero','Red Bull Sugarfree','Bebida vegetal sin azúcar']
+  0: ['Pollo (pechuga)','Muslo de pollo','Pollo (entero)','Pavo','Pechuga de pavo','Salmón','Salmón ahumado','Atún','Atún en lata al natural','Merluza','Dorada','Lubina','Bacalao','Rape','Gambas','Langostinos','Mejillones','Pulpo','Calamares','Sardinas','Huevos enteros','Claras de huevo','Ternera magra','Solomillo de ternera','Filete de ternera','Cerdo (aguja)','Lomo de cerdo','Solomillo de cerdo','Jamón ibérico','Whey protein','Caseína','Proteína vegana','Requesón','Yogur proteico','Yogur griego 0%','Queso fresco 0%','Jamón cocido 95%','Fiambre pavo 95%','Tofu','Tempeh','Edamame','Proteína de soja'],
+  1: ['Arroz blanco','Arroz integral','Arroz basmati','Arroz jazmín','Avena','Avena instantánea','Copos de avena','Patata','Boniato','Pan integral','Pan de centeno','Pan de molde integral','Pan de espelta','Pasta blanca','Pasta integral','Pasta de legumbres','Espagueti','Macarrones','Tortitas de arroz','Galletas de arroz','Quinoa','Cuscús','Bulgur','Lentejas','Garbanzos','Alubias','Judías negras','Maíz','Maicena','Harina de avena','Harina integral','Cereales sin azúcar','Granola sin azúcar','Plátano','Manzana','Naranja','Fresas','Arándanos','Mango','Piña','Melocotón','Kiwi','Uvas','Sandía','Melón','Pera','Cerezas','Mandarina'],
+  2: ['Aceite de oliva virgen extra','Aceite de coco','Aguacate','Guacamole','Nueces','Almendras','Anacardos','Cacahuetes','Pistachos','Avellanas','Macadamia','Crema de cacahuete','Crema de almendras','Crema de avellanas sin azúcar','Semillas de chía','Semillas de lino','Semillas de sésamo','Semillas de calabaza','Semillas de girasol','Queso gouda','Queso manchego','Queso parmesano','Queso mozzarella','Leche entera','Leche de coco','Nata para cocinar','Mantequilla','Huevos enteros (yema)','Chocolate negro +85%','Tahini','Aceite de aguacate'],
+  3: ['Brócoli','Espinacas','Lechuga','Rúcula','Tomate','Pepino','Cebolla','Ajo','Pimiento rojo','Pimiento verde','Champiñones','Zanahoria','Calabacín','Judías verdes','Espárragos','Coliflor','Ensalada mixta','Col lombarda','Apio','Rábano','Berenjena','Alcachofa','Puerro','Kale','Acelgas'],
+  4: ['Plátano','Manzana','Naranja','Fresas','Arándanos','Mango','Piña','Piña en lata','Uvas','Melocotón','Kiwi','Pera','Sandía','Melón','Cerezas','Frambuesas','Moras','Mandarina','Papaya','Maracuyá'],
+  5: ['Agua','Agua con gas','Café solo','Café americano','Café con leche desnatada','Café con leche semidesnatada','Café con leche entera','Té verde','Té negro','Té rojo','Infusión','Manzanilla','Poleo menta','Coca-Cola Zero','Pepsi Max','Aquarius Zero','Monster Ultra / Zero','Red Bull Sugarfree','Bebida vegetal sin azúcar','Zumo de naranja natural','Batido de proteínas','Leche desnatada','Leche semidesnatada','Leche vegetal sin azúcar']
 };
 
 const DB_ALIMENTOS_EN = {
-  0: ['Chicken breast','Chicken thigh','Turkey','Salmon','Tuna','Hake','Prawns','Whole eggs','Egg whites','Lean beef','Pork shoulder','Whey protein','Casein','Ricotta','Greek yogurt','Cooked ham 95%','Turkey slices 95%','Fat-free fresh cheese'],
-  1: ['White rice','Brown rice','Oats','Potato','Sweet potato','Wholegrain bread','Wholegrain pasta','Quinoa','Lentils','Chickpeas','Corn','Wholegrain sandwich bread'],
-  2: ['Olive oil','Avocado','Guacamole','Walnuts','Almonds','Cashews','Peanuts','Peanut butter','Gouda cheese','Whole milk'],
-  3: ['Broccoli','Spinach','Lettuce','Tomato','Cucumber','Onion','Garlic','Bell pepper','Mushrooms','Carrot','Zucchini','Green beans','Mixed salad'],
-  4: ['Banana','Apple','Orange','Strawberries','Blueberries','Mango','Pineapple','Canned pineapple','Grapes','Peach'],
-  5: ['Water','Sparkling water','Black coffee','Americano coffee','Skim latte','Semi-skim latte','Green tea','Black tea','Herbal tea','Chamomile','Peppermint tea','Coca-Cola Zero','Pepsi Max','Aquarius Zero','Monster Ultra / Zero','Red Bull Sugarfree','Unsweetened plant milk']
+  0: ['Chicken breast','Chicken thigh','Whole chicken','Turkey','Turkey breast','Salmon','Smoked salmon','Tuna','Canned tuna in water','Hake','Sea bream','Sea bass','Cod','Monkfish','Prawns','King prawns','Mussels','Octopus','Squid','Sardines','Whole eggs','Egg whites','Lean beef','Beef tenderloin','Beef steak','Pork shoulder','Pork loin','Pork tenderloin','Iberian ham','Whey protein','Casein','Vegan protein','Ricotta','Greek yogurt','Greek yogurt 0%','Fat-free fresh cheese','Cooked ham 95%','Turkey slices 95%','Tofu','Tempeh','Edamame','Soy protein'],
+  1: ['White rice','Brown rice','Basmati rice','Jasmine rice','Oats','Instant oats','Rolled oats','Potato','Sweet potato','Wholegrain bread','Rye bread','Wholegrain sandwich bread','Spelt bread','White pasta','Wholegrain pasta','Legume pasta','Spaghetti','Macaroni','Rice cakes','Rice crackers','Quinoa','Couscous','Bulgur','Lentils','Chickpeas','White beans','Black beans','Corn','Cornstarch','Oat flour','Wholegrain flour','Sugar-free cereal','Sugar-free granola','Banana','Apple','Orange','Strawberries','Blueberries','Mango','Pineapple','Peach','Kiwi','Grapes','Watermelon','Melon','Pear','Cherries','Tangerine'],
+  2: ['Extra virgin olive oil','Coconut oil','Avocado','Guacamole','Walnuts','Almonds','Cashews','Peanuts','Pistachios','Hazelnuts','Macadamia nuts','Peanut butter','Almond butter','Sugar-free hazelnut spread','Chia seeds','Flax seeds','Sesame seeds','Pumpkin seeds','Sunflower seeds','Gouda cheese','Manchego cheese','Parmesan cheese','Mozzarella cheese','Whole milk','Coconut milk','Cooking cream','Butter','Whole eggs (yolk)','Dark chocolate +85%','Tahini','Avocado oil'],
+  3: ['Broccoli','Spinach','Lettuce','Rocket','Tomato','Cucumber','Onion','Garlic','Red pepper','Green pepper','Mushrooms','Carrot','Zucchini','Green beans','Asparagus','Cauliflower','Mixed salad','Red cabbage','Celery','Radish','Eggplant','Artichoke','Leek','Kale','Swiss chard'],
+  4: ['Banana','Apple','Orange','Strawberries','Blueberries','Mango','Pineapple','Canned pineapple','Grapes','Peach','Kiwi','Pear','Watermelon','Melon','Cherries','Raspberries','Blackberries','Tangerine','Papaya','Passion fruit'],
+  5: ['Water','Sparkling water','Black coffee','Americano coffee','Skim latte','Semi-skim latte','Whole milk latte','Green tea','Black tea','Red tea','Herbal tea','Chamomile','Peppermint tea','Coca-Cola Zero','Pepsi Max','Aquarius Zero','Monster Ultra / Zero','Red Bull Sugarfree','Unsweetened plant milk','Fresh orange juice','Protein shake','Skimmed milk','Semi-skimmed milk','Unsweetened plant-based milk']
 };
 
 // Returns the correct food list based on coach language
