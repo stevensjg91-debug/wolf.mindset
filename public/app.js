@@ -3127,7 +3127,7 @@ function hRutinas(){return`
           <div class="form-lbl">${COACH_LANG==='en'?'Muscles worked':'Músculos trabajados'}</div>
           <input class="inp" id="new_ex_musculos" placeholder="${COACH_LANG==='en'?'E.g. Upper chest, triceps, front delts':'Ej: Pectoral superior, tríceps, deltoide anterior'}"/>
           <div class="form-lbl">${COACH_LANG==='en'?'Custom image or GIF URL':'URL de imagen o GIF personalizado'}</div>
-          <input class="inp" id="new_ex_imagen" placeholder="https://..."/>
+          <div style="display:flex;gap:6px;align-items:center"><input class="inp" id="new_ex_imagen" placeholder="https://..." style="flex:1;margin:0"/><label style="padding:7px 10px;background:var(--s3);color:var(--tx3);border:0.5px solid var(--br);border-radius:7px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:4px;white-space:nowrap">📁 <input type="file" accept="image/*" style="display:none" onchange="subirImagenNuevoEjercicio(this)"/></label></div>
           <button class="btn" style="width:100%;padding:12px;background:#166534;color:#86efac" onclick="crearEjercicioManual()">${COACH_LANG==='en'?'Create exercise':'Crear ejercicio'}</button>
           <div id="new_ex_msg" style="font-size:12px;margin-top:8px;min-height:18px;color:var(--tx3)"></div>
         </div>
@@ -7644,8 +7644,9 @@ async function filtrarEjerciciosGestor(){
       </div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:4px">${e.nombre} <span style="font-size:10px;color:var(--tx3);font-weight:400">${e.grupo}</span></div>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;align-items:center">
           <input id="img_url_${e.id}" value="${imgUrl}" placeholder="${COACH_LANG==='en'?'Image or GIF URL...':'URL de imagen o GIF...'}" style="flex:1;padding:5px 8px;border:0.5px solid var(--br);border-radius:7px;background:var(--s3);color:var(--tx);font-size:12px;font-family:'Inter',sans-serif" onkeydown="if(event.key==='Enter')guardarImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id})"/>
+          <label style="padding:5px 8px;background:var(--s3);color:var(--tx3);border:0.5px solid var(--br);border-radius:7px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center" title="${COACH_LANG==='en'?'Upload image':'Subir imagen'}">📁<input type="file" accept="image/*" style="display:none" onchange="subirImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id},this)"/></label>
           <button onclick="guardarImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id})" style="padding:5px 10px;background:var(--bl2);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${tc('Guardar')}</button>
           <button onclick="borrarEjercicioDb(${e.id},'${e.nombre.replace(/'/g,"\'")}')" style="padding:5px 8px;background:rgba(239,68,68,.12);color:#fca5a5;border:0.5px solid rgba(239,68,68,.25);border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit;flex-shrink:0" title="${COACH_LANG==='en'?'Delete exercise':'Eliminar ejercicio'}">✕</button>
         </div>
@@ -7671,6 +7672,64 @@ async function guardarImagenEjercicio(nombre, exId){
     input.style.borderColor = '#ef4444';
     setTimeout(() => input.style.borderColor = '', 1500);
   }
+}
+
+async function subirImagenEjercicio(nombre, exId, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const img = new Image();
+    img.onload = async () => {
+      const canvas = document.createElement('canvas');
+      const max = 600;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > max) { h = Math.round(h * max / w); w = max; } }
+      else { if (h > max) { w = Math.round(w * max / h); h = max; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const base64 = canvas.toDataURL('image/jpeg', 0.82);
+      const urlInput = document.getElementById(`img_url_${exId}`);
+      if (urlInput) urlInput.value = base64;
+      try {
+        await api('/ejercicios-config/' + encodeURIComponent(nombre), {
+          method: 'PUT',
+          body: JSON.stringify({ imagen_url: base64 })
+        });
+        if (urlInput) {
+          urlInput.style.borderColor = '#22c55e';
+          setTimeout(() => { urlInput.style.borderColor = ''; filtrarEjerciciosGestor(); }, 1500);
+        }
+      } catch (err) {
+        if (urlInput) { urlInput.style.borderColor = '#ef4444'; setTimeout(() => urlInput.style.borderColor = '', 1500); }
+        alert(COACH_LANG === 'en' ? 'Error uploading image' : 'Error al subir imagen');
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function subirImagenNuevoEjercicio(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const max = 600;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > max) { h = Math.round(h * max / w); w = max; } }
+      else { if (h > max) { w = Math.round(w * max / h); h = max; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const inp = document.getElementById('new_ex_imagen');
+      if (inp) inp.value = canvas.toDataURL('image/jpeg', 0.82);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 async function crearEjercicioManual(){
