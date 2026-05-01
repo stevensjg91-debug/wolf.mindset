@@ -197,21 +197,9 @@ router.post('/clientes/:id/dias', coachOnly, (req, res) => {
   res.json({ id: r.lastInsertRowid });
 });
 
-// ── EDITAR DÍA DE ENTRENO (nombre / grupo muscular) ───────────────
-router.put('/dias/:id', coachOnly, (req, res) => {
-  const { nombre, grupo } = req.body;
-  const d = dbGet('SELECT * FROM dias_entreno WHERE id=?', [req.params.id]);
-  if (!d) return res.status(404).json({ error: 'No encontrado' });
-  dbRun('UPDATE dias_entreno SET nombre=?, grupo=? WHERE id=?',
-    [nombre || d.nombre, grupo || d.grupo, req.params.id]);
-  saveToDisk();
-  res.json({ ok: true });
-});
-
 router.delete('/dias/:id', coachOnly, (req, res) => {
   dbRun('DELETE FROM ejercicios_dia WHERE dia_id=?', [req.params.id]);
   dbRun('DELETE FROM dias_entreno WHERE id=?', [req.params.id]);
-  saveToDisk();
   res.json({ ok: true });
 });
 
@@ -376,17 +364,42 @@ router.post('/ia/chat', async (req, res) => {
 });
 
 router.post('/ia/foto', async (req, res) => {
-  const { imageBase64, mediaType, system } = req.body;
+  const { imageBase64, mediaType, system, extraImages } = req.body;
   const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'API key no configurada en Railway Variables' });
+  if (!imageBase64 || !mediaType) return res.status(400).json({ error: 'Falta imagen para analizar' });
+
   try {
+    const content = [
+      { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }
+    ];
+
+    (extraImages || []).forEach(f => {
+      if (f && f.b64 && f.mt) {
+        content.push({ type: 'text', text: `Foto adicional: ${f.tipo || 'progreso'}` });
+        content.push({ type: 'image', source: { type: 'base64', media_type: f.mt, data: f.b64 } });
+      }
+    });
+
+    content.push({
+      type: 'text',
+      text: 'Valora el progreso físico. Sé profesional, motivador y concreto. Analiza mejoras visibles, puntos fuertes y recomendaciones prácticas. No diagnostiques enfermedades ni des porcentajes exactos si no hay datos suficientes.'
+    });
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 800, system, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }, { type: 'text', text: 'Valora el progreso fisico.' }] }] })
+      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 1000, system, messages: [{ role: 'user', content }] })
     });
+
     const data = await response.json();
-    res.json({ reply: data.content[0].text });
-  } catch(e) { res.status(500).json({ error: 'Error IA foto' }); }
+    if (data.error) return res.status(500).json({ error: data.error.message || 'Error IA foto' });
+    const reply = data.content && data.content[0] && data.content[0].text;
+    if (!reply) return res.status(500).json({ error: 'La IA no devolvió respuesta' });
+    res.json({ reply });
+  } catch(e) {
+    res.status(500).json({ error: e.message || 'Error IA foto' });
+  }
 });
 
 // ── COMPARAR DOS SEMANAS DE FOTOS (Coach → IA → Mensaje editable) ──────────
@@ -460,22 +473,6 @@ router.get('/ejercicios-config', coachOnly, (req, res) => {
   const map = {};
   configs.forEach(c => { map[c.nombre] = { youtube_url: c.youtube_url, imagen_url: c.imagen_url, nota_default: c.nota_default }; });
   res.json(map);
-});
-
-// ── UPLOAD IMAGEN EJERCICIO DESDE PC (base64) ─────────────────────
-router.post('/ejercicios-config/:nombre/imagen', coachOnly, (req, res) => {
-  const nombre = decodeURIComponent(req.params.nombre);
-  const { imagen_base64, media_type } = req.body;
-  if (!imagen_base64) return res.status(400).json({ error: 'imagen_base64 requerida' });
-  const dataUrl = `data:${media_type || 'image/jpeg'};base64,${imagen_base64}`;
-  const existing = dbGet('SELECT id FROM ejercicios_config WHERE nombre=?', [nombre]);
-  if (existing) {
-    dbRun('UPDATE ejercicios_config SET imagen_url=? WHERE nombre=?', [dataUrl, nombre]);
-  } else {
-    dbRun("INSERT INTO ejercicios_config (nombre, imagen_url, youtube_url, nota_default) VALUES (?,?,'','')", [nombre, dataUrl]);
-  }
-  saveToDisk();
-  res.json({ ok: true, imagen_url: dataUrl });
 });
 
 router.put('/ejercicios-config/:nombre', coachOnly, (req, res) => {
