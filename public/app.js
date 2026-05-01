@@ -18,6 +18,7 @@ const REG_STRINGS = {
     lbl_edad: 'Age', lbl_sexo: 'Sex', lbl_actividad: 'Activity level',
     lbl_dieta: 'Diet type', lbl_alimentos_no: 'Foods I cannot eat (optional)',
     lbl_lesiones: 'Injuries / painful areas (optional)', lbl_obs: 'Other notes (optional)',
+    lbl_reg_foods_like: 'Foods I prefer for my diet', lbl_reg_meals: 'How many meals do you want per day?',
     submit: 'Send request', back: '← Back to login',
     pass_placeholder: 'Minimum 6 characters', user_placeholder: 'carlos123 (letters and numbers only)'
   },
@@ -30,6 +31,7 @@ const REG_STRINGS = {
     lbl_edad: 'Edad', lbl_sexo: 'Sexo', lbl_actividad: 'Nivel de actividad',
     lbl_dieta: 'Tipo de alimentación', lbl_alimentos_no: 'Alimentos que no puedo comer (opcional)',
     lbl_lesiones: 'Lesiones / zonas con dolor (opcional)', lbl_obs: 'Otras observaciones (opcional)',
+    lbl_reg_foods_like: 'Alimentos que prefiero para mi dieta', lbl_reg_meals: '¿Cuántas comidas quieres hacer al día?',
     submit: 'Enviar solicitud', back: '← Volver al login',
     pass_placeholder: 'Mínimo 6 caracteres', user_placeholder: 'carlos123 (solo letras y números)'
   }
@@ -56,7 +58,7 @@ function setRegLang(lang) {
   // Update text labels
   const ids = ['subtitle','desc','lbl_nombre','lbl_usuario','lbl_email','lbl_telefono','lbl_pass',
     'lbl_objetivo','lbl_nivel','lbl_peso','lbl_altura','lbl_edad','lbl_sexo',
-    'lbl_actividad','lbl_dieta','lbl_alimentos_no','lbl_lesiones','lbl_obs'];
+    'lbl_actividad','lbl_dieta','lbl_alimentos_no','lbl_lesiones','lbl_obs','lbl_reg_foods_like','lbl_reg_meals'];
   ids.forEach(id => {
     const el = document.getElementById(id === 'subtitle' ? 'reg_subtitle' : id === 'desc' ? 'reg_desc' : id);
     if(el) el.textContent = s[id];
@@ -3938,6 +3940,7 @@ async function dbSelCliente(id){
   // Pre-fill alimentos from client preferences if available
   try{
     const c = await api('/clientes/'+id);
+    const dietaPrefs = extraerPreferenciasDietaCliente(c);
     const notasEl = document.getElementById('db_notas_extra');
     if(notasEl && c.observaciones && !notasEl.value){
       notasEl.value = c.observaciones;
@@ -3963,6 +3966,8 @@ async function dbSelCliente(id){
       ${c.alimentos_no?`<div style="font-size:11px;color:#fca5a5;margin-bottom:4px">❌ No puede: ${c.alimentos_no}</div>`:''}
       ${c.lesiones?`<div style="font-size:11px;color:#fbbf24;margin-bottom:4px">⚠️ Lesiones: ${c.lesiones}</div>`:''}
       ${c.deficiencias?`<div style="font-size:11px;color:#c084fc;margin-top:4px">🧪 Deficiencias: ${c.deficiencias}</div>`:''}
+      ${dietaPrefs.alimentos.length?`<div style="font-size:11px;color:#93c5fd;margin-top:4px">🍽️ Preferencias: ${dietaPrefs.alimentos.join(', ')}</div>`:''}
+      ${dietaPrefs.numComidas?`<div style="font-size:11px;color:#93c5fd;margin-top:4px">🍱 Comidas preferidas: ${dietaPrefs.numComidas}/día</div>`:''}
     </div>`;
     // Set to auto — the IA will derive from client objetivo
     const objCal = document.getElementById('db_objetivo_cal');
@@ -3970,6 +3975,8 @@ async function dbSelCliente(id){
     // Load favorites
     dbCargarFavoritos();
     _dbSeleccionados.clear();
+    dbActualizarSelected();
+    dbAplicarPreferenciasCliente(c);
   }catch(e){}
 }
 
@@ -7378,6 +7385,60 @@ async function resetearContrasena(userId){
 
 function showRegistro(){show('sRegistro');}
 
+// ── REGISTRO: preferencias de dieta con chips ─────────────────────
+const _regFoodsSelected = new Set();
+function regToggleFoodChip(btn, nombre){
+  if(!btn || !nombre) return;
+  if(_regFoodsSelected.has(nombre)){
+    _regFoodsSelected.delete(nombre);
+    btn.classList.remove('on');
+  } else {
+    _regFoodsSelected.add(nombre);
+    btn.classList.add('on');
+  }
+  const inp=document.getElementById('reg_alimentos_pref');
+  if(inp) inp.value=[..._regFoodsSelected].join(', ');
+}
+function regGetDietPrefsText(){
+  const comidas = document.getElementById('reg_num_comidas')?.value || '';
+  const chips = [..._regFoodsSelected];
+  const extra = (document.getElementById('reg_alimentos_extra')?.value || '').trim();
+  const alimentos = [...chips, extra].filter(Boolean).join(', ');
+  const partes=[];
+  if(alimentos) partes.push(`Alimentos preferidos para crear dieta IA: ${alimentos}`);
+  if(comidas) partes.push(`Número de comidas preferido: ${comidas}`);
+  return partes.join('\n');
+}
+function regClearDietPrefs(){
+  _regFoodsSelected.clear();
+  document.querySelectorAll('.reg-food-chip.on').forEach(b=>b.classList.remove('on'));
+  ['reg_alimentos_pref','reg_alimentos_extra'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const meals=document.getElementById('reg_num_comidas');
+  if(meals) meals.value='4';
+}
+function extraerPreferenciasDietaCliente(c){
+  const txt = `${c?.observaciones||''}\n${c?.notas||''}`;
+  const out={alimentos:[],numComidas:''};
+  const mAlim = txt.match(/Alimentos preferidos para crear dieta IA:\s*([^\n]+)/i);
+  if(mAlim) out.alimentos = mAlim[1].split(',').map(x=>x.trim()).filter(Boolean);
+  const mCom = txt.match(/Número de comidas preferido:\s*(\d+)/i);
+  if(mCom) out.numComidas = mCom[1];
+  return out;
+}
+function dbAplicarPreferenciasCliente(c){
+  const prefs = extraerPreferenciasDietaCliente(c);
+  if(prefs.numComidas){
+    const sel=document.getElementById('db_num_comidas');
+    if(sel && [...sel.options].some(o=>o.value===prefs.numComidas)) sel.value=prefs.numComidas;
+  }
+  if(prefs.alimentos?.length){
+    _dbSeleccionados.clear();
+    prefs.alimentos.forEach(a=>_dbSeleccionados.add(a));
+    dbActualizarSelected();
+  }
+  return prefs;
+}
+
 function mostrarOlvideContrasena(){
   document.getElementById('olvide_user').value = document.getElementById('lu')?.value || '';
   document.getElementById('olvide_err').style.display = 'none';
@@ -7428,12 +7489,13 @@ async function doRegistro(){
       dieta_tipo:document.getElementById('reg_dieta').value,
       alimentos_no:document.getElementById('reg_alimentos_no').value,
       lesiones:document.getElementById('reg_lesiones').value,
-      observaciones:document.getElementById('reg_obs').value
+      observaciones:[document.getElementById('reg_obs').value.trim(), regGetDietPrefsText()].filter(Boolean).join('\n\n')
     })});
     ok.textContent='✓ Solicitud enviada. Tu coach la revisará y te dará acceso pronto. Puedes cerrar esta ventana.';
     ok.style.display='block';
     // Clear form
     ['reg_nombre','reg_username','reg_email','reg_tel','reg_pass','reg_peso','reg_altura','reg_edad','reg_alimentos_no','reg_lesiones','reg_obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    regClearDietPrefs();
   }catch(e){err.textContent=e.error||'Error al enviar solicitud';err.style.display='block';}
 }
 
