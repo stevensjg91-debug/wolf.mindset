@@ -3039,7 +3039,7 @@ function hRutinas(){return`
   <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr" style="margin-bottom:10px">1. ${tc('Selecciona cliente')}</div>
     <input class="inp" id="rb_cl_buscar" placeholder="${COACH_LANG==='en'?'Search client...':'Buscar cliente...'}" oninput="rbFiltrarTarjetas()" style="margin-bottom:10px;font-size:13px"/>
-    <div id="rb_cl_grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px"></div>
+    <div id="rb_cl_grid" class="cc-grid clientes-card-grid"></div>
     <input type="hidden" id="rb_cl" value=""/>
   </div>
 
@@ -3179,6 +3179,34 @@ function hRutinas(){return`
     </div>
   </div>`;}
 
+
+function hCoachSelectClientCard(c,i,mode,selId){
+  const a=ac(i);
+  const esMio=!c.coach_id || c.coach_id===USER.id;
+  const coachLabel=esMio?(USER.nombre||USER.username||'Coach'):(c.coach_nombre||'Partner');
+  const avatar=c.foto_perfil
+    ? `<img src="${c.foto_perfil}" alt="${c.nombre||''}"/>`
+    : `<span>${ini(c.nombre)}</span>`;
+  const selected=String(c.id)===String(selId||'');
+  const semanas=c.semanas_activo!=null?c.semanas_activo:(c.semanas||0);
+  const click=mode==='rb'?`rbSelTarjeta(${c.id},this)`:mode==='db'?`dbSelTarjeta(${c.id},this)`:'';
+  return `<div class="cc cliente-card ${esMio?'own':'partner'}" onclick="${click}" data-id="${c.id}" style="${selected?'border:2px solid var(--bl);':''}">
+    <div class="cliente-coach-badge" style="background:${esMio?'rgba(59,130,246,.18)':'rgba(168,85,247,.18)'};color:${esMio?'#93c5fd':'#d8b4fe'}">${esMio?'🔵':'🟣'} ${coachLabel}</div>
+    <div class="cliente-card-main">
+      <div class="cliente-avatar" style="background:${a.bg};color:${a.tx};border-color:${esMio?'rgba(59,130,246,.45)':'rgba(168,85,247,.45)'}">${avatar}</div>
+      <div class="cliente-info">
+        <div class="cliente-name">${c.nombre}</div>
+        <div class="cliente-meta">${tc(c.objetivo||'—')} · ${tc(c.nivel||'')}</div>
+      </div>
+    </div>
+    <div class="cliente-tags">
+      <span class="badge b-sv">${tc('Sem')} ${semanas}</span>
+      ${c.peso_actual?`<span class="badge b-bl">${c.peso_actual}kg</span>`:''}
+    </div>
+    ${selected?`<div style="position:absolute;top:10px;left:10px;width:18px;height:18px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center;z-index:3"><svg width="10" height="10" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
+  </div>`;
+}
+
 async function initRutinas(){
   const cl=await api('/clientes');
   window._rbClientes=cl;
@@ -3190,23 +3218,9 @@ async function initRutinas(){
 function rbRenderTarjetas(clientes){
   const grid=document.getElementById('rb_cl_grid');
   if(!grid)return;
-  if(!clientes.length){grid.innerHTML=`<div style="font-size:13px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div>`;return;}
-  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e3a5f','#374151'];
+  if(!clientes.length){grid.innerHTML=`<div class="wm-empty-clients" style="padding:22px 12px"><div class="wm-empty-title">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div></div>`;return;}
   const selId=document.getElementById('rb_cl')?.value;
-  grid.innerHTML=clientes.map((c,i)=>{
-    const initials=(c.nombre||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
-    const col=colors[i%colors.length];
-    const objetivo=c.objetivo||'—';
-    const semanas=c.semanas_activo!=null?c.semanas_activo+(COACH_LANG==='en'?' wk':' sem'):'';
-    const sel=String(c.id)===String(selId);
-    return`<div onclick="rbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:14px;padding:13px 11px 11px;cursor:pointer;transition:.15s;position:relative;">
-      <div style="width:38px;height:38px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;margin-bottom:9px;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em">${initials}</div>
-      <div style="font-size:13px;font-weight:600;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${c.nombre}</div>
-      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${objetivo}</div>
-      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(37,99,235,.12);color:var(--blg);border:0.5px solid rgba(59,130,246,.2)">${semanas}</span>`:''}
-      ${sel?`<div style="position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
-    </div>`;
-  }).join('');
+  grid.innerHTML=clientes.map((c,i)=>hCoachSelectClientCard(c,i,'rb',selId)).join('');
 }
 
 function rbFiltrarTarjetas(){
@@ -3789,7 +3803,7 @@ function hDietaBuilder(){return`
   <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr" style="margin-bottom:10px">1. ${COACH_LANG==='en'?'Select client':'Selecciona cliente'}</div>
     <input class="inp" id="db_cl_buscar" placeholder="${COACH_LANG==='en'?'Search client...':'Buscar cliente...'}" oninput="dbFiltrarTarjetas()" style="margin-bottom:10px;font-size:13px"/>
-    <div id="db_cl_grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px"></div>
+    <div id="db_cl_grid" class="cc-grid clientes-card-grid"></div>
     <input type="hidden" id="db_cl" value=""/>
   </div>
   <div id="db_wrap" style="display:none">
@@ -3896,23 +3910,9 @@ async function initDietaBuilder(){
 function dbRenderTarjetas(clientes){
   const grid=document.getElementById('db_cl_grid');
   if(!grid)return;
-  if(!clientes.length){grid.innerHTML=`<div style="font-size:13px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div>`;return;}
-  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e3a5f','#374151'];
+  if(!clientes.length){grid.innerHTML=`<div class="wm-empty-clients" style="padding:22px 12px"><div class="wm-empty-title">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div></div>`;return;}
   const selId=document.getElementById('db_cl')?.value;
-  grid.innerHTML=clientes.map((c,i)=>{
-    const initials=(c.nombre||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
-    const col=colors[i%colors.length];
-    const objetivo=c.objetivo||'—';
-    const semanas=c.semanas_activo!=null?c.semanas_activo+(COACH_LANG==='en'?' wk':' sem'):'';
-    const sel=String(c.id)===String(selId);
-    return`<div onclick="dbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:14px;padding:13px 11px 11px;cursor:pointer;transition:.15s;position:relative;">
-      <div style="width:38px;height:38px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;margin-bottom:9px;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em">${initials}</div>
-      <div style="font-size:13px;font-weight:600;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${c.nombre}</div>
-      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${objetivo}</div>
-      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(37,99,235,.12);color:var(--blg);border:0.5px solid rgba(59,130,246,.2)">${semanas}</span>`:''}
-      ${sel?`<div style="position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
-    </div>`;
-  }).join('');
+  grid.innerHTML=clientes.map((c,i)=>hCoachSelectClientCard(c,i,'db',selId)).join('');
 }
 
 function dbFiltrarTarjetas(){
