@@ -1769,20 +1769,17 @@ async function renderCoach(s){
 }
 
 function hClientes(cl){
-  if(!cl.length)return`<div style="text-align:center;padding:60px 20px;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">👤</div><div style="font-size:15px;font-weight:600;color:var(--sv2)">${tc('Sin clientes aún')}</div><div style="font-size:13px;margin-top:6px">${COACH_LANG==='en'?'Create your first client from here.':'Crea tu primer cliente desde aquí.'}</div><button class="btn" style="margin-top:16px;padding:11px 18px" onclick="abrirNuevoClienteDesdeClientes()">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button></div>`;
+  if(!cl.length)return`<div class="wm-empty-clients"><div class="wm-empty-icon">👤</div><div class="wm-empty-title">${tc('Sin clientes aún')}</div><div class="wm-empty-sub">${COACH_LANG==='en'?'Create your first client from here.':'Crea tu primer cliente desde aquí.'}</div><button class="btn" onclick="abrirNuevoClienteDesdeClientes()">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button></div>`;
 
-  // Colores por coach — el coach actual siempre es azul, otros son púrpura
   const coachColors = {
     [USER.id]: {bg:'rgba(59,130,246,.18)',color:'#93c5fd',label: USER.nombre||USER.username},
   };
-  // Detectar otros coaches en la lista
   cl.forEach(c => {
     if(c.coach_id && !coachColors[c.coach_id]) {
       coachColors[c.coach_id] = {bg:'rgba(168,85,247,.18)',color:'#d8b4fe',label:c.coach_nombre||'Coach'};
     }
   });
 
-  // Filtro activo (guardado en variable global)
   if(typeof window._clienteFilter === 'undefined') window._clienteFilter = 'todos';
   const filter = window._clienteFilter;
 
@@ -1790,51 +1787,49 @@ function hClientes(cl){
     filter === 'mios' ? cl.filter(c => !c.coach_id || c.coach_id === USER.id) :
     cl.filter(c => c.coach_id && c.coach_id !== USER.id);
 
-  // Stats
   const misCls = cl.filter(c => !c.coach_id || c.coach_id === USER.id).length;
   const otrosCls = cl.filter(c => c.coach_id && c.coach_id !== USER.id).length;
   const otroCoachNombre = Object.values(coachColors).find((v,i) => i > 0)?.label || 'Partner';
 
   return`
-  <div class="flb" style="margin-bottom:14px;gap:10px;align-items:center">
+  <div class="clientes-page-head">
     <div>
-      <div style="font-size:11px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.08em">${tc('Clientes')}</div>
-      <div style="font-size:13px;color:var(--sv2);margin-top:3px">${COACH_LANG==='en'?'Manage and add clients from this section.':'Gestiona y añade clientes desde este apartado.'}</div>
+      <div class="clientes-title">${tc('Clientes')}</div>
+      <div class="clientes-subtitle">${COACH_LANG==='en'?'Manage and add clients from this section.':'Gestiona y añade clientes desde este apartado.'}</div>
     </div>
-    <button class="btn btn-sm" onclick="abrirNuevoClienteDesdeClientes()" style="white-space:nowrap">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button>
+    <button class="btn btn-sm clientes-add-btn" onclick="abrirNuevoClienteDesdeClientes()">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button>
   </div>
 
-  <!-- Stats -->
-  <div class="g3" style="margin-bottom:14px">
-    <div class="mcard"><div class="mlbl">${tc('Total')}</div><div class="mval">${cl.length}</div></div>
-    <div class="mcard" style="border-color:rgba(59,130,246,.3)"><div class="mlbl" style="color:#93c5fd">${tc('Míos')}</div><div class="mval" style="color:#93c5fd">${misCls}</div></div>
-    <div class="mcard" style="border-color:rgba(168,85,247,.3)"><div class="mlbl" style="color:#d8b4fe">${otroCoachNombre}</div><div class="mval" style="color:#d8b4fe">${otrosCls}</div></div>
+  <div class="clientes-stats-grid">
+    <div class="clientes-stat-card"><div class="mlbl">${tc('Total')}</div><div class="mval">${cl.length}</div></div>
+    <div class="clientes-stat-card stat-blue"><div class="mlbl">${tc('Míos')}</div><div class="mval">${misCls}</div></div>
+    <div class="clientes-stat-card stat-purple"><div class="mlbl">${otroCoachNombre}</div><div class="mval">${otrosCls}</div></div>
   </div>
 
-  <!-- Filtros -->
-  <div style="display:flex;gap:6px;margin-bottom:14px">
-    <button onclick="filtrarClientes('todos')" style="flex:1;padding:7px;border-radius:8px;border:0.5px solid ${filter==='todos'?'var(--bl2)':'var(--br)'};background:${filter==='todos'?'rgba(59,130,246,.15)':'none'};color:${filter==='todos'?'var(--blg)':'var(--tx3)'};font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">${tc('Todos')}</button>
-    <button onclick="filtrarClientes('mios')" style="flex:1;padding:7px;border-radius:8px;border:0.5px solid ${filter==='mios'?'#3b82f6':'var(--br)'};background:${filter==='mios'?'rgba(59,130,246,.15)':'none'};color:${filter==='mios'?'#93c5fd':'var(--tx3)'};font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">${tc('🔵 Míos')}</button>
-    <button onclick="filtrarClientes('otros')" style="flex:1;padding:7px;border-radius:8px;border:0.5px solid ${filter==='otros'?'#a855f7':'var(--br)'};background:${filter==='otros'?'rgba(168,85,247,.15)':'none'};color:${filter==='otros'?'#d8b4fe':'var(--tx3)'};font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🟣 ${otroCoachNombre}</button>
+  <div class="clientes-filter-bar">
+    <button class="clientes-filter ${filter==='todos'?'on':''}" onclick="filtrarClientes('todos')">${tc('Todos')}</button>
+    <button class="clientes-filter blue ${filter==='mios'?'on':''}" onclick="filtrarClientes('mios')">🔵 ${tc('Míos')}</button>
+    <button class="clientes-filter purple ${filter==='otros'?'on':''}" onclick="filtrarClientes('otros')">🟣 ${otroCoachNombre}</button>
   </div>
 
-  <!-- Grid clientes -->
-  <div class="cc-grid">
+  <div class="cc-grid clientes-card-grid">
     ${clFiltrados.map((c,i)=>{
       const a=ac(i);
       const cc=c.coach_id?coachColors[c.coach_id]:coachColors[USER.id];
       const esMio = !c.coach_id || c.coach_id === USER.id;
-      return`<div class="cc" onclick="verCliente(${c.id})" style="position:relative;border-top:2px solid ${esMio?'rgba(59,130,246,.4)':'rgba(168,85,247,.4)'}">
-        <!-- Badge coach -->
-        <div style="position:absolute;top:8px;right:8px;background:${cc.bg};color:${cc.color};font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.04em">${esMio?'🔵':'🟣'} ${cc.label}</div>
-        <div class="fl" style="margin-bottom:10px;margin-top:4px">
-          <div class="av" style="width:42px;height:42px;font-size:15px;background:${a.bg};color:${a.tx};border-color:${esMio?'rgba(59,130,246,.4)':'rgba(168,85,247,.4)'};margin-right:10px;overflow:hidden;padding:0">${c.foto_perfil?`<img src="${c.foto_perfil}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`:`<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%">${ini(c.nombre)}</span>`}</div>
-          <div>
-            <div style="font-size:14px;font-weight:700;color:var(--sv);padding-right:48px">${c.nombre}</div>
-            <div style="font-size:11px;color:var(--tx3);font-weight:500">${tc(c.objetivo)} · ${tc(c.nivel)}</div>
+      const avatar = c.foto_perfil
+        ? `<img src="${c.foto_perfil}" alt="${c.nombre}"/>`
+        : `<span>${ini(c.nombre)}</span>`;
+      return`<div class="cc cliente-card ${esMio?'own':'partner'}" onclick="verCliente(${c.id})">
+        <div class="cliente-coach-badge" style="background:${cc.bg};color:${cc.color}">${esMio?'🔵':'🟣'} ${cc.label}</div>
+        <div class="cliente-card-main">
+          <div class="cliente-avatar" style="background:${a.bg};color:${a.tx};border-color:${esMio?'rgba(59,130,246,.45)':'rgba(168,85,247,.45)'}">${avatar}</div>
+          <div class="cliente-info">
+            <div class="cliente-name">${c.nombre}</div>
+            <div class="cliente-meta">${tc(c.objetivo)} · ${tc(c.nivel)}</div>
           </div>
         </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap">
+        <div class="cliente-tags">
           <span class="badge b-sv">${tc('Sem')} ${c.semanas}</span>
           ${c.peso_actual?`<span class="badge b-bl">${c.peso_actual}kg</span>`:''}
         </div>
@@ -1842,7 +1837,6 @@ function hClientes(cl){
     }).join('')}
   </div>`;
 }
-
 function filtrarClientes(filtro){
   window._clienteFilter = filtro;
   // Re-renderizar con el mismo listado en cache
@@ -3045,7 +3039,7 @@ function hRutinas(){return`
   <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr" style="margin-bottom:10px">1. ${tc('Selecciona cliente')}</div>
     <input class="inp" id="rb_cl_buscar" placeholder="${COACH_LANG==='en'?'Search client...':'Buscar cliente...'}" oninput="rbFiltrarTarjetas()" style="margin-bottom:10px;font-size:13px"/>
-    <div id="rb_cl_grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px"></div>
+    <div id="rb_cl_grid" class="cc-grid clientes-card-grid"></div>
     <input type="hidden" id="rb_cl" value=""/>
   </div>
 
@@ -3185,6 +3179,34 @@ function hRutinas(){return`
     </div>
   </div>`;}
 
+
+function hCoachSelectClientCard(c,i,mode,selId){
+  const a=ac(i);
+  const esMio=!c.coach_id || c.coach_id===USER.id;
+  const coachLabel=esMio?(USER.nombre||USER.username||'Coach'):(c.coach_nombre||'Partner');
+  const avatar=c.foto_perfil
+    ? `<img src="${c.foto_perfil}" alt="${c.nombre||''}"/>`
+    : `<span>${ini(c.nombre)}</span>`;
+  const selected=String(c.id)===String(selId||'');
+  const semanas=c.semanas_activo!=null?c.semanas_activo:(c.semanas||0);
+  const click=mode==='rb'?`rbSelTarjeta(${c.id},this)`:mode==='db'?`dbSelTarjeta(${c.id},this)`:'';
+  return `<div class="cc cliente-card ${esMio?'own':'partner'}" onclick="${click}" data-id="${c.id}" style="${selected?'border:2px solid var(--bl);':''}">
+    <div class="cliente-coach-badge" style="background:${esMio?'rgba(59,130,246,.18)':'rgba(168,85,247,.18)'};color:${esMio?'#93c5fd':'#d8b4fe'}">${esMio?'🔵':'🟣'} ${coachLabel}</div>
+    <div class="cliente-card-main">
+      <div class="cliente-avatar" style="background:${a.bg};color:${a.tx};border-color:${esMio?'rgba(59,130,246,.45)':'rgba(168,85,247,.45)'}">${avatar}</div>
+      <div class="cliente-info">
+        <div class="cliente-name">${c.nombre}</div>
+        <div class="cliente-meta">${tc(c.objetivo||'—')} · ${tc(c.nivel||'')}</div>
+      </div>
+    </div>
+    <div class="cliente-tags">
+      <span class="badge b-sv">${tc('Sem')} ${semanas}</span>
+      ${c.peso_actual?`<span class="badge b-bl">${c.peso_actual}kg</span>`:''}
+    </div>
+    ${selected?`<div style="position:absolute;top:10px;left:10px;width:18px;height:18px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center;z-index:3"><svg width="10" height="10" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
+  </div>`;
+}
+
 async function initRutinas(){
   const cl=await api('/clientes');
   window._rbClientes=cl;
@@ -3196,23 +3218,9 @@ async function initRutinas(){
 function rbRenderTarjetas(clientes){
   const grid=document.getElementById('rb_cl_grid');
   if(!grid)return;
-  if(!clientes.length){grid.innerHTML=`<div style="font-size:13px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div>`;return;}
-  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e3a5f','#374151'];
+  if(!clientes.length){grid.innerHTML=`<div class="wm-empty-clients" style="padding:22px 12px"><div class="wm-empty-title">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div></div>`;return;}
   const selId=document.getElementById('rb_cl')?.value;
-  grid.innerHTML=clientes.map((c,i)=>{
-    const initials=(c.nombre||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
-    const col=colors[i%colors.length];
-    const objetivo=c.objetivo||'—';
-    const semanas=c.semanas_activo!=null?c.semanas_activo+(COACH_LANG==='en'?' wk':' sem'):'';
-    const sel=String(c.id)===String(selId);
-    return`<div onclick="rbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:14px;padding:13px 11px 11px;cursor:pointer;transition:.15s;position:relative;">
-      <div style="width:38px;height:38px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;margin-bottom:9px;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em">${initials}</div>
-      <div style="font-size:13px;font-weight:600;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${c.nombre}</div>
-      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${objetivo}</div>
-      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(37,99,235,.12);color:var(--blg);border:0.5px solid rgba(59,130,246,.2)">${semanas}</span>`:''}
-      ${sel?`<div style="position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
-    </div>`;
-  }).join('');
+  grid.innerHTML=clientes.map((c,i)=>hCoachSelectClientCard(c,i,'rb',selId)).join('');
 }
 
 function rbFiltrarTarjetas(){
@@ -3795,7 +3803,7 @@ function hDietaBuilder(){return`
   <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr" style="margin-bottom:10px">1. ${COACH_LANG==='en'?'Select client':'Selecciona cliente'}</div>
     <input class="inp" id="db_cl_buscar" placeholder="${COACH_LANG==='en'?'Search client...':'Buscar cliente...'}" oninput="dbFiltrarTarjetas()" style="margin-bottom:10px;font-size:13px"/>
-    <div id="db_cl_grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px"></div>
+    <div id="db_cl_grid" class="cc-grid clientes-card-grid"></div>
     <input type="hidden" id="db_cl" value=""/>
   </div>
   <div id="db_wrap" style="display:none">
@@ -3902,23 +3910,9 @@ async function initDietaBuilder(){
 function dbRenderTarjetas(clientes){
   const grid=document.getElementById('db_cl_grid');
   if(!grid)return;
-  if(!clientes.length){grid.innerHTML=`<div style="font-size:13px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div>`;return;}
-  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e3a5f','#374151'];
+  if(!clientes.length){grid.innerHTML=`<div class="wm-empty-clients" style="padding:22px 12px"><div class="wm-empty-title">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div></div>`;return;}
   const selId=document.getElementById('db_cl')?.value;
-  grid.innerHTML=clientes.map((c,i)=>{
-    const initials=(c.nombre||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
-    const col=colors[i%colors.length];
-    const objetivo=c.objetivo||'—';
-    const semanas=c.semanas_activo!=null?c.semanas_activo+(COACH_LANG==='en'?' wk':' sem'):'';
-    const sel=String(c.id)===String(selId);
-    return`<div onclick="dbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:14px;padding:13px 11px 11px;cursor:pointer;transition:.15s;position:relative;">
-      <div style="width:38px;height:38px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;margin-bottom:9px;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em">${initials}</div>
-      <div style="font-size:13px;font-weight:600;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${c.nombre}</div>
-      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${objetivo}</div>
-      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(37,99,235,.12);color:var(--blg);border:0.5px solid rgba(59,130,246,.2)">${semanas}</span>`:''}
-      ${sel?`<div style="position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
-    </div>`;
-  }).join('');
+  grid.innerHTML=clientes.map((c,i)=>hCoachSelectClientCard(c,i,'db',selId)).join('');
 }
 
 function dbFiltrarTarjetas(){
@@ -6556,16 +6550,17 @@ async function uploadFoto(event){
 function hPerfil(){
   const c=CD;
   const tieneData = !!(c.peso_actual||c.altura||c.edad);
+  setTimeout(()=>cargarSuscripcionPerfil(), 0);
 
   return`<div style="padding:16px 14px 8px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+    <div id="pf_header_bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.08em;color:var(--sv)">Mi perfil</div>
       ${tieneData?`<button id="pf_edit_btn" onclick="perfilModoEditar()" style="padding:7px 16px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">✏️ Editar</button>`:''}
     </div>
     <div style="font-size:13px;color:var(--tx3);margin-bottom:16px">${tieneData?'Tus datos personales.':'Rellena tus datos para que tu coach pueda personalizar tu plan al máximo.'}</div>
   </div>
 
-  <div id="pf_form" style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;margin:0 14px;padding:16px;${tieneData?'pointer-events:none':''}">
+  <div id="pf_form" style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;margin:0 14px;padding:16px;display:${tieneData?'none':'block'};${tieneData?'pointer-events:none;opacity:.85':''}">
     <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">Datos personales</div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
       <div><div class="form-lbl">Peso (kg)</div><input class="inp" id="pf_peso" type="number" step="0.1" value="${c.peso_actual||''}" style="margin-bottom:0"/></div>
@@ -6624,7 +6619,7 @@ function hPerfil(){
   </div>
 
   <!-- Selector de idioma movido al login -->
-  <div style="margin:14px 14px 20px;background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px">
+  <div id="pf_lang_block" style="margin:14px 14px 20px;background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px;display:${tieneData?'none':'block'}">
     <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🌐 Idioma / Language</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <button onclick="setLangLogin('es');setLang('es')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='es'?'var(--bl2)':'var(--br)'};background:${LANG==='es'?'rgba(59,130,246,.12)':'none'};color:${LANG==='es'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
@@ -6659,6 +6654,23 @@ function hPerfil(){
         <div style="font-size:11px;color:var(--tx3);margin-top:5px">${t('Toca la foto para cambiarla')}</div>
       </div>
       <input type="file" id="pf_foto_input" accept="image/*" style="display:none" onchange="subirFotoPerfil(this)"/>
+    </div>
+
+    <!-- Suscripción del cliente -->
+    <div style="padding:14px 16px;border-bottom:0.5px solid var(--br)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:15px">💳</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--sv)">${LANG==='en'?'Subscription':'Suscripción'}</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:1px">${LANG==='en'?'Your active plan':'Tu plan contratado'}</div>
+          </div>
+        </div>
+        <span id="pf_sub_badge" style="font-size:11px;font-weight:700;color:var(--tx3)">...</span>
+      </div>
+      <div id="pf_sub_info" style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:12px">
+        <div style="font-size:12px;color:var(--tx3);text-align:center">${LANG==='en'?'Loading subscription...':'Cargando suscripción...'}</div>
+      </div>
     </div>
 
     <!-- Acordeón: Cambiar usuario -->
@@ -6708,6 +6720,92 @@ function hPerfil(){
     </div>
 
   </div>`;
+}
+
+function pfFormatFecha(fecha){
+  if(!fecha) return '—';
+  const parts = String(fecha).split('-');
+  if(parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return fecha;
+}
+
+async function cargarSuscripcionPerfil(){
+  const box = document.getElementById('pf_sub_info');
+  const badge = document.getElementById('pf_sub_badge');
+  if(!box || !CD || !CD.id) return;
+
+  try{
+    const s = await api('/clientes/'+CD.id+'/suscripcion');
+
+    if(!s || !s.fecha_fin){
+      if(badge){
+        badge.textContent = LANG==='en'?'No plan':'Sin plan';
+        badge.style.color = 'var(--tx3)';
+      }
+      box.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;font-size:17px">🔒</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:var(--sv)">${LANG==='en'?'No active subscription':'Sin suscripción activa'}</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:2px;line-height:1.4">${LANG==='en'?'Ask your coach to activate your plan.':'Habla con tu coach para activar tu plan.'}</div>
+          </div>
+        </div>`;
+      return;
+    }
+
+    const vencida = !!s.vencida || s.estado === 'cancelada' || Number(s.dias_restantes||0) <= 0;
+    const proxima = !!s.proxima_a_vencer && !vencida;
+    const diasRestantes = vencida ? 0 : (s.dias_restantes ?? '—');
+    const color = vencida ? '#fca5a5' : proxima ? 'var(--amb)' : 'var(--gnb)';
+    const estadoTexto = vencida
+      ? (LANG==='en'?'Expired':'Vencida')
+      : proxima
+        ? (LANG==='en'?'Ending soon':'Próxima a vencer')
+        : (LANG==='en'?'Active':'Activa');
+
+    const inicio = pfFormatFecha(s.fecha_inicio);
+    const fin = pfFormatFecha(s.fecha_fin);
+    const diasContratados = s.fecha_inicio && s.fecha_fin
+      ? Math.max(0, Math.ceil((new Date(s.fecha_fin) - new Date(s.fecha_inicio)) / (1000*60*60*24)))
+      : '—';
+
+    if(badge){
+      badge.textContent = (vencida?'🔴 ':proxima?'⚠️ ':'✅ ') + estadoTexto;
+      badge.style.color = color;
+    }
+
+    box.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div style="background:rgba(255,255,255,.035);border:0.5px solid var(--br);border-radius:10px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">${LANG==='en'?'Started':'Empezó'}</div>
+          <div style="font-size:13px;font-weight:800;color:var(--sv)">${inicio}</div>
+        </div>
+        <div style="background:rgba(255,255,255,.035);border:0.5px solid var(--br);border-radius:10px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">${LANG==='en'?'Ends':'Termina'}</div>
+          <div style="font-size:13px;font-weight:800;color:${color}">${fin}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:rgba(255,255,255,.035);border:0.5px solid var(--br);border-radius:10px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">${LANG==='en'?'Contracted':'Contratada'}</div>
+          <div style="font-size:19px;font-weight:900;color:var(--sv);line-height:1">${diasContratados}</div>
+          <div style="font-size:10px;color:var(--tx3);margin-top:3px">${LANG==='en'?'days':'días'}</div>
+        </div>
+        <div style="background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.18);border-radius:10px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">${LANG==='en'?'Remaining':'Restantes'}</div>
+          <div style="font-size:19px;font-weight:900;color:${color};line-height:1">${diasRestantes}</div>
+          <div style="font-size:10px;color:var(--tx3);margin-top:3px">${LANG==='en'?'days':'días'}</div>
+        </div>
+      </div>
+      ${s.precio ? `<div style="margin-top:9px;font-size:11px;color:var(--tx3);text-align:center">💶 ${s.precio}€/${LANG==='en'?'month':'mes'}</div>` : ''}
+    `;
+  }catch(e){
+    if(badge){
+      badge.textContent = LANG==='en'?'Unavailable':'No disponible';
+      badge.style.color = 'var(--tx3)';
+    }
+    box.innerHTML = `<div style="font-size:12px;color:var(--tx3);text-align:center">${LANG==='en'?'Could not load subscription.':'No se pudo cargar la suscripción.'}</div>`;
+  }
 }
 
 
@@ -6867,21 +6965,25 @@ async function guardarPerfil(){
     })});
     await loadCD(CD.id);
     msg.style.color='#86efac';msg.textContent='✓ Profile saved ✓';
-    // Switch to view mode immediately
+    // Switch to compact account view immediately after first save
     const formEl=document.getElementById('pf_form');
     const btnsEl=document.getElementById('pf_btns');
-    const editBtnWrap=document.getElementById('pf_edit_btn');
-    if(formEl){formEl.style.pointerEvents='none';formEl.style.opacity='.85';}
+    const langEl=document.getElementById('pf_lang_block');
+    const editBtn=document.getElementById('pf_edit_btn');
+    if(formEl){formEl.style.display='none';formEl.style.pointerEvents='none';formEl.style.opacity='.85';}
     if(btnsEl){btnsEl.style.display='none';}
+    if(langEl){langEl.style.display='none';}
     // Add edit button if not there
-    const hdrDiv=editBtnWrap?.parentElement;
-    if(!editBtnWrap && hdrDiv){
-      const eb=document.createElement('button');
-      eb.id='pf_edit_btn';
-      eb.innerHTML='✏️ Editar';
-      eb.style.cssText='padding:7px 16px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit';
-      eb.onclick=perfilModoEditar;
-      hdrDiv.appendChild(eb);
+    if(!editBtn){
+      const hdrDiv=document.getElementById('pf_header_bar');
+      if(hdrDiv){
+        const eb=document.createElement('button');
+        eb.id='pf_edit_btn';
+        eb.innerHTML='✏️ Editar';
+        eb.style.cssText='padding:7px 16px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation';
+        eb.onclick=perfilModoEditar;
+        hdrDiv.appendChild(eb);
+      }
     }
     setTimeout(()=>{msg.textContent='';},2000);
   }catch(e){msg.style.color='#f87171';msg.textContent='Error guardando';}
@@ -9332,7 +9434,9 @@ function clienteVarSelect(mi, vi, btn){
 
 function perfilModoEditar(){
   const form=document.getElementById('pf_form');
-  if(form){form.style.pointerEvents='auto';form.style.opacity='1';}
+  if(form){form.style.display='block';form.style.pointerEvents='auto';form.style.opacity='1';}
+  const lang=document.getElementById('pf_lang_block');
+  if(lang) lang.style.display='block';
   const btns=document.getElementById('pf_btns');
   if(btns) btns.style.display='block';
   const btn=document.getElementById('pf_edit_btn');
@@ -9341,7 +9445,9 @@ function perfilModoEditar(){
 }
 function perfilModoVer(){
   const form=document.getElementById('pf_form');
-  if(form){form.style.pointerEvents='none';form.style.opacity='.85';}
+  if(form){form.style.display='none';form.style.pointerEvents='none';form.style.opacity='.85';}
+  const lang=document.getElementById('pf_lang_block');
+  if(lang) lang.style.display='none';
   const btns=document.getElementById('pf_btns');
   if(btns) btns.style.display='none';
   const btn=document.getElementById('pf_edit_btn');
@@ -9379,48 +9485,17 @@ function clienteVarSelect2(mi, vi, btn){
 
 
 // ═══ FOTOS DE PROGRESO 3 ÁNGULOS ═════════════════
-// Comprime las fotos antes de guardarlas/enviarlas a IA.
-// Evita errores por payload demasiado grande en móvil/iPhone.
-function wmCompressImageFile(file, maxSide=1200, quality=0.78){
-  return new Promise((resolve, reject)=>{
-    const img = new Image();
-    const reader = new FileReader();
-    reader.onload = e => {
-      img.onload = () => {
-        let w = img.width, h = img.height;
-        const scale = Math.min(1, maxSide / Math.max(w, h));
-        w = Math.round(w * scale);
-        h = Math.round(h * scale);
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve({
-          full: dataUrl,
-          b64: dataUrl.split(',')[1],
-          mt: 'image/jpeg'
-        });
-      };
-      img.onerror = () => reject(new Error('No se pudo leer la imagen'));
-      img.src = e.target.result;
-    };
-    reader.onerror = () => reject(new Error('No se pudo cargar el archivo'));
-    reader.readAsDataURL(file);
-  });
-}
-
 const _fotosSubidas = {}; // {frente: b64, posterior: b64, costado: b64}
 
 async function uploadFotoTipo(event, tipo){
   const file = event.target.files[0];
   if(!file) return;
 
-  try{
-    const imgData = await wmCompressImageFile(file, 1200, 0.78);
-    const b64full = imgData.full;
-    const b64 = imgData.b64;
-    const mt = imgData.mt;
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    const b64full = e.target.result;
+    const b64 = b64full.split(',')[1];
+    const mt = b64full.split(';')[0].split(':')[1];
 
     // Show preview
     const preview = document.getElementById('foto_preview_'+tipo);
@@ -9430,24 +9505,24 @@ async function uploadFotoTipo(event, tipo){
     // Store for analysis
     _fotosSubidas[tipo] = { b64, mt, url: b64full };
 
-    // Save compressed base64 to server
-    await api('/clientes/'+CD.id+'/fotos', {
-      method:'POST',
-      body: JSON.stringify({ url: b64full, analysis:'', tipo })
-    });
-
-    // Refresh fotos display
-    await loadCD(CD.id);
-    renderFotosProgreso();
+    // Save full base64 to server
+    try{
+      await api('/clientes/'+CD.id+'/fotos', {
+        method:'POST',
+        body: JSON.stringify({ url: b64full, analysis:'', tipo })
+      });
+      // Refresh fotos display
+      await loadCD(CD.id);
+      renderFotosProgreso();
+    }catch(e){ console.log('Error guardando foto:', e); }
 
     // Show analyze button if at least 1 foto
     const btn = document.getElementById('btn_analizar_fotos');
     if(btn) btn.style.display = Object.keys(_fotosSubidas).length > 0 ? 'block' : 'none';
-  }catch(e){
-    console.log('Error guardando foto:', e);
-    alert((COACH_LANG==='en'?'Error uploading/analyzing photo: ':'Error al subir/preparar foto: ') + (e.message || e.error || ''));
-  }
+  };
+  reader.readAsDataURL(file);
 }
+
 async function analizarFotos(){
   const btn = document.getElementById('btn_analizar_fotos');
   const fotos = Object.entries(_fotosSubidas);
@@ -9705,12 +9780,6 @@ async function coachAnalizarSemana(fi, fechas){
       .filter(f=>f.url&&f.url.startsWith('data:'))
       .map(f=>({b64:f.url.split(',')[1],mt:f.url.split(';')[0].split(':')[1],tipo:f.tipo}));
   }
-  if(!fotosDespues.length){
-    resultDiv.innerHTML='<div style="font-size:12px;color:#fca5a5;padding:8px;background:rgba(239,68,68,.08);border-radius:8px">'+(COACH_LANG==='en'?'No valid photos were found for analysis. Upload the photos again from the app.':'No hay fotos válidas para analizar. Vuelve a subir las fotos desde la app.')+'</div>';
-    btn.textContent = COACH_LANG==='en'?'✦ Retry':'✦ Reintentar';
-    btn.disabled = false;
-    return;
-  }
   try {
     const d = await api('/ia/comparar-fotos',{
       method:'POST',
@@ -9773,8 +9842,7 @@ async function coachAnalizarSemana(fi, fechas){
     btn.textContent = COACH_LANG==='en'?'↺ Re-analyze':'↺ Volver a analizar';
     btn.disabled = false;
   } catch(e){
-    const errMsg = e?.error || e?.message || (COACH_LANG==='en'?'Error analyzing. Try again.':'Error al analizar. Inténtalo de nuevo.');
-    resultDiv.innerHTML='<div style="font-size:12px;color:#fca5a5;padding:8px;background:rgba(239,68,68,.08);border-radius:8px">⚠️ '+errMsg+'</div>';
+    resultDiv.innerHTML='<div style="font-size:12px;color:#fca5a5;padding:8px;background:rgba(239,68,68,.08);border-radius:8px">'+(COACH_LANG==='en'?'Error analyzing. Try again.':'Error al analizar. Inténtalo de nuevo.')+'</div>';
     btn.textContent = COACH_LANG==='en'?'✦ Retry':'✦ Reintentar';
     btn.disabled = false;
   }
