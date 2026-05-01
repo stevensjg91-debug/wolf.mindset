@@ -3810,6 +3810,35 @@ async function traducirDietaIA() {
 let rbState={clienteId:null,diaId:null,diaNombre:'',diaOpen:{}};
 
 function hRutinas(){return`
+  <div class="sec" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(37,99,235,.08),rgba(255,255,255,.02));border-color:rgba(59,130,246,.22)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px">
+        <div class="sec-hdr" style="margin-bottom:6px;color:var(--blg)">🏋️ ${COACH_LANG==='en'?'Exercise library':'Biblioteca de ejercicios'}</div>
+        <div style="font-size:13px;color:var(--sv2);line-height:1.5">${COACH_LANG==='en'?'Manage exercise images and GIFs before creating routines.':'Gestiona las imágenes y GIFs de ejercicios antes de crear rutinas.'}</div>
+      </div>
+      <button class="btn btn-sm" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:0.5px solid rgba(147,197,253,.35);box-shadow:0 6px 18px rgba(37,99,235,.25);padding:10px 16px;border-radius:11px;white-space:nowrap" onclick="abrirGestorImagenes()">✏️ ${COACH_LANG==='en'?'Edit exercises':'Editar ejercicios'}</button>
+    </div>
+  </div>
+
+  <!-- GESTOR DE IMÁGENES -->
+  <div id="gestor_imagenes" style="display:none;margin-bottom:12px">
+    <div class="sec" style="border-color:rgba(59,130,246,.2)">
+      <div class="sec-hdr">${tc('Gestionar imágenes de ejercicios')}</div>
+      <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:12px">
+        <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">${tc('🖼️ Añadir imagen a un ejercicio')}</div>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">${COACH_LANG==='en'?'Paste the URL of an image or GIF. Only visible to you as coach until saved.':'Pega la URL de una imagen o GIF. Solo visible para ti como coach hasta que la guardes.'}</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          <select class="inp" id="edit_ex_grupo_filter" onchange="filtrarEjerciciosGestor()" style="flex:1;min-width:120px;margin-bottom:0">
+            <option value="All">${tc('Todos los grupos')}</option>
+            <option>Chest</option><option>Back</option><option>Shoulders</option><option>Biceps</option><option>Triceps</option><option>Legs</option><option>Abs</option>
+          </select>
+          <input class="inp" id="edit_ex_buscar" placeholder="${COACH_LANG==='en'?'Search exercise...':'Buscar ejercicio...'}" style="flex:2;min-width:140px;margin-bottom:0" oninput="filtrarEjerciciosGestor()"/>
+        </div>
+        <div id="gestor_lista" style="max-height:400px;overflow-y:auto"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="sec" style="margin-bottom:12px">
     <div class="sec-hdr" style="margin-bottom:10px">1. ${tc('Selecciona cliente')}</div>
     <input class="inp" id="rb_cl_buscar" placeholder="${COACH_LANG==='en'?'Search client...':'Buscar cliente...'}" oninput="rbFiltrarTarjetas()" style="margin-bottom:10px;font-size:13px"/>
@@ -5527,32 +5556,6 @@ document.addEventListener('keydown', e => {
 
 // ═══ IA COACH ═════════════════════════════════════════
 function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">${COACH_LANG==='en'?'Private AI coach assistant':'IA privada del coach'}</div>${COACH_LANG==='en'?'Generate full routines and diets, analyse progress or request specific adjustments for any client.':'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.'}</div>
-<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-  
-  <button class="btn btn-sm" style="background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="abrirGestorImagenes()">🏋️ ${COACH_LANG==='en'?'Edit exercises':'Editar ejercicios'}</button>
-</div>
-
-<!-- GESTOR DE IMÁGENES -->
-<div id="gestor_imagenes" style="display:none;margin-bottom:12px">
-  <div class="sec">
-    <div class="sec-hdr">${tc('Gestionar imágenes de ejercicios')}</div>
-    
-    <!-- Editar imagen de ejercicio existente -->
-    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px">
-      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">${tc('🖼️ Añadir imagen a un ejercicio')}</div>
-      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">${COACH_LANG==='en'?'Paste the URL of an image or GIF. Only visible to you as coach until saved.':'Pega la URL de una imagen o GIF. Solo visible para ti como coach hasta que la guardes.'}</div>
-      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-        <select class="inp" id="edit_ex_grupo_filter" onchange="filtrarEjerciciosGestor()" style="flex:1;min-width:120px;margin-bottom:0">
-          <option value="All">${tc('Todos los grupos')}</option>
-          <option>Chest</option><option>Back</option><option>Shoulders</option><option>Biceps</option><option>Triceps</option><option>Legs</option><option>Abs</option>
-        </select>
-        <input class="inp" id="edit_ex_buscar" placeholder="${COACH_LANG==='en'?'Search exercise...':'Buscar ejercicio...'}" style="flex:2;min-width:140px;margin-bottom:0" oninput="filtrarEjerciciosGestor()"/>
-      </div>
-      <div id="gestor_lista" style="max-height:400px;overflow-y:auto"></div>
-    </div>
-  </div>
-</div>
-
 <div class="sec" style="display:flex;flex-direction:column;height:480px">
   <div class="chat-msgs" id="iaMsgs" style="flex:1;background:var(--b);border:0.5px solid var(--br);border-radius:10px;padding:11px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
     <div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${tc('Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?')}</div>
