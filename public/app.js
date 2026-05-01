@@ -1,3 +1,5 @@
+
+
 /* ─────────────────────────────────────────────────────────────
    Extracted from public/index.html - Phase 2 JS split
    Keep loaded with: <script src="/app.js"></script>
@@ -249,7 +251,7 @@ const TRANSLATIONS = {
   'También puedes cambiarlo en la pantalla de inicio de sesión':'You can also change it on the login screen',
 
   // ── Cuenta cliente ──
-  'Mi cuenta':'My account',
+  'Mi cuenta':'My account','Editar datos personales':'Edit personal data','años':'years','días restantes':'days left','Inicio':'Start','Fin':'End','Contrato':'Contract','días':'days','Activa':'Active','Vencida':'Expired','Próxima a vencer':'Expiring soon','Contacta con tu coach para activar el acceso.':'Contact your coach to activate access.','No se pudo cargar la suscripción':'Could not load subscription',
   'Usuario actual':'Current username',
   'Nuevo usuario':'New username',
   'Mínimo 4 caracteres':'Minimum 4 characters',
@@ -936,7 +938,7 @@ function setLang(lang) {
     else if(klTab === 'dieta') el.innerHTML = hDieta();
     else if(klTab === 'progreso') { el.innerHTML = hProgreso2(); setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100); }
     else if(klTab === 'logros') el.innerHTML = hBadgesCliente();
-    else if(klTab === 'perfil') el.innerHTML = hPerfil();
+    else if(klTab === 'perfil') { el.innerHTML = hPerfil(); setTimeout(cargarSuscripcionPerfilCliente,30); }
     else if(klTab === 'asistente') { el.innerHTML = hAsistente(); }
     applyLang(el);
   }
@@ -3195,24 +3197,20 @@ function rbRenderTarjetas(clientes){
   const grid=document.getElementById('rb_cl_grid');
   if(!grid)return;
   if(!clientes.length){grid.innerHTML=`<div style="font-size:13px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div>`;return;}
-  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e40af','#374151'];
+  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e3a5f','#374151'];
   const selId=document.getElementById('rb_cl')?.value;
   grid.innerHTML=clientes.map((c,i)=>{
     const initials=(c.nombre||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
     const col=colors[i%colors.length];
     const objetivo=c.objetivo||'—';
-    const nivel=c.nivel||'';
     const semanas=c.semanas_activo!=null?c.semanas_activo+(COACH_LANG==='en'?' wk':' sem'):'';
     const sel=String(c.id)===String(selId);
-    const avatarHtml=c.foto_perfil
-      ?`<img src="${c.foto_perfil}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.innerHTML='<span style=\\'display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:15px;font-weight:700;color:#fff;font-family:Bebas Neue,sans-serif\\'>${initials}</span>'">`
-      :`<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:15px;font-weight:700;color:#fff;font-family:'Bebas Neue',sans-serif">${initials}</span>`;
-    return`<div onclick="rbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:16px;padding:14px 12px 12px;cursor:pointer;transition:.15s;position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:0">
-      <div style="width:54px;height:54px;border-radius:50%;background:${col};overflow:hidden;margin-bottom:8px;border:2px solid ${sel?'var(--bl)':'rgba(255,255,255,.08)'};flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.35)">${avatarHtml}</div>
-      <div style="font-size:13px;font-weight:700;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;margin-bottom:2px">${c.nombre}</div>
-      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%">${objetivo}${nivel?' · '+nivel:''}</div>
-      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 9px;border-radius:20px;background:rgba(37,99,235,.15);color:var(--blg);border:0.5px solid rgba(59,130,246,.25)">${semanas}</span>`:''}
-      ${sel?`<div style="position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(37,99,235,.5)"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
+    return`<div onclick="rbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:14px;padding:13px 11px 11px;cursor:pointer;transition:.15s;position:relative;">
+      <div style="width:38px;height:38px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;margin-bottom:9px;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em">${initials}</div>
+      <div style="font-size:13px;font-weight:600;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${c.nombre}</div>
+      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${objetivo}</div>
+      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(37,99,235,.12);color:var(--blg);border:0.5px solid rgba(59,130,246,.2)">${semanas}</span>`:''}
+      ${sel?`<div style="position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
     </div>`;
   }).join('');
 }
@@ -3905,24 +3903,20 @@ function dbRenderTarjetas(clientes){
   const grid=document.getElementById('db_cl_grid');
   if(!grid)return;
   if(!clientes.length){grid.innerHTML=`<div style="font-size:13px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div>`;return;}
-  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e40af','#374151'];
+  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e3a5f','#374151'];
   const selId=document.getElementById('db_cl')?.value;
   grid.innerHTML=clientes.map((c,i)=>{
     const initials=(c.nombre||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
     const col=colors[i%colors.length];
     const objetivo=c.objetivo||'—';
-    const nivel=c.nivel||'';
     const semanas=c.semanas_activo!=null?c.semanas_activo+(COACH_LANG==='en'?' wk':' sem'):'';
     const sel=String(c.id)===String(selId);
-    const avatarHtml=c.foto_perfil
-      ?`<img src="${c.foto_perfil}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.innerHTML='<span style=\\'display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:15px;font-weight:700;color:#fff;font-family:Bebas Neue,sans-serif\\'>${initials}</span>'">`
-      :`<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:15px;font-weight:700;color:#fff;font-family:'Bebas Neue',sans-serif">${initials}</span>`;
-    return`<div onclick="dbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:16px;padding:14px 12px 12px;cursor:pointer;transition:.15s;position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:0">
-      <div style="width:54px;height:54px;border-radius:50%;background:${col};overflow:hidden;margin-bottom:8px;border:2px solid ${sel?'var(--bl)':'rgba(255,255,255,.08)'};flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.35)">${avatarHtml}</div>
-      <div style="font-size:13px;font-weight:700;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;margin-bottom:2px">${c.nombre}</div>
-      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%">${objetivo}${nivel?' · '+nivel:''}</div>
-      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 9px;border-radius:20px;background:rgba(37,99,235,.15);color:var(--blg);border:0.5px solid rgba(59,130,246,.25)">${semanas}</span>`:''}
-      ${sel?`<div style="position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(37,99,235,.5)"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
+    return`<div onclick="dbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:14px;padding:13px 11px 11px;cursor:pointer;transition:.15s;position:relative;">
+      <div style="width:38px;height:38px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;margin-bottom:9px;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em">${initials}</div>
+      <div style="font-size:13px;font-weight:600;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${c.nombre}</div>
+      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${objetivo}</div>
+      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(37,99,235,.12);color:var(--blg);border:0.5px solid rgba(59,130,246,.2)">${semanas}</span>`:''}
+      ${sel?`<div style="position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
     </div>`;
   }).join('');
 }
@@ -4884,7 +4878,7 @@ function renderKL(){
   else if(klTab==='asistente'){el.innerHTML=hAsistente();setTimeout(_chatAfterRender,30);}
   else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100);}
   else if(klTab==='logros')el.innerHTML=hBadgesCliente();
-  else if(klTab==='perfil')el.innerHTML=hPerfil();
+  else if(klTab==='perfil'){el.innerHTML=hPerfil();setTimeout(cargarSuscripcionPerfilCliente,30);}
   // Aplicar traducción + nav bar
   if(LANG!=='es') {
     setTimeout(()=>{
@@ -6559,89 +6553,84 @@ async function uploadFoto(event){
 }
 
 // PERFIL CLIENTE
+function pfPerfilCompleto(c){
+  return !!(c && (c.peso_actual || c.altura || c.edad));
+}
+
+function pfDatosFormHTML(c, modo){
+  const isEdit = modo === 'edit';
+  return `
+    <div id="pf_form" style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:16px;${isEdit?'':'margin:0 14px'}">
+      <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">${t('Datos personales')}</div>
+      <div class="g2" style="gap:10px;margin-bottom:10px">
+        <div><div class="form-lbl">${t('Peso (kg)')}</div><input class="inp" id="pf_peso" type="number" step="0.1" value="${c.peso_actual||''}" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl">${t('Altura (cm)')}</div><input class="inp" id="pf_altura" type="number" value="${c.altura||''}" style="margin-bottom:0"/></div>
+      </div>
+      <div class="g2" style="gap:10px;margin-bottom:10px">
+        <div><div class="form-lbl">${t('Edad')}</div><input class="inp" id="pf_edad" type="number" value="${c.edad||''}" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl">${t('Sexo')}</div><select class="inp" id="pf_sexo" style="margin-bottom:0">
+          <option ${c.sexo==='Hombre'?'selected':''}>${t('Hombre')}</option>
+          <option ${c.sexo==='Mujer'?'selected':''}>${t('Mujer')}</option>
+        </select></div>
+      </div>
+      <div class="g2" style="gap:10px;margin-bottom:10px">
+        <div><div class="form-lbl">${t('Cintura (cm)')}</div><input class="inp" id="pf_cintura" type="number" step="0.1" value="${c.cintura_actual||''}" style="margin-bottom:0"/></div>
+        <div><div class="form-lbl">${t('Cadera (cm)')}</div><input class="inp" id="pf_cadera" type="number" step="0.1" value="${c.cadera||''}" style="margin-bottom:0"/></div>
+      </div>
+      <div style="margin-bottom:10px"><div class="form-lbl">${t('Nivel de actividad')}</div>
+        <select class="inp" id="pf_actividad" style="margin-bottom:0">
+          <option ${c.actividad==='Sedentario'?'selected':''}>${t('Sedentario (poco o nada de ejercicio)')}</option>
+          <option ${c.actividad==='Ligero'?'selected':''}>${t('Ligero (1-2 días/semana)')}</option>
+          <option ${c.actividad==='Moderada'?'selected':''}>${t('Moderada (3-4 días/semana)')}</option>
+          <option ${c.actividad==='Activo'?'selected':''}>${t('Activo (5-6 días/semana)')}</option>
+          <option ${c.actividad==='Muy activo'?'selected':''}>${t('Muy activo (dobles entrenos)')}</option>
+        </select>
+      </div>
+      <div style="margin-bottom:10px"><div class="form-lbl">${t('Tipo de alimentación')}</div>
+        <select class="inp" id="pf_dieta" style="margin-bottom:0">
+          <option ${c.dieta_tipo==='Omnívoro'?'selected':''}>${t('Omnívoro (como de todo)')}</option>
+          <option ${c.dieta_tipo==='Vegetariano'?'selected':''}>${t('Vegetariano')}</option>
+          <option ${c.dieta_tipo==='Vegano'?'selected':''}>${t('Vegano')}</option>
+          <option ${c.dieta_tipo==='Sin gluten'?'selected':''}>${t('Sin gluten')}</option>
+          <option ${c.dieta_tipo==='Sin lactosa'?'selected':''}>${t('Sin lactosa')}</option>
+        </select>
+      </div>
+      <div style="margin-bottom:10px"><div class="form-lbl">${t('Alimentos que no me gustan o no puedo comer')}</div>
+        <input class="inp" id="pf_alimentos_no" placeholder="${t('Ej: brócoli, pescado, huevos...')}" value="${c.alimentos_no||''}" style="margin-bottom:0"/>
+      </div>
+      <div style="margin-bottom:10px"><div class="form-lbl">${t('Lesiones / zonas con dolor / alergias')}</div>
+        <input class="inp" id="pf_lesiones" placeholder="${t('Ej: rodilla derecha, lumbar...')}" value="${c.lesiones||''}" style="margin-bottom:0"/>
+      </div>
+      <div><div class="form-lbl">${t('Otras observaciones')}</div>
+        <textarea class="ta" id="pf_ob" placeholder="${t('Cualquier cosa que tu coach deba saber...')}">${c.observaciones||''}</textarea>
+      </div>
+      <div style="margin-top:10px;background:rgba(168,85,247,.06);border:0.5px solid rgba(168,85,247,.2);border-radius:12px;padding:12px">
+        <div class="form-lbl" style="color:#c084fc;margin-bottom:6px">🧪 ${t('¿Has tenido o tienes algún tipo de deficiencia?')}</div>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.5">${t('Por ejemplo: anemia, vitamina D baja, ferritina baja, B12, omega-3... Tu coach lo tendrá en cuenta al preparar tu dieta.')}</div>
+        <textarea class="ta" id="pf_deficiencias" placeholder="${t('Ej: Vitamina D baja en última analítica, tendencia a anemia...')}" style="margin-bottom:0">${c.deficiencias||''}</textarea>
+      </div>
+      <div id="pf_btns" style="margin-top:14px">
+        <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarPerfil()">✓ ${isEdit?t('Guardar cambios'):t('Guardar perfil')}</button>
+      </div>
+      <div id="pf_msg" style="font-size:13px;text-align:center;margin-top:8px;height:20px"></div>
+    </div>`;
+}
+
 function hPerfil(){
   const c=CD;
-  const tieneData = !!(c.peso_actual||c.altura||c.edad);
+  const tieneData = pfPerfilCompleto(c);
 
   return`<div style="padding:16px 14px 8px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.08em;color:var(--sv)">Mi perfil</div>
-      ${tieneData?`<button id="pf_edit_btn" onclick="perfilModoEditar()" style="padding:7px 16px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">✏️ Editar</button>`:''}
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.08em;color:var(--sv)">${t('Mi perfil')}</div>
     </div>
-    <div style="font-size:13px;color:var(--tx3);margin-bottom:16px">${tieneData?'Tus datos personales.':'Rellena tus datos para que tu coach pueda personalizar tu plan al máximo.'}</div>
+    <div style="font-size:13px;color:var(--tx3);margin-bottom:16px">${tieneData?t('Tus datos personales.'):t('Rellena tus datos para que tu coach pueda personalizar tu plan al máximo.')}</div>
   </div>
 
-  <div id="pf_form" style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;margin:0 14px;padding:16px;${tieneData?'pointer-events:none':''}">
-    <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">Datos personales</div>
-    <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">Peso (kg)</div><input class="inp" id="pf_peso" type="number" step="0.1" value="${c.peso_actual||''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">Altura (cm)</div><input class="inp" id="pf_altura" type="number" value="${c.altura||''}" style="margin-bottom:0"/></div>
-    </div>
-    <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">Edad</div><input class="inp" id="pf_edad" type="number" value="${c.edad||''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">Sexo</div><select class="inp" id="pf_sexo" style="margin-bottom:0">
-        <option ${c.sexo==='Hombre'?'selected':''}>Hombre</option>
-        <option ${c.sexo==='Mujer'?'selected':''}>Mujer</option>
-      </select></div>
-    </div>
-    <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">Cintura (cm)</div><input class="inp" id="pf_cintura" type="number" step="0.1" value="${c.cintura_actual||''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">Cadera (cm)</div><input class="inp" id="pf_cadera" type="number" step="0.1" value="${c.cadera||''}" style="margin-bottom:0"/></div>
-    </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">Nivel de actividad</div>
-      <select class="inp" id="pf_actividad" style="margin-bottom:0">
-        <option ${c.actividad==='Sedentario'?'selected':''}>Sedentario (poco o nada de ejercicio)</option>
-        <option ${c.actividad==='Ligero'?'selected':''}>Ligero (1-2 días/semana)</option>
-        <option ${c.actividad==='Moderada'?'selected':''}>Moderada (3-4 días/semana)</option>
-        <option ${c.actividad==='Activo'?'selected':''}>Activo (5-6 días/semana)</option>
-        <option ${c.actividad==='Muy activo'?'selected':''}>Muy activo (dobles entrenos)</option>
-      </select>
-    </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">Tipo de alimentación</div>
-      <select class="inp" id="pf_dieta" style="margin-bottom:0">
-        <option ${c.dieta_tipo==='Omnívoro'?'selected':''}>Omnívoro (como de todo)</option>
-        <option ${c.dieta_tipo==='Vegetariano'?'selected':''}>Vegetariano</option>
-        <option ${c.dieta_tipo==='Vegano'?'selected':''}>Vegano</option>
-        <option ${c.dieta_tipo==='Sin gluten'?'selected':''}>Sin gluten</option>
-        <option ${c.dieta_tipo==='Sin lactosa'?'selected':''}>Sin lactosa</option>
-      </select>
-    </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">${t("Alimentos que no me gustan o no puedo comer")}</div>
-      <input class="inp" id="pf_alimentos_no" placeholder="Ej: brócoli, pescado, huevos..." value="${c.alimentos_no||''}" style="margin-bottom:0"/>
-    </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">${t("Lesiones / zonas con dolor / alergias")}</div>
-      <input class="inp" id="pf_lesiones" placeholder="Ej: rodilla derecha, lumbar..." value="${c.lesiones||''}" style="margin-bottom:0"/>
-    </div>
-    <div><div class="form-lbl">${t("Otras observaciones")}</div>
-      <textarea class="ta" id="pf_ob" placeholder="Cualquier cosa que tu coach deba saber...">${c.observaciones||''}</textarea>
-    </div>
-    <div style="margin-top:10px;background:rgba(168,85,247,.06);border:0.5px solid rgba(168,85,247,.2);border-radius:12px;padding:12px">
-      <div class="form-lbl" style="color:#c084fc;margin-bottom:6px">🧪 ¿Has tenido o tienes algún tipo de deficiencia?</div>
-      <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.5">Por ejemplo: anemia, vitamina D baja, ferritina baja, B12, omega-3... Tu coach lo tendrá en cuenta al preparar tu dieta.</div>
-      <textarea class="ta" id="pf_deficiencias" placeholder="Ej: Vitamina D baja en última analítica, tendencia a anemia..." style="margin-bottom:0">${c.deficiencias||''}</textarea>
-    </div>
-  </div>
-
-  <div style="padding:14px 14px 0">
-    <div id="pf_btns" style="display:${tieneData?'none':'block'}">
-      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarPerfil()">Guardar perfil</button>
-    </div>
-    <div id="pf_msg" style="font-size:13px;text-align:center;margin-top:8px;height:20px"></div>
-  </div>
-
-  <!-- Selector de idioma movido al login -->
-  <div style="margin:14px 14px 20px;background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px">
-    <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🌐 Idioma / Language</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <button onclick="setLangLogin('es');setLang('es')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='es'?'var(--bl2)':'var(--br)'};background:${LANG==='es'?'rgba(59,130,246,.12)':'none'};color:${LANG==='es'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
-        🇪🇸 Español
-      </button>
-      <button onclick="setLangLogin('en');setLang('en')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='en'?'var(--bl2)':'var(--br)'};background:${LANG==='en'?'rgba(59,130,246,.12)':'none'};color:${LANG==='en'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
-        🇬🇧 English
-      </button>
-    </div>
-    <div style="font-size:10px;color:var(--tx3);margin-top:8px;text-align:center">También puedes cambiarlo en la pantalla de inicio de sesión</div>
-  </div>
+  ${!tieneData ? `
+    ${pfDatosFormHTML(c, 'first')}
+    <div style="height:14px"></div>
+  ` : ''}
 
   <!-- Sección cuenta -->
   <div style="margin:0 14px 24px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;overflow:hidden">
@@ -6665,6 +6654,50 @@ function hPerfil(){
         <div style="font-size:11px;color:var(--tx3);margin-top:5px">${t('Toca la foto para cambiarla')}</div>
       </div>
       <input type="file" id="pf_foto_input" accept="image/*" style="display:none" onchange="subirFotoPerfil(this)"/>
+    </div>
+
+    <!-- Suscripción visible -->
+    <div id="pf_sub_card" style="padding:14px 16px;border-bottom:0.5px solid var(--br)">
+      <div style="font-size:12px;color:var(--tx3);text-align:center">${t('Cargando...')}</div>
+    </div>
+
+    ${tieneData ? `
+    <!-- Acordeón: Editar datos personales -->
+    <div style="border-bottom:0.5px solid var(--br)">
+      <button onclick="pfToggleAcordeon('acc_profile_body','acc_profile_arrow')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:none;border:none;cursor:pointer;font-family:inherit;touch-action:manipulation">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:15px">📝</div>
+          <div style="text-align:left">
+            <div style="font-size:13px;font-weight:700;color:var(--sv)">${t('Editar datos personales')}</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:1px">${c.peso_actual||'—'} kg · ${c.altura||'—'} cm · ${c.edad||'—'} ${t('años')}</div>
+          </div>
+        </div>
+        <span id="acc_profile_arrow" style="font-size:12px;color:var(--tx3);transition:transform .2s">▼</span>
+      </button>
+      <div id="acc_profile_body" style="display:none;padding:0 16px 16px">
+        ${pfDatosFormHTML(c, 'edit')}
+      </div>
+    </div>
+    ` : ''}
+
+    <!-- Acordeón: Idioma -->
+    <div style="border-bottom:0.5px solid var(--br)">
+      <button onclick="pfToggleAcordeon('acc_lang_body','acc_lang_arrow')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:none;border:none;cursor:pointer;font-family:inherit;touch-action:manipulation">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:15px">🌐</div>
+          <div style="text-align:left">
+            <div style="font-size:13px;font-weight:700;color:var(--sv)">${t('Idioma / Language')}</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:1px">${LANG==='es'?'Español':'English'}</div>
+          </div>
+        </div>
+        <span id="acc_lang_arrow" style="font-size:12px;color:var(--tx3);transition:transform .2s">▼</span>
+      </button>
+      <div id="acc_lang_body" style="display:none;padding:0 16px 16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button onclick="setLangLogin('es');setLang('es')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='es'?'var(--bl2)':'var(--br)'};background:${LANG==='es'?'rgba(59,130,246,.12)':'none'};color:${LANG==='es'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🇪🇸 Español</button>
+          <button onclick="setLangLogin('en');setLang('en')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='en'?'var(--bl2)':'var(--br)'};background:${LANG==='en'?'rgba(59,130,246,.12)':'none'};color:${LANG==='en'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🇬🇧 English</button>
+        </div>
+      </div>
     </div>
 
     <!-- Acordeón: Cambiar usuario -->
@@ -6714,6 +6747,60 @@ function hPerfil(){
     </div>
 
   </div>`;
+}
+
+async function cargarSuscripcionPerfilCliente(){
+  const box = document.getElementById('pf_sub_card');
+  if(!box || !CD?.id) return;
+  try{
+    const s = await api('/clientes/'+CD.id+'/suscripcion');
+    if(!s || !s.fecha_fin){
+      box.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:34px;height:34px;border-radius:10px;background:rgba(82,82,91,.15);display:flex;align-items:center;justify-content:center">💳</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:800;color:var(--sv)">${t('Sin suscripción')}</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:2px">${t('Contacta con tu coach para activar el acceso.')}</div>
+          </div>
+        </div>`;
+      return;
+    }
+    const diasContratados = s.fecha_inicio && s.fecha_fin ? Math.ceil((new Date(s.fecha_fin)-new Date(s.fecha_inicio))/(1000*60*60*24)) : null;
+    const diasRestantes = s.vencida ? 0 : (s.dias_restantes ?? 0);
+    const color = s.vencida ? '#fca5a5' : s.proxima_a_vencer ? 'var(--amb)' : 'var(--gnb)';
+    const estado = s.vencida ? t('Vencida') : s.proxima_a_vencer ? t('Próxima a vencer') : t('Activa');
+    const fmt = v => v ? String(v).split('-').reverse().join('/') : '—';
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:34px;height:34px;border-radius:10px;background:rgba(59,130,246,.12);border:0.5px solid rgba(59,130,246,.25);display:flex;align-items:center;justify-content:center">💳</div>
+          <div>
+            <div style="font-size:13px;font-weight:800;color:var(--sv)">${t('Suscripción')}</div>
+            <div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${estado}</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:22px;font-weight:900;color:${color};line-height:1">${diasRestantes}</div>
+          <div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em">${t('días restantes')}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:9px;text-align:center">
+          <div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${t('Inicio')}</div>
+          <div style="font-size:12px;font-weight:800;color:var(--sv)">${fmt(s.fecha_inicio)}</div>
+        </div>
+        <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:9px;text-align:center">
+          <div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${t('Fin')}</div>
+          <div style="font-size:12px;font-weight:800;color:${color}">${fmt(s.fecha_fin)}</div>
+        </div>
+        <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:9px;text-align:center">
+          <div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${t('Contrato')}</div>
+          <div style="font-size:12px;font-weight:800;color:var(--sv)">${diasContratados ?? '—'} ${t('días')}</div>
+        </div>
+      </div>`;
+  }catch(e){
+    box.innerHTML = `<div style="font-size:12px;color:var(--tx3);text-align:center">${t('No se pudo cargar la suscripción')}</div>`;
+  }
 }
 
 
