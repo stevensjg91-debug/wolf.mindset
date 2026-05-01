@@ -7672,6 +7672,64 @@ async function filtrarEjerciciosGestor(){
   }).join('');
 }
 
+async function subirImagenEjercicio(nombre, exId, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const img = new Image();
+    img.onload = async () => {
+      const canvas = document.createElement('canvas');
+      const max = 600;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > max) { h = Math.round(h * max / w); w = max; } }
+      else { if (h > max) { w = Math.round(w * max / h); h = max; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const base64 = canvas.toDataURL('image/jpeg', 0.82);
+      const urlInput = document.getElementById(`img_url_${exId}`);
+      if (urlInput) urlInput.value = base64;
+      try {
+        await api('/ejercicios-config/' + encodeURIComponent(nombre), {
+          method: 'PUT',
+          body: JSON.stringify({ imagen_url: base64 })
+        });
+        if (urlInput) {
+          urlInput.style.borderColor = '#22c55e';
+          setTimeout(() => { urlInput.style.borderColor = ''; filtrarEjerciciosGestor(); }, 1500);
+        }
+      } catch (err) {
+        if (urlInput) { urlInput.style.borderColor = '#ef4444'; setTimeout(() => urlInput.style.borderColor = '', 1500); }
+        alert(COACH_LANG === 'en' ? 'Error uploading image' : 'Error al subir imagen');
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function subirImagenNuevoEjercicio(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const max = 600;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > max) { h = Math.round(h * max / w); w = max; } }
+      else { if (h > max) { w = Math.round(w * max / h); h = max; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const inp = document.getElementById('new_ex_imagen');
+      if (inp) inp.value = canvas.toDataURL('image/jpeg', 0.82);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 async function guardarImagenEjercicio(nombre, exId){
   const input = document.getElementById(`img_url_${exId}`);
   if(!input) return;
