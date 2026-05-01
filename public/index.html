@@ -197,6 +197,62 @@
       <option value="Sin lactosa" data-en="Lactose-free" data-es="Sin lactosa">Lactose-free</option>
     </select>
 
+
+
+    <div style="margin:12px 0 14px;padding:13px;border:0.5px solid rgba(59,130,246,.22);border-radius:14px;background:rgba(37,99,235,.055)">
+      <div class="form-lbl" id="lbl_reg_foods_like" style="margin-top:0">Alimentos que prefiero para mi dieta</div>
+      <div style="font-size:11px;color:var(--tx3);line-height:1.45;margin:-2px 0 9px" id="reg_foods_like_help">Marca los alimentos que sueles comer. Tu coach los verá al crear tu dieta.</div>
+      <input type="hidden" id="reg_alimentos_pref" value=""/>
+      <div class="reg-food-cat" style="font-size:10px;color:var(--tx3);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:8px 0 6px">🥩 Proteínas</div>
+      <div class="reg-chip-row" data-reg-food-group="proteinas">
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Pollo (pechuga)')">Pollo</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Pavo')">Pavo</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Salmón')">Salmón</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Atún')">Atún</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Merluza')">Merluza</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Huevos enteros')">Huevos</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Claras de huevo')">Claras</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Whey protein')">Whey</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Yogur proteico')">Yogur proteico</button>
+      </div>
+      <div class="reg-food-cat" style="font-size:10px;color:var(--tx3);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px">🌾 Carbos</div>
+      <div class="reg-chip-row" data-reg-food-group="carbos">
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Arroz')">Arroz</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Pasta')">Pasta</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Patata')">Patata</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Batata')">Batata</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Avena')">Avena</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Pan integral')">Pan integral</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Tortitas de arroz')">Tortitas</button>
+      </div>
+      <div class="reg-food-cat" style="font-size:10px;color:var(--tx3);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px">🥑 Grasas / extras</div>
+      <div class="reg-chip-row" data-reg-food-group="grasas">
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Aceite de oliva')">Aceite oliva</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Aguacate')">Aguacate</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Frutos secos')">Frutos secos</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Queso fresco 0%')">Queso fresco 0%</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Yogur griego 0% azucar')">Yogur griego 0%</button>
+      </div>
+      <div class="reg-food-cat" style="font-size:10px;color:var(--tx3);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px">🥦 Verduras / frutas</div>
+      <div class="reg-chip-row" data-reg-food-group="verfruta">
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Brócoli')">Brócoli</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Calabacín')">Calabacín</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Ensalada')">Ensalada</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Judías verdes')">Judías</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Plátano')">Plátano</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Manzana')">Manzana</button>
+        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Frutos rojos')">Frutos rojos</button>
+      </div>
+      <input class="finp" id="reg_alimentos_extra" data-placeholder-en="Other foods you like..." data-placeholder-es="Otros alimentos que te gustan..." placeholder="Otros alimentos que te gustan..." style="margin-top:10px;margin-bottom:10px"/>
+      <div class="form-lbl" id="lbl_reg_meals">¿Cuántas comidas quieres hacer al día?</div>
+      <select class="finp" id="reg_num_comidas" style="margin-bottom:0">
+        <option value="3">3 comidas</option>
+        <option value="4" selected>4 comidas</option>
+        <option value="5">5 comidas</option>
+        <option value="6">6 comidas</option>
+      </select>
+    </div>
+
     <div class="form-lbl" id="lbl_alimentos_no">Foods I cannot eat (optional)</div>
     <input class="finp" id="reg_alimentos_no" data-placeholder-en="E.g: broccoli, fish, eggs..." data-placeholder-es="Ej: brócoli, pescado, huevos..." placeholder="E.g: broccoli, fish, eggs..."/>
 
