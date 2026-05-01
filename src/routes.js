@@ -117,7 +117,16 @@ router.get('/clientes/:id', (req, res) => {
   if (!c) return res.status(404).json({ error: 'No encontrado' });
   const pesos = dbAll('SELECT * FROM peso_registros WHERE cliente_id=? ORDER BY rowid ASC', [id]);
   const dias = dbAll('SELECT * FROM dias_entreno WHERE cliente_id=? ORDER BY orden', [id]);
-  dias.forEach(d => { d.ejercicios = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=? ORDER BY orden', [d.id]); });
+  dias.forEach(d => {
+    d.ejercicios = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=? ORDER BY orden', [d.id]);
+    // Fill imagen_url from ejercicios_config if not set directly on the exercise
+    d.ejercicios.forEach(e => {
+      if (!e.imagen_url) {
+        const cfg = dbGet('SELECT imagen_url FROM ejercicios_config WHERE nombre=?', [e.nombre]);
+        if (cfg && cfg.imagen_url) e.imagen_url = cfg.imagen_url;
+      }
+    });
+  });
   const comidas = dbAll('SELECT * FROM comidas WHERE cliente_id=? ORDER BY orden', [id]);
   const planMeta = dbGet('SELECT * FROM plan_meta WHERE cliente_id=?', [id]);
   comidas.forEach(m => { m.items = dbAll('SELECT * FROM alimentos WHERE comida_id=? ORDER BY orden', [m.id]); });
@@ -465,6 +474,11 @@ router.put('/ejercicios-config/:nombre', coachOnly, (req, res) => {
     dbRun('INSERT INTO ejercicios_config (nombre, youtube_url, imagen_url, nota_default) VALUES (?,?,?,?)',
       [nombre, youtube_url||'', imagen_url||'', nota_default||'']);
   }
+  // Sync imagen_url to all ejercicios_dia with this name so clients see it immediately
+  if (imagen_url !== undefined) {
+    dbRun('UPDATE ejercicios_dia SET imagen_url=? WHERE nombre=?', [imagen_url||'', nombre]);
+  }
+  saveToDisk();
   res.json({ ok: true });
 });
 
