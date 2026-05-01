@@ -800,7 +800,10 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
         <button onclick="valorarEntreno('🤕',this)" title="Lesión/dolor" style="font-size:28px;background:none;border:0.5px solid var(--br);border-radius:12px;padding:8px 10px;cursor:pointer;transition:.15s">🤕</button>
       </div>
     </div>
-    <button class="btn" style="padding:14px 40px;font-size:16px;background:var(--bl2);border-radius:14px" onclick="cerrarDoneOverlay()">Cerrar</button>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn" id="btn_publicar_rutina" style="padding:14px 24px;font-size:15px;background:linear-gradient(135deg,#16a34a,#15803d);border-radius:14px;display:none" onclick="publicarRutinaAlCoach()">📤 <span data-i18n="Publicar al coach">Publicar al coach</span></button>
+      <button class="btn" style="padding:14px 40px;font-size:16px;background:var(--bl2);border-radius:14px" onclick="cerrarDoneOverlay()"><span data-i18n="Cerrar">Cerrar</span></button>
+    </div>
   </div>
 </div>
 
@@ -2748,6 +2751,17 @@ async function verCliente(id){
       <div id="reset_msg_${c.id}" style="font-size:11px;margin-top:6px;height:16px"></div>
     </div>
   </div>
+  <!-- ESTADO RÁPIDO: peso + último entreno -->
+  <div class="g2" style="margin-bottom:12px;gap:12px">
+    <div class="sec">
+      <div class="sec-hdr">⚖️ ${COACH_LANG==='en'?'Weight evolution':'Evolución de peso'}</div>
+      <div id="coach_peso_evolucion"><div style="font-size:13px;color:var(--tx3)">${tc('Sin registros')}</div></div>
+    </div>
+    <div class="sec">
+      <div class="sec-hdr">🏋️ ${COACH_LANG==='en'?'Last workout':'Último entreno'}</div>
+      <div id="resumen_ultimo_entreno"><div style="font-size:13px;color:var(--tx3)">${tc('Cargando...')}</div></div>
+    </div>
+  </div>
   </div>
 
   <!-- TAB: ENTRENO -->
@@ -2821,13 +2835,6 @@ async function verCliente(id){
       </div>
     </div>
   
-    <div class="sec" style="margin-bottom:12px">
-    <div class="sec-hdr">${COACH_LANG==='en'?'Workout history':'Historial de entrenos'} <span id="sesiones_count" style="color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0;font-size:11px"></span></div>
-    <div id="sesiones_wrap"><div style="font-size:13px;color:var(--tx3)">${tc('Cargando...')}</div></div>
-  </div>
-  
-
-  
   </div>
 
   <!-- TAB: HISTORIAL -->
@@ -2884,10 +2891,6 @@ async function verCliente(id){
     <div class="sec-hdr">📋 ${tc('Revisión semanal')} <span id="rev_estado" style="font-size:10px;font-weight:500;color:var(--tx3);text-transform:none;letter-spacing:0"></span></div>
     <div id="revision_semanal_content"><div style="font-size:13px;color:var(--tx3)">${tc('Cargando...')}</div></div>
   </div>
-    <div class="sec" style="margin-bottom:12px">
-      <div class="sec-hdr">⚖️ ${COACH_LANG==='en'?'Weight evolution':'Evolución de peso'}</div>
-      <div id="coach_peso_evolucion"><div style="font-size:13px;color:var(--tx3)">${tc('Sin registros')}</div></div>
-    </div>
     <!-- MÉTRICAS AVANZADAS: 1RM + PRs + TONELAJE -->
     <div id="metricas_avanzadas_wrap"></div>
   </div>`;
@@ -2898,44 +2901,7 @@ async function verCliente(id){
   cargarSuscripcionCliente(id);
   setTimeout(()=>{ aplicarMacrosCoach(c, true); }, 200);
 
-  // Historial (para tab Entreno)
-  api('/clientes/'+id+'/sesiones').then(sesiones=>{
-    const wrap=document.getElementById('sesiones_wrap');
-    const count=document.getElementById('sesiones_count');
-    if(!wrap)return;
-    if(count)count.textContent='('+sesiones.length+' '+( COACH_LANG==='en'?'workouts':'entrenos')+')';
-    if(!sesiones.length){wrap.innerHTML=`<div style="font-size:13px;color:var(--tx3)">${tc('Sin entrenos aún.')}</div>`;return;}
-    wrap.innerHTML=sesiones.map(s=>{
-      const byEx={};
-      s.series.forEach(sr=>{if(!byEx[sr.ejercicio_nombre])byEx[sr.ejercicio_nombre]=[];byEx[sr.ejercicio_nombre].push(sr);});
-      const incompleto = s.estado === 'incompleto';
-      const valoracion = s.valoracion || '';
-      // Recoger notas del cliente (una por ejercicio, la de la primera serie con nota)
-      const notasCliente = {};
-      s.series.forEach(sr=>{ if(sr.nota_cliente && !notasCliente[sr.ejercicio_nombre]) notasCliente[sr.ejercicio_nombre]=sr.nota_cliente; });
-
-      return '<div style="background:var(--s2);border:0.5px solid '+(incompleto?'rgba(245,158,11,.4)':'var(--br)')+';border-radius:10px;padding:12px;margin-bottom:8px">'+
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
-          '<div><div style="font-size:14px;font-weight:700;color:var(--sv)">'+s.dia_nombre+' — '+tc(s.dia_grupo||'')+'</div>'+
-          '<div style="font-size:11px;color:var(--tx3)">'+new Date(s.fecha).toLocaleDateString(COACH_LANG==='en'?'en-GB':'es-ES',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div>'+
-          (incompleto
-            ? '<span class="badge" style="background:rgba(245,158,11,.15);color:var(--amb);border:0.5px solid rgba(245,158,11,.3)">⚠ '+tc('Incompleto')+'</span>'
-            : '<span class="badge b-gn">✓</span>')+
-          (valoracion ? '<span style="font-size:18px;margin-left:8px" title="'+valoracion+'">'+valoracion.split(' ')[0]+'</span>' : '')+
-        '</div>'+
-        Object.entries(byEx).map(([nom,srs])=>
-          '<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:700;color:var(--sv2);margin-bottom:3px">'+nom+'</div>'+
-          '<div style="display:flex;gap:5px;flex-wrap:wrap">'+srs.map(sr=>
-            '<span style="background:var(--s3);border:0.5px solid var(--br);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--sv3);font-weight:600">'+
-            sr.peso_real+'kg×'+sr.reps_real+(sr.rir!=null?' RIR'+sr.rir:'')+
-            '</span>').join('')+'</div>'+
-          (notasCliente[nom] ? '<div style="font-size:10px;color:var(--blg);margin-top:3px;font-style:italic">💬 '+notasCliente[nom]+'</div>' : '')+
-          '</div>'
-        ).join('')+'</div>';
-    }).join('');
-  }).catch(()=>{});
-
-  // Peso evolución (para tab Progreso)
+  // Peso evolución + último entreno (tab Resumen)
   const pesoWrap = document.getElementById('coach_peso_evolucion');
   if(pesoWrap && c.pesos.length) {
     pesoWrap.innerHTML = c.pesos.slice(-8).map((p,i,arr)=>{
@@ -2949,6 +2915,31 @@ async function verCliente(id){
         (p.cintura ? '<span style="font-size:11px;color:var(--tx3)">'+p.cintura+'cm</span>' : '')+
         '</div>';
     }).join('');
+  }
+  // Último entreno (tab Resumen)
+  const ultWrap = document.getElementById('resumen_ultimo_entreno');
+  if(ultWrap) {
+    api('/clientes/'+id+'/sesiones').then(sesiones=>{
+      if(!sesiones.length){ ultWrap.innerHTML=`<div style="font-size:13px;color:var(--tx3)">${tc('Sin entrenos aún.')}</div>`; return; }
+      const s = sesiones[0];
+      const incompleto = s.estado === 'incompleto';
+      const fecha = new Date(s.fecha).toLocaleDateString(COACH_LANG==='en'?'en-GB':'es-ES',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      const durStr = s.duracion_min ? ' · '+s.duracion_min+' min' : '';
+      const valoracion = s.valoracion || '';
+      ultWrap.innerHTML =
+        '<div style="background:var(--s2);border:0.5px solid '+(incompleto?'rgba(245,158,11,.3)':'rgba(34,197,94,.2)')+';border-radius:10px;padding:11px 13px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+          '<div><div style="font-size:14px;font-weight:700;color:var(--sv)">'+s.dia_nombre+'</div>'+
+          '<div style="font-size:11px;color:var(--blg);font-weight:600">'+tc(s.dia_grupo||'')+'</div>'+
+          '<div style="font-size:11px;color:var(--tx3);margin-top:2px">'+fecha+durStr+'</div></div>'+
+          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'+
+            (incompleto ? '<span class="badge" style="background:rgba(245,158,11,.15);color:var(--amb);border:0.5px solid rgba(245,158,11,.3)">⚠ '+tc('Incompleto')+'</span>' : '<span class="badge b-gn">✓ '+(COACH_LANG==='en'?'Done':'Hecho')+'</span>')+
+            (valoracion ? '<span style="font-size:20px">'+valoracion.split(' ')[0]+'</span>' : '')+
+          '</div>'+
+        '</div>'+
+        '<div style="font-size:11px;color:var(--tx3);margin-top:8px">'+s.series.length+' series · '+[...new Set(s.series.map(sr=>sr.ejercicio_nombre))].length+' ejercicios</div>'+
+        '</div>';
+    }).catch(()=>{ if(ultWrap) ultWrap.innerHTML=''; });
   }
 }
 
@@ -5464,21 +5455,6 @@ function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div 
   <div class="sec">
     <div class="sec-hdr">${tc('Gestionar imágenes de ejercicios')}</div>
     
-    <!-- Crear ejercicio nuevo -->
-    <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px;margin-bottom:12px">
-      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">➕ ${COACH_LANG==='en'?'Create new exercise':'Crear ejercicio nuevo'}</div>
-      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">${tc('Añade ejercicios personalizados que no están en la biblioteca.')}</div>
-      <div class="g2" style="gap:8px;margin-bottom:8px">
-        <div><div class="form-lbl">${COACH_LANG==='en'?'Name':'Nombre'}</div><input class="inp" id="new_ex_nombre" placeholder="Bench Press (Barbell)" style="margin-bottom:0"/></div>
-        <div><div class="form-lbl">${COACH_LANG==='en'?'Group':'Grupo'}</div><select class="inp" id="new_ex_grupo" style="margin-bottom:0"><option>Chest</option><option>Back</option><option>Shoulders</option><option>Biceps</option><option>Triceps</option><option>Legs</option><option>Abs</option></select></div>
-        <div><div class="form-lbl">${COACH_LANG==='en'?'Muscles':'Músculos'}</div><input class="inp" id="new_ex_musculos" placeholder="${COACH_LANG==='en'?'Chest, triceps':'Pectorales, tríceps'}" style="margin-bottom:0"/></div>
-        <div><div class="form-lbl">${tc('Dificultad')}</div><select class="inp" id="new_ex_dif" style="margin-bottom:0"><option>${tc('Principiante')}</option><option selected>${tc('Intermedio')}</option><option>${tc('Avanzado')}</option></select></div>
-      </div>
-      <input class="inp" id="new_ex_imagen" placeholder="${COACH_LANG==='en'?'Image/GIF URL (optional)':'URL imagen/GIF (opcional)'}" style="margin-bottom:8px"/>
-      <button class="btn btn-sm" onclick="crearEjercicioManual()">✓ ${COACH_LANG==='en'?'Create exercise':'Crear ejercicio'}</button>
-      <span id="new_ex_msg" style="font-size:12px;margin-left:10px"></span>
-    </div>
-
     <!-- Editar imagen de ejercicio existente -->
     <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px">
       <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">${tc('🖼️ Añadir imagen a un ejercicio')}</div>
@@ -9412,6 +9388,25 @@ function cerrarDoneOverlay(){
   renderSeleccion();
 }
 
+async function publicarRutinaAlCoach(){
+  const btn = document.getElementById('btn_publicar_rutina');
+  if(btn) { btn.disabled = true; btn.textContent = LANG==='en'?'⏳ Sending...':'⏳ Enviando...'; }
+  try {
+    const d = CD.dias[activeDia];
+    const mensaje = LANG==='en'
+      ? `✅ ${CD.nombre} completed training: ${d.nombre}${d.grupo?' ('+d.grupo+')':''} — ${getWorkoutDuration()} min`
+      : `✅ ${CD.nombre} completó el entreno: ${d.nombre}${d.grupo?' ('+d.grupo+')':''} — ${getWorkoutDuration()} min`;
+    await api('/notificaciones/coach', {
+      method:'POST',
+      body: JSON.stringify({ tipo:'rutina_publicada', mensaje })
+    });
+    if(btn) { btn.textContent = LANG==='en'?'✓ Sent':'✓ Enviado'; btn.style.background='#15803d'; }
+    setTimeout(()=>{ cerrarDoneOverlay(); }, 1200);
+  } catch(e) {
+    if(btn) { btn.disabled=false; btn.innerHTML='📤 <span data-i18n="Publicar al coach">Publicar al coach</span>'; }
+  }
+}
+
 
 function mostrarDoneOverlay(estado, pendientes){
   if(doneShown) return;
@@ -9460,6 +9455,9 @@ function mostrarDoneOverlay(estado, pendientes){
       wolfImg.src = LANG === 'en' ? WOLF_INCOMPLETE_EN_SRC : WOLF_INCOMPLETE_SRC;
     }
   }
+  // Mostrar botón publicar solo cuando completado
+  const btnPublicar = document.getElementById('btn_publicar_rutina');
+  if(btnPublicar) btnPublicar.style.display = estado === 'completado' ? 'inline-flex' : 'none';
   setTimeout(()=>{
     const msg = estado === 'completado'
       ? LANG==='en'?`Congrats, ${nombre}! You completed your workout in ${dur} min. Your discipline makes you stronger every day.`:`¡Felicidades, ${nombre}! Has completado tu entreno en ${dur} min. Tu disciplina te hace más fuerte cada día.`
