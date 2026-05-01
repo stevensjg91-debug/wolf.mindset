@@ -1640,6 +1640,11 @@ async function doLogin(){
       iniciarSSE();
       // Auto-verificar vencimientos al entrar
       api('/suscripciones/avisar-vencimientos', {method:'POST'}).catch(()=>{});
+      // Registrar push para recibir notificaciones en PC/móvil bloqueado
+      setTimeout(async()=>{
+        const ok = await pedirPermisoNotificaciones();
+        if(ok) console.log('[Push] Coach registrado para push');
+      }, 2000);
     } else {
       show('sCliente');
       await loadCD(data.user.clienteId);
@@ -4696,6 +4701,17 @@ async function cancelarSuscripcion(clienteId) {
 // ── SSE — Eventos en tiempo real ─────────────────────────────────────
 let _sseSource = null;
 
+// ── Helper: mostrar notificación del sistema (funciona con app abierta o cerrada) ──
+function mostrarNotifSistema(title, body, tag='wm-notif', url='/'){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  const opts = { body, icon:'/logo.png', badge:'/logo.png', tag, renotify:true,
+                 requireInteraction:false, vibrate:[200,100,200], data:{url} };
+  // Intentar via SW (más fiable, funciona con pantalla apagada si está en background)
+  if(!swMsg({ type:'SHOW_NOTIFICATION', title, options:opts })){
+    try { new Notification(title, opts); } catch(e){}
+  }
+}
+
 function iniciarSSE(){
   if(!TOKEN) return;
   cerrarSSE(); // cerrar conexión previa si la hay
@@ -4709,22 +4725,21 @@ function iniciarSSE(){
       const data = JSON.parse(e.data);
       if(USER && USER.role === 'coach') {
         cargarNotificacionesCoach();
+        // Notificación del sistema en PC/móvil
+        mostrarNotifSistema('WolfMindset 🐺', data.mensaje, 'notif-coach-'+Date.now());
       } else {
-        // Cliente: procesar notificación según tipo
         const tipo = data.tipo || '';
         if(tipo === 'vencimiento_proximo' || tipo === 'suscripcion_vencida') {
           mostrarBannerSub(data.mensaje, tipo === 'suscripcion_vencida' ? 'error' : 'warning');
         }
-        // Mostrar badge en la campana si existiera en cliente (futuro)
+        mostrarNotifSistema('WolfMindset 🐺', data.mensaje, 'notif-cliente-'+Date.now());
       }
     } catch(err) {}
   });
 
   // ── Badge de mensajes del coach actualizado ──
   _sseSource.addEventListener('badge_msgs', e => {
-    // Refrescar badge sin hacer polling
     cargarNotificacionesCoach();
-    // Si estamos en la sección mensajes, refrescar la lista
     if(window._coachTabActual === 'mensajes') {
       if(window._coachMsgThread) {
         coachMsgsLoadThread(window._coachMsgThread, false);
@@ -4738,7 +4753,6 @@ function iniciarSSE(){
   _sseSource.addEventListener('mensaje_nuevo', e => {
     try {
       const data = JSON.parse(e.data);
-      // Añadir al historial del chat y re-renderizar si está abierto
       if(data.de_coach) {
         const msg = {
           role: 'assistant',
@@ -4750,8 +4764,14 @@ function iniciarSSE(){
         };
         _chatMsgs.push(msg);
         _chatSave();
-        // Solo re-renderizar si el tab asistente está visible
         if(document.getElementById('chatMsgs')) _chatRenderAll();
+        // Notificación del sistema — llega aunque la app esté en background
+        const coachName = window._coachNombreAsistente || 'Coach';
+        mostrarNotifSistema(
+          LANG==='en' ? `💬 Message from ${coachName}` : `💬 Mensaje de ${coachName}`,
+          data.contenido.length > 80 ? data.contenido.slice(0,80)+'…' : data.contenido,
+          'msg-coach-' + data.id
+        );
       }
     } catch(err) {}
   });
@@ -8633,19 +8653,45 @@ const EX_DESCRIPCIONES = {
 // ═══ NOTIFICACIONES PUSH ══════════════════════════
 async function pedirPermisoNotificaciones(){
   if(!('Notification' in window)) return false;
-  if(Notification.permission === 'granted') return true;
+  if(Notification.permission === 'granted') {
+    await registrarPushSubscription();
+    return true;
+  }
   if(Notification.permission === 'denied') return false;
   const perm = await Notification.requestPermission();
+  if(perm === 'granted') await registrarPushSubscription();
   return perm === 'granted';
+}
+
+async function registrarPushSubscription(){
+  try {
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    const reg = await navigator.serviceWorker.ready;
+    // Get VAPID public key from server
+    const { publicKey } = await api('/push/vapid-key');
+    const appServerKey = urlBase64ToUint8Array(publicKey);
+    // Check if already subscribed
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub) {
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: appServerKey });
+    }
+    // Register with our server
+    await api('/push/subscribe', { method:'POST', body: JSON.stringify({ subscription: sub.toJSON() }) });
+  } catch(e) {
+    console.log('[Push] Registration error:', e.message);
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
 // ── NOTIFICACIONES ────────────────────────────────────────────────
 async function pedirPermisosNotificacion(){
-  if(!('Notification' in window)) return false;
-  if(Notification.permission === 'granted') return true;
-  if(Notification.permission === 'denied') return false;
-  const perm = await Notification.requestPermission();
-  return perm === 'granted';
+  return pedirPermisoNotificaciones();
 }
 
 function swMsg(data){
