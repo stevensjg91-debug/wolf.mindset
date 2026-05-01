@@ -341,3 +341,58 @@ html,body{height:100%;background:var(--b);color:var(--tx);font-family:'Inter',sa
 .strong-timer-fill.urg{background:#ef4444}
 .strong-timer-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;font-family:'Bebas Neue',sans-serif;letter-spacing:.05em}
 @media(min-width:768px){#sCliente .scroll{padding-bottom:80px}#sCliente .bnav-bar{position:fixed;bottom:0;left:0;right:0}}
+
+/* ─────────────────────────────────────────────────────────────
+   FIX PRO: Clientes dashboard / cards responsive
+───────────────────────────────────────────────────────────── */
+.clientes-page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px}
+.clientes-title{font-size:18px;font-weight:800;color:var(--sv);line-height:1.1}
+.clientes-subtitle{font-size:13px;color:var(--sv2);margin-top:5px;line-height:1.4}
+.clientes-add-btn{min-width:132px;padding:10px 15px;border-radius:11px;box-shadow:0 8px 22px rgba(37,99,235,.25)}
+.clientes-stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.clientes-stat-card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.022));border:0.5px solid var(--br);border-radius:14px;padding:14px 16px;min-height:82px;display:flex;flex-direction:column;justify-content:center}
+.clientes-stat-card .mlbl{margin-bottom:6px}
+.clientes-stat-card .mval{font-size:24px;line-height:1}
+.clientes-stat-card.stat-blue{border-color:rgba(59,130,246,.3);background:linear-gradient(180deg,rgba(59,130,246,.10),rgba(59,130,246,.025))}
+.clientes-stat-card.stat-blue .mlbl,.clientes-stat-card.stat-blue .mval{color:#93c5fd}
+.clientes-stat-card.stat-purple{border-color:rgba(168,85,247,.3);background:linear-gradient(180deg,rgba(168,85,247,.10),rgba(168,85,247,.025))}
+.clientes-stat-card.stat-purple .mlbl,.clientes-stat-card.stat-purple .mval{color:#d8b4fe}
+.clientes-filter-bar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.clientes-filter{padding:10px 12px;border-radius:11px;border:0.5px solid var(--br);background:rgba(255,255,255,.015);color:var(--tx3);font-size:13px;font-weight:750;cursor:pointer;font-family:inherit;transition:.15s;min-height:40px}
+.clientes-filter:hover{border-color:var(--br2);color:var(--sv2);background:rgba(255,255,255,.035)}
+.clientes-filter.on{border-color:var(--bl2);background:rgba(59,130,246,.14);color:var(--blg)}
+.clientes-filter.blue.on{border-color:#3b82f6;color:#93c5fd}
+.clientes-filter.purple.on{border-color:#a855f7;background:rgba(168,85,247,.12);color:#d8b4fe}
+.cc-grid.clientes-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;align-items:stretch}
+.cc.cliente-card{position:relative;min-height:138px;padding:16px;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));border:0.5px solid var(--br);box-shadow:0 10px 30px rgba(0,0,0,.14);overflow:hidden}
+.cc.cliente-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:rgba(59,130,246,.55)}
+.cc.cliente-card.partner::before{background:rgba(168,85,247,.65)}
+.cc.cliente-card:hover{border-color:rgba(59,130,246,.45);transform:translateY(-2px);box-shadow:0 14px 36px rgba(0,0,0,.22)}
+.cliente-coach-badge{position:absolute;top:12px;right:12px;max-width:52%;font-size:10px;font-weight:800;padding:4px 8px;border-radius:999px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:2}
+.cliente-card-main{display:flex;align-items:center;gap:13px;padding-top:18px;margin-bottom:14px;min-width:0}
+.cliente-avatar{width:58px;height:58px;border-radius:50%;border:1.5px solid;display:flex;align-items:center;justify-content:center;flex:0 0 58px;overflow:hidden;font-family:'Bebas Neue',sans-serif;font-size:22px;font-weight:800;box-shadow:0 0 0 4px rgba(59,130,246,.08)}
+.cliente-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.cliente-avatar span{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+.cliente-info{min-width:0;flex:1;padding-right:6px}
+.cliente-name{font-size:17px;font-weight:850;color:var(--sv);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cliente-meta{font-size:12px;color:var(--tx3);font-weight:650;margin-top:4px;line-height:1.35}
+.cliente-tags{display:flex;gap:6px;flex-wrap:wrap;padding-left:71px}
+.wm-empty-clients{text-align:center;padding:60px 20px;color:var(--tx3)}
+.wm-empty-icon{font-size:48px;margin-bottom:14px}.wm-empty-title{font-size:15px;font-weight:700;color:var(--sv2)}.wm-empty-sub{font-size:13px;margin-top:6px;margin-bottom:16px}
+@media(max-width:767px){
+  .clientes-page-head{flex-direction:column;align-items:stretch;margin-bottom:14px}
+  .clientes-add-btn{width:100%;min-width:0}
+  .clientes-stats-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .clientes-stat-card{padding:12px 10px;min-height:72px;border-radius:13px;text-align:center}
+  .clientes-stat-card .mval{font-size:22px}
+  .clientes-filter-bar{gap:6px;overflow-x:auto;grid-template-columns:repeat(3,minmax(104px,1fr));padding-bottom:2px}
+  .clientes-filter{font-size:12px;padding:9px 8px;white-space:nowrap}
+  .cc-grid.clientes-card-grid{grid-template-columns:1fr;gap:12px}
+  .cc.cliente-card{min-height:128px;padding:15px}
+  .cliente-card-main{padding-top:18px;gap:12px}
+  .cliente-avatar{width:54px;height:54px;flex-basis:54px;font-size:21px}
+  .cliente-name{font-size:16px}
+  .cliente-tags{padding-left:66px}
+  .cliente-coach-badge{font-size:9px;max-width:58%;top:10px;right:10px}
+}
+@media(min-width:1200px){.cc-grid.clientes-card-grid{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}}
