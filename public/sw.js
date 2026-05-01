@@ -1,86 +1,79 @@
-// WolfMindset Service Worker — notificaciones en background
-// Conserva tu lógica original y añade soporte seguro para temporizadores de descanso.
+// WolfMindset Service Worker
+// Mantiene notificaciones locales del timer de descanso aunque la pantalla se bloquee.
+const WM_VERSION = 'wm-sw-2026-04-30-v2';
+const timers = new Map();
 
-self.addEventListener('install', e => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('install', event => {
+  self.skipWaiting();
+});
 
-// Guardamos timeouts activos por si la app manda cancelar/reprogramar
-const wolfTimers = new Map();
+self.addEventListener('activate', event => {
+  event.waitUntil(self.clients.claim());
+});
 
-function clearWolfTimer(id){
-  if(!id) return;
-  const old = wolfTimers.get(id);
-  if(old){
-    clearTimeout(old);
-    wolfTimers.delete(id);
+function clearTimer(timerId){
+  if(!timerId) return;
+  const existing = timers.get(timerId);
+  if(existing){
+    clearTimeout(existing);
+    timers.delete(timerId);
   }
 }
 
-async function showWolfNotification(title, options = {}){
-  try{
-    await self.registration.showNotification(title || 'WolfMindset', {
-      ...options,
-      icon: options.icon || '/logo.png',
-      badge: options.badge || '/logo.png',
-    });
-  }catch(e){}
+function showWolfNotification(title, options = {}){
+  const finalOptions = {
+    icon: '/logo.png',
+    badge: '/logo.png',
+    silent: false,
+    requireInteraction: false,
+    ...options
+  };
+  return self.registration.showNotification(title || '🐺 WolfMindset', finalOptions);
 }
 
-// Recibir mensajes del cliente para mostrar notificaciones
-self.addEventListener('message', e => {
-  const data = e.data || {};
+self.addEventListener('message', event => {
+  const data = event.data || {};
 
-  // Mantiene compatibilidad con tu versión actual
+  if(data.type === 'SKIP_WAITING'){
+    self.skipWaiting();
+    return;
+  }
+
   if(data.type === 'SHOW_NOTIFICATION'){
-    e.waitUntil(
-      showWolfNotification(data.title, data.options || {})
-    );
+    event.waitUntil(showWolfNotification(data.title, data.options || {}));
     return;
   }
 
-  // Nuevo: programar notificación de descanso sin depender del contador visual
-  // Payload esperado:
-  // { type:'SCHEDULE_REST_NOTIFICATION', id:'rest-timer', title:'...', body:'...', delayMs:90000 }
-  if(data.type === 'SCHEDULE_REST_NOTIFICATION'){
-    const id = data.id || 'wolf-rest-timer';
-    const delayMs = Math.max(0, Number(data.delayMs || 0));
-    clearWolfTimer(id);
-
-    const timeout = setTimeout(() => {
-      wolfTimers.delete(id);
-      showWolfNotification(data.title || 'WolfMindset', {
-        body: data.body || '',
-        tag: data.tag || id,
-        renotify: true,
-        requireInteraction: false,
-        data: data.notificationData || { url: '/' },
-      });
-    }, delayMs);
-
-    wolfTimers.set(id, timeout);
+  if(data.type === 'SCHEDULE_NOTIFICATION'){
+    const timerId = data.timerId || 'default';
+    const delay = Math.max(0, Number(data.delay || 0));
+    clearTimer(timerId);
+    const timeoutId = setTimeout(() => {
+      timers.delete(timerId);
+      showWolfNotification(data.title, data.options || {});
+    }, delay);
+    timers.set(timerId, timeoutId);
     return;
   }
 
-  // Nuevo: cancelar una notificación programada si el usuario salta el descanso o termina antes
-  if(data.type === 'CANCEL_REST_NOTIFICATION'){
-    clearWolfTimer(data.id || 'wolf-rest-timer');
+  if(data.type === 'CANCEL_NOTIFICATION'){
+    clearTimer(data.timerId || 'default');
+    return;
+  }
+
+  if(data.type === 'CANCEL_ALL'){
+    timers.forEach(timeoutId => clearTimeout(timeoutId));
+    timers.clear();
   }
 });
 
-// Al pulsar la notificación, abre la app
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
-  const url = e.notification?.data?.url || '/';
-  e.waitUntil(
-    self.clients.matchAll({type:'window', includeUncontrolled:true}).then(clients => {
-      for(const client of clients){
-        try{
-          const clientUrl = new URL(client.url);
-          const targetUrl = new URL(url, self.location.origin);
-          if(clientUrl.origin === targetUrl.origin) return client.focus();
-        }catch(err){}
-      }
-      return self.clients.openWindow(url);
-    })
-  );
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of allClients) {
+      if ('focus' in client) return client.focus();
+    }
+    if (self.clients.openWindow) return self.clients.openWindow('/');
+  })());
 });
