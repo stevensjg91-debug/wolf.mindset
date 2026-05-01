@@ -2534,7 +2534,7 @@ async function renderCoach(s){
 }
 
 function hClientes(cl){
-  if(!cl.length)return`<div style="text-align:center;padding:60px 20px;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">👤</div><div style="font-size:15px;font-weight:600;color:var(--sv2)">${tc('Sin clientes aún')}</div><div style="font-size:13px;margin-top:6px">${tc('Pulsa Añadir cliente para crear el primero')}</div></div>`;
+  if(!cl.length)return`<div style="text-align:center;padding:60px 20px;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">👤</div><div style="font-size:15px;font-weight:600;color:var(--sv2)">${tc('Sin clientes aún')}</div><div style="font-size:13px;margin-top:6px">${COACH_LANG==='en'?'Create your first client from here.':'Crea tu primer cliente desde aquí.'}</div><button class="btn" style="margin-top:16px;padding:11px 18px" onclick="abrirNuevoClienteDesdeClientes()">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button></div>`;
 
   // Colores por coach — el coach actual siempre es azul, otros son púrpura
   const coachColors = {
@@ -2561,6 +2561,14 @@ function hClientes(cl){
   const otroCoachNombre = Object.values(coachColors).find((v,i) => i > 0)?.label || 'Partner';
 
   return`
+  <div class="flb" style="margin-bottom:14px;gap:10px;align-items:center">
+    <div>
+      <div style="font-size:11px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.08em">${tc('Clientes')}</div>
+      <div style="font-size:13px;color:var(--sv2);margin-top:3px">${COACH_LANG==='en'?'Manage and add clients from this section.':'Gestiona y añade clientes desde este apartado.'}</div>
+    </div>
+    <button class="btn btn-sm" onclick="abrirNuevoClienteDesdeClientes()" style="white-space:nowrap">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button>
+  </div>
+
   <!-- Stats -->
   <div class="g3" style="margin-bottom:14px">
     <div class="mcard"><div class="mlbl">${tc('Total')}</div><div class="mval">${cl.length}</div></div>
@@ -2573,14 +2581,6 @@ function hClientes(cl){
     <button onclick="filtrarClientes('todos')" style="flex:1;padding:7px;border-radius:8px;border:0.5px solid ${filter==='todos'?'var(--bl2)':'var(--br)'};background:${filter==='todos'?'rgba(59,130,246,.15)':'none'};color:${filter==='todos'?'var(--blg)':'var(--tx3)'};font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">${tc('Todos')}</button>
     <button onclick="filtrarClientes('mios')" style="flex:1;padding:7px;border-radius:8px;border:0.5px solid ${filter==='mios'?'#3b82f6':'var(--br)'};background:${filter==='mios'?'rgba(59,130,246,.15)':'none'};color:${filter==='mios'?'#93c5fd':'var(--tx3)'};font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">${tc('🔵 Míos')}</button>
     <button onclick="filtrarClientes('otros')" style="flex:1;padding:7px;border-radius:8px;border:0.5px solid ${filter==='otros'?'#a855f7':'var(--br)'};background:${filter==='otros'?'rgba(168,85,247,.15)':'none'};color:${filter==='otros'?'#d8b4fe':'var(--tx3)'};font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🟣 ${otroCoachNombre}</button>
-  </div>
-
-  <!-- Acción añadir cliente -->
-  <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-    <button class="btn btn-sm" onclick="cNav('nuevo',this)" style="display:flex;align-items:center;gap:6px;padding:9px 14px">
-      <span style="font-size:16px;line-height:1">＋</span>
-      <span>${COACH_LANG==='en'?'Add client':'Añadir cliente'}</span>
-    </button>
   </div>
 
   <!-- Grid clientes -->
@@ -2614,6 +2614,15 @@ function filtrarClientes(filtro){
   if(window._clientesCache) {
     document.getElementById('cContent').innerHTML = hClientes(window._clientesCache);
   }
+}
+
+function abrirNuevoClienteDesdeClientes(){
+  const title=document.getElementById('cTitle');
+  if(title) title.textContent=tc('Clientes');
+  const el=document.getElementById('cContent');
+  if(!el) return;
+  el.innerHTML = `<div class="back-lnk" onclick="renderCoach('clientes')"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>${COACH_LANG==='en'?'Back to clients':'Volver a clientes'}</div>` + hNuevo();
+  setTimeout(()=>{ applyCoachLang(document.getElementById('cContent')); },50);
 }
 
 async function verCliente(id){
@@ -2652,13 +2661,8 @@ async function verCliente(id){
   <div class="ctab-panel on" id="ctab_resumen">
     <div class="g2" style="margin-bottom:12px">
     <div class="sec"><div class="sec-hdr">${tc('Macros internos')} <span style="color:#f87171;font-size:9px">${tc('SOLO COACH')}</span></div>${mb2('Prot','#3b82f6',c.prot,c.prot*4,c.kcal_internas)}${mb2('Carbs','#a78bfa',c.carbs,c.carbs*4,c.kcal_internas)}${mb2(COACH_LANG==='en'?'Fat':'Grasa','#f97316',c.fat,c.fat*9,c.kcal_internas)}<div style="font-size:11px;color:var(--tx3);margin-top:4px">${c.kcal_internas} ${tc('kcal/día')}</div></div>
-    <div class="sec"><div class="sec-hdr">⚖️ ${COACH_LANG==='en'?'Weight evolution':'Evolución de peso'}</div>${c.pesos.slice(-4).map((p,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--br)"><span style="font-size:12px;color:var(--tx3)">${tc('Sem')} ${i+1}</span><span style="font-size:13px;color:var(--sv);font-weight:700">${p.peso}kg</span></div>`).join('')||`<div style="font-size:12px;color:var(--tx3)">${tc('Sin registros')}</div>`}</div>
+    <div class="sec"><div class="sec-hdr">${COACH_LANG==='en'?'Weight':'Peso'}</div>${c.pesos.slice(-4).map((p,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--br)"><span style="font-size:12px;color:var(--tx3)">${tc('Sem')} ${i+1}</span><span style="font-size:13px;color:var(--sv);font-weight:700">${p.peso}kg</span></div>`).join('')||`<div style="font-size:12px;color:var(--tx3)">${tc('Sin registros')}</div>`}</div>
   </div>
-
-    <div class="sec" style="margin-bottom:12px" id="coach_resumen_checkin">
-      <div class="sec-hdr">${tc('📋 Último check-in del cliente')}</div>
-      <div id="coach_resumen_checkin_content" style="font-size:13px;color:var(--tx3)">${tc('Sin check-in todavía')}</div>
-    </div>
   
     <div class="sec" style="margin-bottom:12px" id="coach_sub_sec">
     <div class="sec-hdr">💳 ${tc('Suscripción')} <span id="coach_sub_badge"></span></div>
@@ -2703,7 +2707,8 @@ async function verCliente(id){
     ${c.alimentos_no?`<div style="background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.2);border-radius:8px;padding:8px 11px;font-size:12px;color:var(--amb);margin-top:6px">🚫 <span style="font-weight:700">${tc('No come:')}</span> ${c.alimentos_no}</div>`:''}
     ${c.observaciones?`<div style="background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.2);border-radius:8px;padding:8px 11px;font-size:12px;color:var(--amb);margin-top:6px">📝 <span style="font-weight:700">${tc('Obs:')}</span> ${c.observaciones}</div>`:''}
   </div>
-  <div class="sec" style="margin-bottom:12px" id="ajustar_datos_form">
+  <div class="sec" style="margin-botto
+    m:12px" id="ajustar_datos_form">
     <div class="sec-hdr">${tc('Ajustar datos')} <button class="btn btn-sm" id="btn_guardar_datos" data-cliente-id="${c.id}" onclick="guardarDatos(${c.id})">${tc('Guardar')}</button></div>
     <div class="g2" style="gap:8px;margin-bottom:10px">
       <div><div class="form-lbl">${tc('Objetivo')}</div><input class="inp" id="obj" value="${c.objetivo}" oninput="recalcularYGuardarCoach()" style="margin-bottom:0"/></div>
@@ -2816,14 +2821,10 @@ async function verCliente(id){
       </div>
     </div>
   
-    <div class="sec" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(37,99,235,.045),rgba(17,17,19,.95));border-color:rgba(59,130,246,.16)">
-      <div class="sec-hdr">${COACH_LANG==='en'?'Routine purpose':'Uso de esta pestaña'}</div>
-      <div style="font-size:12px;color:var(--tx3);line-height:1.6">
-        ${COACH_LANG==='en'
-          ? 'This area is only for the current assigned routine: training days, exercises, target weight, reps, rest, RIR and coach notes. Completed workouts now live in the History tab.'
-          : 'Esta zona queda solo para la rutina actual asignada: días, ejercicios, peso objetivo, reps, descanso, RIR y notas del coach. Los entrenos terminados pasan al apartado Historial.'}
-      </div>
-    </div>
+    <div class="sec" style="margin-bottom:12px">
+    <div class="sec-hdr">${COACH_LANG==='en'?'Workout history':'Historial de entrenos'} <span id="sesiones_count" style="color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0;font-size:11px"></span></div>
+    <div id="sesiones_wrap"><div style="font-size:13px;color:var(--tx3)">${tc('Cargando...')}</div></div>
+  </div>
   
 
   
@@ -2831,18 +2832,9 @@ async function verCliente(id){
 
   <!-- TAB: HISTORIAL -->
   <div class="ctab-panel" id="ctab_historial">
-    <div class="sec" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(34,197,94,.045),rgba(17,17,19,.95));border-color:rgba(34,197,94,.14)">
-      <div class="sec-hdr">📊 ${COACH_LANG==='en'?'Real workout history':'Historial real de entrenos'}</div>
-      <div style="font-size:12px;color:var(--tx3);line-height:1.6">
-        ${COACH_LANG==='en'
-          ? 'Here you see only completed or saved workouts: real weights, reps, duration, notes and total volume. The planned routine is kept separate in Routine.'
-          : 'Aquí verás solo entrenos completados o guardados: pesos reales, reps, duración, notas y volumen total. La rutina planificada queda separada en Rutina.'}
-      </div>
-    </div>
-    <div class="g3" id="historial_stats2" style="margin-bottom:12px"></div>
     <div class="sec" style="margin-bottom:12px">
       <div class="sec-hdr">
-        📊 ${COACH_LANG==='en'?'Workout sessions':'Sesiones de entrenamiento'}
+        📊 ${COACH_LANG==='en'?'Workout history':'Historial de entrenos'}
         <span id="sesiones_count2" style="color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0;font-size:11px"></span>
       </div>
       <div id="sesiones_wrap2"><div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">${tc('Cargando...')}</div></div>
@@ -2892,6 +2884,10 @@ async function verCliente(id){
     <div class="sec-hdr">📋 ${tc('Revisión semanal')} <span id="rev_estado" style="font-size:10px;font-weight:500;color:var(--tx3);text-transform:none;letter-spacing:0"></span></div>
     <div id="revision_semanal_content"><div style="font-size:13px;color:var(--tx3)">${tc('Cargando...')}</div></div>
   </div>
+    <div class="sec" style="margin-bottom:12px">
+      <div class="sec-hdr">⚖️ ${COACH_LANG==='en'?'Weight evolution':'Evolución de peso'}</div>
+      <div id="coach_peso_evolucion"><div style="font-size:13px;color:var(--tx3)">${tc('Sin registros')}</div></div>
+    </div>
     <!-- MÉTRICAS AVANZADAS: 1RM + PRs + TONELAJE -->
     <div id="metricas_avanzadas_wrap"></div>
   </div>`;
@@ -2900,9 +2896,60 @@ async function verCliente(id){
 
   // Tab Resumen: cargar suscripción y macros
   cargarSuscripcionCliente(id);
-  cargarCheckinResumen(id);
   setTimeout(()=>{ aplicarMacrosCoach(c, true); }, 200);
 
+  // Historial (para tab Entreno)
+  api('/clientes/'+id+'/sesiones').then(sesiones=>{
+    const wrap=document.getElementById('sesiones_wrap');
+    const count=document.getElementById('sesiones_count');
+    if(!wrap)return;
+    if(count)count.textContent='('+sesiones.length+' '+( COACH_LANG==='en'?'workouts':'entrenos')+')';
+    if(!sesiones.length){wrap.innerHTML=`<div style="font-size:13px;color:var(--tx3)">${tc('Sin entrenos aún.')}</div>`;return;}
+    wrap.innerHTML=sesiones.map(s=>{
+      const byEx={};
+      s.series.forEach(sr=>{if(!byEx[sr.ejercicio_nombre])byEx[sr.ejercicio_nombre]=[];byEx[sr.ejercicio_nombre].push(sr);});
+      const incompleto = s.estado === 'incompleto';
+      const valoracion = s.valoracion || '';
+      // Recoger notas del cliente (una por ejercicio, la de la primera serie con nota)
+      const notasCliente = {};
+      s.series.forEach(sr=>{ if(sr.nota_cliente && !notasCliente[sr.ejercicio_nombre]) notasCliente[sr.ejercicio_nombre]=sr.nota_cliente; });
+
+      return '<div style="background:var(--s2);border:0.5px solid '+(incompleto?'rgba(245,158,11,.4)':'var(--br)')+';border-radius:10px;padding:12px;margin-bottom:8px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+          '<div><div style="font-size:14px;font-weight:700;color:var(--sv)">'+s.dia_nombre+' — '+tc(s.dia_grupo||'')+'</div>'+
+          '<div style="font-size:11px;color:var(--tx3)">'+new Date(s.fecha).toLocaleDateString(COACH_LANG==='en'?'en-GB':'es-ES',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div>'+
+          (incompleto
+            ? '<span class="badge" style="background:rgba(245,158,11,.15);color:var(--amb);border:0.5px solid rgba(245,158,11,.3)">⚠ '+tc('Incompleto')+'</span>'
+            : '<span class="badge b-gn">✓</span>')+
+          (valoracion ? '<span style="font-size:18px;margin-left:8px" title="'+valoracion+'">'+valoracion.split(' ')[0]+'</span>' : '')+
+        '</div>'+
+        Object.entries(byEx).map(([nom,srs])=>
+          '<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:700;color:var(--sv2);margin-bottom:3px">'+nom+'</div>'+
+          '<div style="display:flex;gap:5px;flex-wrap:wrap">'+srs.map(sr=>
+            '<span style="background:var(--s3);border:0.5px solid var(--br);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--sv3);font-weight:600">'+
+            sr.peso_real+'kg×'+sr.reps_real+(sr.rir!=null?' RIR'+sr.rir:'')+
+            '</span>').join('')+'</div>'+
+          (notasCliente[nom] ? '<div style="font-size:10px;color:var(--blg);margin-top:3px;font-style:italic">💬 '+notasCliente[nom]+'</div>' : '')+
+          '</div>'
+        ).join('')+'</div>';
+    }).join('');
+  }).catch(()=>{});
+
+  // Peso evolución (para tab Progreso)
+  const pesoWrap = document.getElementById('coach_peso_evolucion');
+  if(pesoWrap && c.pesos.length) {
+    pesoWrap.innerHTML = c.pesos.slice(-8).map((p,i,arr)=>{
+      const prev = arr[i-1];
+      const tendencia = prev ? (p.peso > prev.peso ? '<span style="color:#f87171">▲</span>' : '<span style="color:#86efac">▼</span>') : '';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--br)">'+
+        `<span style="font-size:12px;color:var(--tx3)">${COACH_LANG==='en'?'Wk':'Sem'} ${i+1}</span>`+
+        tendencia+
+        '<span style="font-size:14px;font-weight:700;color:var(--sv)">'+p.peso+'kg</span>'+
+        (p.grasa ? '<span style="font-size:11px;color:var(--tx3)">'+p.grasa+'% '+( COACH_LANG==='en'?'fat':'grasa')+'</span>' : '')+
+        (p.cintura ? '<span style="font-size:11px;color:var(--tx3)">'+p.cintura+'cm</span>' : '')+
+        '</div>';
+    }).join('');
+  }
 }
 
 // ═══ EDITOR ENTRENO INLINE (tab Entreno del perfil) ═════════════
@@ -3037,17 +3084,6 @@ function switchClienteTab(tab, btn) {
     api('/clientes/'+id+'/sesiones').then(sesiones=>{
       console.log('[WM Historial] Sesiones recibidas:', sesiones.length, sesiones);
       if(count) count.textContent = '('+sesiones.length+' '+(COACH_LANG==='en'?'sessions':'sesiones')+')';
-      const statsWrap = document.getElementById('historial_stats2');
-      if(statsWrap){
-        const totalSeriesAll = sesiones.reduce((acc,se)=>acc+(se.series?se.series.length:0),0);
-        const totalVol = sesiones.reduce((acc,se)=>acc+(se.series||[]).reduce((a,sr)=>a+((parseFloat(sr.peso_real)||0)*(parseInt(sr.reps_real)||0)),0),0);
-        const completas = sesiones.filter(se=>se.estado!=='incompleto').length;
-        statsWrap.innerHTML = [
-          {l:COACH_LANG==='en'?'Sessions':'Sesiones',v:sesiones.length},
-          {l:COACH_LANG==='en'?'Completed':'Completadas',v:completas},
-          {l:COACH_LANG==='en'?'Total volume':'Volumen total',v:Math.round(totalVol).toLocaleString()+' kg'},
-        ].map(x=>'<div class="mcard"><div class="mlbl">'+x.l+'</div><div class="mval">'+x.v+'</div></div>').join('');
-      }
       if(!sesiones.length){
         if(wrap) wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">Sin sesiones aún.<br><span style="font-size:11px;opacity:.5">El cliente debe completar al menos un entreno</span></div>';
         return;
@@ -3118,7 +3154,6 @@ function switchClienteTab(tab, btn) {
   }
   if(tab === 'resumen') {
     cargarSuscripcionCliente(id);
-    cargarCheckinResumen(id);
     setTimeout(() => {
       const c = window._coachClienteActual;
       if(c) aplicarMacrosCoach(c, false);
@@ -5016,6 +5051,29 @@ async function cargarMetricasAvanzadas(clienteId) {
 
     let html = '';
 
+    // ── GRÁFICA PESO CORPORAL ─────────────────────────────────────
+    if(pesos.length >= 2) {
+      const pesoData = pesos.map((p,i)=>({
+        y: p.peso,
+        label: COACH_LANG==='en'?'Wk '+(i+1):'Sem '+(i+1)
+      }));
+      const pesoInicio = pesos[0].peso;
+      const pesoActual = pesos[pesos.length-1].peso;
+      const diff = (pesoActual-pesoInicio).toFixed(1);
+      const diffColor = diff > 0 ? 'var(--gnb)' : diff < 0 ? '#fca5a5' : 'var(--tx3)';
+      html += `<div class="sec" style="margin-bottom:12px">
+        <div class="sec-hdr">⚖️ ${COACH_LANG==='en'?'Body weight evolution':'Evolución de peso corporal'}
+          <span style="font-size:11px;font-weight:600;color:${diffColor};text-transform:none;letter-spacing:0">${diff>0?'+':''}${diff}kg</span>
+        </div>
+        <div style="display:flex;gap:16px;margin-bottom:10px">
+          <div><div style="font-size:10px;color:var(--tx3)">${COACH_LANG==='en'?'Start':'Inicio'}</div><div style="font-size:16px;font-weight:700;color:var(--sv)">${pesoInicio}kg</div></div>
+          <div><div style="font-size:10px;color:var(--tx3)">${COACH_LANG==='en'?'Current':'Actual'}</div><div style="font-size:16px;font-weight:700;color:var(--blg)">${pesoActual}kg</div></div>
+          <div><div style="font-size:10px;color:var(--tx3)">${COACH_LANG==='en'?'Records':'Registros'}</div><div style="font-size:16px;font-weight:700;color:var(--sv)">${pesos.length}</div></div>
+        </div>
+        <div style="margin:0 -4px">${svgLineChart(pesoData,'#3b82f6',90)}</div>
+      </div>`;
+    }
+
     // ── GRÁFICAS 1RM EJERCICIOS PRINCIPALES ──────────────────────
     const principalesConHistorial = principales.filter(n => pesos1RMhistorial[n] && Object.keys(pesos1RMhistorial[n]).length >= 2);
     if(principalesConHistorial.length) {
@@ -5098,33 +5156,25 @@ async function cargarMetricasAvanzadas(clienteId) {
       </div>
     </div>`;
 
+    // ── CHECK-INS ─────────────────────────────────────────────────
+    try {
+      const checkins = await api('/clientes/'+clienteId+'/checkins');
+      if(checkins?.length) {
+        const ultimo = checkins[0];
+        const bar = v => '█'.repeat(Math.min(5,v||0))+'░'.repeat(5-Math.min(5,v||0));
+        html += `<div class="sec" style="margin-bottom:12px">
+          <div class="sec-hdr">${tc('📋 Último check-in del cliente')}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+            <div style="background:var(--s3);border-radius:10px;padding:10px"><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">${tc('😴 Sueño')}</div><div style="font-size:13px;color:var(--sv);letter-spacing:2px">${bar(ultimo.sueno)}</div><div style="font-size:18px;font-weight:800;color:var(--sv)">${ultimo.sueno||'—'}/5</div></div>
+            <div style="background:var(--s3);border-radius:10px;padding:10px"><div style="font-size:11px;color:var(--tx3);margin-bottom:4px">${tc('⚡ Energía')}</div><div style="font-size:13px;color:var(--sv);letter-spacing:2px">${bar(ultimo.energia)}</div><div style="font-size:18px;font-weight:800;color:var(--sv)">${ultimo.energia||'—'}/5</div></div>
+          </div>
+          ${checkins.length>1?`<div style="font-size:10px;color:var(--tx3)">${COACH_LANG==='en'?'Last':'Últimas'} ${checkins.length} ${COACH_LANG==='en'?'weeks · Avg sleep:':'semanas · Sueño medio:'} ${(checkins.reduce((a,c)=>a+(c.sueno||0),0)/checkins.length).toFixed(1)} · ${COACH_LANG==='en'?'Avg energy:':'Energía media:'} ${(checkins.reduce((a,c)=>a+(c.energia||0),0)/checkins.length).toFixed(1)}</div>`:''}
+        </div>`;
+      }
+    } catch(e){}
+
     wrap.innerHTML = html || `<div style="font-size:13px;color:var(--tx3)">${tc('Sin datos suficientes.')}</div>`;
   } catch(e) { wrap.innerHTML = `<div style="font-size:13px;color:var(--tx3)">${tc('Error cargando métricas.')}</div>`; }
-}
-
-async function cargarCheckinResumen(clienteId) {
-  const wrap = document.getElementById('coach_resumen_checkin_content');
-  if(!wrap || !clienteId) return;
-  try {
-    const checkins = await api('/clientes/'+clienteId+'/checkins');
-    if(!checkins || !checkins.length) {
-      wrap.innerHTML = `<div style="font-size:13px;color:var(--tx3)">${COACH_LANG==='en'?'No check-in yet':'Sin check-in todavía'}</div>`;
-      return;
-    }
-    const ultimo = checkins[0];
-    const bar = v => '█'.repeat(Math.min(5, v||0)) + '░'.repeat(5 - Math.min(5, v||0));
-    const fecha = ultimo.fecha ? new Date(ultimo.fecha).toLocaleDateString(COACH_LANG==='en'?'en-GB':'es-ES',{day:'numeric',month:'short',year:'2-digit'}) : '';
-    wrap.innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px">
-        <div style="background:var(--s3);border-radius:10px;padding:10px"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;font-weight:700;margin-bottom:4px">${COACH_LANG==='en'?'Sleep':'Sueño'}</div><div style="font-size:13px;color:var(--sv);letter-spacing:2px">${bar(ultimo.sueno)}</div><div style="font-size:18px;font-weight:800;color:var(--sv)">${ultimo.sueno||'—'}/5</div></div>
-        <div style="background:var(--s3);border-radius:10px;padding:10px"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;font-weight:700;margin-bottom:4px">${COACH_LANG==='en'?'Energy':'Energía'}</div><div style="font-size:13px;color:var(--sv);letter-spacing:2px">${bar(ultimo.energia)}</div><div style="font-size:18px;font-weight:800;color:var(--sv)">${ultimo.energia||'—'}/5</div></div>
-        <div style="background:var(--s3);border-radius:10px;padding:10px"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;font-weight:700;margin-bottom:4px">${COACH_LANG==='en'?'Weight':'Peso'}</div><div style="font-size:18px;font-weight:800;color:var(--blg)">${ultimo.peso?ultimo.peso+'kg':'—'}</div><div style="font-size:10px;color:var(--tx3);margin-top:2px">${fecha}</div></div>
-      </div>
-      ${checkins.length>1?`<div style="font-size:10px;color:var(--tx3)">${COACH_LANG==='en'?'Last':'Últimas'} ${checkins.length} ${COACH_LANG==='en'?'weeks · Avg sleep:':'semanas · Sueño medio:'} ${(checkins.reduce((a,c)=>a+(c.sueno||0),0)/checkins.length).toFixed(1)} · ${COACH_LANG==='en'?'Avg energy:':'Energía media:'} ${(checkins.reduce((a,c)=>a+(c.energia||0),0)/checkins.length).toFixed(1)}</div>`:''}
-    `;
-  } catch(e) {
-    wrap.innerHTML = `<div style="font-size:13px;color:var(--tx3)">${COACH_LANG==='en'?'Could not load check-in.':'No se pudo cargar el check-in.'}</div>`;
-  }
 }
 
 async function enviarAvisosVencimiento() {
@@ -5515,7 +5565,7 @@ function renderKL(){
 // ENTRENO CLIENTE (estilo Strong)
 // ═══ ENTRENO CLIENTE - ESTILO STRONG ══════════════════
 let activeInput = null; // {ei, si, field} — qué celda está activa
-let runningTimers = {}; // ei_si -> {interval, secs, total, paused}
+let runningTimers = {}; // ei_si -> {interval, secs, total, paused, endAt} — usa hora real para que no se congele al bloquear pantalla
 let workoutStartTime = null;
 let workoutTimerInt = null;
 let doneShown = false;
@@ -5570,8 +5620,8 @@ function hNotifBanner(){
   return`<div style="background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.3);border-radius:14px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
     <span style="font-size:22px;flex-shrink:0">🔔</span>
     <div style="flex:1">
-      <div style="font-size:12px;font-weight:700;color:var(--amb);margin-bottom:2px">Activa las notificaciones</div>
-      <div style="font-size:11px;color:var(--tx3)">Para que suene el timer aunque la pantalla esté bloqueada</div>
+      <div style="font-size:12px;font-weight:700;color:var(--amb);margin-bottom:2px">${t('Activa las notificaciones')}</div>
+      <div style="font-size:11px;color:var(--tx3)">${t('Para que suene el timer aunque la pantalla esté bloqueada')}</div>
     </div>
     <button onclick="activarNotificaciones(this)" style="padding:6px 12px;background:var(--amb);border:none;border-radius:8px;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">${t('Activar')}</button>
   </div>`;
@@ -5586,7 +5636,7 @@ async function activarNotificaciones(btn){
   if(ok) {
     // Confirmar que funcionó
     setTimeout(()=>{
-      try { new Notification('🐺 WolfMindset', { body: '¡Notificaciones activadas! Te avisaremos cuando termine el descanso.', icon:'/logo.png' }); } catch(e){}
+      try { new Notification('🐺 WolfMindset', { body: t('¡Notificaciones activadas! Te avisaremos cuando termine el descanso.'), icon:'/logo.png' }); } catch(e){}
     }, 500);
   }
 }
@@ -5895,7 +5945,8 @@ function hEntreno(){
     const seriesRows=e._series.map((s,si)=>{
       const timerKey=`${ei}_${si}`;
       const rt=runningTimers[timerKey];
-      const timerPct=rt?Math.round((rt.secs/rt.total)*100):0;
+      const timerSecs=rt?getTimerRemaining(rt):0;
+      const timerPct=rt?Math.round((timerSecs/rt.total)*100):0;
       return`<div class="strong-serie-wrap" id="sw_${ei}_${si}">
         <div class="strong-serie-row ${s.done?'done':''}" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px 1fr 1fr'}">
           <div class="strong-serie-num">${si+1}</div>
@@ -5908,8 +5959,8 @@ function hEntreno(){
           ${e.rir!=null?(si===e._series.length-1?`<button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='rir'?'active':''}" onclick="openKeyboard(${ei},${si},'rir')" style="font-size:13px">${s.rir_real!=null?s.rir_real:e.rir}</button>`:'<div></div>'):'<div></div>'}
         </div>
         ${s.done?`<div class="strong-timer-bar" id="tb_${ei}_${si}">
-          <div class="strong-timer-fill ${rt&&rt.secs<=10?'urg':''}" id="tf_${ei}_${si}" style="width:${timerPct}%"></div>
-          <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(rt.secs):'1:30'}</span>
+          <div class="strong-timer-fill ${rt&&timerSecs<=10?'urg':''}" id="tf_${ei}_${si}" style="width:${timerPct}%"></div>
+          <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(getTimerRemaining(rt)):'1:30'}</span>
         </div>`:''}
       </div>`;
     }).join('');
@@ -6114,8 +6165,11 @@ function kbPause(){
     if(btn)btn.textContent='⏸ Pausar';
     resumeTimer(ei,si);
   }else{
+    rt.secs = getTimerRemaining(rt);
     rt.paused=true;
     clearInterval(rt.interval);
+    cancelarNotificacionDescanso(key);
+    updateTimerBar(ei, si, rt);
     const btn=document.getElementById('kb_pause_btn');
     if(btn)btn.textContent='▶ Reanudar';
   }
@@ -6199,6 +6253,35 @@ async function guardarSesion(){
   }
 }
 
+function getTimerRemaining(rt){
+  if(!rt) return 0;
+  if(rt.paused) return Math.max(0, Math.ceil(rt.secs || 0));
+  if(rt.endAt) return Math.max(0, Math.ceil((rt.endAt - Date.now()) / 1000));
+  return Math.max(0, Math.ceil(rt.secs || 0));
+}
+
+function tickTimerInline(ei, si, key){
+  const rt = runningTimers[key];
+  if(!rt) return;
+  if(rt.paused){
+    updateTimerBar(ei, si, rt);
+    return;
+  }
+  rt.secs = getTimerRemaining(rt);
+  updateTimerBar(ei, si, rt);
+  if(rt.secs <= 0){
+    if(rt.interval) clearInterval(rt.interval);
+    delete runningTimers[key];
+    updateTimerBar(ei, si, null);
+    if(!doneShown) {
+      soundBell();
+      vibrate([150,80,150]);
+      const exNow = CD?.dias[activeDia]?.ejercicios[ei];
+      notificarDescansoTerminado(exNow?.nombre||'');
+    }
+  }
+}
+
 function startTimerInline(ei, si, total){
   // Stop ALL other running timers first
   Object.keys(runningTimers).forEach(k=>{
@@ -6213,48 +6296,40 @@ function startTimerInline(ei, si, total){
     }
   });
   const key=`${ei}_${si}`;
-  if(runningTimers[key])clearInterval(runningTimers[key].interval);
-  runningTimers[key]={secs:total, total, paused:false, interval:null};
+  if(runningTimers[key]){
+    clearInterval(runningTimers[key].interval);
+    cancelarNotificacionDescanso(key);
+  }
 
-  // Programar notificación desde el SW (funciona con pantalla bloqueada)
+  const safeTotal = Math.max(1, parseInt(total || 90, 10));
+  runningTimers[key]={secs:safeTotal, total:safeTotal, paused:false, interval:null, endAt:Date.now() + safeTotal*1000};
+
+  // Programar notificación desde el SW (mejor que setInterval cuando se bloquea la pantalla)
   const exNow = CD?.dias[activeDia]?.ejercicios[ei];
-  if(!doneShown) programarNotificacionDescanso(exNow?.nombre||'', total, key);
+  if(!doneShown) programarNotificacionDescanso(exNow?.nombre||'', safeTotal, key);
 
-  runningTimers[key].interval=setInterval(()=>{
-    const rt=runningTimers[key];
-    if(rt.paused)return;
-    rt.secs--;
-    updateTimerBar(ei,si,rt);
-    if(rt.secs<=0){
-      clearInterval(rt.interval);
-      delete runningTimers[key];
-      updateTimerBar(ei,si,null);
-      // Solo notificar si el entreno NO ha terminado aún
-      if(!doneShown) {
-        soundBell();
-        vibrate([150,80,150]);
-        const exNow2 = CD?.dias[activeDia]?.ejercicios[ei];
-        notificarDescansoTerminado(exNow2?.nombre||'');
-      }
-    }
-  },1000);
+  tickTimerInline(ei, si, key);
+  runningTimers[key].interval=setInterval(()=>tickTimerInline(ei, si, key), 1000);
 }
 
 function resumeTimer(ei,si){
   const key=`${ei}_${si}`;
   const rt=runningTimers[key];
   if(!rt)return;
-  rt.interval=setInterval(()=>{
-    if(rt.paused)return;
-    rt.secs--;
-    updateTimerBar(ei,si,rt);
-    if(rt.secs<=0){clearInterval(rt.interval);delete runningTimers[key];updateTimerBar(ei,si,null);}
-  },1000);
+  if(rt.interval) clearInterval(rt.interval);
+  rt.paused=false;
+  rt.secs=Math.max(1, getTimerRemaining(rt));
+  rt.endAt=Date.now() + rt.secs*1000;
+  const exNow = CD?.dias[activeDia]?.ejercicios[ei];
+  if(!doneShown) programarNotificacionDescanso(exNow?.nombre||'', rt.secs, key);
+  tickTimerInline(ei, si, key);
+  rt.interval=setInterval(()=>tickTimerInline(ei, si, key),1000);
 }
 
 function stopTimer(ei,si){
   const key=`${ei}_${si}`;
   if(runningTimers[key]){clearInterval(runningTimers[key].interval);delete runningTimers[key];}
+  cancelarNotificacionDescanso(key);
   updateTimerBar(ei,si,null);
 }
 
@@ -6269,10 +6344,12 @@ function updateTimerBar(ei,si,rt){
   }
   // Asegurar que la barra es visible
   if(bar)bar.style.display='flex';
-  const pct=Math.round((rt.secs/rt.total)*100);
+  const secs = getTimerRemaining(rt);
+  rt.secs = secs;
+  const pct=Math.max(0, Math.min(100, Math.round((secs/rt.total)*100)));
   fill.style.width=pct+'%';
-  fill.className='strong-timer-fill'+(rt.secs<=10?' urg':'');
-  label.textContent=fmt(rt.secs);
+  fill.className='strong-timer-fill'+(secs<=10?' urg':'');
+  label.textContent=fmt(secs);
 }
 
 function rerenderSerieRow(ei,si){
@@ -6285,7 +6362,8 @@ function rerenderSerieRow(ei,si){
   if(!row)return;
   const key=`${ei}_${si}`;
   const rt=runningTimers[key];
-  const timerPct=rt?Math.round((rt.secs/rt.total)*100):100;
+  const timerSecs=rt?getTimerRemaining(rt):0;
+  const timerPct=rt?Math.round((timerSecs/rt.total)*100):100;
   row.innerHTML=`<div class="strong-serie-row ${s.done?'done':''}" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px 1fr 1fr'}">
     <div class="strong-serie-num">${si+1}</div>
     <div class="strong-serie-prev">${s.peso||0} × ${s.reps_real||s.reps||10}</div>
@@ -6298,7 +6376,7 @@ function rerenderSerieRow(ei,si){
   </div>
   ${s.done?`<div class="strong-timer-bar" id="tb_${ei}_${si}" ${!rt?'style="display:none"':''}>
     <div class="strong-timer-fill${rt&&rt.secs<=10?' urg':''}" id="tf_${ei}_${si}" style="width:${timerPct}%"></div>
-    <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(rt.secs):fmt(e.descanso||90)}</span>
+    <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(getTimerRemaining(rt)):fmt(e.descanso||90)}</span>
   </div>`:''}`;
 }
 
@@ -8955,11 +9033,20 @@ async function pedirPermisosNotificacion(){
 }
 
 function swMsg(data){
-  if(navigator.serviceWorker?.controller){
+  if(!('serviceWorker' in navigator)) return false;
+  if(navigator.serviceWorker.controller){
     navigator.serviceWorker.controller.postMessage(data);
     return true;
   }
-  return false;
+  // En la primera carga puede estar registrado pero aún no controlar la página.
+  // Lo mandamos al SW activo cuando esté listo para no perder timers/notificaciones.
+  navigator.serviceWorker.ready
+    .then(reg => {
+      const target = reg.active || navigator.serviceWorker.controller;
+      if(target) target.postMessage(data);
+    })
+    .catch(()=>{});
+  return true;
 }
 
 function notificarDescansoTerminado(nombreEjercicio){
@@ -8980,7 +9067,13 @@ function programarNotificacionDescanso(nombreEjercicio, segundos, timerId){
   const body = nombreEjercicio
     ? (LANG==='en' ? `Next set of ${nombreEjercicio}` : `Siguiente serie de ${nombreEjercicio}`)
     : (LANG==='en' ? 'Rest done' : 'Descanso terminado');
-  swMsg({ type: 'SCHEDULE_NOTIFICATION', title, options: { body }, delay: segundos*1000, timerId });
+  swMsg({
+    type: 'SCHEDULE_NOTIFICATION',
+    title,
+    options: { body, icon:'/logo.png', badge:'/logo.png', tag:'descanso-'+timerId, renotify:true, silent:false, requireInteraction:false, vibrate:[150,80,150] },
+    delay: segundos*1000,
+    timerId
+  });
 }
 
 function cancelarNotificacionDescanso(timerId){
