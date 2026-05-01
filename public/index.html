@@ -848,7 +848,7 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
     <input id="rb_dia_grupo" data-placeholder-coach-en="E.g. Chest + Triceps..." placeholder="Ej: Pecho + Tríceps..." style="width:100%;padding:10px 12px;border:0.5px solid #27272a;border-radius:10px;background:rgba(255,255,255,.03);color:#fafafa;font-size:14px;font-family:inherit;margin-bottom:14px;box-sizing:border-box"/>
     <div style="display:flex;gap:10px">
       <button id="rb_dia_btn" onclick="rbConfirmDia()" style="flex:1;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit" data-i18n-coach="✓ Añadir día">✓ Añadir día</button>
-      <button onclick="document.getElementById('rb_dia_panel').style.display='none'" style="padding:12px 16px;border:0.5px solid #27272a;border-radius:10px;background:none;color:#a1a1aa;cursor:pointer;font-family:inherit;font-size:14px" data-i18n-coach="Cancelar">Cancelar</button>
+          <button onclick="document.getElementById('rb_dia_panel').style.display='none';document.getElementById('rb_dia_btn').textContent=tc('✓ Añadir día');document.getElementById('rb_dia_btn').onclick=rbConfirmDia;" style="padding:12px 16px;border:0.5px solid #27272a;border-radius:10px;background:none;color:#a1a1aa;cursor:pointer;font-family:inherit;font-size:14px" data-i18n-coach="Cancelar">Cancelar</button>
     </div>
   </div>
 </div>
@@ -3953,8 +3953,10 @@ async function rbLoadDias(){
     <div class="dia-card">
       <div class="dia-hdr" onclick="rbToggleDia(${d.id})">
         <div class="dia-hdr-left"><div class="dia-nombre">${d.nombre}</div><div class="dia-grupo">${tc(d.grupo)||d.grupo} · ${d.ejercicios.length}${COACH_LANG==='en'?' exercises':' ejercicios'}</div></div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button class="btn btn-sm" onclick="event.stopPropagation();rbOpenEx(${d.id},'${d.nombre}')">${COACH_LANG==='en'?'+ Exercise':'+ Ejercicio'}</button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="btn btn-sm" onclick="event.stopPropagation();rbEditDia(${d.id})" style="font-size:11px;background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.25);color:var(--blg)">✏️</button>
+          <button onclick="event.stopPropagation();rbDelDia(${d.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px;padding:2px 5px">🗑</button>
+          <button class="btn btn-sm" onclick="event.stopPropagation();rbOpenEx(${d.id},'${d.nombre.replace(/'/g,"\\'")}','${(d.grupo||'').replace(/'/g,"\\'")}')">${COACH_LANG==='en'?'+ Exercise':'+ Ejercicio'}</button>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="color:var(--tx3)"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </div>
       </div>
@@ -3966,6 +3968,17 @@ async function rbLoadDias(){
         </div>`).join('')||`<div style="font-size:12px;color:var(--tx3);padding:8px 0">${tc('Sin ejercicios aún.')}</div>`}
       </div>
     </div>`).join('');
+
+  // Botón enviar rutina al cliente
+  const totalEjercicios = c.dias.reduce((acc,d)=>acc+d.ejercicios.length,0);
+  wrap.innerHTML += `
+    <div style="margin-top:16px;padding-top:14px;border-top:0.5px solid var(--br)">
+      <button onclick="rbEnviarRutinaCliente()" class="btn" style="width:100%;padding:14px;font-size:15px;font-weight:700;background:linear-gradient(135deg,#16a34a,#15803d);border-radius:12px;letter-spacing:.01em" id="rb_btn_enviar">
+        📤 ${COACH_LANG==='en'?'Send routine to client':'Enviar rutina al cliente'}
+      </button>
+      <div style="font-size:11px;color:var(--tx3);text-align:center;margin-top:6px">${c.dias.length} ${COACH_LANG==='en'?'days':'días'} · ${totalEjercicios} ${COACH_LANG==='en'?'exercises':'ejercicios'} ${COACH_LANG==='en'?'configured':'configurados'}</div>
+      <div id="rb_enviar_msg" style="font-size:12px;text-align:center;margin-top:6px;min-height:18px"></div>
+    </div>`;
 }
 
 async function rbBuscar(){
@@ -4021,6 +4034,75 @@ async function rbBuscar(){
 }
 
 function rbToggleDia(id){rbState.diaOpen[id]=!rbState.diaOpen[id];const b=document.getElementById('dia_body_'+id);if(b)b.classList.toggle('open',rbState.diaOpen[id]);}
+
+// ── Editar nombre/grupo de un día ──────────────────────────────
+async function rbEditDia(diaId){
+  const c = await api('/clientes/'+rbState.clienteId);
+  const d = c.dias.find(x=>x.id===diaId);
+  if(!d) return;
+  const panel = document.getElementById('rb_dia_panel');
+  if(!panel) return;
+  // Precargar valores actuales
+  document.getElementById('rb_dia_nombre').value = d.nombre;
+  document.getElementById('rb_dia_grupo').value = d.grupo || '';
+  // Cambiar botón a modo editar
+  const btn = document.getElementById('rb_dia_btn');
+  btn.textContent = COACH_LANG==='en'?'✓ Save changes':'✓ Guardar cambios';
+  btn.onclick = () => rbSaveEditDia(diaId);
+  applyCoachLang(panel);
+  panel.style.cssText = 'display:flex!important;position:fixed;inset:0;background:rgba(9,9,11,.95);z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:20px';
+}
+
+async function rbSaveEditDia(diaId){
+  const n = document.getElementById('rb_dia_nombre').value.trim();
+  const g = document.getElementById('rb_dia_grupo').value.trim();
+  if(!n||!g) return;
+  const btn = document.getElementById('rb_dia_btn');
+  btn.textContent = COACH_LANG==='en'?'Saving...':'Guardando...'; btn.disabled = true;
+  try {
+    await api('/dias/'+diaId,{method:'PUT',body:JSON.stringify({nombre:n,grupo:g})});
+    document.getElementById('rb_dia_panel').style.display='none';
+    document.getElementById('rb_dia_nombre').value='';
+    document.getElementById('rb_dia_grupo').value='';
+    // Restaurar botón a modo añadir para la próxima vez
+    btn.textContent = tc('✓ Añadir día'); btn.disabled=false;
+    btn.onclick = rbConfirmDia;
+    await rbLoadDias();
+  } catch(e){ btn.textContent='Error'; btn.disabled=false; }
+}
+
+async function rbDelDia(diaId){
+  if(!confirm(COACH_LANG==='en'?'Delete this day and all its exercises?':'¿Eliminar este día y todos sus ejercicios?')) return;
+  try {
+    await api('/dias/'+diaId,{method:'DELETE'});
+    await rbLoadDias();
+  } catch(e){ alert('Error al eliminar'); }
+}
+
+// ── Enviar rutina al cliente (notificación push + mensaje) ──────
+async function rbEnviarRutinaCliente(){
+  const btn = document.getElementById('rb_btn_enviar');
+  const msg = document.getElementById('rb_enviar_msg');
+  if(!rbState.clienteId){ if(msg) msg.textContent=COACH_LANG==='en'?'Select a client first':'Selecciona un cliente primero'; return; }
+  if(btn){ btn.disabled=true; btn.textContent='⏳ '+(COACH_LANG==='en'?'Sending...':'Enviando...'); }
+  try {
+    const c = await api('/clientes/'+rbState.clienteId);
+    const resumen = c.dias.map(d=>`${d.nombre} (${d.grupo||''}) · ${d.ejercicios.length} ej.`).join(' | ');
+    const mensaje = COACH_LANG==='en'
+      ? `📋 New routine ready for you! ${c.dias.length} training days: ${resumen}`
+      : `📋 ¡Tu nueva rutina está lista! ${c.dias.length} días de entreno: ${resumen}`;
+    await api('/notificaciones/coach',{method:'POST',body:JSON.stringify({tipo:'rutina_enviada',mensaje,cliente_id:rbState.clienteId})});
+    if(btn){ btn.disabled=false; btn.textContent='✓ '+(COACH_LANG==='en'?'Routine sent!':'¡Rutina enviada!'); btn.style.background='#15803d'; }
+    if(msg){ msg.style.color='#86efac'; msg.textContent=COACH_LANG==='en'?`Sent to ${c.nombre}`:`Enviada a ${c.nombre}`; }
+    setTimeout(()=>{
+      if(btn){ btn.textContent='📤 '+(COACH_LANG==='en'?'Send routine to client':'Enviar rutina al cliente'); btn.style.background=''; btn.disabled=false; }
+      if(msg) msg.textContent='';
+    }, 3000);
+  } catch(e){
+    if(btn){ btn.disabled=false; btn.textContent='📤 '+(COACH_LANG==='en'?'Send routine to client':'Enviar rutina al cliente'); }
+    if(msg){ msg.style.color='#f87171'; msg.textContent='Error al enviar'; }
+  }
+}
 
 function rbAddDia(){
   const panel = document.getElementById('rb_dia_panel');
