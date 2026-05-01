@@ -364,42 +364,17 @@ router.post('/ia/chat', async (req, res) => {
 });
 
 router.post('/ia/foto', async (req, res) => {
-  const { imageBase64, mediaType, system, extraImages } = req.body;
+  const { imageBase64, mediaType, system } = req.body;
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'API key no configurada en Railway Variables' });
-  if (!imageBase64 || !mediaType) return res.status(400).json({ error: 'Falta imagen para analizar' });
-
   try {
-    const content = [
-      { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }
-    ];
-
-    (extraImages || []).forEach(f => {
-      if (f && f.b64 && f.mt) {
-        content.push({ type: 'text', text: `Foto adicional: ${f.tipo || 'progreso'}` });
-        content.push({ type: 'image', source: { type: 'base64', media_type: f.mt, data: f.b64 } });
-      }
-    });
-
-    content.push({
-      type: 'text',
-      text: 'Valora el progreso físico. Sé profesional, motivador y concreto. Analiza mejoras visibles, puntos fuertes y recomendaciones prácticas. No diagnostiques enfermedades ni des porcentajes exactos si no hay datos suficientes.'
-    });
-
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 1000, system, messages: [{ role: 'user', content }] })
+      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 800, system, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }, { type: 'text', text: 'Valora el progreso fisico.' }] }] })
     });
-
     const data = await response.json();
-    if (data.error) return res.status(500).json({ error: data.error.message || 'Error IA foto' });
-    const reply = data.content && data.content[0] && data.content[0].text;
-    if (!reply) return res.status(500).json({ error: 'La IA no devolvió respuesta' });
-    res.json({ reply });
-  } catch(e) {
-    res.status(500).json({ error: e.message || 'Error IA foto' });
-  }
+    res.json({ reply: data.content[0].text });
+  } catch(e) { res.status(500).json({ error: 'Error IA foto' }); }
 });
 
 // ── COMPARAR DOS SEMANAS DE FOTOS (Coach → IA → Mensaje editable) ──────────
