@@ -358,51 +358,23 @@ router.post('/ia/chat', async (req, res) => {
       body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 4000, system, messages })
     });
     const data = await response.json();
-    if (!response.ok || data.error) return res.status(response.status || 500).json({ error: data.error?.message || 'Error comparando fotos' });
-    const reply = data.content && data.content[0] && data.content[0].text;
-    if (!reply) return res.status(500).json({ error: 'La IA no devolvió texto de análisis' });
-    res.json({ reply });
+    if (data.error) return res.status(500).json({ error: data.error.message });
+    res.json({ reply: data.content[0].text });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/ia/foto', async (req, res) => {
-  const { imageBase64, mediaType, system, extraImages } = req.body;
+  const { imageBase64, mediaType, system } = req.body;
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'API key no configurada en Railway Variables' });
-  if (!imageBase64 || !mediaType) return res.status(400).json({ error: 'No se recibió imagen válida para analizar' });
-
   try {
-    const content = [
-      { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }
-    ];
-
-    if (Array.isArray(extraImages)) {
-      extraImages.forEach((img, idx) => {
-        if (img && img.b64 && img.mt) {
-          content.push({ type: 'text', text: `Foto adicional ${img.tipo || idx + 2}:` });
-          content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } });
-        }
-      });
-    }
-
-    content.push({ type: 'text', text: 'Valora el progreso fisico. Da una respuesta clara, útil y motivadora para el cliente.' });
-
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || 'claude-opus-4-5', max_tokens: 900, system, messages: [{ role: 'user', content }] })
+      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 800, system, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }, { type: 'text', text: 'Valora el progreso fisico.' }] }] })
     });
-
     const data = await response.json();
-    if (!response.ok || data.error) {
-      return res.status(response.status || 500).json({ error: data.error?.message || 'Error IA foto' });
-    }
-    const reply = data.content && data.content[0] && data.content[0].text;
-    if (!reply) return res.status(500).json({ error: 'La IA no devolvió texto de análisis' });
-    res.json({ reply });
-  } catch(e) {
-    res.status(500).json({ error: e.message || 'Error IA foto' });
-  }
+    res.json({ reply: data.content[0].text });
+  } catch(e) { res.status(500).json({ error: 'Error IA foto' }); }
 });
 
 // ── COMPARAR DOS SEMANAS DE FOTOS (Coach → IA → Mensaje editable) ──────────
@@ -410,25 +382,22 @@ router.post('/ia/comparar-fotos', coachOnly, async (req, res) => {
   const { fotosAntes, fotosDespues, clienteNombre, objetivo, nivel, semanaAntes, semanaDespues, lang, pedirGrasa, peso, altura, edad, sexo } = req.body;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
-  const fotosValidasDespues = Array.isArray(fotosDespues) ? fotosDespues.filter(f => f && f.b64 && f.mt) : [];
-  const fotosValidasAntes = Array.isArray(fotosAntes) ? fotosAntes.filter(f => f && f.b64 && f.mt) : [];
-  if (!fotosValidasDespues.length) return res.status(400).json({ error: 'No se recibieron fotos válidas en base64 para analizar' });
 
   try {
     const isEn = lang === 'en';
     const content = [];
 
     // Fotos "antes" (solo si hay)
-    if (fotosValidasAntes.length) {
+    if (fotosAntes && fotosAntes.length) {
       content.push({ type: 'text', text: isEn ? `Week ${semanaAntes} (BEFORE):` : `Semana ${semanaAntes} (ANTES):` });
-      for (const f of fotosValidasAntes) {
+      for (const f of fotosAntes) {
         if (f.b64 && f.mt) content.push({ type: 'image', source: { type: 'base64', media_type: f.mt, data: f.b64 } });
       }
     }
 
     // Fotos "después"
     content.push({ type: 'text', text: isEn ? `Week ${semanaDespues} (NOW):` : `Semana ${semanaDespues} (AHORA):` });
-    for (const f of fotosValidasDespues) {
+    for (const f of (fotosDespues || [])) {
       if (f.b64 && f.mt) content.push({ type: 'image', source: { type: 'base64', media_type: f.mt, data: f.b64 } });
     }
 
@@ -439,7 +408,7 @@ router.post('/ia/comparar-fotos', coachOnly, async (req, res) => {
       sexo   ? (isEn ? `Sex: ${sexo}`         : `Sexo: ${sexo}`)     : ''
     ].filter(Boolean).join(' · ');
 
-    const hayComparativa = fotosValidasAntes.length > 0;
+    const hayComparativa = fotosAntes && fotosAntes.length > 0;
 
     const instruccion = isEn
       ? `${hayComparativa ? 'Compare the BEFORE and NOW photos' : 'Analyze the physique'} of ${clienteNombre} (Goal: ${objetivo}, Level: ${nivel}${clienteInfo ? ', ' + clienteInfo : ''}).
@@ -462,7 +431,7 @@ Tono: directo, cercano, como un coach real que lo conoce personalmente. Sin mark
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || 'claude-opus-4-5', max_tokens: 700, system, messages: [{ role: 'user', content }] })
+      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 700, system, messages: [{ role: 'user', content }] })
     });
 
     const data = await response.json();
