@@ -203,53 +203,87 @@
       <div class="form-lbl" id="lbl_reg_foods_like" style="margin-top:0">Alimentos que prefiero para mi dieta</div>
       <div style="font-size:11px;color:var(--tx3);line-height:1.45;margin:-2px 0 9px" id="reg_foods_like_help">Marca los alimentos que sueles comer. Tu coach los verá al crear tu dieta.</div>
       <input type="hidden" id="reg_alimentos_pref" value=""/>
-      <div class="reg-food-cat" style="font-size:10px;color:var(--tx3);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:8px 0 6px">🥩 Proteínas</div>
+
+      <!-- 🥩 PROTEÍNAS -->
+      <div class="reg-food-cat" style="font-size:10px;color:var(--tx3);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:8px 0 6px">
+        🥩 <span data-reg-i18n-es="Proteínas" data-reg-i18n-en="Proteins">Proteínas</span>
+      </div>
       <div class="reg-chip-row" data-reg-food-group="proteinas">
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Pollo (pechuga)')">Pollo</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Pavo')">Pavo</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Salmón')">Salmón</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Atún')">Atún</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Merluza')">Merluza</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Huevos enteros')">Huevos</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Claras de huevo')">Claras</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Whey protein')">Whey</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Yogur proteico')">Yogur proteico</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Pollo" data-reg-i18n-en="Chicken" onclick="regToggleFoodChipBilingual(this,'Pollo (pechuga)','Chicken breast')">Pollo</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Muslo pollo" data-reg-i18n-en="Chicken thigh" onclick="regToggleFoodChipBilingual(this,'Muslo de pollo','Chicken thigh')">Muslo pollo</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Pavo" data-reg-i18n-en="Turkey" onclick="regToggleFoodChipBilingual(this,'Pavo','Turkey')">Pavo</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Ternera" data-reg-i18n-en="Lean beef" onclick="regToggleFoodChipBilingual(this,'Ternera magra','Lean beef')">Ternera</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Cerdo" data-reg-i18n-en="Pork" onclick="regToggleFoodChipBilingual(this,'Cerdo (aguja)','Pork shoulder')">Cerdo</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Salmón" data-reg-i18n-en="Salmon" onclick="regToggleFoodChipBilingual(this,'Salmón','Salmon')">Salmón</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Atún" data-reg-i18n-en="Tuna" onclick="regToggleFoodChipBilingual(this,'Atún','Tuna')">Atún</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Merluza" data-reg-i18n-en="Hake" onclick="regToggleFoodChipBilingual(this,'Merluza','Hake')">Merluza</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Dorada" data-reg-i18n-en="Sea bream" onclick="regToggleFoodChipBilingual(this,'Dorada','Sea bream')">Dorada</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Bacalao" data-reg-i18n-en="Cod" onclick="regToggleFoodChipBilingual(this,'Bacalao','Cod')">Bacalao</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Gambas" data-reg-i18n-en="Prawns" onclick="regToggleFoodChipBilingual(this,'Gambas','Prawns')">Gambas</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Huevos" data-reg-i18n-en="Eggs" onclick="regToggleFoodChipBilingual(this,'Huevos enteros','Whole eggs')">Huevos</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Claras" data-reg-i18n-en="Egg whites" onclick="regToggleFoodChipBilingual(this,'Claras de huevo','Egg whites')">Claras</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Whey" data-reg-i18n-en="Whey" onclick="regToggleFoodChipBilingual(this,'Whey protein','Whey protein')">Whey</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Caseína" data-reg-i18n-en="Casein" onclick="regToggleFoodChipBilingual(this,'Caseína','Casein')">Caseína</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Yogur proteico" data-reg-i18n-en="Greek yogurt" onclick="regToggleFoodChipBilingual(this,'Yogur proteico','Greek yogurt')">Yogur proteico</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Requesón" data-reg-i18n-en="Ricotta" onclick="regToggleFoodChipBilingual(this,'Requesón','Ricotta')">Requesón</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Jamón cocido" data-reg-i18n-en="Cooked ham" onclick="regToggleFoodChipBilingual(this,'Jamón cocido 95%','Cooked ham 95%')">Jamón cocido</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Fiambre pavo" data-reg-i18n-en="Turkey slices" onclick="regToggleFoodChipBilingual(this,'Fiambre pavo 95%','Turkey slices 95%')">Fiambre pavo</button>
       </div>
-      <div class="reg-food-cat" style="font-size:10px;color:var(--tx3);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px">🌾 Carbos</div>
+
+      <!-- 🌾 CARBOHIDRATOS -->
+      <div class="reg-food-cat" style="font-size:10px;color:var(--tx3);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px">
+        🌾 <span data-reg-i18n-es="Carbohidratos" data-reg-i18n-en="Carbohydrates">Carbohidratos</span>
+      </div>
       <div class="reg-chip-row" data-reg-food-group="carbos">
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Arroz')">Arroz</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Pasta')">Pasta</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Patata')">Patata</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Batata')">Batata</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Avena')">Avena</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Pan integral')">Pan integral</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Tortitas de arroz')">Tortitas</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Arroz blanco" data-reg-i18n-en="White rice" onclick="regToggleFoodChipBilingual(this,'Arroz blanco','White rice')">Arroz blanco</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Arroz integral" data-reg-i18n-en="Brown rice" onclick="regToggleFoodChipBilingual(this,'Arroz integral','Brown rice')">Arroz integral</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Pasta blanca" data-reg-i18n-en="White pasta" onclick="regToggleFoodChipBilingual(this,'Pasta','White pasta')">Pasta blanca</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Pasta integral" data-reg-i18n-en="Wholegrain pasta" onclick="regToggleFoodChipBilingual(this,'Pasta integral','Wholegrain pasta')">Pasta integral</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Patata" data-reg-i18n-en="Potato" onclick="regToggleFoodChipBilingual(this,'Patata','Potato')">Patata</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Boniato" data-reg-i18n-en="Sweet potato" onclick="regToggleFoodChipBilingual(this,'Boniato','Sweet potato')">Boniato</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Avena" data-reg-i18n-en="Oats" onclick="regToggleFoodChipBilingual(this,'Avena','Oats')">Avena</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Pan integral" data-reg-i18n-en="Wholegrain bread" onclick="regToggleFoodChipBilingual(this,'Pan integral','Wholegrain bread')">Pan integral</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Tortitas arroz" data-reg-i18n-en="Rice cakes" onclick="regToggleFoodChipBilingual(this,'Tortitas de arroz','Rice cakes')">Tortitas arroz</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Quinoa" data-reg-i18n-en="Quinoa" onclick="regToggleFoodChipBilingual(this,'Quinoa','Quinoa')">Quinoa</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Lentejas" data-reg-i18n-en="Lentils" onclick="regToggleFoodChipBilingual(this,'Lentejas','Lentils')">Lentejas</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Garbanzos" data-reg-i18n-en="Chickpeas" onclick="regToggleFoodChipBilingual(this,'Garbanzos','Chickpeas')">Garbanzos</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Maíz" data-reg-i18n-en="Corn" onclick="regToggleFoodChipBilingual(this,'Maíz','Corn')">Maíz</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Plátano" data-reg-i18n-en="Banana" onclick="regToggleFoodChipBilingual(this,'Plátano','Banana')">Plátano</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Manzana" data-reg-i18n-en="Apple" onclick="regToggleFoodChipBilingual(this,'Manzana','Apple')">Manzana</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Frutos rojos" data-reg-i18n-en="Berries" onclick="regToggleFoodChipBilingual(this,'Frutos rojos','Berries')">Frutos rojos</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Naranja" data-reg-i18n-en="Orange" onclick="regToggleFoodChipBilingual(this,'Naranja','Orange')">Naranja</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Mango" data-reg-i18n-en="Mango" onclick="regToggleFoodChipBilingual(this,'Mango','Mango')">Mango</button>
       </div>
-      <div class="reg-food-cat" style="font-size:10px;color:var(--tx3);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px">🥑 Grasas / extras</div>
+
+      <!-- 🥑 GRASAS -->
+      <div class="reg-food-cat" style="font-size:10px;color:var(--tx3);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px">
+        🥑 <span data-reg-i18n-es="Grasas" data-reg-i18n-en="Fats">Grasas</span>
+      </div>
       <div class="reg-chip-row" data-reg-food-group="grasas">
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Aceite de oliva')">Aceite oliva</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Aguacate')">Aguacate</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Frutos secos')">Frutos secos</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Queso fresco 0%')">Queso fresco 0%</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Yogur griego 0% azucar')">Yogur griego 0%</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Aceite oliva" data-reg-i18n-en="Olive oil" onclick="regToggleFoodChipBilingual(this,'Aceite de oliva','Olive oil')">Aceite oliva</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Aguacate" data-reg-i18n-en="Avocado" onclick="regToggleFoodChipBilingual(this,'Aguacate','Avocado')">Aguacate</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Nueces" data-reg-i18n-en="Walnuts" onclick="regToggleFoodChipBilingual(this,'Nueces','Walnuts')">Nueces</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Almendras" data-reg-i18n-en="Almonds" onclick="regToggleFoodChipBilingual(this,'Almendras','Almonds')">Almendras</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Anacardos" data-reg-i18n-en="Cashews" onclick="regToggleFoodChipBilingual(this,'Anacardos','Cashews')">Anacardos</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Cacahuetes" data-reg-i18n-en="Peanuts" onclick="regToggleFoodChipBilingual(this,'Cacahuetes','Peanuts')">Cacahuetes</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Crema cacahuete" data-reg-i18n-en="Peanut butter" onclick="regToggleFoodChipBilingual(this,'Crema de cacahuete','Peanut butter')">Crema cacahuete</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Queso fresco 0%" data-reg-i18n-en="Fat-free cheese" onclick="regToggleFoodChipBilingual(this,'Queso fresco 0%','Fat-free fresh cheese')">Queso fresco 0%</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Queso gouda" data-reg-i18n-en="Gouda cheese" onclick="regToggleFoodChipBilingual(this,'Queso gouda','Gouda cheese')">Queso gouda</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Yogur griego 0%" data-reg-i18n-en="Greek yogurt 0%" onclick="regToggleFoodChipBilingual(this,'Yogur griego 0% azucar','Greek yogurt 0% sugar')">Yogur griego 0%</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Leche entera" data-reg-i18n-en="Whole milk" onclick="regToggleFoodChipBilingual(this,'Leche entera','Whole milk')">Leche entera</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Guacamole" data-reg-i18n-en="Guacamole" onclick="regToggleFoodChipBilingual(this,'Guacamole','Guacamole')">Guacamole</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Semillas chía" data-reg-i18n-en="Chia seeds" onclick="regToggleFoodChipBilingual(this,'Semillas de chía','Chia seeds')">Semillas chía</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Semillas lino" data-reg-i18n-en="Flax seeds" onclick="regToggleFoodChipBilingual(this,'Semillas de lino','Flax seeds')">Semillas lino</button>
+        <button type="button" class="reg-food-chip" data-reg-i18n-es="Aceite coco" data-reg-i18n-en="Coconut oil" onclick="regToggleFoodChipBilingual(this,'Aceite de coco','Coconut oil')">Aceite coco</button>
       </div>
-      <div class="reg-food-cat" style="font-size:10px;color:var(--tx3);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px">🥦 Verduras / frutas</div>
-      <div class="reg-chip-row" data-reg-food-group="verfruta">
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Brócoli')">Brócoli</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Calabacín')">Calabacín</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Ensalada')">Ensalada</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Judías verdes')">Judías</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Plátano')">Plátano</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Manzana')">Manzana</button>
-        <button type="button" class="reg-food-chip" onclick="regToggleFoodChip(this,'Frutos rojos')">Frutos rojos</button>
-      </div>
+
       <input class="finp" id="reg_alimentos_extra" data-placeholder-en="Other foods you like..." data-placeholder-es="Otros alimentos que te gustan..." placeholder="Otros alimentos que te gustan..." style="margin-top:10px;margin-bottom:10px"/>
       <div class="form-lbl" id="lbl_reg_meals">¿Cuántas comidas quieres hacer al día?</div>
       <select class="finp" id="reg_num_comidas" style="margin-bottom:0">
-        <option value="3">3 comidas</option>
-        <option value="4" selected>4 comidas</option>
-        <option value="5">5 comidas</option>
-        <option value="6">6 comidas</option>
+        <option value="3" data-en="3 meals" data-es="3 comidas">3 comidas</option>
+        <option value="4" selected data-en="4 meals" data-es="4 comidas">4 comidas</option>
+        <option value="5" data-en="5 meals" data-es="5 comidas">5 comidas</option>
+        <option value="6" data-en="6 meals" data-es="6 comidas">6 comidas</option>
       </select>
     </div>
 
