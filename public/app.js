@@ -1,5 +1,3 @@
-
-
 /* ─────────────────────────────────────────────────────────────
    Extracted from public/index.html - Phase 2 JS split
    Keep loaded with: <script src="/app.js"></script>
@@ -3197,20 +3195,24 @@ function rbRenderTarjetas(clientes){
   const grid=document.getElementById('rb_cl_grid');
   if(!grid)return;
   if(!clientes.length){grid.innerHTML=`<div style="font-size:13px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div>`;return;}
-  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e3a5f','#374151'];
+  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e40af','#374151'];
   const selId=document.getElementById('rb_cl')?.value;
   grid.innerHTML=clientes.map((c,i)=>{
     const initials=(c.nombre||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
     const col=colors[i%colors.length];
     const objetivo=c.objetivo||'—';
+    const nivel=c.nivel||'';
     const semanas=c.semanas_activo!=null?c.semanas_activo+(COACH_LANG==='en'?' wk':' sem'):'';
     const sel=String(c.id)===String(selId);
-    return`<div onclick="rbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:14px;padding:13px 11px 11px;cursor:pointer;transition:.15s;position:relative;">
-      <div style="width:38px;height:38px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;margin-bottom:9px;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em">${initials}</div>
-      <div style="font-size:13px;font-weight:600;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${c.nombre}</div>
-      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${objetivo}</div>
-      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(37,99,235,.12);color:var(--blg);border:0.5px solid rgba(59,130,246,.2)">${semanas}</span>`:''}
-      ${sel?`<div style="position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
+    const avatarHtml=c.foto_perfil
+      ?`<img src="${c.foto_perfil}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.innerHTML='<span style=\\'display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:15px;font-weight:700;color:#fff;font-family:Bebas Neue,sans-serif\\'>${initials}</span>'">`
+      :`<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:15px;font-weight:700;color:#fff;font-family:'Bebas Neue',sans-serif">${initials}</span>`;
+    return`<div onclick="rbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:16px;padding:14px 12px 12px;cursor:pointer;transition:.15s;position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:0">
+      <div style="width:54px;height:54px;border-radius:50%;background:${col};overflow:hidden;margin-bottom:8px;border:2px solid ${sel?'var(--bl)':'rgba(255,255,255,.08)'};flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.35)">${avatarHtml}</div>
+      <div style="font-size:13px;font-weight:700;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;margin-bottom:2px">${c.nombre}</div>
+      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%">${objetivo}${nivel?' · '+nivel:''}</div>
+      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 9px;border-radius:20px;background:rgba(37,99,235,.15);color:var(--blg);border:0.5px solid rgba(59,130,246,.25)">${semanas}</span>`:''}
+      ${sel?`<div style="position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(37,99,235,.5)"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
     </div>`;
   }).join('');
 }
@@ -3903,20 +3905,24 @@ function dbRenderTarjetas(clientes){
   const grid=document.getElementById('db_cl_grid');
   if(!grid)return;
   if(!clientes.length){grid.innerHTML=`<div style="font-size:13px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No clients yet.':'Sin clientes aún.'}</div>`;return;}
-  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e3a5f','#374151'];
+  const colors=['#1e3a5f','#14532d','#4a1942','#7c2d12','#1e40af','#374151'];
   const selId=document.getElementById('db_cl')?.value;
   grid.innerHTML=clientes.map((c,i)=>{
     const initials=(c.nombre||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
     const col=colors[i%colors.length];
     const objetivo=c.objetivo||'—';
+    const nivel=c.nivel||'';
     const semanas=c.semanas_activo!=null?c.semanas_activo+(COACH_LANG==='en'?' wk':' sem'):'';
     const sel=String(c.id)===String(selId);
-    return`<div onclick="dbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:14px;padding:13px 11px 11px;cursor:pointer;transition:.15s;position:relative;">
-      <div style="width:38px;height:38px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;margin-bottom:9px;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em">${initials}</div>
-      <div style="font-size:13px;font-weight:600;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${c.nombre}</div>
-      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${objetivo}</div>
-      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(37,99,235,.12);color:var(--blg);border:0.5px solid rgba(59,130,246,.2)">${semanas}</span>`:''}
-      ${sel?`<div style="position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
+    const avatarHtml=c.foto_perfil
+      ?`<img src="${c.foto_perfil}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.innerHTML='<span style=\\'display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:15px;font-weight:700;color:#fff;font-family:Bebas Neue,sans-serif\\'>${initials}</span>'">`
+      :`<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:15px;font-weight:700;color:#fff;font-family:'Bebas Neue',sans-serif">${initials}</span>`;
+    return`<div onclick="dbSelTarjeta(${c.id},this)" data-id="${c.id}" style="background:var(--s2);border:${sel?'2px solid var(--bl)':'0.5px solid var(--br)'};border-radius:16px;padding:14px 12px 12px;cursor:pointer;transition:.15s;position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:0">
+      <div style="width:54px;height:54px;border-radius:50%;background:${col};overflow:hidden;margin-bottom:8px;border:2px solid ${sel?'var(--bl)':'rgba(255,255,255,.08)'};flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.35)">${avatarHtml}</div>
+      <div style="font-size:13px;font-weight:700;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;margin-bottom:2px">${c.nombre}</div>
+      <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%">${objetivo}${nivel?' · '+nivel:''}</div>
+      ${semanas?`<span style="font-size:10px;font-weight:600;padding:2px 9px;border-radius:20px;background:rgba(37,99,235,.15);color:var(--blg);border:0.5px solid rgba(59,130,246,.25)">${semanas}</span>`:''}
+      ${sel?`<div style="position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(37,99,235,.5)"><svg width="9" height="9" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`:''}
     </div>`;
   }).join('');
 }
