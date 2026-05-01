@@ -653,6 +653,7 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
         <button class="sni on" onclick="cNav('clientes',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 13c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="5" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M14 13c0-1.86-.93-3.5-2.34-4.47" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span data-i18n-coach="Clientes">Clientes</span></button>
         <button class="sni" onclick="cNav('rutinas',this)"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M5 8h6M5 5h4M5 11h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span data-i18n-coach="Crear rutina">Crear rutina</span></button>
         <button class="sni" onclick="cNav('dieta-builder',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2v3M5 4c0 2.5 1 4 3 4s3-1.5 3-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M4 8h8l-1 6H5L4 8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span data-i18n-coach="Crear dieta">Crear dieta</span></button>
+        <button class="sni" onclick="cNav('nuevo',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="6" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M1 14c0-3.31 2.69-6 6-6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 10v4M10 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-i18n-coach="Nuevo cliente">Nuevo cliente</span></button>
         <button class="sni" id="sni_pendientes" onclick="cNav('pendientes',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span data-i18n-coach="Pendientes">Pendientes</span> <span id="badge_pend" style="display:none;background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px">0</span></button>
         <button class="sni" id="sni_mensajes" onclick="cNav('mensajes',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 3h12a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 2V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span data-i18n-coach="Mensajes">Mensajes</span> <span id="badge_msgs" style="display:none;background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px">0</span></button>
         <button class="sni" onclick="cNav('progreso',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n-coach="Progreso">Progreso</span></button>
@@ -711,6 +712,7 @@ document.addEventListener('DOMContentLoaded', () => { setRegLang(_regLang); });
     <button class="bni" id="cbni2" onclick="cNavM('dieta-builder',this)"><svg viewBox="0 0 20 20" fill="none"><path d="M10 3v4M7 5c0 3 1 5 3 5s3-2 3-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5 10h10l-1.5 7h-7L5 10z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span class="bni-lbl" data-i18n="Dieta">Dieta</span></button>
     <button class="bni" onclick="cNavM('pendientes',this)"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="bni-lbl" data-i18n-coach="Solicitudes">Solicitudes</span></button>
     <button class="bni" id="cbni_msgs" onclick="cNavM('mensajes',this)" style="position:relative"><svg viewBox="0 0 20 20" fill="none"><path d="M3 4h14a1 1 0 011 1v8a1 1 0 01-1 1H6l-3 2V5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span class="bni-lbl" data-i18n-coach="Mensajes">Mensajes</span><span id="badge_msgs_m" style="display:none;position:absolute;top:2px;right:8px;background:#ef4444;color:#fff;font-size:8px;font-weight:700;border-radius:50%;width:14px;height:14px;line-height:14px;text-align:center">0</span></button>
+    <button class="bni" id="cbni3" onclick="cNavM('nuevo',this)"><svg viewBox="0 0 20 20" fill="none"><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M2 17c0-4 3.13-7 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M15 12v6M12 15h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="bni-lbl" data-i18n-coach="+ Cliente">+ Cliente</span></button>
     <button class="bni" onclick="doLogout()"><svg viewBox="0 0 20 20" fill="none"><path d="M8 3H5a1 1 0 00-1 1v12a1 1 0 001 1h3M13 14l3-4-3-4M16 10H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="bni-lbl" data-i18n="Salir">Salir</span></button>
   </div>
 </div>
@@ -2534,7 +2536,7 @@ async function renderCoach(s){
 }
 
 function hClientes(cl){
-  if(!cl.length)return`<div style="text-align:center;padding:60px 20px;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">👤</div><div style="font-size:15px;font-weight:600;color:var(--sv2)">${tc('Sin clientes aún')}</div><div style="font-size:13px;margin-top:6px">${COACH_LANG==='en'?'Create your first client from here.':'Crea tu primer cliente desde aquí.'}</div><button class="btn" style="margin-top:16px;padding:11px 18px" onclick="abrirNuevoClienteDesdeClientes()">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button></div>`;
+  if(!cl.length)return`<div style="text-align:center;padding:60px 20px;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">👤</div><div style="font-size:15px;font-weight:600;color:var(--sv2)">${tc('Sin clientes aún')}</div><div style="font-size:13px;margin-top:6px">${tc('Crea el primero desde "Nuevo cliente"')}</div></div>`;
 
   // Colores por coach — el coach actual siempre es azul, otros son púrpura
   const coachColors = {
@@ -2561,14 +2563,6 @@ function hClientes(cl){
   const otroCoachNombre = Object.values(coachColors).find((v,i) => i > 0)?.label || 'Partner';
 
   return`
-  <div class="flb" style="margin-bottom:14px;gap:10px;align-items:center">
-    <div>
-      <div style="font-size:11px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.08em">${tc('Clientes')}</div>
-      <div style="font-size:13px;color:var(--sv2);margin-top:3px">${COACH_LANG==='en'?'Manage and add clients from this section.':'Gestiona y añade clientes desde este apartado.'}</div>
-    </div>
-    <button class="btn btn-sm" onclick="abrirNuevoClienteDesdeClientes()" style="white-space:nowrap">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button>
-  </div>
-
   <!-- Stats -->
   <div class="g3" style="margin-bottom:14px">
     <div class="mcard"><div class="mlbl">${tc('Total')}</div><div class="mval">${cl.length}</div></div>
@@ -2614,15 +2608,6 @@ function filtrarClientes(filtro){
   if(window._clientesCache) {
     document.getElementById('cContent').innerHTML = hClientes(window._clientesCache);
   }
-}
-
-function abrirNuevoClienteDesdeClientes(){
-  const title=document.getElementById('cTitle');
-  if(title) title.textContent=tc('Clientes');
-  const el=document.getElementById('cContent');
-  if(!el) return;
-  el.innerHTML = `<div class="back-lnk" onclick="renderCoach('clientes')"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>${COACH_LANG==='en'?'Back to clients':'Volver a clientes'}</div>` + hNuevo();
-  setTimeout(()=>{ applyCoachLang(document.getElementById('cContent')); },50);
 }
 
 async function verCliente(id){
@@ -3893,45 +3878,6 @@ function hRutinas(){return`
         <div id="rb_ex_lista" style="width:100%"></div>
       </div>
     </div>
-    <div class="sec" style="margin-bottom:12px;background:rgba(34,197,94,.04);border-color:rgba(34,197,94,.2)">
-      <div class="sec-hdr" style="color:var(--gnb)">🏋️ ${COACH_LANG==='en'?'Create custom exercise':'Crear mi ejercicio'}</div>
-      <div style="font-size:13px;color:var(--tx3);margin-bottom:12px">${COACH_LANG==='en'?'Add exercises not in the library with your own photo/image.':'Añade ejercicios personalizados con tu propia foto o imagen.'}</div>
-      <div class="g2" style="gap:8px;margin-bottom:10px">
-        <div>
-          <div class="form-lbl">${COACH_LANG==='en'?'Name':'Nombre'} *</div>
-          <input class="inp" id="cex_nombre" placeholder="${COACH_LANG==='en'?'E.g. Pendlay Row':'Ej: Remo Pendlay'}" style="margin-bottom:0"/>
-        </div>
-        <div>
-          <div class="form-lbl">${COACH_LANG==='en'?'Muscle group':'Grupo muscular'} *</div>
-          <select class="inp" id="cex_grupo" style="margin-bottom:0">
-            <option value="">— ${COACH_LANG==='en'?'Select':'Seleccionar'} —</option>
-            <option>Chest</option><option>Back</option><option>Shoulders</option><option>Biceps</option><option>Triceps</option><option>Legs</option><option>Abs</option><option>Cardio</option><option>Full Body</option>
-          </select>
-        </div>
-        <div>
-          <div class="form-lbl">${COACH_LANG==='en'?'Muscles worked':'Músculos'}</div>
-          <input class="inp" id="cex_musculos" placeholder="${COACH_LANG==='en'?'E.g. Chest, Triceps':'Ej: Pecho, Tríceps'}" style="margin-bottom:0"/>
-        </div>
-        <div>
-          <div class="form-lbl">${COACH_LANG==='en'?'Equipment':'Equipo'}</div>
-          <input class="inp" id="cex_equipo" placeholder="${COACH_LANG==='en'?'Barbell, Dumbbell...':'Barra, Mancuerna...'}" style="margin-bottom:0"/>
-        </div>
-      </div>
-      <!-- Subida de imagen desde PC -->
-      <div class="form-lbl">${COACH_LANG==='en'?'Exercise photo (from your PC)':'Foto del ejercicio (desde tu PC)'}</div>
-      <label id="cex_img_label" style="display:block;cursor:pointer;margin-bottom:10px">
-        <div id="cex_img_preview" style="width:100%;height:120px;border:1.5px dashed rgba(34,197,94,.4);border-radius:12px;background:var(--s2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:.2s;overflow:hidden">
-          <span style="font-size:28px">📷</span>
-          <span style="font-size:12px;color:var(--tx3);font-weight:600">${COACH_LANG==='en'?'Tap to select image':'Toca para seleccionar imagen'}</span>
-          <span style="font-size:10px;color:var(--tx3)">${COACH_LANG==='en'?'JPG, PNG, WEBP':'JPG, PNG, WEBP'}</span>
-        </div>
-        <input type="file" id="cex_img_input" accept="image/*" style="display:none" onchange="cexPreviewImg(this)"/>
-      </label>
-      <button class="btn" style="width:100%;padding:12px;background:#166534;color:#86efac" onclick="cexGuardar()" id="cex_btn">
-        ✓ ${COACH_LANG==='en'?'Save exercise to library':'Guardar ejercicio en biblioteca'}
-      </button>
-      <div id="cex_msg" style="margin-top:8px;font-size:12px;text-align:center"></div>
-    </div>
     <div class="sec" style="margin-bottom:12px;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.2)">
       <div class="sec-hdr">🤖 ${COACH_LANG==='en'?'Generate full routine with AI':'Generar rutina completa con IA'}</div>
       <div style="font-size:13px;color:var(--tx3);margin-bottom:10px">${COACH_LANG==='en'?'AI generates the full week automatically for the selected client.':'La IA genera toda la semana automáticamente para el cliente seleccionado.'}</div>
@@ -3946,64 +3892,6 @@ async function initRutinas(){
   rbRenderTarjetas(cl);
   // Load saved exercise configs
   try{ window.exConfig=await api('/ejercicios-config'); }catch(e){ window.exConfig={}; }
-}
-
-// ── CREAR EJERCICIO PERSONALIZADO CON FOTO ──────────────────
-let _cexImgData = null; // {b64, mt}
-
-function cexPreviewImg(input){
-  const file = input.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e){
-    const dataUrl = e.target.result;
-    _cexImgData = { b64: dataUrl.split(',')[1], mt: file.type||'image/jpeg' };
-    const preview = document.getElementById('cex_img_preview');
-    if(preview){
-      preview.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:10px"/>`;
-      preview.style.border = '1.5px solid rgba(34,197,94,.5)';
-    }
-  };
-  reader.readAsDataURL(file);
-}
-
-async function cexGuardar(){
-  const nombre = document.getElementById('cex_nombre')?.value.trim();
-  const grupo  = document.getElementById('cex_grupo')?.value;
-  const musculos = document.getElementById('cex_musculos')?.value.trim()||'';
-  const equipo   = document.getElementById('cex_equipo')?.value.trim()||'';
-  const msg = document.getElementById('cex_msg');
-  const btn = document.getElementById('cex_btn');
-  if(!nombre){ if(msg) msg.innerHTML='<span style="color:#fca5a5">⚠️ '+(COACH_LANG==='en'?'Name is required':'El nombre es obligatorio')+'</span>'; return; }
-  if(!grupo){  if(msg) msg.innerHTML='<span style="color:#fca5a5">⚠️ '+(COACH_LANG==='en'?'Select a muscle group':'Selecciona un grupo muscular')+'</span>'; return; }
-  btn.disabled=true; btn.textContent=COACH_LANG==='en'?'Saving...':'Guardando...';
-  try {
-    // 1. Crear ejercicio en la base de datos
-    await api('/ejercicios-db-add',{method:'POST',body:JSON.stringify({nombre,grupo,musculos,tipo:'Fuerza',dificultad:'Intermedio',equipo})});
-    // 2. Si hay imagen, subirla
-    if(_cexImgData){
-      await api('/ejercicios-config/'+encodeURIComponent(nombre)+'/imagen',{
-        method:'POST',
-        body:JSON.stringify({imagen_base64:_cexImgData.b64, media_type:_cexImgData.mt})
-      });
-      // Refresh local config cache
-      try{ window.exConfig=await api('/ejercicios-config'); }catch(e){}
-    }
-    if(msg) msg.innerHTML='<span style="color:var(--gnb)">✓ '+(COACH_LANG==='en'?'Exercise saved! Now searchable in the library.':'¡Ejercicio guardado! Ya aparece en la biblioteca.')+'</span>';
-    // Reset form
-    document.getElementById('cex_nombre').value='';
-    document.getElementById('cex_grupo').value='';
-    document.getElementById('cex_musculos').value='';
-    document.getElementById('cex_equipo').value='';
-    _cexImgData=null;
-    const preview = document.getElementById('cex_img_preview');
-    if(preview){ preview.innerHTML='<span style="font-size:28px">📷</span><span style="font-size:12px;color:var(--tx3);font-weight:600">'+(COACH_LANG==='en'?'Tap to select image':'Toca para seleccionar imagen')+'</span>'; preview.style.border='1.5px dashed rgba(34,197,94,.4)'; }
-    // Refresh exercise list if a dia is open
-    if(rbState.diaId) rbBuscar();
-  } catch(e){
-    if(msg) msg.innerHTML='<span style="color:#fca5a5">⚠️ '+(e?.error||e?.message||'Error')+'</span>';
-  }
-  btn.disabled=false; btn.textContent='✓ '+(COACH_LANG==='en'?'Save exercise to library':'Guardar ejercicio en biblioteca');
 }
 
 function rbRenderTarjetas(clientes){
@@ -4059,10 +3947,8 @@ async function rbLoadDias(){
     <div class="dia-card">
       <div class="dia-hdr" onclick="rbToggleDia(${d.id})">
         <div class="dia-hdr-left"><div class="dia-nombre">${d.nombre}</div><div class="dia-grupo">${tc(d.grupo)||d.grupo} · ${d.ejercicios.length}${COACH_LANG==='en'?' exercises':' ejercicios'}</div></div>
-        <div style="display:flex;align-items:center;gap:6px">
+        <div style="display:flex;align-items:center;gap:8px">
           <button class="btn btn-sm" onclick="event.stopPropagation();rbOpenEx(${d.id},'${d.nombre}')">${COACH_LANG==='en'?'+ Exercise':'+ Ejercicio'}</button>
-          <button onclick="event.stopPropagation();rbEditDia(${d.id},'${d.nombre.replace(/'/g,"\\'")}','${(d.grupo||'').replace(/'/g,"\\'")}')" style="padding:5px 8px;background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);border-radius:7px;color:var(--blg);cursor:pointer;font-size:12px;font-weight:600;font-family:inherit" title="${COACH_LANG==='en'?'Edit day':'Editar día'}">✏️</button>
-          <button onclick="event.stopPropagation();rbDelDia(${d.id},'${d.nombre.replace(/'/g,"\\'")}')" style="padding:5px 8px;background:rgba(239,68,68,.08);border:0.5px solid rgba(239,68,68,.2);border-radius:7px;color:#fca5a5;cursor:pointer;font-size:12px;font-family:inherit" title="${COACH_LANG==='en'?'Delete day':'Eliminar día'}">🗑</button>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="color:var(--tx3)"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </div>
       </div>
@@ -4152,48 +4038,6 @@ async function rbConfirmDia(){
     btn.textContent=tc('✓ Añadir día'); btn.disabled=false;
     await rbLoadDias();
   } catch(e) { btn.textContent='Error'; btn.disabled=false; }
-}
-
-function rbEditDia(diaId, nombre, grupo){
-  // Reutilizamos el panel existente en modo edición
-  const panel = document.getElementById('rb_dia_panel');
-  if(!panel) return;
-  applyCoachLang(panel);
-  document.getElementById('rb_dia_nombre').value = nombre;
-  document.getElementById('rb_dia_grupo').value = grupo;
-  const btn = document.getElementById('rb_dia_btn');
-  btn.textContent = COACH_LANG==='en'?'✓ Save changes':'✓ Guardar cambios';
-  btn.onclick = () => rbSaveEditDia(diaId);
-  panel.style.cssText = 'display:flex!important;position:fixed;inset:0;background:rgba(9,9,11,.95);z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:20px';
-}
-
-async function rbSaveEditDia(diaId){
-  const n = document.getElementById('rb_dia_nombre').value.trim();
-  const g = document.getElementById('rb_dia_grupo').value.trim();
-  if(!n||!g) return;
-  const btn = document.getElementById('rb_dia_btn');
-  btn.textContent = COACH_LANG==='en'?'Saving...':'Guardando...'; btn.disabled=true;
-  try {
-    await api('/dias/'+diaId, {method:'PUT', body:JSON.stringify({nombre:n, grupo:g})});
-    document.getElementById('rb_dia_panel').style.display='none';
-    document.getElementById('rb_dia_nombre').value='';
-    document.getElementById('rb_dia_grupo').value='';
-    btn.textContent = tc('✓ Añadir día');
-    btn.onclick = rbConfirmDia;
-    btn.disabled=false;
-    await rbLoadDias();
-  } catch(e){ btn.textContent='Error'; btn.disabled=false; }
-}
-
-async function rbDelDia(diaId, nombre){
-  const msg = COACH_LANG==='en'
-    ? `Delete day "${nombre}" and all its exercises? This cannot be undone.`
-    : `¿Eliminar el día "${nombre}" y todos sus ejercicios? Esta acción no se puede deshacer.`;
-  if(!confirm(msg)) return;
-  try {
-    await api('/dias/'+diaId, {method:'DELETE'});
-    await rbLoadDias();
-  } catch(e){ alert(COACH_LANG==='en'?'Error deleting day':'Error al eliminar el día'); }
 }
 
 function rbOpenEx(diaId,diaNombre){
@@ -5706,7 +5550,7 @@ function renderKL(){
 // ENTRENO CLIENTE (estilo Strong)
 // ═══ ENTRENO CLIENTE - ESTILO STRONG ══════════════════
 let activeInput = null; // {ei, si, field} — qué celda está activa
-let runningTimers = {}; // ei_si -> {interval, secs, total, paused, endAt} — usa hora real para que no se congele al bloquear pantalla
+let runningTimers = {}; // ei_si -> {interval, secs, total, paused}
 let workoutStartTime = null;
 let workoutTimerInt = null;
 let doneShown = false;
@@ -5761,8 +5605,8 @@ function hNotifBanner(){
   return`<div style="background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.3);border-radius:14px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
     <span style="font-size:22px;flex-shrink:0">🔔</span>
     <div style="flex:1">
-      <div style="font-size:12px;font-weight:700;color:var(--amb);margin-bottom:2px">${t('Activa las notificaciones')}</div>
-      <div style="font-size:11px;color:var(--tx3)">${t('Para que suene el timer aunque la pantalla esté bloqueada')}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--amb);margin-bottom:2px">Activa las notificaciones</div>
+      <div style="font-size:11px;color:var(--tx3)">Para que suene el timer aunque la pantalla esté bloqueada</div>
     </div>
     <button onclick="activarNotificaciones(this)" style="padding:6px 12px;background:var(--amb);border:none;border-radius:8px;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">${t('Activar')}</button>
   </div>`;
@@ -5777,7 +5621,7 @@ async function activarNotificaciones(btn){
   if(ok) {
     // Confirmar que funcionó
     setTimeout(()=>{
-      try { new Notification('🐺 WolfMindset', { body: t('¡Notificaciones activadas! Te avisaremos cuando termine el descanso.'), icon:'/logo.png' }); } catch(e){}
+      try { new Notification('🐺 WolfMindset', { body: '¡Notificaciones activadas! Te avisaremos cuando termine el descanso.', icon:'/logo.png' }); } catch(e){}
     }, 500);
   }
 }
@@ -6086,8 +5930,7 @@ function hEntreno(){
     const seriesRows=e._series.map((s,si)=>{
       const timerKey=`${ei}_${si}`;
       const rt=runningTimers[timerKey];
-      const timerSecs=rt?getTimerRemaining(rt):0;
-      const timerPct=rt?Math.round((timerSecs/rt.total)*100):0;
+      const timerPct=rt?Math.round((rt.secs/rt.total)*100):0;
       return`<div class="strong-serie-wrap" id="sw_${ei}_${si}">
         <div class="strong-serie-row ${s.done?'done':''}" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px 1fr 1fr'}">
           <div class="strong-serie-num">${si+1}</div>
@@ -6100,8 +5943,8 @@ function hEntreno(){
           ${e.rir!=null?(si===e._series.length-1?`<button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='rir'?'active':''}" onclick="openKeyboard(${ei},${si},'rir')" style="font-size:13px">${s.rir_real!=null?s.rir_real:e.rir}</button>`:'<div></div>'):'<div></div>'}
         </div>
         ${s.done?`<div class="strong-timer-bar" id="tb_${ei}_${si}">
-          <div class="strong-timer-fill ${rt&&timerSecs<=10?'urg':''}" id="tf_${ei}_${si}" style="width:${timerPct}%"></div>
-          <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(getTimerRemaining(rt)):'1:30'}</span>
+          <div class="strong-timer-fill ${rt&&rt.secs<=10?'urg':''}" id="tf_${ei}_${si}" style="width:${timerPct}%"></div>
+          <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(rt.secs):'1:30'}</span>
         </div>`:''}
       </div>`;
     }).join('');
@@ -6306,11 +6149,8 @@ function kbPause(){
     if(btn)btn.textContent='⏸ Pausar';
     resumeTimer(ei,si);
   }else{
-    rt.secs = getTimerRemaining(rt);
     rt.paused=true;
     clearInterval(rt.interval);
-    cancelarNotificacionDescanso(key);
-    updateTimerBar(ei, si, rt);
     const btn=document.getElementById('kb_pause_btn');
     if(btn)btn.textContent='▶ Reanudar';
   }
@@ -6394,35 +6234,6 @@ async function guardarSesion(){
   }
 }
 
-function getTimerRemaining(rt){
-  if(!rt) return 0;
-  if(rt.paused) return Math.max(0, Math.ceil(rt.secs || 0));
-  if(rt.endAt) return Math.max(0, Math.ceil((rt.endAt - Date.now()) / 1000));
-  return Math.max(0, Math.ceil(rt.secs || 0));
-}
-
-function tickTimerInline(ei, si, key){
-  const rt = runningTimers[key];
-  if(!rt) return;
-  if(rt.paused){
-    updateTimerBar(ei, si, rt);
-    return;
-  }
-  rt.secs = getTimerRemaining(rt);
-  updateTimerBar(ei, si, rt);
-  if(rt.secs <= 0){
-    if(rt.interval) clearInterval(rt.interval);
-    delete runningTimers[key];
-    updateTimerBar(ei, si, null);
-    if(!doneShown) {
-      soundBell();
-      vibrate([150,80,150]);
-      const exNow = CD?.dias[activeDia]?.ejercicios[ei];
-      notificarDescansoTerminado(exNow?.nombre||'');
-    }
-  }
-}
-
 function startTimerInline(ei, si, total){
   // Stop ALL other running timers first
   Object.keys(runningTimers).forEach(k=>{
@@ -6437,40 +6248,48 @@ function startTimerInline(ei, si, total){
     }
   });
   const key=`${ei}_${si}`;
-  if(runningTimers[key]){
-    clearInterval(runningTimers[key].interval);
-    cancelarNotificacionDescanso(key);
-  }
+  if(runningTimers[key])clearInterval(runningTimers[key].interval);
+  runningTimers[key]={secs:total, total, paused:false, interval:null};
 
-  const safeTotal = Math.max(1, parseInt(total || 90, 10));
-  runningTimers[key]={secs:safeTotal, total:safeTotal, paused:false, interval:null, endAt:Date.now() + safeTotal*1000};
-
-  // Programar notificación desde el SW (mejor que setInterval cuando se bloquea la pantalla)
+  // Programar notificación desde el SW (funciona con pantalla bloqueada)
   const exNow = CD?.dias[activeDia]?.ejercicios[ei];
-  if(!doneShown) programarNotificacionDescanso(exNow?.nombre||'', safeTotal, key);
+  if(!doneShown) programarNotificacionDescanso(exNow?.nombre||'', total, key);
 
-  tickTimerInline(ei, si, key);
-  runningTimers[key].interval=setInterval(()=>tickTimerInline(ei, si, key), 1000);
+  runningTimers[key].interval=setInterval(()=>{
+    const rt=runningTimers[key];
+    if(rt.paused)return;
+    rt.secs--;
+    updateTimerBar(ei,si,rt);
+    if(rt.secs<=0){
+      clearInterval(rt.interval);
+      delete runningTimers[key];
+      updateTimerBar(ei,si,null);
+      // Solo notificar si el entreno NO ha terminado aún
+      if(!doneShown) {
+        soundBell();
+        vibrate([150,80,150]);
+        const exNow2 = CD?.dias[activeDia]?.ejercicios[ei];
+        notificarDescansoTerminado(exNow2?.nombre||'');
+      }
+    }
+  },1000);
 }
 
 function resumeTimer(ei,si){
   const key=`${ei}_${si}`;
   const rt=runningTimers[key];
   if(!rt)return;
-  if(rt.interval) clearInterval(rt.interval);
-  rt.paused=false;
-  rt.secs=Math.max(1, getTimerRemaining(rt));
-  rt.endAt=Date.now() + rt.secs*1000;
-  const exNow = CD?.dias[activeDia]?.ejercicios[ei];
-  if(!doneShown) programarNotificacionDescanso(exNow?.nombre||'', rt.secs, key);
-  tickTimerInline(ei, si, key);
-  rt.interval=setInterval(()=>tickTimerInline(ei, si, key),1000);
+  rt.interval=setInterval(()=>{
+    if(rt.paused)return;
+    rt.secs--;
+    updateTimerBar(ei,si,rt);
+    if(rt.secs<=0){clearInterval(rt.interval);delete runningTimers[key];updateTimerBar(ei,si,null);}
+  },1000);
 }
 
 function stopTimer(ei,si){
   const key=`${ei}_${si}`;
   if(runningTimers[key]){clearInterval(runningTimers[key].interval);delete runningTimers[key];}
-  cancelarNotificacionDescanso(key);
   updateTimerBar(ei,si,null);
 }
 
@@ -6485,12 +6304,10 @@ function updateTimerBar(ei,si,rt){
   }
   // Asegurar que la barra es visible
   if(bar)bar.style.display='flex';
-  const secs = getTimerRemaining(rt);
-  rt.secs = secs;
-  const pct=Math.max(0, Math.min(100, Math.round((secs/rt.total)*100)));
+  const pct=Math.round((rt.secs/rt.total)*100);
   fill.style.width=pct+'%';
-  fill.className='strong-timer-fill'+(secs<=10?' urg':'');
-  label.textContent=fmt(secs);
+  fill.className='strong-timer-fill'+(rt.secs<=10?' urg':'');
+  label.textContent=fmt(rt.secs);
 }
 
 function rerenderSerieRow(ei,si){
@@ -6503,8 +6320,7 @@ function rerenderSerieRow(ei,si){
   if(!row)return;
   const key=`${ei}_${si}`;
   const rt=runningTimers[key];
-  const timerSecs=rt?getTimerRemaining(rt):0;
-  const timerPct=rt?Math.round((timerSecs/rt.total)*100):100;
+  const timerPct=rt?Math.round((rt.secs/rt.total)*100):100;
   row.innerHTML=`<div class="strong-serie-row ${s.done?'done':''}" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px 1fr 1fr'}">
     <div class="strong-serie-num">${si+1}</div>
     <div class="strong-serie-prev">${s.peso||0} × ${s.reps_real||s.reps||10}</div>
@@ -6517,7 +6333,7 @@ function rerenderSerieRow(ei,si){
   </div>
   ${s.done?`<div class="strong-timer-bar" id="tb_${ei}_${si}" ${!rt?'style="display:none"':''}>
     <div class="strong-timer-fill${rt&&rt.secs<=10?' urg':''}" id="tf_${ei}_${si}" style="width:${timerPct}%"></div>
-    <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(getTimerRemaining(rt)):fmt(e.descanso||90)}</span>
+    <span class="strong-timer-label" id="tl_${ei}_${si}">${rt?fmt(rt.secs):fmt(e.descanso||90)}</span>
   </div>`:''}`;
 }
 
@@ -9174,20 +8990,11 @@ async function pedirPermisosNotificacion(){
 }
 
 function swMsg(data){
-  if(!('serviceWorker' in navigator)) return false;
-  if(navigator.serviceWorker.controller){
+  if(navigator.serviceWorker?.controller){
     navigator.serviceWorker.controller.postMessage(data);
     return true;
   }
-  // En la primera carga puede estar registrado pero aún no controlar la página.
-  // Lo mandamos al SW activo cuando esté listo para no perder timers/notificaciones.
-  navigator.serviceWorker.ready
-    .then(reg => {
-      const target = reg.active || navigator.serviceWorker.controller;
-      if(target) target.postMessage(data);
-    })
-    .catch(()=>{});
-  return true;
+  return false;
 }
 
 function notificarDescansoTerminado(nombreEjercicio){
@@ -9208,13 +9015,7 @@ function programarNotificacionDescanso(nombreEjercicio, segundos, timerId){
   const body = nombreEjercicio
     ? (LANG==='en' ? `Next set of ${nombreEjercicio}` : `Siguiente serie de ${nombreEjercicio}`)
     : (LANG==='en' ? 'Rest done' : 'Descanso terminado');
-  swMsg({
-    type: 'SCHEDULE_NOTIFICATION',
-    title,
-    options: { body, icon:'/logo.png', badge:'/logo.png', tag:'descanso-'+timerId, renotify:true, silent:false, requireInteraction:false, vibrate:[150,80,150] },
-    delay: segundos*1000,
-    timerId
-  });
+  swMsg({ type: 'SCHEDULE_NOTIFICATION', title, options: { body }, delay: segundos*1000, timerId });
 }
 
 function cancelarNotificacionDescanso(timerId){
@@ -10210,12 +10011,41 @@ async function uploadFotoTipo(event, tipo){
   reader.readAsDataURL(file);
 }
 
+function getFotosAnalisisDisponibles(){
+  // 1) Fotos subidas en esta sesión (antes de recargar)
+  const subidas = Object.entries(_fotosSubidas||{}).filter(([tipo,f]) => f && f.b64 && f.mt);
+  if(subidas.length) return subidas;
+
+  // 2) Fallback seguro: usar las últimas fotos ya guardadas en el cliente
+  const fotosGuardadas = (CD?.fotos||[]).filter(f => f && f.url && String(f.url).startsWith('data:'));
+  if(!fotosGuardadas.length) return [];
+
+  // Analizar la última fecha disponible, no todas las fotos antiguas
+  const fechas = [...new Set(fotosGuardadas.map(f => (f.fecha ? String(f.fecha).split('T')[0].split(' ')[0] : 'sin_fecha')))].sort();
+  const ultimaFecha = fechas[fechas.length-1];
+  const ultimas = fotosGuardadas.filter(f => (f.fecha ? String(f.fecha).split('T')[0].split(' ')[0] : 'sin_fecha') === ultimaFecha);
+
+  return ultimas.map(f => {
+    const full = String(f.url);
+    const mt = (full.split(';')[0]||'').split(':')[1] || 'image/jpeg';
+    const b64 = full.includes(',') ? full.split(',')[1] : '';
+    return [f.tipo||'frente', { b64, mt, url: full, id: f.id }];
+  }).filter(([tipo,f]) => f.b64 && f.mt);
+}
+
 async function analizarFotos(){
   const btn = document.getElementById('btn_analizar_fotos');
-  const fotos = Object.entries(_fotosSubidas);
-  if(!fotos.length) return;
+  const fotos = getFotosAnalisisDisponibles();
+  if(!fotos.length){
+    const msg = COACH_LANG==='en'
+      ? 'Upload or save at least one progress photo before analyzing.'
+      : 'Sube o guarda al menos una foto de progreso antes de analizar.';
+    const box = document.getElementById('fAn');
+    if(box) box.innerHTML = `<div style="padding:10px 14px;background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.3);border-radius:8px;font-size:12px;color:var(--amb);margin:0 14px">⚠️ ${msg}</div>`;
+    return;
+  }
 
-  btn.textContent = '⏳ Analizando...'; btn.disabled = true;
+  btn.textContent = COACH_LANG==='en'?'⏳ Analyzing...':'⏳ Analizando...'; btn.disabled = true;
 
   document.getElementById('fLoad').style.display='block';
   document.getElementById('fAn').innerHTML='';
