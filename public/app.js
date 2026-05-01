@@ -5236,7 +5236,11 @@ function abrirDescripcion(nombre){
   const desc = EX_DESCRIPCIONES[nombre];
   const emoji = getExerciseEmoji(nombre);
   const bg = getExerciseBg(nombre);
-  const imgUrl = (window.exConfig&&window.exConfig[nombre]?.imagen_url)||'';
+  // Get imagen_url from the exercise object in CD if available (client doesn't have exConfig)
+  let imgUrl = (window.exConfig&&window.exConfig[nombre]?.imagen_url)||'';
+  if(!imgUrl && CD && CD.dias){
+    CD.dias.forEach(d=>d.ejercicios.forEach(e=>{ if(e.nombre===nombre && e.imagen_url) imgUrl=e.imagen_url; }));
+  }
 
   // Cache de instrucciones traducidas
   const exTransKey = 'ex_trans_'+nombre.replace(/[^a-zA-Z0-9]/g,'_');
@@ -5264,8 +5268,8 @@ function abrirDescripcion(nombre){
     <div style="flex:1;overflow-y:auto;padding:16px">
       <div style="width:100%;border-radius:14px;overflow:hidden;margin-bottom:16px;background:${bg}">
         ${imgUrl
-          ? `<div style="width:100%;height:200px;display:flex;align-items:center;justify-content:center;background:#0d1520">
-               <img src="${imgUrl}" style="max-width:100%;max-height:200px;object-fit:contain" onerror="this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:200px\'>${emoji}</div>'"/>
+          ? `<div style="width:100%;display:flex;align-items:center;justify-content:center;background:#0d1520;border-radius:14px">
+               <img src="${imgUrl}" style="width:100%;object-fit:contain;border-radius:14px" onerror="this.parentElement.style.display='none'"/>
              </div>`
           : `<div style="padding:16px;display:flex;gap:12px;align-items:flex-start">
                <div style="flex-shrink:0;width:80px">${getMuscleMapSVG(nombre)}</div>
