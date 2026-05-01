@@ -1553,10 +1553,24 @@ function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.re
 
 // Exercise images - local /ex/ folder (downloaded on server start)
 function getWgerImg(nombre){
+  // Priority: custom uploaded image in exConfig > static GIF
+  if(window.exConfig && window.exConfig[nombre]?.imagen_url) return window.exConfig[nombre].imagen_url;
   const safeName = nombre.toLowerCase().replace(/[^a-z0-9]+/g,'-');
   return '/ex/' + safeName + '.gif';
 }
 function getExerciseIcon(nombre){ return getWgerImg(nombre); }
+// Helper to render exercise image box (used everywhere)
+function renderExImg(nombre, size=44, grupo=''){
+  const url = getWgerImg(nombre);
+  const bg = EX_GROUP_COLORS[grupo||EX_GROUP_MAP[nombre]||'Chest'] || 'var(--s3)';
+  const emoji = EX_GROUP_EMOJI[grupo||EX_GROUP_MAP[nombre]||'Chest'] || '💪';
+  const isCustom = window.exConfig && window.exConfig[nombre]?.imagen_url;
+  const isGif = !isCustom; // static gif may 404, use onerror fallback
+  return `<div style="width:${size}px;height:${size}px;border-radius:${size>40?'10':'7'}px;overflow:hidden;background:${bg};flex-shrink:0;display:flex;align-items:center;justify-content:center">
+    <img src="${url}" style="width:${size}px;height:${size}px;object-fit:cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" loading="lazy"/>
+    <span style="display:none;font-size:${size>40?22:16}px;width:100%;height:100%;align-items:center;justify-content:center">${emoji}</span>
+  </div>`;
+}
 const EX_GROUP_COLORS={'Chest':'#1e3a5f','Back':'#2d1b69','Shoulders':'#064e3b','Biceps':'#14532d','Triceps':'#450a0a','Legs':'#0c1a2e','Abs':'#431407'};
 const EX_GROUP_EMOJI={'Chest':'🫁','Back':'🔙','Shoulders':'🏋️','Biceps':'💪','Triceps':'🦾','Legs':'🦵','Abs':'🎯'};
 const EX_GROUP_MAP={
@@ -3127,7 +3141,7 @@ function hRutinas(){return`
           <div class="form-lbl">${COACH_LANG==='en'?'Muscles worked':'Músculos trabajados'}</div>
           <input class="inp" id="new_ex_musculos" placeholder="${COACH_LANG==='en'?'E.g. Upper chest, triceps, front delts':'Ej: Pectoral superior, tríceps, deltoide anterior'}"/>
           <div class="form-lbl">${COACH_LANG==='en'?'Custom image or GIF URL':'URL de imagen o GIF personalizado'}</div>
-          <div style="display:flex;gap:6px;align-items:center"><input class="inp" id="new_ex_imagen" placeholder="https://..." style="flex:1;margin:0"/><label style="padding:7px 10px;background:var(--s3);color:var(--tx3);border:0.5px solid var(--br);border-radius:7px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:4px;white-space:nowrap">📁 <input type="file" accept="image/*" style="display:none" onchange="subirImagenNuevoEjercicio(this)"/></label></div>
+          <input class="inp" id="new_ex_imagen" placeholder="https://..."/>
           <button class="btn" style="width:100%;padding:12px;background:#166534;color:#86efac" onclick="crearEjercicioManual()">${COACH_LANG==='en'?'Create exercise':'Crear ejercicio'}</button>
           <div id="new_ex_msg" style="font-size:12px;margin-top:8px;min-height:18px;color:var(--tx3)"></div>
         </div>
@@ -3295,7 +3309,7 @@ async function rbLoadDias(){
       </div>
       <div class="dia-body ${rbState.diaOpen[d.id]?'open':''}" id="dia_body_${d.id}">
         ${d.ejercicios.map(e=>`<div class="ex-row">
-          <div class="ex-row-img" style="background:${EX_COLORS[e.musculos?.split(',')[0]?.trim()]||'var(--s3)'}">${EX_EMOJIS[e.musculos?.includes('Cuád')?'Piernas':e.musculos?.includes('Dorsal')?'Espalda':'Pecho']||'💪'}</div>
+          ${renderExImg(e.nombre, 44, e.grupo||EX_GROUP_MAP[e.nombre]||'')}
           <div class="ex-row-info"><div class="ex-row-nombre">${e.nombre}</div><div class="ex-row-detail">${e.series}×${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''} · ${e.descanso}s${e.rir!=null?' · RIR '+e.rir:''}</div>${e.es_principal?`<span style="font-size:10px;color:var(--amb);font-weight:700">⭐ Principal</span>`:''}${e.nota_coach?`<div style="font-size:10px;color:var(--amb);font-weight:600;margin-top:2px">📝 ${e.nota_coach}</div>`:''}</div>
           <div style="display:flex;gap:4px"><button onclick="rbEditEx(${e.id})" style="background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);border-radius:6px;color:var(--blg);cursor:pointer;font-size:12px;padding:4px 8px;font-weight:600">✏️</button><button onclick="rbDelEx(${e.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:16px;padding:4px">✕</button></div>
         </div>`).join('')||`<div style="font-size:12px;color:var(--tx3);padding:8px 0">${tc('Sin ejercicios aún.')}</div>`}
@@ -3343,10 +3357,7 @@ async function rbBuscar(){
       const isCaution=rbExFilter?cautionMap[e.nombre]||null:null;
       const hasYt=window.exConfig&&window.exConfig[e.nombre]&&window.exConfig[e.nombre].youtube_url;
       return `<div style="display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:0.5px solid rgba(39,39,42,.4);cursor:${isAvoid?'not-allowed':'pointer'};${isAvoid?'opacity:.6;background:rgba(239,68,68,.05)':isCaution?'background:rgba(245,158,11,.04)':''}" ${!isAvoid?`onclick="rbAddEx('${e.nombre.replace(/'/g,"\'")}','${e.musculos.replace(/'/g,"\'")}')"`:''}>
-        <div style="width:48px;height:48px;border-radius:10px;overflow:hidden;background:${EX_COLORS[e.grupo]||'var(--s3)'};flex-shrink:0;display:flex;align-items:center;justify-content:center">
-          <img data-exname="${e.nombre}" src="${getWgerImg(e.nombre)||''}" style="width:48px;height:48px;object-fit:cover;${getWgerImg(e.nombre)?'':'display:none'}" onerror="this.style.display='none'"/>
-          ${!getWgerImg(e.nombre)?`<span style="font-size:22px">${EX_EMOJIS[e.grupo]||'💪'}</span>`:''}
-        </div>
+        ${renderExImg(e.nombre, 48, e.grupo)}
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
             <span style="font-size:14px;font-weight:700;color:${isAvoid?'#fca5a5':isCaution?'var(--amb)':'var(--sv)'}">${e.nombre}</span>
@@ -5169,7 +5180,7 @@ function hPreviewDia(i){
     const imgUrl = e.imagen_url || (window.exConfig&&window.exConfig[e.nombre]?.imagen_url) || '';
     const bg = getExerciseBg(e.nombre);
     return`<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--br)">
-
+      ${renderExImg(e.nombre, 44, e.grupo||EX_GROUP_MAP[e.nombre]||'')}
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:2px">${e.nombre}</div>
         <div style="font-size:12px;color:var(--tx3)">${e.series} × ${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''}</div>
@@ -5324,8 +5335,9 @@ function hEntreno(){
 
     return`<div class="strong-ex-card ${exDone?'done-ex':''}" id="exc_${ei}">
       <div class="strong-ex-header">
-        <div style="flex:1">
-          <div style="display:flex;align-items:center;gap:6px">
+        ${renderExImg(e.nombre, 52, e.grupo||EX_GROUP_MAP[e.nombre]||'')}
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${t(e.grupo||'')||''}</div>
             ${e.es_principal?`<span style="font-size:10px;background:rgba(245,158,11,.2);color:var(--amb);padding:1px 6px;border-radius:4px;font-weight:700">⭐ Principal</span>`:''}
             ${e.rir!=null?`<span style="font-size:10px;background:rgba(59,130,246,.15);color:var(--blg);padding:1px 6px;border-radius:4px;font-weight:700">RIR: ${e.rir}</span>`:''}
@@ -7644,9 +7656,8 @@ async function filtrarEjerciciosGestor(){
       </div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:4px">${e.nombre} <span style="font-size:10px;color:var(--tx3);font-weight:400">${e.grupo}</span></div>
-        <div style="display:flex;gap:6px;align-items:center">
+        <div style="display:flex;gap:6px">
           <input id="img_url_${e.id}" value="${imgUrl}" placeholder="${COACH_LANG==='en'?'Image or GIF URL...':'URL de imagen o GIF...'}" style="flex:1;padding:5px 8px;border:0.5px solid var(--br);border-radius:7px;background:var(--s3);color:var(--tx);font-size:12px;font-family:'Inter',sans-serif" onkeydown="if(event.key==='Enter')guardarImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id})"/>
-          <label style="padding:5px 8px;background:var(--s3);color:var(--tx3);border:0.5px solid var(--br);border-radius:7px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center" title="${COACH_LANG==='en'?'Upload image':'Subir imagen'}">📁<input type="file" accept="image/*" style="display:none" onchange="subirImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id},this)"/></label>
           <button onclick="guardarImagenEjercicio('${e.nombre.replace(/'/g,"\\'")}',${e.id})" style="padding:5px 10px;background:var(--bl2);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${tc('Guardar')}</button>
           <button onclick="borrarEjercicioDb(${e.id},'${e.nombre.replace(/'/g,"\'")}')" style="padding:5px 8px;background:rgba(239,68,68,.12);color:#fca5a5;border:0.5px solid rgba(239,68,68,.25);border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit;flex-shrink:0" title="${COACH_LANG==='en'?'Delete exercise':'Eliminar ejercicio'}">✕</button>
         </div>
@@ -7672,64 +7683,6 @@ async function guardarImagenEjercicio(nombre, exId){
     input.style.borderColor = '#ef4444';
     setTimeout(() => input.style.borderColor = '', 1500);
   }
-}
-
-async function subirImagenEjercicio(nombre, exId, input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const img = new Image();
-    img.onload = async () => {
-      const canvas = document.createElement('canvas');
-      const max = 600;
-      let w = img.width, h = img.height;
-      if (w > h) { if (w > max) { h = Math.round(h * max / w); w = max; } }
-      else { if (h > max) { w = Math.round(w * max / h); h = max; } }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      const base64 = canvas.toDataURL('image/jpeg', 0.82);
-      const urlInput = document.getElementById(`img_url_${exId}`);
-      if (urlInput) urlInput.value = base64;
-      try {
-        await api('/ejercicios-config/' + encodeURIComponent(nombre), {
-          method: 'PUT',
-          body: JSON.stringify({ imagen_url: base64 })
-        });
-        if (urlInput) {
-          urlInput.style.borderColor = '#22c55e';
-          setTimeout(() => { urlInput.style.borderColor = ''; filtrarEjerciciosGestor(); }, 1500);
-        }
-      } catch (err) {
-        if (urlInput) { urlInput.style.borderColor = '#ef4444'; setTimeout(() => urlInput.style.borderColor = '', 1500); }
-        alert(COACH_LANG === 'en' ? 'Error uploading image' : 'Error al subir imagen');
-      }
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-function subirImagenNuevoEjercicio(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const max = 600;
-      let w = img.width, h = img.height;
-      if (w > h) { if (w > max) { h = Math.round(h * max / w); w = max; } }
-      else { if (h > max) { w = Math.round(w * max / h); h = max; } }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      const inp = document.getElementById('new_ex_imagen');
-      if (inp) inp.value = canvas.toDataURL('image/jpeg', 0.82);
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
 }
 
 async function crearEjercicioManual(){
