@@ -1560,12 +1560,11 @@ function getWgerImg(nombre){
 }
 function getExerciseIcon(nombre){ return getWgerImg(nombre); }
 // Helper to render exercise image box (used everywhere)
-function renderExImg(nombre, size=44, grupo=''){
-  const url = getWgerImg(nombre);
+function renderExImg(nombre, size=44, grupo='', directUrl=''){
+  // Priority: direct url from exercise object > exConfig > static GIF
+  const url = directUrl || (window.exConfig && window.exConfig[nombre]?.imagen_url) || getWgerImg(nombre);
   const bg = EX_GROUP_COLORS[grupo||EX_GROUP_MAP[nombre]||'Chest'] || 'var(--s3)';
   const emoji = EX_GROUP_EMOJI[grupo||EX_GROUP_MAP[nombre]||'Chest'] || '💪';
-  const isCustom = window.exConfig && window.exConfig[nombre]?.imagen_url;
-  const isGif = !isCustom; // static gif may 404, use onerror fallback
   return `<div style="width:${size}px;height:${size}px;border-radius:${size>40?'10':'7'}px;overflow:hidden;background:${bg};flex-shrink:0;display:flex;align-items:center;justify-content:center">
     <img src="${url}" style="width:${size}px;height:${size}px;object-fit:cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" loading="lazy"/>
     <span style="display:none;font-size:${size>40?22:16}px;width:100%;height:100%;align-items:center;justify-content:center">${emoji}</span>
@@ -5180,7 +5179,7 @@ function hPreviewDia(i){
     const imgUrl = e.imagen_url || (window.exConfig&&window.exConfig[e.nombre]?.imagen_url) || '';
     const bg = getExerciseBg(e.nombre);
     return`<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--br)">
-      ${renderExImg(e.nombre, 44, e.grupo||EX_GROUP_MAP[e.nombre]||'')}
+      ${renderExImg(e.nombre, 44, e.grupo||EX_GROUP_MAP[e.nombre]||'', e.imagen_url||'')}
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:2px">${e.nombre}</div>
         <div style="font-size:12px;color:var(--tx3)">${e.series} × ${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''}</div>
@@ -5335,7 +5334,7 @@ function hEntreno(){
 
     return`<div class="strong-ex-card ${exDone?'done-ex':''}" id="exc_${ei}">
       <div class="strong-ex-header">
-        ${renderExImg(e.nombre, 52, e.grupo||EX_GROUP_MAP[e.nombre]||'')}
+        ${renderExImg(e.nombre, 52, e.grupo||EX_GROUP_MAP[e.nombre]||'', e.imagen_url||'')}
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${t(e.grupo||'')||''}</div>
