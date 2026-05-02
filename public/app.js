@@ -8773,27 +8773,48 @@ function notificarDescansoTerminado(nombreEjercicio){
   }
 }
 
+// iOS Safari kills SW when screen locks — detect it to use server-side push timers
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
 function programarNotificacionDescanso(nombreEjercicio, segundos, timerId){
   if(!('Notification' in window) || Notification.permission !== 'granted') return;
   const title = LANG==='en' ? '💪 Go for it!' : '💪 ¡A por ello!';
   const body = nombreEjercicio
     ? (LANG==='en' ? `Next set of ${nombreEjercicio}` : `Siguiente serie de ${nombreEjercicio}`)
     : (LANG==='en' ? 'Rest done' : 'Descanso terminado');
-  swMsg({
-    type: 'SCHEDULE_NOTIFICATION',
-    title,
-    options: { body, icon:'/logo.png', badge:'/logo.png', tag:'descanso-'+timerId, renotify:true, silent:false, requireInteraction:false, vibrate:[150,80,150] },
-    delay: segundos*1000,
-    timerId
-  });
+
+  if(IS_IOS && TOKEN) {
+    // iOS: timer lives on the server, survives screen lock
+    api('/push/timer', {
+      method: 'POST',
+      body: JSON.stringify({ timerId, segundos, title, body })
+    }).catch(()=>{});
+  } else {
+    // Android/Desktop: SW timer (works fine)
+    swMsg({
+      type: 'SCHEDULE_NOTIFICATION',
+      title,
+      options: { body, icon:'/logo.png', badge:'/logo.png', tag:'descanso-'+timerId, renotify:true, silent:false, requireInteraction:false, vibrate:[150,80,150] },
+      delay: segundos*1000,
+      timerId
+    });
+  }
 }
 
 function cancelarNotificacionDescanso(timerId){
-  swMsg({ type: 'CANCEL_NOTIFICATION', timerId });
+  if(IS_IOS && TOKEN) {
+    api('/push/timer/cancel', { method:'POST', body: JSON.stringify({ timerId }) }).catch(()=>{});
+  } else {
+    swMsg({ type: 'CANCEL_NOTIFICATION', timerId });
+  }
 }
 
 function cancelarTodasNotificaciones(){
-  swMsg({ type: 'CANCEL_ALL' });
+  if(IS_IOS && TOKEN) {
+    api('/push/timer/cancel', { method:'POST', body: JSON.stringify({}) }).catch(()=>{});
+  } else {
+    swMsg({ type: 'CANCEL_ALL' });
+  }
 }
 
 function valorarEntreno(emoji, btn){
