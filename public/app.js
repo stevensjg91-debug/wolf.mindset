@@ -8724,20 +8724,35 @@ async function registrarPushSubscription(){
   try {
     if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
     const reg = await navigator.serviceWorker.ready;
-    // Get VAPID public key from server
     const { publicKey } = await api('/push/vapid-key');
     const appServerKey = urlBase64ToUint8Array(publicKey);
-    // Check if already subscribed
+
     let sub = await reg.pushManager.getSubscription();
+
+    // iOS: always unsubscribe and resubscribe to get a fresh valid subscription
+    // On other platforms only subscribe if not already subscribed
+    if(IS_IOS && sub) {
+      await sub.unsubscribe();
+      sub = null;
+    }
+
     if(!sub) {
       sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: appServerKey });
     }
-    // Register with our server
+
     await api('/push/subscribe', { method:'POST', body: JSON.stringify({ subscription: sub.toJSON() }) });
+    console.log('[Push] Subscribed OK, endpoint:', sub.endpoint.slice(-30));
   } catch(e) {
     console.log('[Push] Registration error:', e.message);
   }
 }
+
+// Re-register push when app comes back to foreground (iOS loses subscription)
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && TOKEN && Notification.permission === 'granted') {
+    registrarPushSubscription().catch(()=>{});
+  }
+});
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -8780,7 +8795,7 @@ function notificarDescansoTerminado(nombreEjercicio){
   }
 }
 
-// iOS Safari kills SW when screen locks — detect it to use server-side push timers
+// iOS Safari kills SW when app goes to background — use server-side push timers
 const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
 function programarNotificacionDescanso(nombreEjercicio, segundos, timerId){
@@ -8790,14 +8805,17 @@ function programarNotificacionDescanso(nombreEjercicio, segundos, timerId){
     ? (LANG==='en' ? `Next set of ${nombreEjercicio}` : `Siguiente serie de ${nombreEjercicio}`)
     : (LANG==='en' ? 'Rest done' : 'Descanso terminado');
 
-  if(IS_IOS && TOKEN) {
-    // iOS: timer lives on the server, survives screen lock
+  // Always use server timer on iOS (SW dies in background/locked screen)
+  // Also use server timer on any mobile as fallback
+  if(TOKEN) {
     api('/push/timer', {
       method: 'POST',
       body: JSON.stringify({ timerId, segundos, title, body })
-    }).catch(()=>{});
-  } else {
-    // Android/Desktop: SW timer (works fine)
+    }).catch(e => console.log('[Push timer] error:', e));
+  }
+
+  // Also schedule via SW (works when app is in foreground or Android)
+  if(!IS_IOS) {
     swMsg({
       type: 'SCHEDULE_NOTIFICATION',
       title,
@@ -8809,17 +8827,19 @@ function programarNotificacionDescanso(nombreEjercicio, segundos, timerId){
 }
 
 function cancelarNotificacionDescanso(timerId){
-  if(IS_IOS && TOKEN) {
+  if(TOKEN) {
     api('/push/timer/cancel', { method:'POST', body: JSON.stringify({ timerId }) }).catch(()=>{});
-  } else {
+  }
+  if(!IS_IOS) {
     swMsg({ type: 'CANCEL_NOTIFICATION', timerId });
   }
 }
 
 function cancelarTodasNotificaciones(){
-  if(IS_IOS && TOKEN) {
+  if(TOKEN) {
     api('/push/timer/cancel', { method:'POST', body: JSON.stringify({}) }).catch(()=>{});
-  } else {
+  }
+  if(!IS_IOS) {
     swMsg({ type: 'CANCEL_ALL' });
   }
 }
