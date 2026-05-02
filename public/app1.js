@@ -115,16 +115,6 @@ function setRegLang(lang) {
     const inp = document.getElementById('reg_alimentos_pref');
     if(inp) inp.value = [..._regFoodsSelected].join(', ');
   }
-
-  // Unidades según idioma: EN → imperial (lb, ft), ES → métrico (kg, cm)
-  const pesoLbl = document.getElementById('lbl_peso');
-  const alturaLbl = document.getElementById('lbl_altura');
-  const pesoInp = document.getElementById('reg_peso');
-  const alturaInp = document.getElementById('reg_altura');
-  if(pesoLbl) pesoLbl.textContent = lang === 'en' ? 'Weight (lb)' : 'Peso (kg)';
-  if(alturaLbl) alturaLbl.textContent = lang === 'en' ? 'Height (ft\'in")' : 'Altura (cm)';
-  if(pesoInp){ pesoInp.placeholder = lang === 'en' ? '185' : '75'; pesoInp.step = lang === 'en' ? '0.5' : '0.1'; }
-  if(alturaInp){ alturaInp.placeholder = lang === 'en' ? "5'9\"" : '175'; alturaInp.type = lang === 'en' ? 'text' : 'number'; }
 }
 
 // Init on page load
@@ -153,81 +143,6 @@ let CD=null,klTab='entreno',activeDia=0,chatH=[],iaH=[],timerInts={},restInt=nul
 // ── SISTEMA DE IDIOMA ─────────────────────────────────────────────
 let LANG = localStorage.getItem('wm_lang') || 'es';
 let COACH_LANG = localStorage.getItem('wm_coach_lang') || 'es';
-
-// ── UNIDADES DE MEDIDA ────────────────────────────────────────────
-// EN → unidades inglesas (lb, ft/in), ES → métricas (kg, cm)
-// La BD siempre guarda en métrico. Solo la UI convierte.
-
-function isImperial() { return LANG === 'en'; }
-
-// Peso corporal: kg ↔ lb
-function fmtPeso(kg) {
-  if (!kg && kg !== 0) return '—';
-  if (isImperial()) return (kg * 2.20462).toFixed(1) + ' lb';
-  return kg + ' kg';
-}
-function pesoLabel() { return isImperial() ? 'lb' : 'kg'; }
-function pesoPlaceholder() { return isImperial() ? '185' : '84.5'; }
-function fromPeso(val) { // convierte valor introducido → kg para guardar
-  const n = parseFloat(val);
-  if (isNaN(n)) return null;
-  return isImperial() ? parseFloat((n / 2.20462).toFixed(2)) : n;
-}
-
-// Altura: cm ↔ ft + in  
-function fmtAltura(cm) {
-  if (!cm) return '—';
-  if (isImperial()) {
-    const totalIn = cm / 2.54;
-    const ft = Math.floor(totalIn / 12);
-    const inch = Math.round(totalIn % 12);
-    return `${ft}′${inch}″`;
-  }
-  return cm + ' cm';
-}
-function alturaLabel() { return isImperial() ? 'ft / in' : 'cm'; }
-function alturaPlaceholder() { return isImperial() ? '5\'9"' : '175'; }
-function fromAltura(val) { // convierte ft'in" o cm → cm para guardar
-  if (isImperial()) {
-    const str = String(val).trim();
-    // Aceptar formatos: 5'9, 5'9", 69 (pulgadas totales), 175 (si >100 asume cm)
-    const match = str.match(/^(\d+)['''′](\d+)["""″]?$/);
-    if (match) return Math.round((parseInt(match[1]) * 12 + parseInt(match[2])) * 2.54);
-    const n = parseFloat(str);
-    if (isNaN(n)) return null;
-    if (n > 100) return Math.round(n); // asume cm
-    return Math.round(n * 2.54); // asume pulgadas
-  }
-  return parseFloat(val) || null;
-}
-
-// Cintura/cadera: cm ↔ in
-function fmtCintura(cm) {
-  if (!cm) return '—';
-  if (isImperial()) return (cm / 2.54).toFixed(1) + ' in';
-  return cm + ' cm';
-}
-function cinturaLabel() { return isImperial() ? 'in' : 'cm'; }
-function cinturaPlaceholder() { return isImperial() ? '32' : '82'; }
-function fromCintura(val) {
-  const n = parseFloat(val);
-  if (isNaN(n)) return null;
-  return isImperial() ? parseFloat((n * 2.54).toFixed(1)) : n;
-}
-
-// Peso de gym (series): kg ↔ lb — NO se convierte en BD, se muestra tal cual
-// El cliente introduce en su unidad preferida y el coach ve lo mismo
-function gymPesoLabel() { return isImperial() ? 'lb' : 'kg'; }
-function fmtGymPeso(kg) {
-  if (kg == null) return '—';
-  if (isImperial()) return (kg * 2.20462).toFixed(1) + ' lb';
-  return kg + ' kg';
-}
-function fromGymPeso(val) {
-  const n = parseFloat(val);
-  if (isNaN(n)) return null;
-  return isImperial() ? parseFloat((n / 2.20462).toFixed(2)) : n;
-}
 
 const TRANSLATIONS = {
   // ── Navegación ──
@@ -1899,7 +1814,7 @@ function cNavM(s,btn){
 // ═══ COACH RENDER ════════════════════════════════════
 async function renderCoach(s){
   const el=document.getElementById('cContent');
-  if(s==='clientes'){const cl=await api('/clientes');window._clientesCache=cl;el.innerHTML=hClientes(cl);}
+  if(s==='clientes'){const cl=await api('/clientes');window._clientesCache=cl;el.innerHTML=hClientes(cl);cargarTareasPendientes();}
   else if(s==='nuevo'){el.innerHTML=hNuevo();}
   else if(s==='rutinas'){el.innerHTML=hRutinas();await initRutinas();}
   else if(s==='dieta-builder'){el.innerHTML=hDietaBuilder();await initDietaBuilder();}
@@ -1923,6 +1838,9 @@ async function renderCoach(s){
 
 function hClientes(cl){
   if(!cl.length)return`<div class="wm-empty-clients"><div class="wm-empty-icon">👤</div><div class="wm-empty-title">${tc('Sin clientes aún')}</div><div class="wm-empty-sub">${COACH_LANG==='en'?'Create your first client from here.':'Crea tu primer cliente desde aquí.'}</div><button class="btn" onclick="abrirNuevoClienteDesdeClientes()">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button></div>`;
+
+  // Tareas pendientes — se rellena async via cargarTareasPendientes()
+  const tareasHtml = `<div id="tareas_pendientes_wrap" style="margin-bottom:16px"></div>`;
 
   const coachColors = {
     [USER.id]: {bg:'rgba(59,130,246,.18)',color:'#93c5fd',label: USER.nombre||USER.username},
@@ -1952,6 +1870,8 @@ function hClientes(cl){
     </div>
     <button class="btn btn-sm clientes-add-btn" onclick="abrirNuevoClienteDesdeClientes()">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button>
   </div>
+
+  ${tareasHtml}
 
   <div class="clientes-stats-grid">
     <div class="clientes-stat-card"><div class="mlbl">${tc('Total')}</div><div class="mval">${cl.length}</div></div>
@@ -1990,6 +1910,48 @@ function hClientes(cl){
     }).join('')}
   </div>`;
 }
+async function cargarTareasPendientes(){
+  const wrap = document.getElementById('tareas_pendientes_wrap');
+  if(!wrap) return;
+  try {
+    const pendientes = await api('/coach/sesiones-pendientes');
+    if(!pendientes.length){ wrap.innerHTML=''; return; }
+    const isEn = COACH_LANG === 'en';
+    const titulo = isEn ? `📋 Pending reviews (${pendientes.length})` : `📋 Pendientes de revisar (${pendientes.length})`;
+    const items = pendientes.map(s => {
+      const fecha = new Date(s.fecha);
+      const mins = Math.floor((Date.now() - fecha.getTime()) / 60000);
+      const haceStr = mins < 60 ? (isEn?`${mins}m ago`:`hace ${mins}m`) : mins < 1440 ? (isEn?`${Math.floor(mins/60)}h ago`:`hace ${Math.floor(mins/60)}h`) : (isEn?`${Math.floor(mins/1440)}d ago`:`hace ${Math.floor(mins/1440)}d`);
+      const iniciales = s.cliente_nombre ? s.cliente_nombre.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '?';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border-radius:10px;margin-bottom:6px;cursor:pointer" onclick="verCliente(${s.cliente_id});setTimeout(()=>switchClienteTab('progreso',document.querySelector('.ctab[onclick*=progreso]')),600)">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(59,130,246,.18);color:#93c5fd;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;overflow:hidden">${s.foto_perfil?`<img src="${s.foto_perfil}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`:iniciales}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.cliente_nombre}</div>
+          <div style="font-size:11px;color:var(--tx3)">🏋️ ${s.dia_nombre}${s.dia_grupo?' · '+s.dia_grupo:''} · ${s.num_series} ${isEn?'sets':'series'} · ${haceStr}</div>
+        </div>
+        <button onclick="event.stopPropagation();marcarSesionRevisada(${s.id},this)" style="flex-shrink:0;padding:6px 10px;background:rgba(34,197,94,.12);border:0.5px solid rgba(34,197,94,.3);border-radius:8px;color:var(--gnb);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">✓ ${isEn?'Mark reviewed':'Revisar'}</button>
+      </div>`;
+    }).join('');
+    wrap.innerHTML = `<div style="background:var(--s);border:0.5px solid rgba(245,158,11,.25);border-radius:14px;padding:14px;margin-bottom:4px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:700;color:var(--amb);text-transform:uppercase;letter-spacing:.07em">${titulo}</div>
+        <button onclick="cargarTareasPendientes()" style="background:none;border:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">↺</button>
+      </div>${items}
+      <div style="font-size:10px;color:var(--tx3);margin-top:6px;text-align:center">${isEn?'Click to review in Progress tab':'Pulsa para revisar en tab Progreso'}</div>
+    </div>`;
+  } catch(e) { const w=document.getElementById('tareas_pendientes_wrap'); if(w) w.innerHTML=''; }
+}
+
+async function marcarSesionRevisada(sesionId, btn){
+  if(btn){ btn.disabled=true; btn.textContent='...'; }
+  try {
+    await api('/sesiones/'+sesionId+'/revisar', {method:'PUT'});
+    const fila = btn?.closest('[style*="cursor:pointer"]');
+    if(fila){ fila.style.transition='opacity .3s'; fila.style.opacity='0'; setTimeout(()=>{ fila.remove(); const w=document.getElementById('tareas_pendientes_wrap'); if(w&&!w.querySelector('[onclick*="verCliente"]')) w.innerHTML=''; },300); }
+  } catch(e){ if(btn){ btn.disabled=false; btn.textContent='✓'; } }
+}
+
+
 function filtrarClientes(filtro){
   window._clienteFilter = filtro;
   // Re-renderizar con el mismo listado en cache
@@ -2043,7 +2005,7 @@ async function verCliente(id){
   <div class="ctab-panel on" id="ctab_resumen">
     <div class="g2" style="margin-bottom:12px">
     <div class="sec"><div class="sec-hdr">${tc('Macros internos')} <span style="color:#f87171;font-size:9px">${tc('SOLO COACH')}</span></div>${mb2('Prot','#3b82f6',c.prot,c.prot*4,c.kcal_internas)}${mb2('Carbs','#a78bfa',c.carbs,c.carbs*4,c.kcal_internas)}${mb2(COACH_LANG==='en'?'Fat':'Grasa','#f97316',c.fat,c.fat*9,c.kcal_internas)}<div style="font-size:11px;color:var(--tx3);margin-top:4px">${c.kcal_internas} ${tc('kcal/día')}</div></div>
-    <div class="sec"><div class="sec-hdr">${COACH_LANG==='en'?'Weight':'Peso'}</div>${c.pesos.slice(-4).map((p,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--br)"><span style="font-size:12px;color:var(--tx3)">${tc('Sem')} ${i+1}</span><span style="font-size:13px;color:var(--sv);font-weight:700">${p.peso}kg${p.cintura?' · '+p.cintura+'cm':''}</span></div>`).join('')||`<div style="font-size:12px;color:var(--tx3)">${tc('Sin registros')}</div>`}</div>
+    <div class="sec"><div class="sec-hdr">${COACH_LANG==='en'?'Weight':'Peso'}</div>${c.pesos.slice(-4).map((p,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--br)"><span style="font-size:12px;color:var(--tx3)">${tc('Sem')} ${i+1}</span><span style="font-size:13px;color:var(--sv);font-weight:700">${p.peso}kg</span></div>`).join('')||`<div style="font-size:12px;color:var(--tx3)">${tc('Sin registros')}</div>`}</div>
   </div>
   
     <div class="sec" style="margin-bottom:12px" id="coach_sub_sec">
@@ -2078,11 +2040,11 @@ async function verCliente(id){
     <div class="sec-hdr">${tc('Datos personales del cliente')}</div>
     <div class="g2" style="gap:8px;margin-bottom:8px">
       <div><div class="form-lbl">${tc('Peso (kg)')}</div><div style="font-size:16px;font-weight:700;color:var(--sv)">${c.peso_actual?c.peso_actual+'kg':tc('Sin datos')}</div></div>
-      <div><div class="form-lbl">${tc('Altura')}</div><div style="font-size:16px;font-weight:700;color:var(--sv)">${c.altura?fmtAltura(c.altura):tc('Sin datos')}</div></div>
+      <div><div class="form-lbl">${tc('Altura')}</div><div style="font-size:16px;font-weight:700;color:var(--sv)">${c.altura?c.altura+'cm':tc('Sin datos')}</div></div>
       <div><div class="form-lbl">${tc('Edad')}</div><div style="font-size:16px;font-weight:700;color:var(--sv)">${c.edad?c.edad+' '+tc('años'):tc('Sin datos')}</div></div>
       <div><div class="form-lbl">${tc('Sexo')}</div><div style="font-size:16px;font-weight:700;color:var(--sv)">${c.sexo?tc(c.sexo):tc('Sin datos')}</div></div>
       <div><div class="form-lbl">${tc('Actividad')}</div><div style="font-size:13px;font-weight:600;color:var(--sv2)">${c.actividad?tc(c.actividad):tc('Sin datos')}</div></div>
-      <div><div class="form-lbl">${tc('Cintura/Cadera')}</div><div style="font-size:13px;font-weight:600;color:var(--sv2)">${c.cintura_actual?fmtCintura(c.cintura_actual)+' / '+(c.cadera?fmtCintura(c.cadera):'—'):tc('Sin datos')}</div></div>
+      <div><div class="form-lbl">${tc('Cintura/Cadera')}</div><div style="font-size:13px;font-weight:600;color:var(--sv2)">${c.cintura_actual?c.cintura_actual+'cm / '+(c.cadera||'—')+'cm':tc('Sin datos')}</div></div>
     </div>
     ${c.lesiones?`<div style="background:rgba(239,68,68,.08);border:0.5px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 11px;font-size:12px;color:#fca5a5;margin-top:8px">⚠️ <span style="font-weight:700">${tc('Lesiones:')}</span> ${c.lesiones}</div>`:''}
     ${c.dieta_tipo&&c.dieta_tipo!=='Omnivoro'?`<div style="background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:8px;padding:8px 11px;font-size:12px;color:var(--gnb);margin-top:6px">🥗 <span style="font-weight:700">${tc('Dieta:')}</span> ${tc(c.dieta_tipo)}</div>`:''}
@@ -6789,28 +6751,15 @@ function hProgreso2(){return`<div style="padding-top:8px">
   </div>
   <div id="peso_section" style="margin:0 14px 12px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:14px">
     <div id="peso_guardado_view" style="display:none;margin-bottom:10px">
-      <div style="font-size:13px;color:var(--tx3);margin-bottom:4px">${t('Registrado esta semana')}</div>
-      <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
-        <div style="font-size:28px;font-weight:700;color:var(--sv);font-family:'Bebas Neue',sans-serif" id="peso_guardado_val">—</div>
-        <div id="medidas_guardadas_view" style="font-size:13px;color:var(--tx3)"></div>
-      </div>
+      <div style="font-size:13px;color:var(--tx3);margin-bottom:4px">Peso registrado esta semana</div>
+      <div style="font-size:28px;font-weight:700;color:var(--sv);font-family:'Bebas Neue',sans-serif" id="peso_guardado_val">—</div>
     </div>
     <div id="peso_input_wrap">
-      <div style="display:grid;grid-template-columns:1fr ${CD.sexo==='Mujer'?'1fr 1fr':'1fr'};gap:10px;margin-bottom:12px">
-        <div>
-          <div class="form-lbl">⚖️ ${t('Peso')} (${pesoLabel()})</div>
-          <input class="inp" id="np" type="number" step="${isImperial()?'0.5':'0.1'}" placeholder="${pesoPlaceholder()}" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/>
-        </div>
-        <div>
-          <div class="form-lbl">📏 ${t('Cintura')} (${cinturaLabel()})</div>
-          <input class="inp" id="medida_cintura" type="number" step="0.1" placeholder="${cinturaPlaceholder()}" value="${CD.cintura_actual ? (isImperial() ? (CD.cintura_actual/2.54).toFixed(1) : CD.cintura_actual) : ''}" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/>
-        </div>
-        ${CD.sexo==='Mujer'?`<div>
-          <div class="form-lbl">📐 ${t('Cadera')} (${cinturaLabel()})</div>
-          <input class="inp" id="medida_cadera" type="number" step="0.1" placeholder="${isImperial()?'38':'96'}" value="${CD.cadera ? (isImperial() ? (CD.cadera/2.54).toFixed(1) : CD.cadera) : ''}" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/>
-        </div>`:''}
+      <div style="margin-bottom:10px">
+        <div class="form-lbl">Peso (kg)</div>
+        <input class="inp" id="np" type="number" step="0.1" placeholder="84.5" style="margin-bottom:0"/>
       </div>
-      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarMediciones()">${t('Guardar mediciones')}</button>
+      <button class="btn" style="width:100%;padding:11px" onclick="guardarPeso()">${t('Guardar peso')}</button>
     </div>
   </div>
   <div class="sec-lbl">${t('Fotos de progreso')}</div>
@@ -6926,50 +6875,25 @@ function renderFotosProgreso() {
   }).join('');
 }
 
-async function guardarMediciones(){
-  const pesoInput = parseFloat(document.getElementById('np')?.value);
-  const cinturaInput = parseFloat(document.getElementById('medida_cintura')?.value) || null;
-  const caderaInput = parseFloat(document.getElementById('medida_cadera')?.value) || null;
-  if(!pesoInput) return;
-
-  // Convertir a métrico para guardar en BD
-  const pesoKg = fromPeso(pesoInput);
-  const cinturaCm = cinturaInput ? fromCintura(cinturaInput) : null;
-  const caderaCm = caderaInput ? fromCintura(caderaInput) : null;
-
-  await api('/clientes/'+CD.id+'/peso', {method:'POST', body:JSON.stringify({peso:pesoKg, grasa:null})});
-  if(cinturaCm || caderaCm){
-    const upd = {};
-    if(cinturaCm) upd.cintura_actual = cinturaCm;
-    if(caderaCm) upd.cadera = caderaCm;
-    await api('/clientes/'+CD.id+'/perfil', {method:'PUT', body:JSON.stringify(upd)});
-  }
+async function guardarPeso(){
+  const peso=parseFloat(document.getElementById('np').value);
+  if(!peso)return;
+  await api('/clientes/'+CD.id+'/peso',{method:'POST',body:JSON.stringify({peso,grasa:null})});
   await loadCD(CD.id);
+  // Store date of last weigh-in
   localStorage.setItem('wm_ultimo_peso_'+CD.id, Date.now());
-  pesoModoVer(pesoKg, cinturaCm, caderaCm);
+  pesoModoVer(peso);
 }
 
-async function guardarPeso(){ return guardarMediciones(); }
-
-function pesoModoVer(pesoKg, cinturaCm, caderaCm){
+function pesoModoVer(peso){
   const inp=document.getElementById('peso_input_wrap');
   const view=document.getElementById('peso_guardado_view');
   const val=document.getElementById('peso_guardado_val');
   const wrap=document.getElementById('peso_edit_btn_wrap');
-  const medidasView=document.getElementById('medidas_guardadas_view');
   if(inp) inp.style.display='none';
-  if(view) view.style.display='block';
-  const pesoReal = pesoKg || CD.pesos?.slice(-1)[0]?.peso;
-  if(val) val.textContent = fmtPeso(pesoReal) + ' ✓';
-  if(medidasView){
-    const c = cinturaCm || CD.cintura_actual;
-    const ca = caderaCm || CD.cadera;
-    const parts=[];
-    if(c) parts.push('📏 '+fmtCintura(c));
-    if(ca) parts.push('📐 '+fmtCintura(ca));
-    medidasView.textContent = parts.join(' · ');
-  }
-  if(wrap) wrap.innerHTML=`<button onclick="pesoModoEditar()" style="padding:6px 14px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ ${t('Corregir')}</button>`;
+  if(view){view.style.display='block';}
+  if(val) val.textContent=peso+'kg ✓';
+  if(wrap) wrap.innerHTML=`<button onclick="pesoModoEditar()" style="padding:6px 14px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ Corregir</button>`;
 }
 
 function pesoModoEditar(){
@@ -6988,8 +6912,9 @@ function initPesoSection(){
   const yaEsta = ultima && (Date.now()-ultima) < SEMANA;
   if(yaEsta){
     const ultimoPeso=CD.pesos?.length?CD.pesos[CD.pesos.length-1].peso:null;
-    if(ultimoPeso) pesoModoVer(ultimoPeso, CD.cintura_actual, CD.cadera);
+    if(ultimoPeso) pesoModoVer(ultimoPeso);
   }
+  // Renderizar gráfica de tendencia si hay suficientes datos
   renderPesoTendencia();
 }
 
@@ -7134,19 +7059,19 @@ function hPerfil(){
   <div id="pf_form" style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;margin:0 14px;padding:16px;display:${tieneData?'none':'block'};${tieneData?'pointer-events:none;opacity:.85':''}">
     <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">Datos personales</div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">${t('Peso')} (${pesoLabel()})</div><input class="inp" id="pf_peso" type="number" step="${isImperial()?'0.5':'0.1'}" value="${c.peso_actual ? (isImperial()?(c.peso_actual*2.20462).toFixed(1):c.peso_actual) : ''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">${t('Altura')} (${alturaLabel()})</div><input class="inp" id="pf_altura" type="${isImperial()?'text':'number'}" placeholder="${alturaPlaceholder()}" value="${c.altura ? (isImperial()?fmtAltura(c.altura):c.altura) : ''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">Peso (kg)</div><input class="inp" id="pf_peso" type="number" step="0.1" value="${c.peso_actual||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">Altura (cm)</div><input class="inp" id="pf_altura" type="number" value="${c.altura||''}" style="margin-bottom:0"/></div>
     </div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">${t('Edad')}</div><input class="inp" id="pf_edad" type="number" value="${c.edad||''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">${t('Sexo')}</div><select class="inp" id="pf_sexo" style="margin-bottom:0">
-        <option ${c.sexo==='Hombre'?'selected':''}>${t('Hombre')}</option>
-        <option ${c.sexo==='Mujer'?'selected':''}>${t('Mujer')}</option>
+      <div><div class="form-lbl">Edad</div><input class="inp" id="pf_edad" type="number" value="${c.edad||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">Sexo</div><select class="inp" id="pf_sexo" style="margin-bottom:0">
+        <option ${c.sexo==='Hombre'?'selected':''}>Hombre</option>
+        <option ${c.sexo==='Mujer'?'selected':''}>Mujer</option>
       </select></div>
     </div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">${t('Cintura')} (${cinturaLabel()})</div><input class="inp" id="pf_cintura" type="number" step="0.1" value="${c.cintura_actual ? (isImperial()?(c.cintura_actual/2.54).toFixed(1):c.cintura_actual) : ''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">${t('Cadera')} (${cinturaLabel()})</div><input class="inp" id="pf_cadera" type="number" step="0.1" value="${c.cadera ? (isImperial()?(c.cadera/2.54).toFixed(1):c.cadera) : ''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">Cintura (cm)</div><input class="inp" id="pf_cintura" type="number" step="0.1" value="${c.cintura_actual||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">Cadera (cm)</div><input class="inp" id="pf_cadera" type="number" step="0.1" value="${c.cadera||''}" style="margin-bottom:0"/></div>
     </div>
     <div style="margin-bottom:10px"><div class="form-lbl">Nivel de actividad</div>
       <select class="inp" id="pf_actividad" style="margin-bottom:0">
@@ -7521,13 +7446,13 @@ async function guardarPerfil(){
   try{
     const pf = (id) => document.getElementById(id);
     await api('/clientes/'+CD.id+'/perfil',{method:'PUT',body:JSON.stringify({
-      peso_actual: fromPeso(pf('pf_peso')?.value),
-      altura: fromAltura(pf('pf_altura')?.value),
+      peso_actual: parseFloat(pf('pf_peso')?.value)||null,
+      altura: parseInt(pf('pf_altura')?.value)||null,
       edad: parseInt(pf('pf_edad')?.value)||null,
       sexo: pf('pf_sexo')?.value||'Hombre',
       actividad: pf('pf_actividad')?.value||'Moderada',
-      cintura_actual: fromCintura(pf('pf_cintura')?.value),
-      cadera: fromCintura(pf('pf_cadera')?.value),
+      cintura_actual: parseFloat(pf('pf_cintura')?.value)||null,
+      cadera: parseFloat(pf('pf_cadera')?.value)||null,
       dieta_tipo: pf('pf_dieta')?.value||'Omnívoro',
       alimentos_no: pf('pf_alimentos_no')?.value||'',
       lesiones: pf('pf_lesiones')?.value||'',
@@ -8062,8 +7987,8 @@ async function doRegistro(){
       nombre,username,email,telefono:tel,password:pass,
       objetivo:document.getElementById('reg_obj').value,
       nivel:document.getElementById('reg_niv').value,
-      peso_actual: fromPeso(document.getElementById('reg_peso').value) || 0,
-      altura: fromAltura(document.getElementById('reg_altura').value) || 0,
+      peso_actual:parseFloat(document.getElementById('reg_peso').value)||0,
+      altura:parseInt(document.getElementById('reg_altura').value)||0,
       edad:parseInt(document.getElementById('reg_edad').value)||0,
       sexo:document.getElementById('reg_sexo').value,
       actividad:document.getElementById('reg_act').value,
