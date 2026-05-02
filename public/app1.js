@@ -4260,56 +4260,89 @@ async function cargarDashboard() {
   let activos = 0, atencion = 0;
 
   // Procesar cada cliente en paralelo
+  // ═══════════════════════════════════════════════════════════════════
+// PATCH — cargarDashboard() en app1.js
+// Sustituye la llamada pesada a /sesiones por /ultima-sesion
+// ═══════════════════════════════════════════════════════════════════
+//
+// BUSCA este bloque en app1.js (dentro de cargarDashboard):
+//
+//   const promesas = clientes.map(async c => {
+//     try {
+//       const sesiones = await api('/clientes/'+c.id+'/sesiones');
+//
+//       // ── Adherencia ──────────────────────────────
+//       let diasSinEntreno = 999;
+//       if(sesiones.length) {
+//         const ultima = new Date(sesiones[0].fecha);
+//         diasSinEntreno = Math.floor((Date.now() - ultima.getTime()) / 86400000);
+//       }
+//
+//       // ── Tonelaje semanal ───────────────────────
+//       const hace7dias = Date.now() - 7*86400000;
+//       const sesionesSemanales = sesiones.filter(...);
+//       let tonelaje = 0;
+//       ...
+//
+//       // ── PRs ─────────────────────────────────────
+//       const prs = {};
+//       sesiones.forEach(...);
+//
+//       // ── Semáforo ────────────────────────────────
+//       const ultimaSesion = sesiones[0];
+//       const ultimoEstado = ultimaSesion?.estado || 'completado';
+//
+//       let emoji = '🟢', estado = tc('Activos');
+//       if(diasSinEntreno === 999)  { emoji = '⚪'; ... }
+//       else if(diasSinEntreno > 10){ emoji = '🔴'; ... }
+//       else if(diasSinEntreno > 5) { emoji = '🟡'; ... }
+//       else if(ultimoEstado === 'incompleto') { emoji = '🟠'; ... }
+//       else { activos++; }
+//
+//       // ── Última sesión texto ──────────────────────
+//       let ultimaTexto = tc('Sin sesiones');
+//       if(sesiones.length) { ... }
+//
+//       // ── Progreso peso ─────────────────────────────
+//       let pesoTexto = '—';
+//       ...
+//
+//       // Actualizar UI
+//       const semEl = document.getElementById('semaforo_'+c.id);
+//       ...
+//     } catch(e) { ... }
+//   });
+//
+// REEMPLÁZALO POR ESTO:
+// ═══════════════════════════════════════════════════════════════════
+
   const promesas = clientes.map(async c => {
     try {
-      const sesiones = await api('/clientes/'+c.id+'/sesiones');
+      // Endpoint ligero — solo fecha y estado de la última sesión (sin series)
+      const ultima = await api('/clientes/'+c.id+'/ultima-sesion');
 
-      // ── Adherencia ──────────────────────────────
-      let diasSinEntreno = 999;
-      if(sesiones.length) {
-        const ultima = new Date(sesiones[0].fecha);
-        diasSinEntreno = Math.floor((Date.now() - ultima.getTime()) / 86400000);
-      }
+      const diasSinEntreno = ultima.dias_sin_entreno ?? 999;
+      const ultimoEstado   = ultima.estado || 'completado';
+      const tieneSesiones  = ultima.tiene_sesiones;
 
-      // ── Tonelaje semanal ───────────────────────
-      const hace7dias = Date.now() - 7*86400000;
-      const sesionesSemanales = sesiones.filter(s => new Date(s.fecha).getTime() > hace7dias);
-      let tonelaje = 0;
-      sesionesSemanales.forEach(s => {
-        s.series.forEach(sr => { tonelaje += (sr.peso_real||0) * (sr.reps_real||0); });
-      });
-
-      // ── PRs ─────────────────────────────────────
-      const prs = {}; // ejercicio -> max peso
-      sesiones.forEach(s => {
-        s.series.forEach(sr => {
-          if(!prs[sr.ejercicio_nombre] || sr.peso_real > prs[sr.ejercicio_nombre]) {
-            prs[sr.ejercicio_nombre] = sr.peso_real;
-          }
-        });
-      });
-
-      // ── Semáforo ────────────────────────────────
-      const ultimaSesion = sesiones[0];
-      const ultimoEstado = ultimaSesion?.estado || 'completado'; // fallback si columna no existe aún
-
+      // ── Semáforo ────────────────────────────────────────────────
       let emoji = '🟢', estado = tc('Activos');
-      if(diasSinEntreno === 999) { emoji = '⚪'; estado = tc('Sin sesiones'); }
-      else if(diasSinEntreno > 10) { emoji = '🔴'; estado = `${diasSinEntreno}d ${COACH_LANG==='en'?'no workout':'sin entreno'}`; atencion++; }
-      else if(diasSinEntreno > 5)  { emoji = '🟡'; estado = `${diasSinEntreno}d ${COACH_LANG==='en'?'no workout':'sin entreno'}`; atencion++; }
+      if(!tieneSesiones)             { emoji = '⚪'; estado = tc('Sin sesiones'); }
+      else if(diasSinEntreno > 10)   { emoji = '🔴'; estado = `${diasSinEntreno}d ${COACH_LANG==='en'?'no workout':'sin entreno'}`; atencion++; }
+      else if(diasSinEntreno > 5)    { emoji = '🟡'; estado = `${diasSinEntreno}d ${COACH_LANG==='en'?'no workout':'sin entreno'}`; atencion++; }
       else if(ultimoEstado === 'incompleto') { emoji = '🟠'; estado = COACH_LANG==='en'?'Incomplete':'Incompleto'; atencion++; }
       else { activos++; }
 
-      // ── Última sesión ────────────────────────────
+      // ── Última sesión texto ─────────────────────────────────────
       let ultimaTexto = tc('Sin sesiones');
-      if(sesiones.length) {
+      if(tieneSesiones) {
         const sufijo = ultimoEstado === 'incompleto' ? ' ⚠' : '';
         ultimaTexto = (diasSinEntreno === 0 ? (COACH_LANG==='en'?'Today':'Hoy') :
                        diasSinEntreno === 1 ? (COACH_LANG==='en'?'Yesterday':'Ayer') :
                        `${COACH_LANG==='en'?'Ago':'Hace'} ${diasSinEntreno}d`) + sufijo;
       }
 
-      // ── Progreso peso ─────────────────────────────
+      // ── Progreso peso (del objeto cliente que ya tenemos) ───────
       let pesoTexto = '—';
       if(c.pesos?.length >= 2) {
         const diff = c.pesos[c.pesos.length-1].peso - c.pesos[c.pesos.length-2].peso;
@@ -4322,22 +4355,24 @@ async function cargarDashboard() {
         pesoTexto = c.peso_actual+'kg';
       }
 
-      // Actualizar UI
-      const semEl = document.getElementById('semaforo_'+c.id);
+      // ── Actualizar UI ───────────────────────────────────────────
+      const semEl  = document.getElementById('semaforo_'+c.id);
       const progEl = document.getElementById('progreso_'+c.id);
-      const sesEl = document.getElementById('ultima_ses_'+c.id);
-      if(semEl) { semEl.textContent = emoji; semEl.title = estado; }
-      if(progEl) progEl.innerHTML = pesoTexto + (tonelaje > 0 ? ` <span style="font-size:10px;color:var(--tx3)">${Math.round(tonelaje/1000)}t</span>` : '');
-      if(sesEl) sesEl.textContent = ultimaTexto;
+      const sesEl  = document.getElementById('ultima_ses_'+c.id);
+      if(semEl)  { semEl.textContent = emoji; semEl.title = estado; }
+      if(progEl) progEl.innerHTML = pesoTexto;
+      if(sesEl)  sesEl.textContent = ultimaTexto;
 
-    } catch(e) { 
+    } catch(e) {
       console.warn('Dashboard error cliente', c?.id, e?.message);
-      // Marcar como sin datos en lugar de silencio total
       const semEl = document.getElementById('semaforo_'+c?.id);
       if(semEl) { semEl.textContent = '❓'; semEl.title = 'Error cargando'; }
     }
   });
 
+// NOTA: el tonelaje semanal y los PRs se han eliminado del dashboard
+// para aligerar la carga. Si los necesitas, añade un botón "Ver detalle"
+// que cargue /sesiones solo al abrir el perfil del cliente.
   await Promise.all(promesas);
 
   // Actualizar contadores
@@ -9336,4 +9371,123 @@ async function publicarRutinaAlCoach(){
   } catch(e) {
     if(btn) { btn.disabled=false; btn.innerHTML='📤 <span data-i18n="Publicar al coach">Publicar al coach</span>'; }
   }
+// ═══════════════════════════════════════════════════════════════════
+// PANEL DE CONTROL DEL BOT IA EN EL CHAT — añadir en app1.js o app2.js
+// ═══════════════════════════════════════════════════════════════════
+//
+// Dónde añadirlo: en la sección del coach donde está el chat de mensajes.
+// Llama a renderIaChatPanel() dentro de tu función que renderiza
+// la vista de mensajes/chat del coach (p.ej. justo antes del hilo de mensajes).
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Estado local del panel ──────────────────────────────────────────
+let _iaChatConfig = { bot_global: 0, clientes: [] };
+
+// ── Cargar config desde el servidor ────────────────────────────────
+async function cargarIaChatConfig() {
+  try {
+    const r = await fetch('/api/ia-chat/config', {
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+    });
+    _iaChatConfig = await r.json();
+    return _iaChatConfig;
+  } catch(e) { return _iaChatConfig; }
 }
+
+// ── Toggle global ───────────────────────────────────────────────────
+async function toggleBotGlobal(activo) {
+  await fetch('/api/ia-chat/global', {
+    method: 'PUT',
+    headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ activo })
+  });
+  _iaChatConfig.bot_global = activo ? 1 : 0;
+  renderIaChatPanel();
+}
+
+// ── Toggle por cliente ──────────────────────────────────────────────
+async function toggleBotCliente(clienteId, activo) {
+  await fetch(`/api/ia-chat/cliente/${clienteId}`, {
+    method: 'PUT',
+    headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ activo })
+  });
+  const cl = _iaChatConfig.clientes.find(c => c.id === clienteId);
+  if (cl) cl.ia_activa = activo ? 1 : 0;
+  renderIaChatPanel();
+}
+
+// ── Render del panel ────────────────────────────────────────────────
+// Inserta el HTML en el elemento con id="iaChatPanelContainer"
+// (añade ese div donde quieras en tu HTML del coach)
+async function renderIaChatPanel() {
+  const el = document.getElementById('iaChatPanelContainer');
+  if (!el) return;
+
+  if (!_iaChatConfig.clientes.length) await cargarIaChatConfig();
+
+  const globalOn = _iaChatConfig.bot_global;
+
+  el.innerHTML = `
+    <div style="background:var(--bg2,#1a1a2e);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:#fff">🤖 Asistente IA en chat</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:2px">
+            Responde automáticamente a los clientes cuando está activado
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <span style="font-size:12px;color:${globalOn ? '#4ade80' : 'rgba(255,255,255,.4)'}">
+            ${globalOn ? 'Global ON' : 'Global OFF'}
+          </span>
+          <div onclick="toggleBotGlobal(${globalOn ? 0 : 1})"
+               style="width:44px;height:24px;border-radius:12px;background:${globalOn ? '#2563eb' : 'rgba(255,255,255,.15)'};
+                      position:relative;cursor:pointer;transition:.2s">
+            <div style="position:absolute;top:3px;${globalOn ? 'right:3px' : 'left:3px'};
+                        width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s"></div>
+          </div>
+        </label>
+      </div>
+
+      <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:8px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
+        ACTIVAR POR CLIENTE
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto">
+        ${_iaChatConfig.clientes.map(c => {
+          const on = c.ia_activa === 1;
+          // Si global está ON y cliente no está explícitamente OFF (0), el bot responde
+          const efectivo = globalOn ? (c.ia_activa !== 0) : on;
+          return `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;
+                      border-radius:8px;background:rgba(255,255,255,.04)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:8px;height:8px;border-radius:50%;background:${efectivo ? '#4ade80' : 'rgba(255,255,255,.2)'}"></div>
+              <span style="font-size:13px;color:#fff">${c.nombre}</span>
+              ${globalOn && !on ? '<span style="font-size:10px;color:rgba(255,255,255,.3)">(por global)</span>' : ''}
+            </div>
+            <div onclick="toggleBotCliente(${c.id}, ${on ? 0 : 1})"
+                 style="width:36px;height:20px;border-radius:10px;background:${on ? '#2563eb' : 'rgba(255,255,255,.15)'};
+                        position:relative;cursor:pointer;transition:.2s;flex-shrink:0">
+              <div style="position:absolute;top:2px;${on ? 'right:2px' : 'left:2px'};
+                          width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07);
+                  font-size:11px;color:rgba(255,255,255,.3);line-height:1.5">
+        💡 Los mensajes del asistente aparecen marcados como <em>vía IA</em> en el hilo.
+        Cuando tú respondes manualmente, el asistente no interfiere.
+      </div>
+    </div>
+  `;
+}
+
+// ── Añadir en tu HTML del coach (donde gestiones el chat) ──────────
+// <div id="iaChatPanelContainer"></div>
+//
+// ── Llamar al cargar la vista de mensajes ──────────────────────────
+// renderIaChatPanel(); // o dentro de tu función que muestra la sección de chat}
