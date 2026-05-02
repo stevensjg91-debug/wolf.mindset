@@ -1649,8 +1649,8 @@ async function responderConIA(clienteId, mensajeUsuario) {
     ].filter(Boolean).join('\n');
 
     const system = isEn
-      ? `You are a WolfMindset fitness coach assistant. You respond to clients in a warm, direct, motivating tone — like a real coach who knows them personally. Keep responses concise (2-4 sentences max). Never mention AI or technology. If you don't know something specific about their plan, be honest and say the coach will follow up. Client context:\n${contexto}`
-      : `Eres el asistente del coach de WolfMindset. Respondes a los clientes con un tono cercano, directo y motivador — como un coach real que los conoce. Respuestas concisas (2-4 frases máximo). Nunca menciones IA ni tecnología. Si no sabes algo concreto de su plan, sé honesto y di que el coach lo confirmará. Contexto del cliente:\n${contexto}`;
+      ? `You are a WolfMindset fitness coach assistant. You respond to clients in a warm, direct, motivating tone — like a real coach who knows them personally. Keep responses concise (2-4 sentences max). Never mention AI or technology. If you don't know something specific about their plan, be honest and say the coach will follow up. NO markdown, NO asterisks, NO bullet points — plain conversational text only. Client context:\n${contexto}`
+      : `Eres el asistente del coach de WolfMindset. Respondes a los clientes con un tono cercano, directo y motivador — como un coach real que los conoce. Respuestas concisas (2-4 frases máximo). Nunca menciones IA ni tecnología. Si no sabes algo concreto de su plan, sé honesto y di que el coach lo confirmará. SIN markdown, SIN asteriscos, SIN listas — solo texto conversacional natural. Contexto del cliente:\n${contexto}`;
 
     const messages = [
       ...historial.map(m => ({ role: m.de_coach ? 'assistant' : 'user', content: m.contenido })),
@@ -1723,6 +1723,8 @@ router.post('/mensajes', async (req, res) => {
         // No bloqueamos la respuesta al cliente — la IA responde en background
         responderConIA(cliente_id, contenido.trim()).then(replyIA => {
           if (!replyIA) return;
+          // Verificar de nuevo si el bot sigue activo — puede haberse desactivado mientras procesaba
+          if (!botDebeResponder(cliente_id)) return;
           try {
             const rIA = dbRun(
               'INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido) VALUES (?,?,?,?,?)',
