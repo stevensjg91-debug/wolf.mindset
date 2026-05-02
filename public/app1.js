@@ -6917,10 +6917,17 @@ async function renderFotosProgreso() {
 function toggleCoachComment(id, btn){
   const el=document.getElementById(id);
   if(!el)return;
-  const expanded=el.style.webkitLineClamp==='unset';
-  el.style.webkitLineClamp=expanded?'3':'unset';
-  el.style.display=expanded?'-webkit-box':'block';
-  btn.textContent=expanded?t('Ver más')+' ▾':t('Ver menos')+' ▴';
+  // Si webkitLineClamp es '3' o tiene valor → está colapsado → expandir
+  const collapsed = el.style.webkitLineClamp !== 'unset' && el.style.webkitLineClamp !== '';
+  if(collapsed){
+    el.style.webkitLineClamp='unset';
+    el.style.display='block';
+    btn.textContent=t('Ver menos')+' ▴';
+  } else {
+    el.style.webkitLineClamp='3';
+    el.style.display='-webkit-box';
+    btn.textContent=t('Ver más')+' ▾';
+  }
 }
 
 async function guardarMediciones(){
