@@ -576,9 +576,6 @@ const TRANSLATIONS = {
   'Semanas':'Weeks','Objetivo':'Goal','Nivel':'Level','Días/sem':'Days/wk',
   'Medición semanal':'Weekly measurement',
   'Peso registrado esta semana':'Weight logged this week',
-  'Medidas registradas este mes':'Measurements logged this month',
-  'Peso':'Weight','Cintura':'Waist','Cintura (cm)':'Waist (cm)',
-  'Guardar medidas':'Save measurements',
   'Guardar peso':'Save weight',
   'Fotos de progreso':'Progress photos',
   'frente':'front','posterior':'back','costado':'side',
@@ -5461,7 +5458,7 @@ async function guardarCheckin(){
 
   // Guardar peso en BD si se indicó
   if(peso > 0){
-    try { await api('/clientes/'+CD.id+'/peso', {method:'POST', body:JSON.stringify({peso, cintura:null})}); } catch(e){}
+    try { await api('/clientes/'+CD.id+'/pesos', {method:'POST', body:JSON.stringify({peso, grasa:null, cintura:null})}); } catch(e){}
   }
 
   // Recargar pantalla sin el banner
@@ -6754,30 +6751,15 @@ function hProgreso2(){return`<div style="padding-top:8px">
   </div>
   <div id="peso_section" style="margin:0 14px 12px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:14px">
     <div id="peso_guardado_view" style="display:none;margin-bottom:10px">
-      <div style="font-size:13px;color:var(--tx3);margin-bottom:10px">${t('Medidas registradas este mes')}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:12px">
-          <div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:700">${t('Peso')}</div>
-          <div style="font-size:30px;font-weight:800;color:var(--sv);font-family:'Bebas Neue',sans-serif;line-height:1" id="peso_guardado_val">—</div>
-        </div>
-        <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:12px">
-          <div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:700">${t('Cintura')}</div>
-          <div style="font-size:30px;font-weight:800;color:var(--sv);font-family:'Bebas Neue',sans-serif;line-height:1" id="cintura_guardado_val">—</div>
-        </div>
-      </div>
+      <div style="font-size:13px;color:var(--tx3);margin-bottom:4px">Peso registrado esta semana</div>
+      <div style="font-size:28px;font-weight:700;color:var(--sv);font-family:'Bebas Neue',sans-serif" id="peso_guardado_val">—</div>
     </div>
     <div id="peso_input_wrap">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-        <div>
-          <div class="form-lbl">${t('Peso (kg)')}</div>
-          <input class="inp" id="np" type="number" step="0.1" placeholder="84.5" style="margin-bottom:0"/>
-        </div>
-        <div>
-          <div class="form-lbl">${t('Cintura (cm)')}</div>
-          <input class="inp" id="ncintura" type="number" step="0.1" placeholder="82" style="margin-bottom:0"/>
-        </div>
+      <div style="margin-bottom:10px">
+        <div class="form-lbl">Peso (kg)</div>
+        <input class="inp" id="np" type="number" step="0.1" placeholder="84.5" style="margin-bottom:0"/>
       </div>
-      <button class="btn" style="width:100%;padding:11px" onclick="guardarPeso()">${t('Guardar medidas')}</button>
+      <button class="btn" style="width:100%;padding:11px" onclick="guardarPeso()">${t('Guardar peso')}</button>
     </div>
   </div>
   <div class="sec-lbl">${t('Fotos de progreso')}</div>
@@ -6894,68 +6876,44 @@ function renderFotosProgreso() {
 }
 
 async function guardarPeso(){
-  const pesoVal = document.getElementById('np')?.value;
-  const cinturaVal = document.getElementById('ncintura')?.value;
-  const peso = pesoVal !== '' ? parseFloat(pesoVal) : null;
-  const cintura = cinturaVal !== '' ? parseFloat(cinturaVal) : null;
-  if(!peso && !cintura) return;
-
-  await api('/clientes/'+CD.id+'/peso',{
-    method:'POST',
-    body:JSON.stringify({peso, cintura}) // grasa no se envía desde cliente
-  });
+  const peso=parseFloat(document.getElementById('np').value);
+  if(!peso)return;
+  await api('/clientes/'+CD.id+'/peso',{method:'POST',body:JSON.stringify({peso,grasa:null})});
   await loadCD(CD.id);
-
-  const registroMes = getRegistroMedidasMesActual();
-  pesoModoVer(registroMes || {peso, cintura});
-  renderPesoTendencia();
+  // Store date of last weigh-in
+  localStorage.setItem('wm_ultimo_peso_'+CD.id, Date.now());
+  pesoModoVer(peso);
 }
 
-function fmtMedida(v, sufijo){
-  if(v === null || v === undefined || v === '') return '—';
-  const n = Number(v);
-  return (Number.isInteger(n) ? n : n.toFixed(1).replace('.0','')) + sufijo;
-}
-
-function getRegistroMedidasMesActual(){
-  const ym = new Date().toISOString().slice(0,7);
-  const pesos = CD.pesos || [];
-  return [...pesos].reverse().find(p => (p.fecha||'').slice(0,7) === ym) || null;
-}
-
-function pesoModoVer(registro){
+function pesoModoVer(peso){
   const inp=document.getElementById('peso_input_wrap');
   const view=document.getElementById('peso_guardado_view');
   const val=document.getElementById('peso_guardado_val');
-  const cval=document.getElementById('cintura_guardado_val');
   const wrap=document.getElementById('peso_edit_btn_wrap');
   if(inp) inp.style.display='none';
   if(view){view.style.display='block';}
-  if(val) val.textContent=fmtMedida(registro?.peso, 'KG')+' ✓';
-  if(cval) cval.textContent=fmtMedida(registro?.cintura, 'CM')+' ✓';
-  if(wrap) wrap.innerHTML=`<button onclick="pesoModoEditar()" style="padding:6px 14px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ ${t('Corregir')}</button>`;
+  if(val) val.textContent=peso+'kg ✓';
+  if(wrap) wrap.innerHTML=`<button onclick="pesoModoEditar()" style="padding:6px 14px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ Corregir</button>`;
 }
 
 function pesoModoEditar(){
   const inp=document.getElementById('peso_input_wrap');
   const view=document.getElementById('peso_guardado_view');
   const wrap=document.getElementById('peso_edit_btn_wrap');
-  const registro = getRegistroMedidasMesActual();
   if(inp) inp.style.display='block';
   if(view) view.style.display='none';
   if(wrap) wrap.innerHTML='';
-  if(registro){
-    const np=document.getElementById('np');
-    const nc=document.getElementById('ncintura');
-    if(np && registro.peso) np.value = registro.peso;
-    if(nc && registro.cintura) nc.value = registro.cintura;
-  }
   document.getElementById('np')?.focus();
 }
 
 function initPesoSection(){
-  const registroMes = getRegistroMedidasMesActual();
-  if(registroMes && (registroMes.peso || registroMes.cintura)) pesoModoVer(registroMes);
+  const ultima=parseInt(localStorage.getItem('wm_ultimo_peso_'+CD.id)||'0');
+  const SEMANA=7*24*60*60*1000;
+  const yaEsta = ultima && (Date.now()-ultima) < SEMANA;
+  if(yaEsta){
+    const ultimoPeso=CD.pesos?.length?CD.pesos[CD.pesos.length-1].peso:null;
+    if(ultimoPeso) pesoModoVer(ultimoPeso);
+  }
   // Renderizar gráfica de tendencia si hay suficientes datos
   renderPesoTendencia();
 }
