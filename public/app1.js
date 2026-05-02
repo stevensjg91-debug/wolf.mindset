@@ -6640,12 +6640,31 @@ async function uploadFoto(event){
   document.getElementById('fLoad').style.display='block';document.getElementById('fAn').innerHTML='';
   const reader=new FileReader();
   reader.onload=async function(e){
-    const b64=e.target.result,mt=b64.split(';')[0].split(':')[1],img=b64.split(',')[1];
-    try{const d=await api('/ia/foto',{method:'POST',body:JSON.stringify({imageBase64:img,mediaType:mt,system:`Valoración de progreso WolfMindset. Analiza la foto (objetivo: ${CD.objetivo}, nivel: ${CD.nivel}, semana ${CD.semanas}). Directo, motivador. Sin mencionar tecnología. 4 frases: mejora visible, punto fuerte, motivación, recomendación concreta.`})});
-      await api('/clientes/'+CD.id+'/fotos',{method:'POST',body:JSON.stringify({url:'foto_'+Date.now(),analysis:d.reply})});
+    const b64full=e.target.result,mt=b64full.split(';')[0].split(':')[1],img=b64full.split(',')[1];
+    try{
+      const d=await api('/ia/foto',{method:'POST',body:JSON.stringify({imageBase64:img,mediaType:mt,system:`Valoración de progreso WolfMindset. Analiza la foto (objetivo: ${CD.objetivo}, nivel: ${CD.nivel}, semana ${CD.semanas}). Directo, motivador. Sin mencionar tecnología. 4 frases: mejora visible, punto fuerte, motivación, recomendación concreta.`})});
+
+      // ── Subir a Cloudinary si está configurado ──────────────────
+      let urlFinal = 'foto_'+Date.now();
+      const cloudName = window.CLOUDINARY_CLOUD_NAME;
+      const uploadPreset = window.CLOUDINARY_UPLOAD_PRESET;
+      if(cloudName && uploadPreset){
+        try{
+          const formData = new FormData();
+          formData.append('file', b64full);
+          formData.append('upload_preset', uploadPreset);
+          formData.append('folder', 'wolfmindset/fotos');
+          const cdnRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,{method:'POST',body:formData});
+          const cdnData = await cdnRes.json();
+          if(cdnData.secure_url) urlFinal = cdnData.secure_url;
+        }catch(ce){ console.log('Cloudinary error:', ce); }
+      }
+
+      await api('/clientes/'+CD.id+'/fotos',{method:'POST',body:JSON.stringify({url:urlFinal,analysis:d.reply})});
       await loadCD(CD.id);
       document.getElementById('fLoad').style.display='none';
-      document.getElementById('fAn').innerHTML=`<div class="ia-chip"><div class="ia-chip-title">Valoración</div><div class="ia-result-body">${d.reply}</div></div>`;}
+      document.getElementById('fAn').innerHTML=`<div class="ia-chip"><div class="ia-chip-title">Valoración</div><div class="ia-result-body">${d.reply}</div></div>`;
+    }
     catch(err){document.getElementById('fLoad').style.display='none';document.getElementById('fAn').innerHTML=`<div class="ia-chip"><div class="ia-result-body">Excelente actitud. La constancia es la clave.</div></div>`;}
   };reader.readAsDataURL(file);
 }
