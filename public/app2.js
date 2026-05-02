@@ -1001,7 +1001,9 @@ async function coachAnalizarSemana(fi, btnEl){
         peso: clienteData.peso_actual,
         altura: clienteData.altura,
         edad: clienteData.edad,
-        sexo: clienteData.sexo
+        sexo: clienteData.sexo,
+        cintura: clienteData.cintura_actual,
+        cadera: clienteData.cadera
       })
     });
 
