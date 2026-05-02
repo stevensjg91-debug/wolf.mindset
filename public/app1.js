@@ -4776,11 +4776,14 @@ function iniciarSSE(){
     }
   });
 
-  // ── Mensaje nuevo recibido por el cliente ──
+  // ── Mensaje nuevo recibido por SSE ──
   _sseSource.addEventListener('mensaje_nuevo', e => {
     try {
       const data = JSON.parse(e.data);
-      if(data.de_coach) {
+      const existingLocal = Array.isArray(_chatMsgs) && data.id && _chatMsgs.some(m => String(m.id) === String(data.id));
+
+      // Cliente: recibe respuestas del coach/IA y actualiza su hilo.
+      if(USER && USER.role === 'cliente' && data.de_coach && !existingLocal) {
         const msg = {
           role: 'assistant',
           content: data.contenido,
@@ -4792,6 +4795,8 @@ function iniciarSSE(){
         _chatMsgs.push(msg);
         _chatSave();
         if(document.getElementById('chatMsgs')) _chatRenderAll();
+        const typing = document.getElementById('chatTyping');
+        if(typing) typing.style.display = 'none';
         // Notificación del sistema — llega aunque la app esté en background
         const coachName = window._coachNombreAsistente || 'Coach';
         mostrarNotifSistema(
@@ -4799,6 +4804,18 @@ function iniciarSSE(){
           data.contenido.length > 80 ? data.contenido.slice(0,80)+'…' : data.contenido,
           'msg-coach-' + data.id
         );
+      }
+
+      // Coach: si está en mensajes, refresca lista o hilo abierto al instante.
+      if(USER && USER.role === 'coach') {
+        if(window._coachTabActual === 'mensajes') {
+          if(window._coachMsgThread && String(window._coachMsgThread) === String(data.cliente_id)) {
+            coachMsgsLoadThread(window._coachMsgThread, false);
+          } else {
+            coachMsgsLoadList();
+          }
+        }
+        cargarNotificacionesCoach();
       }
     } catch(err) {}
   });
@@ -6214,45 +6231,26 @@ async function sendChat(){
   _chatSave();
   _chatRenderAll();
 
-  document.getElementById('chatTyping').style.display = 'block';
-  const msgs = document.getElementById('chatMsgs');
+  const typing = document.getElementById('chatTyping');
+  if(typing) typing.style.display = 'block';
 
-  // 1. Intentar enviar al coach real
-  let coachReplied = false;
-  if(_chatCoachOnline){
-    try{
-      const d = await api('/mensajes', {method:'POST', body:JSON.stringify({cliente_id:CD.id, contenido:msg})});
-      if(d && d.reply){
-        const coachMsg = {role:'assistant', content:d.reply, sender:window._coachNombreAsistente||'Coach', ts:Date.now(), via:'coach', id:d.id};
-        _chatMsgs.push(coachMsg);
-        _chatSave();
-        coachReplied = true;
-      }
-    }catch(e){ /* coach no disponible, caer a IA */ }
-  }
-
-  // 2. Si el coach no respondió → IA
-  if(!coachReplied){
-    // Construir contexto para la IA solo con mensajes de texto (sin metadatos)
-    chatH = _chatMsgs.slice(-20).map(m=>({role:m.role==='user'?'user':'assistant', content:m.content}));
-    try{
-      const d = await api('/ia/chat', {method:'POST', body:JSON.stringify({
-        messages: chatH,
-        system: `Eres ${window._coachNombreAsistente||'el coach'} de WolfMindset. Hablas directamente como el coach, en primera persona. Cliente: ${CD.nombre}, objetivo: ${CD.objetivo}, nivel: ${CD.nivel}, semana ${CD.semanas}. Responde sobre entreno con pesas, nutrición y recuperación. Sustituciones de alimento siempre con gramos en crudo. Si hay mejora en ejercicio, motívale. NUNCA digas que eres IA, un asistente, un bot ni ninguna variante. NUNCA menciones calorías al cliente. NUNCA digas que el coach está ocupado ni ausente. Eres el coach. 3-4 frases máx, directo y motivador. ${LANG==='en'?'Always respond in English.':''}`
-      })});
-      const iaMsg = {role:'assistant', content:d.reply, sender:window._coachNombreAsistente||'Coach', ts:Date.now(), via:'ia'};
-      _chatMsgs.push(iaMsg);
-      _chatSave();
-      chatH.push({role:'assistant', content:d.reply});
-    }catch(e){
-      const errMsg = {role:'assistant', content: LANG==='en'?'Cannot connect right now. Try again in a moment.':'No puedo conectar ahora mismo. Inténtalo en un momento.', sender:window._coachNombreAsistente||'Coach', ts:Date.now(), via:'ia'};
-      _chatMsgs.push(errMsg);
+  try{
+    // Un único hilo real en backend. La IA, si procede, responde desde /mensajes.
+    // Así no se duplica el chat ni responde cuando el coach está activo.
+    const d = await api('/mensajes', {method:'POST', body:JSON.stringify({cliente_id:CD.id, contenido:msg})});
+    if(d && d.id) {
+      userMsg.id = d.id;
       _chatSave();
     }
+    // Refresco suave para traer el mensaje guardado si hacía falta; la respuesta coach/IA llega por SSE.
+    setTimeout(_chatLoadFromServer, 600);
+  }catch(e){
+    if(typing) typing.style.display = 'none';
+    const errMsg = {role:'assistant', content: LANG==='en'?'Cannot send right now. Try again in a moment.':'No puedo enviar ahora mismo. Inténtalo en un momento.', sender:window._coachNombreAsistente||'Coach', ts:Date.now(), via:'system'};
+    _chatMsgs.push(errMsg);
+    _chatSave();
+    _chatRenderAll();
   }
-
-  document.getElementById('chatTyping').style.display = 'none';
-  _chatRenderAll();
 }
 
 // ══════════════════════════════════════════════════════
@@ -6357,8 +6355,13 @@ async function coachMsgsAbrirHilo(clienteId, nombre, foto, username){
     </div>`;
 
   await coachMsgsLoadThread(clienteId, true);
-  // Marcar como leídos
+  // Marcar como leídos y renovar presencia del coach para apagar la IA en este hilo.
   api('/mensajes/'+clienteId+'/leer', {method:'PUT'}).catch(()=>{});
+  if(window._coachActivePingInt) clearInterval(window._coachActivePingInt);
+  window._coachActivePingInt = setInterval(() => {
+    if(window._coachMsgThread === clienteId) api('/mensajes/'+clienteId+'/leer', {method:'PUT'}).catch(()=>{});
+    else clearInterval(window._coachActivePingInt);
+  }, 60000);
   cargarNotificacionesCoach();
 }
 
@@ -6408,6 +6411,7 @@ async function coachMsgsEnviar(clienteId){
 
 function coachMsgsVolverLista(){
   window._coachMsgThread = null;
+  if(window._coachActivePingInt) { clearInterval(window._coachActivePingInt); window._coachActivePingInt = null; }
   const list = document.getElementById('coach_msgs_list');
   const thread = document.getElementById('coach_msgs_thread');
   if(thread) thread.style.display = 'none';
