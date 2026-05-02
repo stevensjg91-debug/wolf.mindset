@@ -381,7 +381,7 @@ router.post('/ia/chat', async (req, res) => {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-opus-4-5-20250514', max_tokens: 4000, system, messages })
+      body: JSON.stringify({ model: 'claude-opus-4-5-20251101', max_tokens: 4000, system, messages })
     });
     const data = await response.json();
     if (data.error) return res.status(500).json({ error: data.error.message });
@@ -390,21 +390,63 @@ router.post('/ia/chat', async (req, res) => {
 });
 
 router.post('/ia/foto', async (req, res) => {
-  const { imageBase64, mediaType, system } = req.body;
+  const { imageBase64, mediaType, extraImages, system } = req.body;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key no configurada en las variables de entorno' });
   if (!imageBase64 || !mediaType) return res.status(400).json({ error: 'imageBase64 y mediaType son requeridos' });
+
   try {
+    // Build content array with all images
+    const content = [];
+
+    // First image (frente)
+    content.push({ type: 'text', text: system?.includes('English') ? 'Front photo:' : 'Foto frente:' });
+    content.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } });
+
+    // Extra images (posterior, costado)
+    if (extraImages && extraImages.length) {
+      for (const img of extraImages) {
+        if (img.b64 && img.mt) {
+          const label = img.tipo || '';
+          content.push({ type: 'text', text: system?.includes('English') ? `${label} photo:` : `Foto ${label}:` });
+          content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } });
+        }
+      }
+    }
+
+    // Add the analysis prompt
+    const prompt = system?.includes('English')
+      ? 'Analyze these progress photos. Give a motivating but honest assessment including: visible improvements, strong points, and concrete recommendations for their goal. Be direct and specific, like a real coach. No markdown, no asterisks.'
+      : 'Analiza estas fotos de progreso. Da una valoración motivadora pero honesta incluyendo: mejoras visibles, puntos fuertes, y recomendaciones concretas para su objetivo. Sé directo y específico, como un coach real. Sin markdown, sin asteriscos.';
+    content.push({ type: 'text', text: prompt });
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-opus-4-5-20250514', max_tokens: 800, system, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }, { type: 'text', text: 'Valora el progreso fisico.' }] }] })
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5-20251101',
+        max_tokens: 1024,
+        system: system || 'Eres un coach de fitness experto. Responde en español.',
+        messages: [{ role: 'user', content }]
+      })
     });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return res.status(500).json({ error: `API error ${response.status}: ${errText.slice(0, 200)}` });
+    }
+
     const data = await response.json();
     if (data.error) return res.status(500).json({ error: data.error.message || 'Error de la API de IA' });
     if (!data.content || !data.content[0]) return res.status(500).json({ error: 'Respuesta vacía de la IA' });
     res.json({ reply: data.content[0].text });
-  } catch(e) { res.status(500).json({ error: e.message || 'Error IA foto' }); }
+  } catch(e) {
+    res.status(500).json({ error: e.message || 'Error IA foto' });
+  }
 });
 
 // ── COMPARAR DOS SEMANAS DE FOTOS (Coach → IA → Mensaje editable) ──────────
@@ -461,7 +503,7 @@ Tono: directo, cercano, como un coach real que lo conoce personalmente. Sin mark
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-opus-4-5-20250514', max_tokens: 700, system, messages: [{ role: 'user', content }] })
+      body: JSON.stringify({ model: 'claude-opus-4-5-20251101', max_tokens: 700, system, messages: [{ role: 'user', content }] })
     });
 
     const data = await response.json();
