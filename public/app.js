@@ -1561,8 +1561,11 @@ function getWgerImg(nombre){
 function getExerciseIcon(nombre){ return getWgerImg(nombre); }
 // Helper to render exercise image box (used everywhere)
 function renderExImg(nombre, size=44, grupo='', directUrl=''){
-  // Priority: direct url from exercise object > exConfig > static GIF
-  const url = directUrl || (window.exConfig && window.exConfig[nombre]?.imagen_url) || getWgerImg(nombre);
+  // Priority: direct url > exImages map (client) > exConfig (coach) > static GIF
+  let url = (directUrl && directUrl !== '__HAS_IMAGE__') ? directUrl
+    : (window.exImages && window.exImages[nombre])
+    || (window.exConfig && window.exConfig[nombre]?.imagen_url)
+    || getWgerImg(nombre);
   const bg = EX_GROUP_COLORS[grupo||EX_GROUP_MAP[nombre]||'Chest'] || 'var(--s3)';
   const emoji = EX_GROUP_EMOJI[grupo||EX_GROUP_MAP[nombre]||'Chest'] || '💪';
   return `<div style="width:${size}px;height:${size}px;border-radius:${size>40?'10':'7'}px;overflow:hidden;background:${bg};flex-shrink:0;display:flex;align-items:center;justify-content:center">
@@ -1669,7 +1672,15 @@ async function doLogin(){
     }
   }catch(e){err.textContent=e.error||'Error al conectar';err.style.display='block';}
 }
-async function loadCD(id){CD=await api('/clientes/'+id);}
+async function loadCD(id){
+  CD = await api('/clientes/'+id);
+  // Load exercise images separately (base64 not in main payload)
+  if(!window.exImages) {
+    try {
+      window.exImages = await api('/ejercicios-imagenes');
+    } catch(e) { window.exImages = {}; }
+  }
+}
 async function verificarSuscripcionCliente(clienteId) {
   try {
     const s = await api('/clientes/'+clienteId+'/suscripcion');
@@ -5256,10 +5267,13 @@ function abrirDescripcion(nombre){
   const desc = EX_DESCRIPCIONES[nombre];
   const emoji = getExerciseEmoji(nombre);
   const bg = getExerciseBg(nombre);
-  // Get imagen_url from the exercise object in CD if available (client doesn't have exConfig)
-  let imgUrl = (window.exConfig&&window.exConfig[nombre]?.imagen_url)||'';
+  // Get imagen_url: exImages map (loaded at login, lightweight) > exConfig (coach) > CD fallback
+  let imgUrl = (window.exImages && window.exImages[nombre])
+    || (window.exConfig && window.exConfig[nombre]?.imagen_url) || '';
   if(!imgUrl && CD && CD.dias){
-    CD.dias.forEach(d=>d.ejercicios.forEach(e=>{ if(e.nombre===nombre && e.imagen_url) imgUrl=e.imagen_url; }));
+    CD.dias.forEach(d=>d.ejercicios.forEach(e=>{
+      if(e.nombre===nombre && e.imagen_url && e.imagen_url !== '__HAS_IMAGE__') imgUrl=e.imagen_url;
+    }));
   }
 
   // Cache de instrucciones traducidas
@@ -7720,6 +7734,9 @@ async function subirImagenEjercicio(nombre, exId, input) {
         });
         if (urlInput) {
           urlInput.style.borderColor = '#22c55e';
+          // Refresh image cache so it shows everywhere immediately
+          if(!window.exImages) window.exImages = {};
+          window.exImages[nombre] = base64;
           setTimeout(() => { urlInput.style.borderColor = ''; filtrarEjerciciosGestor(); }, 1500);
         }
       } catch (err) {
