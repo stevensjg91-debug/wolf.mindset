@@ -1545,8 +1545,15 @@ const isMobile=()=>window.innerWidth<768;
 
 async function api(path,opts={}){
   const r=await fetch(API+'/api'+path,{...opts,headers:{'Content-Type':'application/json',...(TOKEN?{Authorization:'Bearer '+TOKEN}:{})}});
-  if(!r.ok)throw await r.json();
-  return r.json();
+  if(!r.ok){
+    let err;
+    try { err = await r.json(); } catch(e) { err = { error: `Error ${r.status}: ${r.statusText}` }; }
+    throw err;
+  }
+  const text = await r.text();
+  if(!text || !text.trim()) return {};
+  try { return JSON.parse(text); }
+  catch(e) { throw { error: 'Respuesta inesperada del servidor: ' + text.slice(0,100) }; }
 }
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById(id).classList.add('on');}
 
