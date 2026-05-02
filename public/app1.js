@@ -6271,7 +6271,7 @@ function hMensajesCoach(){
 }
 
 async function coachMsgsInit(){
-  renderIaChatPanel();
+  renderIaChatPanel(); // fire and forget — no bloquea la carga de mensajes
   _coachMsgThread = null;
   await coachMsgsLoadList();
   if(_coachMsgPollInt) clearInterval(_coachMsgPollInt);
@@ -9343,9 +9343,11 @@ let _iaChatConfig = { bot_global: 0, clientes: [] };
 
 async function cargarIaChatConfig() {
   try {
+    if(!TOKEN) return _iaChatConfig;
     const r = await fetch('/api/ia-chat/config', {
       headers: { 'Authorization': 'Bearer ' + TOKEN }
     });
+    if(!r.ok) return _iaChatConfig;
     _iaChatConfig = await r.json();
     return _iaChatConfig;
   } catch(e) { return _iaChatConfig; }
