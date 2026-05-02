@@ -153,7 +153,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
-app.use(express.static(path.join(__dirname, '../public')));
+// Serve static files but NOT index.html — that's handled dynamically with cache buster
+app.use(express.static(path.join(__dirname, '../public'), { index: false }));
 app.use('/api/auth', authRouter);
 
 app.post('/api/reload-ejercicios', (req, res) => {
