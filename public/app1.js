@@ -1,6 +1,6 @@
 /* ─────────────────────────────────────────────────────────────
    Extracted from public/index.html - Phase 2 JS split
-   Keep loaded with: <script src="/app.js"></script>
+   Keep loaded with: <script src="/app.js"><\/script>
 ───────────────────────────────────────────────────────────── */
 
 // ── REGISTRO FORM LANGUAGE TOGGLE ─────────────────────────────────
@@ -9337,4 +9337,3 @@ async function publicarRutinaAlCoach(){
     if(btn) { btn.disabled=false; btn.innerHTML='📤 <span data-i18n="Publicar al coach">Publicar al coach</span>'; }
   }
 }
-
