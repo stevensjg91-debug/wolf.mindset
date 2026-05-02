@@ -1,125 +1,124 @@
 require('dotenv').config();
 const express = require('express');
 
-// ── WEB PUSH (sin dependencia externa) ───────────────────────────────────────
-// Implementación manual de Web Push usando crypto nativo de Node.js
-const { createECDH, createSign, randomBytes, createCipheriv } = require('crypto');
-const https = require('https');
-const url = require('url');
+// ── WEB PUSH ──────────────────────────────────────────────────────────────────
+const crypto = require('crypto');
+const https  = require('https');
+const urlMod = require('url');
 
 const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY  || 'BGXVsTmH4dCRzJk2vPoqMX08DtwH_EBk2fF42nIQGfubO9utSacLfZxCF4wTBQxDrH50S_8aZuUg5oKppHqF51A';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'uLGKx8F9YsP0gqhVqFuT_MKepxPBOQrjEX0bdnGxAoY';
 const VAPID_SUBJECT     = process.env.VAPID_SUBJECT     || 'mailto:coach@wolfmindset.com';
 
-function b64urlToBuffer(b64url) {
-  const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
-  return Buffer.from(b64, 'base64');
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function b64u(buf){ return buf.toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''); }
+function fromb64u(s){ return Buffer.from(s.replace(/-/g,'+').replace(/_/g,'/'), 'base64'); }
+
+function hkdf(salt, ikm, info, len) {
+  const prk = crypto.createHmac('sha256', salt).update(ikm).digest();
+  let t = Buffer.alloc(0), okm = Buffer.alloc(0), i = 1;
+  while (okm.length < len) {
+    t = crypto.createHmac('sha256', prk).update(Buffer.concat([t, info, Buffer.from([i++])])).digest();
+    okm = Buffer.concat([okm, t]);
+  }
+  return okm.slice(0, len);
 }
-function bufferToB64url(buf) {
-  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+function getVapidECDH() {
+  const rawPriv = fromb64u(VAPID_PRIVATE_KEY);
+  const ecdh = crypto.createECDH('prime256v1');
+  ecdh.setPrivateKey(rawPriv);
+  return ecdh;
+}
+
+function makeVapidJwt(audience) {
+  const hdr = b64u(Buffer.from(JSON.stringify({typ:'JWT',alg:'ES256'})));
+  const now = Math.floor(Date.now()/1000);
+  const pay = b64u(Buffer.from(JSON.stringify({aud:audience, exp:now+43200, sub:VAPID_SUBJECT})));
+  const unsigned = hdr + '.' + pay;
+
+  // Use JWK format — works on Node 16+ without manual DER encoding
+  const rawPriv = fromb64u(VAPID_PRIVATE_KEY);
+  const ecdh = crypto.createECDH('prime256v1');
+  ecdh.setPrivateKey(rawPriv);
+  const pub = ecdh.getPublicKey();
+  const jwk = { kty:'EC', crv:'P-256', d:b64u(rawPriv), x:b64u(pub.slice(1,33)), y:b64u(pub.slice(33,65)) };
+  const privKey = crypto.createPrivateKey({ key: jwk, format: 'jwk' });
+  const sig = crypto.createSign('SHA256').update(unsigned).sign({ key: privKey, dsaEncoding: 'ieee-p1363' });
+  return unsigned + '.' + b64u(sig);
 }
 
 async function sendWebPush(subscription, payload) {
   try {
-    const endpoint = subscription.endpoint;
-    const parsedUrl = new url.URL(endpoint);
-    const audience = parsedUrl.origin;
+    const endpoint  = subscription.endpoint;
+    const parsed    = new urlMod.URL(endpoint);
+    const audience  = parsed.origin;
+    const jwt       = makeVapidJwt(audience);
 
-    // Build VAPID JWT header + claims
-    const header = bufferToB64url(Buffer.from(JSON.stringify({ typ: 'JWT', alg: 'ES256' })));
-    const now = Math.floor(Date.now() / 1000);
-    const claims = bufferToB64url(Buffer.from(JSON.stringify({
-      aud: audience, exp: now + 12 * 3600, sub: VAPID_SUBJECT
-    })));
-    const sigInput = `${header}.${claims}`;
+    // Get raw public key (uncompressed, 65 bytes)
+    const serverPubKeyRaw = getVapidECDH().getPublicKey(); // 65 bytes uncompressed
 
-    // Sign with VAPID private key
-    const privKeyDer = Buffer.concat([
-      Buffer.from('308141020100301306072a8648ce3d020106082a8648ce3d030107042730250201010420', 'hex'),
-      b64urlToBuffer(VAPID_PRIVATE_KEY)
-    ]);
+    // RFC 8291 encryption
+    const clientPub  = fromb64u(subscription.keys.p256dh);  // 65 bytes
+    const authSecret = fromb64u(subscription.keys.auth);     // 16 bytes
+    const salt       = crypto.randomBytes(16);
 
-    const sign = createSign('SHA256');
-    sign.update(sigInput);
-    const sigDer = sign.sign({ key: privKeyDer, format: 'der', type: 'pkcs8', dsaEncoding: 'ieee-p1363' });
-    const jwt = `${sigInput}.${bufferToB64url(sigDer)}`;
-
-    // Encrypt payload using ECDH + AES-128-GCM (RFC 8291)
-    const authBuf  = b64urlToBuffer(subscription.keys.auth);
-    const p256dhBuf = b64urlToBuffer(subscription.keys.p256dh);
-    const payloadBuf = Buffer.from(JSON.stringify(payload));
-    const salt = randomBytes(16);
-    const serverECDH = createECDH('prime256v1');
+    const serverECDH = crypto.createECDH('prime256v1');
     serverECDH.generateKeys();
-    const serverPublicKey = serverECDH.getPublicKey();
-    const sharedSecret = serverECDH.computeSecret(p256dhBuf);
+    const serverEphemeralPub    = serverECDH.getPublicKey();          // 65 bytes
+    const sharedSecret          = serverECDH.computeSecret(clientPub);
 
-    // HKDF helpers
-    function hkdfExtract(salt, ikm) {
-      const { createHmac } = require('crypto');
-      return createHmac('sha256', salt).update(ikm).digest();
-    }
-    function hkdfExpand(prk, info, len) {
-      const { createHmac } = require('crypto');
-      let t = Buffer.alloc(0), okm = Buffer.alloc(0);
-      for(let i = 1; okm.length < len; i++) {
-        t = createHmac('sha256', prk).update(Buffer.concat([t, info, Buffer.from([i])])).digest();
-        okm = Buffer.concat([okm, t]);
-      }
-      return okm.slice(0, len);
-    }
-
-    const prk = hkdfExtract(authBuf, sharedSecret);
-    const keyInfo = Buffer.concat([
-      Buffer.concat([Buffer.from('Content-Encoding: aes128gcm'), Buffer.from([0])]),
-      Buffer.from([0x00, 0x41]),
-      p256dhBuf, serverPublicKey
+    // ikm via HKDF (RFC 8291 §3.3)
+    const ikmInfo = Buffer.concat([
+      Buffer.from('WebPush: info'), Buffer.from([0]),
+      clientPub, serverEphemeralPub
     ]);
-    const ikm = hkdfExpand(prk, Buffer.concat([Buffer.from('WebPush: info'), Buffer.from([0])]), 32);
-    const contentKey = hkdfExpand(
-      hkdfExtract(salt, ikm),
-      Buffer.concat([Buffer.from('Content-Encoding: aes128gcm'), Buffer.from([0])]), 16
-    );
-    const contentNonce = hkdfExpand(
-      hkdfExtract(salt, ikm),
-      Buffer.concat([Buffer.from('Content-Encoding: nonce'), Buffer.from([0])]), 12
-    );
+    const ikm = hkdf(authSecret, sharedSecret, ikmInfo, 32);
 
-    const cipher = createCipheriv('aes-128-gcm', contentKey, contentNonce);
-    const padded = Buffer.concat([payloadBuf, Buffer.from([0x02])]);
-    const encrypted = Buffer.concat([cipher.update(padded), cipher.final(), cipher.getAuthTag()]);
+    // Content encryption key and nonce
+    const cekInfo   = Buffer.concat([Buffer.from('Content-Encoding: aes128gcm'), Buffer.from([0])]);
+    const nonceInfo = Buffer.concat([Buffer.from('Content-Encoding: nonce'),     Buffer.from([0])]);
+    const cek   = hkdf(salt, ikm, cekInfo,   16);
+    const nonce = hkdf(salt, ikm, nonceInfo, 12);
 
-    // Build record header: salt(16) + rs(4) + keyid_len(1) + server_public_key(65)
-    const rs = Buffer.alloc(4); rs.writeUInt32BE(4096);
-    const bodyBuf = Buffer.concat([salt, rs, Buffer.from([65]), serverPublicKey, encrypted]);
+    // Encrypt
+    const cipher    = crypto.createCipheriv('aes-128-gcm', cek, nonce);
+    const plaintext = Buffer.concat([Buffer.from(JSON.stringify(payload)), Buffer.from([0x02])]);
+    const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()]);
 
-    const vapidHeader = `vapid t=${jwt},k=${VAPID_PUBLIC_KEY}`;
+    // Build aes128gcm content-encoding record
+    const rs      = Buffer.alloc(4); rs.writeUInt32BE(plaintext.length + 16 + 1);
+    const body    = Buffer.concat([salt, rs, Buffer.from([serverEphemeralPub.length]), serverEphemeralPub, ciphertext]);
 
-    return new Promise((resolve, reject) => {
+    const vapidHeader = `vapid t=${jwt},k=${b64u(serverPubKeyRaw)}`;
+
+    return new Promise((resolve) => {
       const req = https.request({
-        hostname: parsedUrl.hostname,
-        path: parsedUrl.pathname + parsedUrl.search,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/octet-stream',
+        hostname: parsed.hostname,
+        path:     parsed.pathname + parsed.search,
+        method:   'POST',
+        headers:  {
+          'Content-Type':     'application/octet-stream',
           'Content-Encoding': 'aes128gcm',
-          'Content-Length': bodyBuf.length,
-          'Authorization': vapidHeader,
-          'TTL': '86400',
+          'Content-Length':   body.length,
+          'Authorization':    vapidHeader,
+          'TTL':              '86400',
         }
       }, res => {
-        res.resume();
-        if(res.statusCode >= 400) {
-          console.log('[Push] Error status:', res.statusCode, endpoint.slice(0,50));
-        }
-        resolve(res.statusCode);
+        let raw = '';
+        res.on('data', d => raw += d);
+        res.on('end', () => {
+          if(res.statusCode >= 400) console.log('[Push] HTTP', res.statusCode, raw.slice(0,120), endpoint.slice(0,60));
+          else console.log('[Push] sent', res.statusCode, endpoint.slice(0,60));
+          resolve(res.statusCode);
+        });
       });
-      req.on('error', e => { console.log('[Push] Network error:', e.message); resolve(0); });
-      req.write(bodyBuf);
+      req.on('error', e => { console.log('[Push] error:', e.message); resolve(0); });
+      req.write(body);
       req.end();
     });
   } catch(e) {
-    console.log('[Push] sendWebPush error:', e.message);
+    console.log('[Push] sendWebPush threw:', e.message, e.stack?.split('\n')[1]);
     return 0;
   }
 }
