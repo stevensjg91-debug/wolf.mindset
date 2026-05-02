@@ -50,6 +50,8 @@ function ensureTrainingTrackingSchema() {
   try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN estado TEXT DEFAULT 'completado'"); } catch(e) {}
   try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN valoracion TEXT DEFAULT ''"); } catch(e) {}
   try { dbRun("ALTER TABLE series_log ADD COLUMN nota_cliente TEXT DEFAULT ''"); } catch(e) {}
+  try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN coach_revisada INTEGER DEFAULT 0"); } catch(e) {}
+  try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN coach_revisada_at DATETIME"); } catch(e) {}
 }
 
 // Mensajes de suscripción bilingues
@@ -530,127 +532,6 @@ Tono: directo, cercano, como un coach real que lo conoce personalmente. Sin mark
   }
 });
 
-// ── ANALIZAR FOTOS COACH (acepta URLs — el servidor descarga las imágenes) ──
-// Evita problemas CORS al no tener que descargar desde el navegador.
-router.post('/ia/analizar-fotos-coach', coachOnly, async (req, res) => {
-  const { urlsActuales, urlsAnteriores, clienteNombre, objetivo, nivel, semanaActual, semanaAnterior, lang, peso, altura, edad, sexo, cintura, cadera } = req.body;
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
-  if (!urlsActuales || !urlsActuales.length) return res.status(400).json({ error: 'urlsActuales requerido' });
-
-  // Descarga una imagen desde URL y devuelve { b64, mt }
-  async function fetchImageB64(url) {
-    try {
-      const resp = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; WolfMindset/1.0)',
-          'Accept': 'image/webp,image/jpeg,image/*,*/*'
-        }
-      });
-      if (!resp.ok) return null;
-      const buffer = await resp.arrayBuffer();
-      const ct = resp.headers.get('content-type') || 'image/jpeg';
-      const mt = ct.split(';')[0].trim();
-      const b64 = Buffer.from(buffer).toString('base64');
-      return { b64, mt };
-    } catch(e) { console.log('[fetchImageB64]', e.message); return null; }
-  }
-
-  try {
-    const isEn = lang === 'en';
-    const hayComparativa = !!(urlsAnteriores && urlsAnteriores.length);
-
-    // Descargar todas las imágenes en paralelo
-    const [imgActuales, imgAnteriores] = await Promise.all([
-      Promise.all(urlsActuales.map(fetchImageB64)),
-      hayComparativa ? Promise.all(urlsAnteriores.map(fetchImageB64)) : Promise.resolve([])
-    ]);
-
-    const fotosOk = imgActuales.filter(Boolean);
-    const antesOk = imgAnteriores.filter(Boolean);
-
-    if (!fotosOk.length) return res.status(400).json({ error: 'No se pudieron cargar las imágenes' });
-
-    const content = [];
-    const clienteInfo = [
-      peso    ? (isEn ? `Weight: ${peso}kg`    : `Peso: ${peso}kg`)    : '',
-      altura  ? (isEn ? `Height: ${altura}cm`  : `Altura: ${altura}cm`) : '',
-      edad    ? (isEn ? `Age: ${edad}`          : `Edad: ${edad}`)      : '',
-      sexo    ? (isEn ? `Sex: ${sexo}`          : `Sexo: ${sexo}`)      : '',
-      cintura ? (isEn ? `Waist: ${cintura}cm`  : `Cintura: ${cintura}cm`) : '',
-      cadera  ? (isEn ? `Hips: ${cadera}cm`    : `Cadera: ${cadera}cm`) : ''
-    ].filter(Boolean).join(' · ');
-
-    if (hayComparativa && antesOk.length) {
-      // Fotos anteriores
-      content.push({ type: 'text', text: isEn ? `${semanaAnterior} (BEFORE):` : `${semanaAnterior} (ANTES):` });
-      antesOk.forEach(img => content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } }));
-      content.push({ type: 'text', text: isEn ? `${semanaActual} (NOW):` : `${semanaActual} (AHORA):` });
-      fotosOk.forEach(img => content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } }));
-
-      const instruccion = isEn
-        ? `Compare BEFORE and NOW photos of ${clienteNombre} (Goal: ${objetivo}, Level: ${nivel}${clienteInfo ? ', ' + clienteInfo : ''}).
-Write a direct coach message (4-6 sentences):
-1. Estimate body fat % visually — write as "Estimated body fat: X%"
-2. Estimate overall improvement % — write as "Improvement: X%"
-3. Highlight 2-3 specific visible improvements
-4. Point out 1-2 areas to keep working on
-5. End with a motivating push
-Tone: warm, direct, like a real coach. No markdown, no asterisks, no mention of AI.`
-        : `Compara las fotos ANTES y AHORA de ${clienteNombre} (Objetivo: ${objetivo}, Nivel: ${nivel}${clienteInfo ? ', ' + clienteInfo : ''}).
-Escribe un mensaje directo del coach (4-6 frases):
-1. Estima el % de grasa corporal visualmente — escríbelo como "Grasa estimada: X%"
-2. Estima el % de mejora global — escríbelo como "Mejora: X%"
-3. Destaca 2-3 mejoras visibles y concretas
-4. Señala 1-2 áreas a seguir trabajando
-5. Termina con un empuje motivador
-Tono: cercano, directo, como un coach real. Sin markdown, sin asteriscos, sin mencionar IA.`;
-      content.push({ type: 'text', text: instruccion });
-    } else {
-      // Sin comparativa — primer mes
-      fotosOk.forEach(img => content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } }));
-      const instruccion = isEn
-        ? `Analyze the physique of ${clienteNombre} (Goal: ${objetivo}, Level: ${nivel}${clienteInfo ? ', ' + clienteInfo : ''}).
-First session — no previous photos to compare.
-Write a personal coach message (4-5 sentences):
-1. Estimate body fat % visually — write as "Estimated body fat: X%"
-2. Highlight 2-3 genuine strong points (specific muscle groups, posture, body composition)
-3. Point out 1-2 areas to focus on to reach their goal
-4. Give 1 concrete actionable tip for this week
-5. End with a motivating push
-Tone: warm, direct, personal. No markdown, no asterisks, no mention of AI.`
-        : `Analiza el físico de ${clienteNombre} (Objetivo: ${objetivo}, Nivel: ${nivel}${clienteInfo ? ', ' + clienteInfo : ''}).
-Primera sesión — no hay fotos anteriores para comparar.
-Escribe un mensaje personal del coach (4-5 frases):
-1. Estima el % de grasa corporal visualmente — escríbelo como "Grasa estimada: X%"
-2. Destaca 2-3 puntos fuertes reales (grupos musculares, postura, composición)
-3. Señala 1-2 áreas en las que enfocarse para alcanzar su objetivo
-4. Da 1 consejo concreto y accionable para esta semana
-5. Termina con una motivación real
-Tono: cercano, directo, personal. Sin markdown, sin asteriscos, sin mencionar IA.`;
-      content.push({ type: 'text', text: instruccion });
-    }
-
-    const system = isEn
-      ? 'You are an expert WolfMindset fitness coach. You analyze client progress photos with a trained, motivating eye. Always estimate body fat % visually with a specific number. Write personalized messages. Never mention AI or technology.'
-      : 'Eres un coach de fitness experto de WolfMindset. Analizas fotos de progreso con ojo entrenado y motivador. Siempre estima el % de grasa con un número concreto. Escribe mensajes personalizados. Nunca menciones IA ni tecnología.';
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-opus-4-6', max_tokens: 600, system, messages: [{ role: 'user', content }] })
-    });
-
-    const data = await response.json();
-    if (data.error) return res.status(500).json({ error: data.error.message || 'Error API' });
-    if (!data.content?.[0]?.text) return res.status(500).json({ error: 'Respuesta vacía de la IA' });
-    res.json({ reply: data.content[0].text });
-  } catch(e) {
-    console.log('[IA analizar-fotos-coach]', e.message);
-    res.status(500).json({ error: e.message || 'Error analizando fotos' });
-  }
-});
-
 // ── EJERCICIOS CONFIG ──────────────────────────────────────────────
 router.get('/ejercicios-config', coachOnly, (req, res) => {
   const configs = dbAll('SELECT * FROM ejercicios_config', []);
@@ -831,6 +712,47 @@ router.get('/clientes/:id/sesiones', (req, res) => {
     });
     res.json(sesiones);
   } catch(e) {
+    res.json([]);
+  }
+});
+
+// ── MARCAR SESIÓN COMO REVISADA ───────────────────────────────────
+router.put('/sesiones/:id/revisar', coachOnly, (req, res) => {
+  ensureTrainingTrackingSchema();
+  dbRun(
+    "UPDATE sesiones_entreno SET coach_revisada=1, coach_revisada_at=datetime('now') WHERE id=?",
+    [req.params.id]
+  );
+  res.json({ ok: true });
+});
+
+// ── SESIONES PENDIENTES DE REVISAR (dashboard coach) ─────────────
+// Devuelve las sesiones completadas en los últimos 14 días no revisadas por el coach
+router.get('/coach/sesiones-pendientes', coachOnly, (req, res) => {
+  ensureTrainingTrackingSchema();
+  const coachId = req.user.id;
+  try {
+    const pendientes = dbAll(`
+      SELECT
+        se.id, se.cliente_id, se.dia_nombre, se.dia_grupo,
+        se.fecha, se.estado, se.duracion_min, se.coach_revisada,
+        u.nombre as cliente_nombre, u.foto_perfil,
+        c.objetivo, c.semanas,
+        COUNT(sl.id) as num_series
+      FROM sesiones_entreno se
+      JOIN clientes c ON c.id = se.cliente_id
+      JOIN users u ON u.id = c.user_id
+      LEFT JOIN series_log sl ON sl.sesion_id = se.id
+      WHERE c.coach_id = ?
+        AND se.estado = 'completado'
+        AND (se.coach_revisada = 0 OR se.coach_revisada IS NULL)
+        AND se.fecha >= datetime('now', '-14 days')
+      GROUP BY se.id
+      ORDER BY se.fecha DESC
+    `, [coachId]);
+    res.json(pendientes);
+  } catch(e) {
+    console.log('[sesiones-pendientes]', e.message);
     res.json([]);
   }
 });
