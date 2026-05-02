@@ -6262,13 +6262,17 @@ let _coachMsgCache = {}; // {clienteId: [msg,...]}
 
 function hMensajesCoach(){
   return `<div id="coach_msgs_wrap" style="height:100%;display:flex;flex-direction:column">
-    <div id="iaChatPanelContainer"></div>
+    <div id="coachPresenciaBtn" style="padding:10px 14px 0"></div>
+    <div id="iaChatPanelContainer" style="padding:0 14px"></div>
     <div id="coach_msgs_list"></div>
     <div id="coach_msgs_thread" style="display:none;flex:1;display:flex;flex-direction:column;min-height:0"></div>
   </div>`;
 }
 
 async function coachMsgsInit(){
+  // Cargar y mostrar estado de presencia del coach (disponible/ausente)
+  await cargarPresenciaCoach();
+  renderPresenciaCoach();
   renderIaChatPanel(); // fire and forget — no bloquea la carga de mensajes
   window._coachMsgThread = null;
   await coachMsgsLoadList();
