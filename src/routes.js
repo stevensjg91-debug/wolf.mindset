@@ -533,7 +533,7 @@ Tono: directo, cercano, como un coach real que lo conoce personalmente. Sin mark
 // ── ANALIZAR FOTOS COACH (acepta URLs — el servidor descarga las imágenes) ──
 // Evita problemas CORS al no tener que descargar desde el navegador.
 router.post('/ia/analizar-fotos-coach', coachOnly, async (req, res) => {
-  const { urlsActuales, urlsAnteriores, clienteNombre, objetivo, nivel, semanaActual, semanaAnterior, lang, peso, altura, edad, sexo } = req.body;
+  const { urlsActuales, urlsAnteriores, clienteNombre, objetivo, nivel, semanaActual, semanaAnterior, lang, peso, altura, edad, sexo, cintura, cadera } = req.body;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
   if (!urlsActuales || !urlsActuales.length) return res.status(400).json({ error: 'urlsActuales requerido' });
@@ -573,10 +573,12 @@ router.post('/ia/analizar-fotos-coach', coachOnly, async (req, res) => {
 
     const content = [];
     const clienteInfo = [
-      peso   ? (isEn ? `Weight: ${peso}kg`   : `Peso: ${peso}kg`)   : '',
-      altura ? (isEn ? `Height: ${altura}cm` : `Altura: ${altura}cm`) : '',
-      edad   ? (isEn ? `Age: ${edad}`         : `Edad: ${edad}`)     : '',
-      sexo   ? (isEn ? `Sex: ${sexo}`         : `Sexo: ${sexo}`)     : ''
+      peso    ? (isEn ? `Weight: ${peso}kg`    : `Peso: ${peso}kg`)    : '',
+      altura  ? (isEn ? `Height: ${altura}cm`  : `Altura: ${altura}cm`) : '',
+      edad    ? (isEn ? `Age: ${edad}`          : `Edad: ${edad}`)      : '',
+      sexo    ? (isEn ? `Sex: ${sexo}`          : `Sexo: ${sexo}`)      : '',
+      cintura ? (isEn ? `Waist: ${cintura}cm`  : `Cintura: ${cintura}cm`) : '',
+      cadera  ? (isEn ? `Hips: ${cadera}cm`    : `Cadera: ${cadera}cm`) : ''
     ].filter(Boolean).join(' · ');
 
     if (hayComparativa && antesOk.length) {
