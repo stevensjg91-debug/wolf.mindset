@@ -470,15 +470,47 @@
 </div>
 
 <!-- BADGE DE LOGRO -->
-<div id="badgeOv" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(9,9,11,.92);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px">
-  <div style="font-size:80px;line-height:1;margin-bottom:16px;animation:badgePop .5s cubic-bezier(.34,1.56,.64,1)" id="badgeEmoji">🏆</div>
-  <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:.15em;color:var(--amb);margin-bottom:8px;text-transform:uppercase" data-i18n="¡Logro desbloqueado!">¡Logro desbloqueado!</div>
-  <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:8px" id="badgeTitulo">Primer Entreno</div>
-  <div style="font-size:14px;color:var(--sv3);margin-bottom:28px;max-width:280px;line-height:1.5" id="badgeDesc">Has completado tu primera sesión. ¡El viaje ha comenzado!</div>
-  <div style="display:flex;gap:10px">
-    <button onclick="cerrarBadge()" style="padding:12px 28px;background:var(--bl2);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">¡A por más!</button>
+<div id="badgeOv" style="display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;text-align:center;padding:20px;overflow:hidden">
+  <!-- Fondo animado -->
+  <div style="position:absolute;inset:0;background:rgba(4,4,8,.96);backdrop-filter:blur(20px)"></div>
+  <!-- Partículas decorativas -->
+  <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+    <div style="position:absolute;top:15%;left:10%;width:200px;height:200px;background:radial-gradient(circle,rgba(245,158,11,.15),transparent 70%);border-radius:50%;animation:badgePulse 3s ease-in-out infinite"></div>
+    <div style="position:absolute;bottom:20%;right:8%;width:160px;height:160px;background:radial-gradient(circle,rgba(59,130,246,.12),transparent 70%);border-radius:50%;animation:badgePulse 3s ease-in-out infinite .5s"></div>
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(245,158,11,.06),transparent 70%);border-radius:50%"></div>
+  </div>
+  <!-- Card principal -->
+  <div style="position:relative;width:100%;max-width:340px;z-index:1">
+    <!-- Anillo exterior animado -->
+    <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);width:110px;height:110px;border-radius:50%;border:2px solid rgba(245,158,11,.4);animation:badgeRing 2s ease-out forwards"></div>
+    <!-- Emoji grande -->
+    <div id="badgeEmoji" style="font-size:72px;line-height:1;margin-bottom:0;display:block;filter:drop-shadow(0 0 20px rgba(245,158,11,.5))">🏆</div>
+    <!-- Label logro -->
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:.25em;color:var(--amb);margin:16px 0 6px;text-transform:uppercase" data-i18n="¡Logro desbloqueado!">¡Logro desbloqueado!</div>
+    <!-- Línea decorativa -->
+    <div style="width:40px;height:1px;background:linear-gradient(90deg,transparent,var(--amb),transparent);margin:0 auto 14px"></div>
+    <!-- Título -->
+    <div id="badgeTitulo" style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.04em;color:#fff;margin-bottom:10px;text-shadow:0 0 30px rgba(245,158,11,.3)">Primer Entreno</div>
+    <!-- Descripción -->
+    <div id="badgeDesc" style="font-size:13px;color:rgba(255,255,255,.6);margin-bottom:24px;max-width:260px;line-height:1.6;margin-left:auto;margin-right:auto">Has completado tu primera sesión. ¡El viaje ha comenzado!</div>
+    <!-- Canvas oculto para generar imagen compartible -->
+    <canvas id="badgeCanvas" style="display:none" width="1080" height="1080"></canvas>
+    <!-- Botones -->
+    <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+      <button onclick="compartirLogro()" id="btnCompartirLogro" style="width:100%;max-width:260px;padding:14px 20px;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:14px;color:#000;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.02em;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 20px rgba(245,158,11,.4)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        <span data-i18n="Compartir logro">Compartir logro</span>
+      </button>
+      <button onclick="cerrarBadge()" style="width:100%;max-width:260px;padding:12px 20px;background:rgba(255,255,255,.06);border:0.5px solid rgba(255,255,255,.12);border-radius:14px;color:rgba(255,255,255,.7);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+        <span data-i18n="¡A por más!">¡A por más!</span>
+      </button>
+    </div>
   </div>
 </div>
+<style>
+@keyframes badgeRing{0%{transform:translateX(-50%) scale(.8);opacity:0}50%{opacity:1}100%{transform:translateX(-50%) scale(1.6);opacity:0}}
+@keyframes badgePulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.1);opacity:1}}
+</style>
 
 <!-- PANEL AÑADIR DÍA - STATIC HTML -->
 <div id="rb_dia_panel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(9,9,11,.95);z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:20px">
