@@ -1408,6 +1408,9 @@ router.use((req, res, next) => {
 
 function marcarCoachActivo(clienteId) {
   try {
+    // No marcar activo si el coach está en modo ausente
+    const coachId = getCoachIdDeCliente(clienteId);
+    if (coachId && isCoachAusente(coachId)) return;
     dbRun("UPDATE clientes SET coach_online=1, last_coach_activity=datetime('now') WHERE id=?", [clienteId]);
   } catch(e) {}
 }
@@ -1650,15 +1653,21 @@ function middlewareMensajeDiario(req, res, next) {
 // En ambos casos, si el coach está activo/disponible, la IA NO interviene.
 function botDebeResponder(clienteId) {
   try {
-    // Si el coach está disponible (manual o por actividad reciente), la IA no interviene.
-    if (coachEstaActivoEnCliente(clienteId)) return false;
+    // Prioridad 1: si el coach marcó manualmente "ausente", la IA SIEMPRE puede responder.
+    // Esto evita que coach_online o last_coach_activity (que tardan 5 min en expirar) bloqueen la IA.
+    const coachId = getCoachIdDeCliente(clienteId);
+    if (coachId && isCoachAusente(coachId)) {
+      // Coach en modo ausente → ignorar coach_online, ir directo a configuración IA
+    } else {
+      // Coach NO está en modo ausente → respetar presencia por actividad
+      if (coachEstaActivoEnCliente(clienteId)) return false;
+    }
 
     const cfg = dbGet('SELECT bot_global FROM ia_config WHERE id=1');
     const botGlobal = cfg ? cfg.bot_global : 0;
     const cl = dbGet('SELECT ia_chat_activa FROM clientes WHERE id=?', [clienteId]);
     const iaCliente = cl ? cl.ia_chat_activa : 0;
-    // Tanto con global ON como OFF: solo responde si ia_chat_activa=1 explícitamente
-    // Esto evita que clientes con NULL o 0 reciban respuestas IA sin configurar
+    // Responde solo si ia_chat_activa=1 explícitamente (con global ON o OFF)
     if (botGlobal) return iaCliente === 1;
     return iaCliente === 1;
   } catch(e) { return false; }
