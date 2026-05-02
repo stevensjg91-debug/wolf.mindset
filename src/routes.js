@@ -381,7 +381,7 @@ router.post('/ia/chat', async (req, res) => {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-opus-4-5-20251101', max_tokens: 4000, system, messages })
+      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 4000, system, messages })
     });
     const data = await response.json();
     if (data.error) return res.status(500).json({ error: data.error.message });
@@ -420,6 +420,15 @@ router.post('/ia/foto', async (req, res) => {
       : 'Analiza estas fotos de progreso. Da una valoración motivadora pero honesta incluyendo: mejoras visibles, puntos fuertes, y recomendaciones concretas para su objetivo. Sé directo y específico, como un coach real. Sin markdown, sin asteriscos.';
     content.push({ type: 'text', text: prompt });
 
+    const reqBody = JSON.stringify({
+      model: 'claude-opus-4-5',
+      max_tokens: 1024,
+      system: system || 'Eres un coach de fitness experto. Responde en español.',
+      messages: [{ role: 'user', content }]
+    });
+
+    console.log('[IA foto] Sending request, images:', content.filter(c=>c.type==='image').length, 'body size:', reqBody.length);
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -427,24 +436,26 @@ router.post('/ia/foto', async (req, res) => {
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01'
       },
-      body: JSON.stringify({
-        model: 'claude-opus-4-5-20251101',
-        max_tokens: 1024,
-        system: system || 'Eres un coach de fitness experto. Responde en español.',
-        messages: [{ role: 'user', content }]
-      })
+      body: reqBody
     });
 
+    const rawText = await response.text();
+    console.log('[IA foto] Response status:', response.status, 'length:', rawText.length);
+
     if (!response.ok) {
-      const errText = await response.text();
-      return res.status(500).json({ error: `API error ${response.status}: ${errText.slice(0, 200)}` });
+      console.log('[IA foto] Error body:', rawText.slice(0, 300));
+      return res.status(500).json({ error: `API error ${response.status}: ${rawText.slice(0, 200)}` });
     }
 
-    const data = await response.json();
+    let data;
+    try { data = JSON.parse(rawText); }
+    catch(pe) { return res.status(500).json({ error: 'Respuesta malformada de la IA: ' + rawText.slice(0,100) }); }
+
     if (data.error) return res.status(500).json({ error: data.error.message || 'Error de la API de IA' });
     if (!data.content || !data.content[0]) return res.status(500).json({ error: 'Respuesta vacía de la IA' });
     res.json({ reply: data.content[0].text });
   } catch(e) {
+    console.log('[IA foto] Exception:', e.message);
     res.status(500).json({ error: e.message || 'Error IA foto' });
   }
 });
@@ -503,7 +514,7 @@ Tono: directo, cercano, como un coach real que lo conoce personalmente. Sin mark
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-opus-4-5-20251101', max_tokens: 700, system, messages: [{ role: 'user', content }] })
+      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 700, system, messages: [{ role: 'user', content }] })
     });
 
     const data = await response.json();
