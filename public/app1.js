@@ -6372,11 +6372,11 @@ async function coachMsgsLoadThread(clienteId, scrollDown){
   wrap.innerHTML = msgs.map(m => {
     const isCoach = m.de_coach;
     const hora = m.created_at ? _chatFmtTime(new Date(m.created_at).getTime()) : '';
-    const via = m.via_ia ? `<span style="font-size:9px;color:var(--tx3);margin-left:4px;opacity:.5">${tc('auto')}</span>` : '';
+    const via = m.via_ia ? `<span style="font-size:9px;background:rgba(37,99,235,.25);color:#93c5fd;padding:1px 5px;border-radius:4px;margin-left:5px">🤖 IA</span>` : '';
     return `<div class="msg ${isCoach?'msg-u':'msg-b'}" style="max-width:85%">
       ${!isCoach ? `<div class="msg-sender">${m.cliente_nombre||'Cliente'}</div>` : ''}
       ${m.contenido}
-      <div style="font-size:9px;opacity:.4;margin-top:3px;text-align:${isCoach?'right':'left'}">${hora}${via}</div>
+      <div style="font-size:9px;opacity:.5;margin-top:4px;text-align:${isCoach?'right':'left'};display:flex;align-items:center;justify-content:${isCoach?'flex-end':'flex-start'};gap:4px">${hora}${via}</div>
     </div>`;
   }).join('');
 
