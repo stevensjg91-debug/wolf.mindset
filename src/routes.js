@@ -1484,6 +1484,45 @@ router.get('/ejercicios-imagenes', (req, res) => {
   } catch(e) { res.json({}); }
 });
 
+// ── RESET PASSWORD (coach resetea la de un cliente) ─────────────────────────
+router.post('/auth/reset-password', coachOnly, (req, res) => {
+  const { userId, newPassword } = req.body;
+  if(!userId || !newPassword) return res.status(400).json({ error: 'Faltan campos' });
+  if(newPassword.length < 4) return res.status(400).json({ error: 'Mínimo 4 caracteres' });
+  try {
+    const bcrypt = require('bcryptjs');
+    const user = dbGet('SELECT id, role FROM users WHERE id=?', [userId]);
+    if(!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    // Coach can only reset passwords of clients, not other coaches
+    if(user.role === 'coach' && req.user.id !== user.id) {
+      return res.status(403).json({ error: 'No puedes resetear la contraseña de otro coach' });
+    }
+    const hash = bcrypt.hashSync(newPassword, 10);
+    dbRun('UPDATE users SET password=? WHERE id=?', [hash, userId]);
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── COACH CAMBIA SU PROPIA CONTRASEÑA ────────────────────────────────────────
+router.post('/auth/change-my-password', (req, res) => {
+  const { password_actual, password_nueva } = req.body;
+  if(!password_actual || !password_nueva) return res.status(400).json({ error: 'Faltan campos' });
+  if(password_nueva.length < 6) return res.status(400).json({ error: 'Mínimo 6 caracteres' });
+  try {
+    const bcrypt = require('bcryptjs');
+    const user = dbGet('SELECT id, password FROM users WHERE id=?', [req.user.id]);
+    if(!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if(!bcrypt.compareSync(password_actual, user.password)) {
+      return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    }
+    const hash = bcrypt.hashSync(password_nueva, 10);
+    dbRun('UPDATE users SET password=? WHERE id=?', [hash, req.user.id]);
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── PUSH SUBSCRIPTIONS ───────────────────────────────────────────────────────
 // El cliente registra su dispositivo para recibir push
 router.post('/push/subscribe', (req, res) => {
