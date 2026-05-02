@@ -9109,9 +9109,11 @@ async function comprobarBadges(){
 }
 
 const _badgeQueue = [];
+let _badgeActual = null;
 function mostrarBadgesEnCadena(lista, i){
   if(i >= lista.length) return;
   const badge = lista[i];
+  _badgeActual = badge;
   document.getElementById('badgeEmoji').textContent = badge.emoji;
   document.getElementById('badgeTitulo').textContent = badge.titulo;
   document.getElementById('badgeDesc').textContent = badge.desc;
@@ -9139,6 +9141,151 @@ function cerrarBadge(){
       setTimeout(()=>mostrarBadgesEnCadena(lista, next), 300);
     }
   }
+}
+
+async function compartirLogro(){
+  const emoji   = document.getElementById('badgeEmoji')?.textContent || '🏆';
+  const titulo  = document.getElementById('badgeTitulo')?.textContent || '';
+  const desc    = document.getElementById('badgeDesc')?.textContent || '';
+  const nombre  = CD?.nombre || '';
+  const btn     = document.getElementById('btnCompartirLogro');
+
+  try {
+    // Generate 1080x1080 shareable image
+    const canvas = document.getElementById('badgeCanvas');
+    const ctx    = canvas.getContext('2d');
+    const W = 1080, H = 1080;
+
+    // Background — dark gradient
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#09090b');
+    bg.addColorStop(0.5, '#0d1117');
+    bg.addColorStop(1, '#09090b');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Glow center
+    const glow = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, 420);
+    glow.addColorStop(0, 'rgba(245,158,11,0.18)');
+    glow.addColorStop(1, 'transparent');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+
+    // Outer decorative ring
+    ctx.beginPath();
+    ctx.arc(W/2, H/2, 400, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(245,158,11,0.12)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(W/2, H/2, 370, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(245,158,11,0.06)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Logo text top
+    ctx.font = '700 32px "Bebas Neue", sans-serif';
+    ctx.fillStyle = 'rgba(245,158,11,0.9)';
+    ctx.textAlign = 'center';
+    ctx.letterSpacing = '4px';
+    ctx.fillText('WOLFMINDSET', W/2, 90);
+
+    // Divider line
+    ctx.beginPath();
+    ctx.moveTo(W/2 - 80, 108);
+    ctx.lineTo(W/2 + 80, 108);
+    ctx.strokeStyle = 'rgba(245,158,11,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Big emoji
+    ctx.font = '220px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(emoji, W/2, H/2 - 80);
+
+    // "LOGRO DESBLOQUEADO" label
+    ctx.font = '600 26px "Bebas Neue", sans-serif';
+    ctx.fillStyle = 'rgba(245,158,11,0.8)';
+    ctx.letterSpacing = '6px';
+    ctx.fillText('LOGRO DESBLOQUEADO', W/2, H/2 + 80);
+
+    // Achievement title
+    ctx.font = '800 72px "Bebas Neue", sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.letterSpacing = '2px';
+    ctx.fillText(titulo.toUpperCase(), W/2, H/2 + 170);
+
+    // Description
+    ctx.font = '400 32px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.letterSpacing = '0px';
+    // Word wrap
+    const words = desc.split(' ');
+    let line = '', lines = [], maxW = 600;
+    for(const w of words){
+      const test = line + w + ' ';
+      if(ctx.measureText(test).width > maxW && line) { lines.push(line.trim()); line = w + ' '; }
+      else line = test;
+    }
+    if(line) lines.push(line.trim());
+    lines.forEach((l, i) => ctx.fillText(l, W/2, H/2 + 240 + i*44));
+
+    // Client name bottom
+    ctx.font = '700 38px "Bebas Neue", sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.letterSpacing = '3px';
+    ctx.fillText(nombre.toUpperCase(), W/2, H - 120);
+
+    // Bottom divider
+    ctx.beginPath();
+    ctx.moveTo(W/2 - 120, H - 98);
+    ctx.lineTo(W/2 + 120, H - 98);
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Website
+    ctx.font = '400 24px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.letterSpacing = '2px';
+    ctx.fillText('wolfmindset.app', W/2, H - 64);
+
+    // Try Web Share API (mobile) or download (desktop)
+    const dataUrl = canvas.toDataURL('image/png');
+
+    if(navigator.share && navigator.canShare) {
+      // Convert to blob for sharing
+      canvas.toBlob(async blob => {
+        const file = new File([blob], `logro-${titulo.replace(/\s+/g,'-')}.png`, { type:'image/png' });
+        try {
+          await navigator.share({
+            title: `¡Logro desbloqueado! ${titulo}`,
+            text: `${emoji} ${titulo} — ${desc} #WolfMindset`,
+            files: [file]
+          });
+        } catch(e) {
+          // User cancelled or share failed — fallback to download
+          _descargarImagenLogro(dataUrl, titulo);
+        }
+      }, 'image/png');
+    } else {
+      // Desktop: download image
+      _descargarImagenLogro(dataUrl, titulo);
+    }
+
+  } catch(e) {
+    console.log('compartirLogro error:', e);
+    // Fallback: just close
+    cerrarBadge();
+  }
+}
+
+function _descargarImagenLogro(dataUrl, titulo){
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = `logro-wolfmindset-${titulo.replace(/\s+/g,'-')}.png`;
+  a.click();
 }
 
 // Ver todos los badges del cliente
