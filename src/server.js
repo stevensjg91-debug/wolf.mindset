@@ -256,9 +256,19 @@ app.get('/api/eventos', (req, res) => {
 
 app.use('/api', apiRoutes);
 
-// Wildcard al final
+// Wildcard al final — sirve index.html con cache buster inyectado
+const BUILD_VERSION = Date.now();
+let _indexHtml = null;
+function getIndexHtml() {
+  if(!_indexHtml) {
+    const raw = require('fs').readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
+    _indexHtml = raw.replace(/\{\{BUILD_VERSION\}\}/g, BUILD_VERSION);
+  }
+  return _indexHtml;
+}
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(getIndexHtml());
 });
 
 initDB().then(() => {
