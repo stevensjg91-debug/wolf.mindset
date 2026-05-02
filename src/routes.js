@@ -1565,6 +1565,46 @@ router.post('/auth/change-my-password', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── PUSH TIMER (para iOS — el servidor manda el push cuando termina el descanso) ──
+// iOS mata el SW al bloquear pantalla, así que el timer vive en el servidor
+const _pushTimers = {}; // userId+timerId -> setTimeout handle
+
+router.post('/push/timer', (req, res) => {
+  const { timerId, segundos, title, body } = req.body;
+  if(!timerId || !segundos) return res.status(400).json({ error: 'timerId y segundos requeridos' });
+  const userId = String(req.user.id);
+  const key = userId + '_' + timerId;
+
+  // Cancel existing timer for this key
+  if(_pushTimers[key]) { clearTimeout(_pushTimers[key]); delete _pushTimers[key]; }
+
+  const delay = Math.min(Math.max(parseInt(segundos), 1), 600) * 1000; // max 10 min
+  _pushTimers[key] = setTimeout(async () => {
+    delete _pushTimers[key];
+    if(global.sendPushToUser) {
+      await global.sendPushToUser(userId, title || '💪 ¡A por ello!', body || 'Descanso terminado', '/');
+    }
+  }, delay);
+
+  res.json({ ok: true, delay });
+});
+
+router.post('/push/timer/cancel', (req, res) => {
+  const { timerId } = req.body;
+  const userId = String(req.user.id);
+  const key = timerId ? userId + '_' + timerId : null;
+  if(key && _pushTimers[key]) {
+    clearTimeout(_pushTimers[key]);
+    delete _pushTimers[key];
+  } else if(!timerId) {
+    // Cancel all timers for this user
+    Object.keys(_pushTimers).filter(k => k.startsWith(userId + '_')).forEach(k => {
+      clearTimeout(_pushTimers[k]); delete _pushTimers[k];
+    });
+  }
+  res.json({ ok: true });
+});
+
 // ── PUSH SUBSCRIPTIONS ───────────────────────────────────────────────────────
 // El cliente registra su dispositivo para recibir push
 router.post('/push/subscribe', (req, res) => {
