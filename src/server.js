@@ -302,6 +302,19 @@ initDB().then(() => {
     )`);
     console.log('✓ push_subscriptions table ready');
   } catch(e) { console.log('push_subscriptions table error:', e.message); }
+
+  // Apaga automáticamente la presencia del coach por cliente tras 5 min sin actividad.
+  // Esto evita que la IA quede bloqueada para siempre si el coach cierra la pestaña.
+  try {
+    dbRun("UPDATE clientes SET coach_online=0 WHERE coach_online=1 AND (last_coach_activity IS NULL OR last_coach_activity < datetime('now','-5 minutes'))");
+    setInterval(() => {
+      try {
+        dbRun("UPDATE clientes SET coach_online=0 WHERE coach_online=1 AND (last_coach_activity IS NULL OR last_coach_activity < datetime('now','-5 minutes'))");
+        saveToDisk();
+      } catch(e) {}
+    }, 60000);
+    console.log('✓ coach presence auto-timeout ready');
+  } catch(e) { console.log('coach presence timeout error:', e.message); }
   const rows = dbAll(
     "SELECT COUNT(*) as c FROM ejercicios_config WHERE imagen_url IS NOT NULL AND imagen_url != ''",
     []
