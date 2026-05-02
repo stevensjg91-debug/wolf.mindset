@@ -6258,7 +6258,7 @@ async function sendChat(){
 // ══════════════════════════════════════════════════════
 // COACH — PANEL MENSAJES
 // ══════════════════════════════════════════════════════
-let _coachMsgThread = null; // clienteId activo en el hilo
+window._coachMsgThread = null; // clienteId activo en el hilo
 let _coachMsgPollInt = null;
 let _coachMsgCache = {}; // {clienteId: [msg,...]}
 
@@ -6272,12 +6272,12 @@ function hMensajesCoach(){
 
 async function coachMsgsInit(){
   renderIaChatPanel(); // fire and forget — no bloquea la carga de mensajes
-  _coachMsgThread = null;
+  window._coachMsgThread = null;
   await coachMsgsLoadList();
   if(_coachMsgPollInt) clearInterval(_coachMsgPollInt);
   _coachMsgPollInt = setInterval(async()=>{
     if(!document.getElementById('coach_msgs_wrap')){ clearInterval(_coachMsgPollInt); return; }
-    if(_coachMsgThread) await coachMsgsLoadThread(_coachMsgThread, false);
+    if(window._coachMsgThread) await coachMsgsLoadThread(window._coachMsgThread, false);
     else await coachMsgsLoadList();
     cargarNotificacionesCoach();
   }, 10000);
@@ -6323,7 +6323,7 @@ async function coachMsgsLoadList(){
 }
 
 async function coachMsgsAbrirHilo(clienteId, nombre, foto, username){
-  _coachMsgThread = clienteId;
+  window._coachMsgThread = clienteId;
   const list = document.getElementById('coach_msgs_list');
   const thread = document.getElementById('coach_msgs_thread');
   if(list) list.style.display = 'none';
@@ -6407,7 +6407,7 @@ async function coachMsgsEnviar(clienteId){
 }
 
 function coachMsgsVolverLista(){
-  _coachMsgThread = null;
+  window._coachMsgThread = null;
   const list = document.getElementById('coach_msgs_list');
   const thread = document.getElementById('coach_msgs_thread');
   if(thread) thread.style.display = 'none';
