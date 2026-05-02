@@ -2492,14 +2492,15 @@ function renderCoachFotos(fotos) {
     const fotosAnteriores = mesAnteriorKey ? grupos[mesAnteriorKey] : null;
     const hayComparativa = !!(fotosAnteriores && fotosAnteriores.length);
 
-    const fotosHtml = fotosMes.map(f => {
+    const fotosHtml = fotosMes.map((f, fi) => {
       const tipoLabel = f.tipo === 'posterior' ? '🔙 Posterior' : f.tipo === 'costado' ? '↔️ Costado' : '🫡 Frente';
       const pub = f.published_analysis;
+      const imgId = `cfoto_${mes.replace('-','_')}_${fi}`;
       return `<div style="flex:1;min-width:90px;max-width:140px">
         <div style="font-size:10px;color:var(--tx3);text-align:center;margin-bottom:4px">${tipoLabel}</div>
         <div style="position:relative;border-radius:10px;overflow:hidden;aspect-ratio:3/4;background:var(--s2)">
           ${f.url && !f.url.startsWith('foto_')
-            ? `<img src="${f.url}" style="width:100%;height:100%;object-fit:cover"/>`
+            ? `<img id="${imgId}" src="${f.url}" crossorigin="anonymous" data-url="${f.url}" style="width:100%;height:100%;object-fit:cover"/>`
             : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px">📷</div>`}
         </div>
         ${pub ? `<div style="margin-top:6px;font-size:10px;color:var(--gnb);text-align:center">✓ ${tc('Publicado')}</div>` : ''}
@@ -2567,14 +2568,36 @@ async function coachAnalizarFotos(grupoId) {
   const mesAnteriorKey = meses[mesIdx + 1];
   const fotosAnteriores = mesAnteriorKey ? grupos[mesAnteriorKey] : null;
 
+  // Convierte un <img> del DOM a base64 via canvas (sin CORS)
+  function imgElementToB64(imgEl) {
+    try {
+      if (!imgEl || !imgEl.complete || !imgEl.naturalWidth) return null;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.min(imgEl.naturalWidth, 1024);
+      canvas.height = Math.round(imgEl.naturalHeight * (canvas.width / imgEl.naturalWidth));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+      const full = canvas.toDataURL('image/jpeg', 0.85);
+      return { b64: full.split(',')[1], mt: 'image/jpeg' };
+    } catch(e) { return null; }
+  }
+
+  // Lee imágenes de un grupo de fotos usando canvas (imgs ya en DOM)
+  function leerImagenesDom(fotosList, mesKey) {
+    const imgs = [];
+    fotosList.forEach((f, fi) => {
+      const imgId = `cfoto_${mesKey.replace('-','_')}_${fi}`;
+      const imgEl = document.getElementById(imgId);
+      if (imgEl) {
+        const data = imgElementToB64(imgEl);
+        if (data) imgs.push(data);
+      }
+    });
+    return imgs;
+  }
+
   try {
     const isEn = COACH_LANG === 'en';
-
-    // URLs de fotos actuales (solo las que tienen URL real de Cloudinary)
-    const urlsActuales = fotosMes.map(f => f.url).filter(u => u && !u.startsWith('foto_'));
-    const urlsAnteriores = fotosAnteriores
-      ? fotosAnteriores.map(f => f.url).filter(u => u && !u.startsWith('foto_'))
-      : [];
 
     const mesActualLabel = mes !== 'sin-fecha'
       ? new Date(mes + '-15').toLocaleDateString(isEn ? 'en-GB' : 'es-ES', { month: 'long', year: 'numeric' })
@@ -2583,23 +2606,76 @@ async function coachAnalizarFotos(grupoId) {
       ? new Date(mesAnteriorKey + '-15').toLocaleDateString(isEn ? 'en-GB' : 'es-ES', { month: 'long', year: 'numeric' })
       : '';
 
-    const r = await api('/ia/analizar-fotos-coach', {
-      method: 'POST',
-      body: JSON.stringify({
-        urlsActuales,
-        urlsAnteriores: urlsAnteriores.length ? urlsAnteriores : null,
-        clienteNombre: c?.nombre || '',
-        objetivo: c?.objetivo || '',
-        nivel: c?.nivel || '',
-        semanaActual: mesActualLabel,
-        semanaAnterior: mesAnteriorLabel,
-        lang: COACH_LANG,
-        peso: c?.peso_actual,
-        altura: c?.altura,
-        edad: c?.edad,
-        sexo: c?.sexo
-      })
-    });
+    // Leer imágenes del DOM via canvas
+    const fotosActB64 = leerImagenesDom(fotosMes, mes);
+    const fotosAntB64 = fotosAnteriores ? leerImagenesDom(fotosAnteriores, mesAnteriorKey) : [];
+
+    // Si el canvas falló (CORS), usar el proxy del servidor con URLs
+    const urlsActuales = fotosMes.map(f => f.url).filter(u => u && !u.startsWith('foto_'));
+    const urlsAnteriores = fotosAnteriores
+      ? fotosAnteriores.map(f => f.url).filter(u => u && !u.startsWith('foto_'))
+      : [];
+
+    const hayComparativa = fotosAntB64.length > 0 || urlsAnteriores.length > 0;
+    const usarB64 = fotosActB64.length > 0;
+
+    let r;
+    if (usarB64) {
+      // Tenemos base64 del canvas — enviar directamente a /ia/foto o /ia/comparar-fotos
+      if (hayComparativa && fotosAntB64.length) {
+        r = await api('/ia/comparar-fotos', {
+          method: 'POST',
+          body: JSON.stringify({
+            fotosAntes: fotosAntB64,
+            fotosDespues: fotosActB64,
+            clienteNombre: c?.nombre || '',
+            objetivo: c?.objetivo || '',
+            nivel: c?.nivel || '',
+            semanaAntes: mesAnteriorLabel,
+            semanaDespues: mesActualLabel,
+            lang: COACH_LANG,
+            pedirGrasa: true,
+            peso: c?.peso_actual,
+            altura: c?.altura,
+            edad: c?.edad,
+            sexo: c?.sexo
+          })
+        });
+      } else {
+        // Primer mes — sin comparativa
+        r = await api('/ia/foto', {
+          method: 'POST',
+          body: JSON.stringify({
+            imageBase64: fotosActB64[0].b64,
+            mediaType: fotosActB64[0].mt,
+            extraImages: fotosActB64.slice(1),
+            clientInfo: `${c?.nombre}, Objetivo: ${c?.objetivo}, Nivel: ${c?.nivel}`,
+            system: isEn
+              ? 'You are an expert WolfMindset fitness coach. First session — no previous photos. Analyze the physique: estimate body fat % (write as "Estimated body fat: X%"), highlight 2-3 genuine strong points, point out 1-2 areas to focus on, give 1 concrete tip, end motivating. No markdown, no asterisks, no AI mentions.'
+              : 'Eres un coach de fitness experto de WolfMindset. Primera sesión — sin fotos anteriores. Analiza el físico: estima el % grasa (escríbelo como "Grasa estimada: X%"), destaca 2-3 puntos fuertes reales, señala 1-2 áreas de mejora, da 1 consejo concreto, termina motivando. Sin markdown, sin asteriscos, sin mencionar IA.'
+          })
+        });
+      }
+    } else {
+      // Fallback: proxy del servidor descarga las URLs
+      r = await api('/ia/analizar-fotos-coach', {
+        method: 'POST',
+        body: JSON.stringify({
+          urlsActuales,
+          urlsAnteriores: urlsAnteriores.length ? urlsAnteriores : null,
+          clienteNombre: c?.nombre || '',
+          objetivo: c?.objetivo || '',
+          nivel: c?.nivel || '',
+          semanaActual: mesActualLabel,
+          semanaAnterior: mesAnteriorLabel,
+          lang: COACH_LANG,
+          peso: c?.peso_actual,
+          altura: c?.altura,
+          edad: c?.edad,
+          sexo: c?.sexo
+        })
+      });
+    }
 
     textarea.value = r.reply;
     resWrap.style.display = 'block';
