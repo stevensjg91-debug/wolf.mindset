@@ -532,6 +532,84 @@ Tono: directo, cercano, como un coach real que lo conoce personalmente. Sin mark
   }
 });
 
+// ── ANALIZAR FOTOS COACH (descarga URLs server-side, sin CORS) ────
+router.post('/ia/analizar-fotos-coach', coachOnly, async (req, res) => {
+  const { urlsActuales, urlsAnteriores, clienteNombre, objetivo, nivel, semanaActual, semanaAnterior, lang, peso, altura, edad, sexo, cintura, cadera } = req.body;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
+  if (!urlsActuales || !urlsActuales.length) return res.status(400).json({ error: 'urlsActuales requerido' });
+
+  async function fetchImageB64(url) {
+    try {
+      const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'image/*,*/*' } });
+      if (!resp.ok) return null;
+      const buffer = await resp.arrayBuffer();
+      const ct = resp.headers.get('content-type') || 'image/jpeg';
+      return { b64: Buffer.from(buffer).toString('base64'), mt: ct.split(';')[0].trim() };
+    } catch(e) { return null; }
+  }
+
+  try {
+    const isEn = lang === 'en';
+    const hayComparativa = !!(urlsAnteriores && urlsAnteriores.length);
+    const [imgActuales, imgAnteriores] = await Promise.all([
+      Promise.all(urlsActuales.map(fetchImageB64)),
+      hayComparativa ? Promise.all(urlsAnteriores.map(fetchImageB64)) : Promise.resolve([])
+    ]);
+    const fotosOk = imgActuales.filter(Boolean);
+    const antesOk = imgAnteriores.filter(Boolean);
+    if (!fotosOk.length) return res.status(400).json({ error: 'No se pudieron cargar las imágenes' });
+
+    const clienteInfo = [
+      peso    ? (isEn ? `Weight: ${peso}kg`    : `Peso: ${peso}kg`)    : '',
+      altura  ? (isEn ? `Height: ${altura}cm`  : `Altura: ${altura}cm`) : '',
+      edad    ? (isEn ? `Age: ${edad}`          : `Edad: ${edad}`)      : '',
+      sexo    ? (isEn ? `Sex: ${sexo}`          : `Sexo: ${sexo}`)      : '',
+      cintura ? (isEn ? `Waist: ${cintura}cm`  : `Cintura: ${cintura}cm`) : '',
+      cadera  ? (isEn ? `Hips: ${cadera}cm`    : `Cadera: ${cadera}cm`) : ''
+    ].filter(Boolean).join(' · ');
+
+    const content = [];
+    if (hayComparativa && antesOk.length) {
+      content.push({ type: 'text', text: isEn ? `${semanaAnterior} (BEFORE):` : `${semanaAnterior} (ANTES):` });
+      antesOk.forEach(img => content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } }));
+      content.push({ type: 'text', text: isEn ? `${semanaActual} (NOW):` : `${semanaActual} (AHORA):` });
+      fotosOk.forEach(img => content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } }));
+      const instruccion = isEn
+        ? `Compare BEFORE and NOW photos of ${clienteNombre} (Goal: ${objetivo}, Level: ${nivel}${clienteInfo ? ', '+clienteInfo : ''}).
+Write a direct coach message (4-6 sentences): estimate body fat % as "Estimated body fat: X%", improvement % as "Improvement: X%", highlight 2-3 visible improvements, note 1-2 areas to keep working, end motivating. No markdown, no asterisks, no AI mention.`
+        : `Compara ANTES y AHORA de ${clienteNombre} (Objetivo: ${objetivo}, Nivel: ${nivel}${clienteInfo ? ', '+clienteInfo : ''}).
+Escribe un mensaje del coach (4-6 frases): estima grasa como "Grasa estimada: X%", mejora como "Mejora: X%", destaca 2-3 mejoras visibles, señala 1-2 áreas a trabajar, termina motivando. Sin markdown, sin asteriscos, sin mencionar IA.`;
+      content.push({ type: 'text', text: instruccion });
+    } else {
+      fotosOk.forEach(img => content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } }));
+      const instruccion = isEn
+        ? `Analyze the physique of ${clienteNombre} (Goal: ${objetivo}, Level: ${nivel}${clienteInfo ? ', '+clienteInfo : ''}). First session — no previous photos.
+Write a personal coach message (4-5 sentences): estimate body fat % as "Estimated body fat: X%", highlight 2-3 genuine strong points, point out 1-2 areas to focus on, give 1 concrete tip, end motivating. No markdown, no asterisks, no AI mention.`
+        : `Analiza el físico de ${clienteNombre} (Objetivo: ${objetivo}, Nivel: ${nivel}${clienteInfo ? ', '+clienteInfo : ''}). Primera sesión — sin fotos anteriores.
+Escribe un mensaje del coach (4-5 frases): estima grasa como "Grasa estimada: X%", destaca 2-3 puntos fuertes reales, señala 1-2 áreas de mejora, da 1 consejo concreto, termina motivando. Sin markdown, sin asteriscos, sin mencionar IA.`;
+      content.push({ type: 'text', text: instruccion });
+    }
+
+    const system = isEn
+      ? 'You are an expert WolfMindset fitness coach. Analyze progress photos with a trained eye. Always estimate body fat % visually with a specific number. Write personalized, motivating messages. Never mention AI or technology.'
+      : 'Eres un coach de fitness experto de WolfMindset. Analiza fotos con ojo entrenado. Siempre estima el % de grasa con un número concreto. Escribe mensajes personalizados y motivadores. Nunca menciones IA ni tecnología.';
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-opus-4-6', max_tokens: 600, system, messages: [{ role: 'user', content }] })
+    });
+    const data = await response.json();
+    if (data.error) return res.status(500).json({ error: data.error.message || 'Error API' });
+    if (!data.content?.[0]?.text) return res.status(500).json({ error: 'Respuesta vacía' });
+    res.json({ reply: data.content[0].text });
+  } catch(e) {
+    console.log('[analizar-fotos-coach]', e.message);
+    res.status(500).json({ error: e.message || 'Error analizando fotos' });
+  }
+});
+
 // ── EJERCICIOS CONFIG ──────────────────────────────────────────────
 router.get('/ejercicios-config', coachOnly, (req, res) => {
   const configs = dbAll('SELECT * FROM ejercicios_config', []);
