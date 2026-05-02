@@ -887,7 +887,7 @@ router.get('/clientes/:id/progreso-ejercicio', (req, res) => {
 router.post('/auth/registro', async (req, res) => {
   try {
     const bcrypt = require('bcryptjs');
-    const { username, password, nombre, email, telefono, objetivo, nivel, peso_actual, altura, edad, sexo, actividad, dieta_tipo, alimentos_no, lesiones, observaciones } = req.body;
+    const { username, password, nombre, email, telefono, objetivo, nivel, peso_actual, altura, edad, sexo, actividad, dieta_tipo, alimentos_no, lesiones, observaciones, deficiencias } = req.body;
     if(!username || !password || !nombre) return res.status(400).json({ error: 'Faltan campos obligatorios' });
     const existing = dbGet('SELECT id FROM users WHERE username=?', [username]);
     if(existing) return res.status(400).json({ error: 'Usuario ya existe' });
@@ -895,10 +895,23 @@ router.post('/auth/registro', async (req, res) => {
     const userR = dbRun("INSERT INTO users (username, password, role, nombre, email, estado, telefono) VALUES (?,?,?,?,?,?,?)",
       [username, hash, 'cliente', nombre, email||'', 'pendiente', telefono||'']);
     const userId = userR.lastInsertRowid;
-    dbRun(`INSERT INTO clientes (user_id, objetivo, nivel, peso_actual, altura, edad, sexo, actividad, dieta_tipo, alimentos_no, lesiones, observaciones) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [userId, objetivo||'Volumen', nivel||'Intermedio', peso_actual||0, altura||0, edad||0, sexo||'Hombre', actividad||'Moderada', dieta_tipo||'Omnivoro', alimentos_no||'', lesiones||'', observaciones||'']);
+    dbRun(`INSERT INTO clientes (user_id, objetivo, nivel, peso_actual, altura, edad, sexo, actividad, dieta_tipo, alimentos_no, lesiones, observaciones, deficiencias) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [userId, objetivo||'Volumen', nivel||'Intermedio', peso_actual||0, altura||0, edad||0, sexo||'Hombre', actividad||'Moderada', dieta_tipo||'Omnivoro', alimentos_no||'', lesiones||'', observaciones||'', deficiencias||'']);
     const { saveToDisk } = require('./database');
     saveToDisk();
+
+    // Notificar al coach de la nueva solicitud en tiempo real
+    const coachId = getCoachId();
+    if(coachId) {
+      const coach = dbGet('SELECT lang FROM users WHERE id=?', [coachId]);
+      const isEn = coach?.lang === 'en';
+      const msg = isEn
+        ? `🙋 New access request from ${nombre}${objetivo ? ' · Goal: '+objetivo : ''}`
+        : `🙋 Nueva solicitud de acceso de ${nombre}${objetivo ? ' · Objetivo: '+objetivo : ''}`;
+      crearNotificacion(coachId, 'nuevo_registro', msg);
+      ssePushCoaches('notificacion', { tipo: 'nuevo_registro', mensaje: msg });
+    }
+
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
