@@ -1,4 +1,3 @@
-
 function mostrarDoneOverlay(estado, pendientes){
   if(doneShown) return;
   doneShown = true;
