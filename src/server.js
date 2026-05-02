@@ -266,7 +266,7 @@ let _indexHtml = null;
 function getIndexHtml() {
   if(!_indexHtml) {
     const raw = require('fs').readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
-    _indexHtml = raw.replace(/\{\{BUILD_VERSION\}\}/g, BUILD_VERSION);
+    _indexHtml = raw.replace(/\{\{BUILD_VERSION\}\}/g, String(BUILD_VERSION));
   }
   return _indexHtml;
 }
