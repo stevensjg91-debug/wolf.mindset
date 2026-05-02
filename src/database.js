@@ -7,9 +7,17 @@ if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
 let db;
 
-function saveToDisk() {
+// saveToDisk con debounce — evita serializar la BD entera en cada request.
+// El setInterval de 30s en initDB ya cubre la persistencia base.
+// Las llamadas manuales desde routes.js son "guardar pronto" sin bloquear.
+let _saveTimer = null;
+function _doSave() {
   if (!db) return;
   try { const data = db.export(); fs.writeFileSync(DB_PATH, Buffer.from(data)); } catch(e) {}
+}
+function saveToDisk() {
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(_doSave, 5000);
 }
 
 async function initDB() {
@@ -27,6 +35,16 @@ async function initDB() {
   try { db.run("ALTER TABLE users ADD COLUMN telefono TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE users ADD COLUMN lang TEXT DEFAULT 'es'"); } catch(e) {}
   try { db.run("ALTER TABLE users ADD COLUMN foto_perfil TEXT DEFAULT NULL"); } catch(e) {}
+  // ── Asistente IA en chat ───────────────────────────────────────────────────
+  // ia_activa: 1 = bot responde mensajes de este cliente, 0 = solo el coach
+  try { db.run("ALTER TABLE clientes ADD COLUMN ia_chat_activa INTEGER DEFAULT 0"); } catch(e) {}
+  // Tabla de configuración global del bot (una sola fila, id=1)
+  db.run(`CREATE TABLE IF NOT EXISTS ia_config (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    bot_global INTEGER DEFAULT 0,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  try { db.run("INSERT OR IGNORE INTO ia_config (id, bot_global) VALUES (1, 0)"); } catch(e) {}
 
   db.run(`CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, objetivo TEXT DEFAULT 'Volumen', nivel TEXT DEFAULT 'Intermedio', semanas INTEGER DEFAULT 1, kcal_internas INTEGER DEFAULT 2500, prot INTEGER DEFAULT 160, carbs INTEGER DEFAULT 280, fat INTEGER DEFAULT 80, comida_libre TEXT DEFAULT 'Elige lo que mas te apetezca.', mensaje_semana TEXT DEFAULT '', notas_coach TEXT DEFAULT '', peso_actual REAL DEFAULT 0, altura INTEGER DEFAULT 0, edad INTEGER DEFAULT 0, sexo TEXT DEFAULT 'Hombre', actividad TEXT DEFAULT 'Moderada', cintura_actual REAL DEFAULT 0, cadera REAL DEFAULT 0, observaciones TEXT DEFAULT '', dieta_tipo TEXT DEFAULT 'Omnivoro', alimentos_no TEXT DEFAULT '', lesiones TEXT DEFAULT '')`);
 
