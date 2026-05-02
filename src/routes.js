@@ -131,7 +131,19 @@ router.get('/clientes/:id', (req, res) => {
   if (!c) return res.status(404).json({ error: 'No encontrado' });
   const pesos = dbAll('SELECT * FROM peso_registros WHERE cliente_id=? ORDER BY rowid ASC', [id]);
   const dias = dbAll('SELECT * FROM dias_entreno WHERE cliente_id=? ORDER BY orden', [id]);
-  dias.forEach(d => { d.ejercicios = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=? ORDER BY orden', [d.id]); });
+  dias.forEach(d => {
+    d.ejercicios = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=? ORDER BY orden', [d.id]);
+    // Attach imagen_url from ejercicios_config if not set — but strip base64 from main payload
+    // (base64 images are served via /ejercicios-imagenes to keep loadCD response small)
+    d.ejercicios.forEach(e => {
+      if (!e.imagen_url) {
+        const cfg = dbGet('SELECT imagen_url FROM ejercicios_config WHERE nombre=?', [e.nombre]);
+        if (cfg && cfg.imagen_url) e.imagen_url = cfg.imagen_url.startsWith('data:') ? '__HAS_IMAGE__' : cfg.imagen_url;
+      } else if (e.imagen_url.startsWith('data:')) {
+        e.imagen_url = '__HAS_IMAGE__';
+      }
+    });
+  });
   const comidas = dbAll('SELECT * FROM comidas WHERE cliente_id=? ORDER BY orden', [id]);
   const planMeta = dbGet('SELECT * FROM plan_meta WHERE cliente_id=?', [id]);
   comidas.forEach(m => { m.items = dbAll('SELECT * FROM alimentos WHERE comida_id=? ORDER BY orden', [m.id]); });
@@ -1455,6 +1467,21 @@ router.put('/mensajes/:clienteId/leer', coachOnly, (req, res) => {
     saveToDisk();
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── IMÁGENES DE EJERCICIOS (ruta ligera para clientes) ──────────────────────
+// Devuelve solo {nombre -> imagen_url} para ejercicios con imagen personalizada
+// Separado de loadCD para no meter base64 en el JSON principal
+router.get('/ejercicios-imagenes', (req, res) => {
+  try {
+    const rows = dbAll("SELECT nombre, imagen_url FROM ejercicios_config WHERE imagen_url IS NOT NULL AND imagen_url != ''", []);
+    const map = {};
+    rows.forEach(r => { map[r.nombre] = r.imagen_url; });
+    // Also check ejercicios_dia for direct overrides
+    const diasRows = dbAll("SELECT DISTINCT nombre, imagen_url FROM ejercicios_dia WHERE imagen_url IS NOT NULL AND imagen_url != '' AND imagen_url != '__HAS_IMAGE__'", []);
+    diasRows.forEach(r => { if(!map[r.nombre]) map[r.nombre] = r.imagen_url; });
+    res.json(map);
+  } catch(e) { res.json({}); }
 });
 
 // ── PUSH SUBSCRIPTIONS ───────────────────────────────────────────────────────
