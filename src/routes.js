@@ -711,6 +711,35 @@ router.get('/clientes/:id/sesiones', (req, res) => {
   }
 });
 
+// ── ÚLTIMA SESIÓN (ligero, solo para semáforo del dashboard) ──────────────────
+// Devuelve solo fecha, estado y dias_sin_entreno — sin cargar series ni logs.
+// Usar en cargarDashboard() en lugar de /sesiones para cada cliente.
+router.get('/clientes/:id/ultima-sesion', (req, res) => {
+  const id = req.params.id;
+  if (req.user.role === 'cliente') {
+    const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
+    if (!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
+  }
+  try {
+    ensureTrainingTrackingSchema();
+    const ultima = dbGet(
+      "SELECT fecha, estado, dia_nombre, dia_grupo, duracion_min FROM sesiones_entreno WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1",
+      [id]
+    );
+    if (!ultima) return res.json({ tiene_sesiones: false, dias_sin_entreno: 999, estado: null });
+    const diasSinEntreno = Math.floor((Date.now() - new Date(ultima.fecha).getTime()) / 86400000);
+    res.json({
+      tiene_sesiones: true,
+      fecha: ultima.fecha,
+      estado: ultima.estado || 'completado',
+      dia_nombre: ultima.dia_nombre,
+      dias_sin_entreno: diasSinEntreno
+    });
+  } catch(e) {
+    res.json({ tiene_sesiones: false, dias_sin_entreno: 999, estado: null });
+  }
+});
+
 router.get('/clientes/:id/progreso-ejercicio', (req, res) => {
   ensureTrainingTrackingSchema();
   const id = req.params.id;
@@ -1442,10 +1471,79 @@ router.get('/mensajes/:clienteId', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── HELPERS IA CHAT ───────────────────────────────────────────────────────────
+
+// Comprueba si el bot debe responder a este cliente:
+// bot_global ON  → responde a todos los clientes con ia_chat_activa=1 (o si ia_chat_activa es NULL/0 pero global está ON)
+// bot_global OFF → solo responde a clientes con ia_chat_activa=1 explícitamente
+function botDebeResponder(clienteId) {
+  try {
+    const cfg = dbGet('SELECT bot_global FROM ia_config WHERE id=1');
+    const botGlobal = cfg ? cfg.bot_global : 0;
+    const cl = dbGet('SELECT ia_chat_activa FROM clientes WHERE id=?', [clienteId]);
+    const iaCliente = cl ? cl.ia_chat_activa : 0;
+    // Si global ON → responde salvo que cliente tenga ia_chat_activa=0 explícitamente
+    if (botGlobal) return iaCliente !== 0; // NULL o 1 → responde; 0 → no
+    // Si global OFF → solo responde si cliente tiene ia_chat_activa=1
+    return iaCliente === 1;
+  } catch(e) { return false; }
+}
+
+// Genera respuesta IA para el chat usando contexto del cliente
+async function responderConIA(clienteId, mensajeUsuario) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+  try {
+    // Contexto del cliente
+    const cl = dbGet(`SELECT c.*, u.nombre, u.lang FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?`, [clienteId]);
+    if (!cl) return null;
+    const isEn = cl.lang === 'en';
+
+    // Últimos 10 mensajes para contexto de conversación
+    const historial = dbAll(
+      'SELECT contenido, de_coach FROM mensajes WHERE cliente_id=? ORDER BY created_at DESC LIMIT 10',
+      [clienteId]
+    ).reverse();
+
+    // Peso actual y último checkin
+    const ultimoPeso = dbGet('SELECT peso, grasa FROM peso_registros WHERE cliente_id=? ORDER BY rowid DESC LIMIT 1', [clienteId]);
+    const ultimoCheckin = dbGet('SELECT sueno, energia FROM checkins WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1', [clienteId]);
+
+    const contexto = [
+      `Cliente: ${cl.nombre}`,
+      `Objetivo: ${cl.objetivo || '—'}`,
+      `Nivel: ${cl.nivel || '—'}`,
+      cl.peso_actual ? `Peso: ${cl.peso_actual}kg` : '',
+      ultimoPeso?.grasa ? `Grasa: ${ultimoPeso.grasa}%` : '',
+      ultimoCheckin ? `Último check-in — sueño: ${ultimoCheckin.sueno}/10, energía: ${ultimoCheckin.energia}/10` : '',
+      cl.lesiones ? `Lesiones/limitaciones: ${cl.lesiones}` : '',
+      cl.observaciones ? `Notas: ${cl.observaciones}` : '',
+    ].filter(Boolean).join('\n');
+
+    const system = isEn
+      ? `You are a WolfMindset fitness coach assistant. You respond to clients in a warm, direct, motivating tone — like a real coach who knows them personally. Keep responses concise (2-4 sentences max). Never mention AI or technology. If you don't know something specific about their plan, be honest and say the coach will follow up. Client context:\n${contexto}`
+      : `Eres el asistente del coach de WolfMindset. Respondes a los clientes con un tono cercano, directo y motivador — como un coach real que los conoce. Respuestas concisas (2-4 frases máximo). Nunca menciones IA ni tecnología. Si no sabes algo concreto de su plan, sé honesto y di que el coach lo confirmará. Contexto del cliente:\n${contexto}`;
+
+    const messages = [
+      ...historial.map(m => ({ role: m.de_coach ? 'assistant' : 'user', content: m.contenido })),
+      { role: 'user', content: mensajeUsuario }
+    ];
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 300, system, messages })
+    });
+    const data = await response.json();
+    if (data.error || !data.content?.[0]?.text) return null;
+    return data.content[0].text.trim();
+  } catch(e) { console.error('[IA Chat]', e.message); return null; }
+}
+
 // ── POST /mensajes ────────────────────────────────────────────────────────────
 // Enviar mensaje. Coach: de_coach=1. Cliente: de_coach=0 → notifica al coach.
 // via_ia=1 cuando la IA responde en nombre del coach (solo interno, cliente no lo ve).
-router.post('/mensajes', (req, res) => {
+router.post('/mensajes', async (req, res) => {
   try {
     const { contenido, via_ia } = req.body;
     let { cliente_id, de_coach } = req.body;
@@ -1488,10 +1586,36 @@ router.post('/mensajes', (req, res) => {
             ? `💬 ${nombreCliente} has sent you a message`
             : `💬 ${nombreCliente} te ha enviado un mensaje`;
           crearNotificacion(coachId, 'mensaje_cliente', msgNotif);
-          // Push SSE: actualizar badge de mensajes del coach en tiempo real
           ssePush(coachId, 'badge_msgs', { cliente_id });
         } catch(e) {}
       }
+
+      // ── Respuesta automática IA si el bot está activo para este cliente ──
+      if (botDebeResponder(cliente_id)) {
+        // No bloqueamos la respuesta al cliente — la IA responde en background
+        responderConIA(cliente_id, contenido.trim()).then(replyIA => {
+          if (!replyIA) return;
+          try {
+            const rIA = dbRun(
+              'INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido) VALUES (?,?,?,?,?)',
+              [cliente_id, 1, 1, replyIA, 0]
+            );
+            // Push SSE al cliente para que reciba la respuesta al instante
+            const clienteUser = dbGet('SELECT user_id FROM clientes WHERE id=?', [cliente_id]);
+            if (clienteUser) {
+              ssePush(clienteUser.user_id, 'mensaje_nuevo', {
+                id: rIA.lastInsertRowid,
+                contenido: replyIA,
+                de_coach: 1,
+                via_ia: 1,
+                created_at: new Date().toISOString()
+              });
+            }
+            saveToDisk();
+          } catch(e) { console.error('[IA Chat reply]', e.message); }
+        }).catch(() => {});
+      }
+
     } else {
       // Coach responde → push SSE al cliente para que reciba el mensaje al instante
       try {
@@ -1510,6 +1634,48 @@ router.post('/mensajes', (req, res) => {
 
     saveToDisk();
     res.json({ ok: true, id: r.lastInsertRowid });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CONTROL DEL BOT IA EN CHAT ────────────────────────────────────────────────
+
+// GET estado global del bot + estado por cliente
+router.get('/ia-chat/config', coachOnly, (req, res) => {
+  try {
+    const cfg = dbGet('SELECT bot_global FROM ia_config WHERE id=1');
+    const clientes = dbAll(`
+      SELECT c.id, u.nombre, c.ia_chat_activa
+      FROM clientes c JOIN users u ON c.user_id=u.id
+      ORDER BY u.nombre ASC
+    `);
+    res.json({
+      bot_global: cfg ? cfg.bot_global : 0,
+      clientes: clientes.map(c => ({
+        id: c.id,
+        nombre: c.nombre,
+        ia_activa: c.ia_chat_activa || 0
+      }))
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT toggle global del bot (ON/OFF para todos)
+router.put('/ia-chat/global', coachOnly, (req, res) => {
+  try {
+    const { activo } = req.body;
+    dbRun('UPDATE ia_config SET bot_global=?, updated_at=CURRENT_TIMESTAMP WHERE id=1', [activo ? 1 : 0]);
+    saveToDisk();
+    res.json({ ok: true, bot_global: activo ? 1 : 0 });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT toggle bot para un cliente concreto
+router.put('/ia-chat/cliente/:id', coachOnly, (req, res) => {
+  try {
+    const { activo } = req.body;
+    dbRun('UPDATE clientes SET ia_chat_activa=? WHERE id=?', [activo ? 1 : 0, req.params.id]);
+    saveToDisk();
+    res.json({ ok: true, ia_activa: activo ? 1 : 0 });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
