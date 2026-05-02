@@ -530,6 +530,120 @@ Tono: directo, cercano, como un coach real que lo conoce personalmente. Sin mark
   }
 });
 
+// ── ANALIZAR FOTOS COACH (acepta URLs — el servidor descarga las imágenes) ──
+// Evita problemas CORS al no tener que descargar desde el navegador.
+router.post('/ia/analizar-fotos-coach', coachOnly, async (req, res) => {
+  const { urlsActuales, urlsAnteriores, clienteNombre, objetivo, nivel, semanaActual, semanaAnterior, lang, peso, altura, edad, sexo } = req.body;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
+  if (!urlsActuales || !urlsActuales.length) return res.status(400).json({ error: 'urlsActuales requerido' });
+
+  // Descarga una imagen desde URL y devuelve { b64, mt }
+  async function fetchImageB64(url) {
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) return null;
+      const buffer = await resp.arrayBuffer();
+      const ct = resp.headers.get('content-type') || 'image/jpeg';
+      const mt = ct.split(';')[0].trim();
+      const b64 = Buffer.from(buffer).toString('base64');
+      return { b64, mt };
+    } catch(e) { return null; }
+  }
+
+  try {
+    const isEn = lang === 'en';
+    const hayComparativa = !!(urlsAnteriores && urlsAnteriores.length);
+
+    // Descargar todas las imágenes en paralelo
+    const [imgActuales, imgAnteriores] = await Promise.all([
+      Promise.all(urlsActuales.map(fetchImageB64)),
+      hayComparativa ? Promise.all(urlsAnteriores.map(fetchImageB64)) : Promise.resolve([])
+    ]);
+
+    const fotosOk = imgActuales.filter(Boolean);
+    const antesOk = imgAnteriores.filter(Boolean);
+
+    if (!fotosOk.length) return res.status(400).json({ error: 'No se pudieron cargar las imágenes' });
+
+    const content = [];
+    const clienteInfo = [
+      peso   ? (isEn ? `Weight: ${peso}kg`   : `Peso: ${peso}kg`)   : '',
+      altura ? (isEn ? `Height: ${altura}cm` : `Altura: ${altura}cm`) : '',
+      edad   ? (isEn ? `Age: ${edad}`         : `Edad: ${edad}`)     : '',
+      sexo   ? (isEn ? `Sex: ${sexo}`         : `Sexo: ${sexo}`)     : ''
+    ].filter(Boolean).join(' · ');
+
+    if (hayComparativa && antesOk.length) {
+      // Fotos anteriores
+      content.push({ type: 'text', text: isEn ? `${semanaAnterior} (BEFORE):` : `${semanaAnterior} (ANTES):` });
+      antesOk.forEach(img => content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } }));
+      content.push({ type: 'text', text: isEn ? `${semanaActual} (NOW):` : `${semanaActual} (AHORA):` });
+      fotosOk.forEach(img => content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } }));
+
+      const instruccion = isEn
+        ? `Compare BEFORE and NOW photos of ${clienteNombre} (Goal: ${objetivo}, Level: ${nivel}${clienteInfo ? ', ' + clienteInfo : ''}).
+Write a direct coach message (4-6 sentences):
+1. Estimate body fat % visually — write as "Estimated body fat: X%"
+2. Estimate overall improvement % — write as "Improvement: X%"
+3. Highlight 2-3 specific visible improvements
+4. Point out 1-2 areas to keep working on
+5. End with a motivating push
+Tone: warm, direct, like a real coach. No markdown, no asterisks, no mention of AI.`
+        : `Compara las fotos ANTES y AHORA de ${clienteNombre} (Objetivo: ${objetivo}, Nivel: ${nivel}${clienteInfo ? ', ' + clienteInfo : ''}).
+Escribe un mensaje directo del coach (4-6 frases):
+1. Estima el % de grasa corporal visualmente — escríbelo como "Grasa estimada: X%"
+2. Estima el % de mejora global — escríbelo como "Mejora: X%"
+3. Destaca 2-3 mejoras visibles y concretas
+4. Señala 1-2 áreas a seguir trabajando
+5. Termina con un empuje motivador
+Tono: cercano, directo, como un coach real. Sin markdown, sin asteriscos, sin mencionar IA.`;
+      content.push({ type: 'text', text: instruccion });
+    } else {
+      // Sin comparativa — primer mes
+      fotosOk.forEach(img => content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } }));
+      const instruccion = isEn
+        ? `Analyze the physique of ${clienteNombre} (Goal: ${objetivo}, Level: ${nivel}${clienteInfo ? ', ' + clienteInfo : ''}).
+First session — no previous photos to compare.
+Write a personal coach message (4-5 sentences):
+1. Estimate body fat % visually — write as "Estimated body fat: X%"
+2. Highlight 2-3 genuine strong points (specific muscle groups, posture, body composition)
+3. Point out 1-2 areas to focus on to reach their goal
+4. Give 1 concrete actionable tip for this week
+5. End with a motivating push
+Tone: warm, direct, personal. No markdown, no asterisks, no mention of AI.`
+        : `Analiza el físico de ${clienteNombre} (Objetivo: ${objetivo}, Nivel: ${nivel}${clienteInfo ? ', ' + clienteInfo : ''}).
+Primera sesión — no hay fotos anteriores para comparar.
+Escribe un mensaje personal del coach (4-5 frases):
+1. Estima el % de grasa corporal visualmente — escríbelo como "Grasa estimada: X%"
+2. Destaca 2-3 puntos fuertes reales (grupos musculares, postura, composición)
+3. Señala 1-2 áreas en las que enfocarse para alcanzar su objetivo
+4. Da 1 consejo concreto y accionable para esta semana
+5. Termina con una motivación real
+Tono: cercano, directo, personal. Sin markdown, sin asteriscos, sin mencionar IA.`;
+      content.push({ type: 'text', text: instruccion });
+    }
+
+    const system = isEn
+      ? 'You are an expert WolfMindset fitness coach. You analyze client progress photos with a trained, motivating eye. Always estimate body fat % visually with a specific number. Write personalized messages. Never mention AI or technology.'
+      : 'Eres un coach de fitness experto de WolfMindset. Analizas fotos de progreso con ojo entrenado y motivador. Siempre estima el % de grasa con un número concreto. Escribe mensajes personalizados. Nunca menciones IA ni tecnología.';
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-opus-4-6', max_tokens: 600, system, messages: [{ role: 'user', content }] })
+    });
+
+    const data = await response.json();
+    if (data.error) return res.status(500).json({ error: data.error.message || 'Error API' });
+    if (!data.content?.[0]?.text) return res.status(500).json({ error: 'Respuesta vacía de la IA' });
+    res.json({ reply: data.content[0].text });
+  } catch(e) {
+    console.log('[IA analizar-fotos-coach]', e.message);
+    res.status(500).json({ error: e.message || 'Error analizando fotos' });
+  }
+});
+
 // ── EJERCICIOS CONFIG ──────────────────────────────────────────────
 router.get('/ejercicios-config', coachOnly, (req, res) => {
   const configs = dbAll('SELECT * FROM ejercicios_config', []);
@@ -1385,35 +1499,13 @@ router.get('/mi-foto', (req, res) => {
 // Además, el hilo abierto marca presencia por cliente en BD (last_coach_activity).
 const _coachLastSeen = {};
 const COACH_ACTIVE_MS = 5 * 60 * 1000;
-// Debounce timers para respuesta IA: evita que la IA responda a cada mensaje por separado
-// cuando el cliente escribe varios mensajes seguidos. Se espera 8s desde el último mensaje.
-const _iaPendingTimers = {};
-
-// Caché en memoria del modo ausente por coach (persiste en campo coach_ausente de users).
-const _coachAusenteCache = {};
-function isCoachAusente(coachId) {
-  if (_coachAusenteCache[coachId] !== undefined) return _coachAusenteCache[coachId];
-  try {
-    const u = dbGet("SELECT coach_ausente FROM users WHERE id=?", [coachId]);
-    const ausente = u ? !!u.coach_ausente : false;
-    _coachAusenteCache[coachId] = ausente;
-    return ausente;
-  } catch(e) { return false; }
-}
-
 router.use((req, res, next) => {
-  // Solo actualizar _coachLastSeen si el coach NO está en modo ausente
-  if (req.user && req.user.role === 'coach' && !isCoachAusente(req.user.id)) {
-    _coachLastSeen[req.user.id] = Date.now();
-  }
+  if (req.user && req.user.role === 'coach') _coachLastSeen[req.user.id] = Date.now();
   next();
 });
 
 function marcarCoachActivo(clienteId) {
   try {
-    // No marcar activo si el coach está en modo ausente
-    const coachId = getCoachIdDeCliente(clienteId);
-    if (coachId && isCoachAusente(coachId)) return;
     dbRun("UPDATE clientes SET coach_online=1, last_coach_activity=datetime('now') WHERE id=?", [clienteId]);
   } catch(e) {}
 }
@@ -1651,27 +1743,20 @@ function middlewareMensajeDiario(req, res, next) {
 
 
 // Comprueba si el bot debe responder a este cliente:
-// bot_global ON  → responde solo a clientes con ia_chat_activa=1 explícitamente
+// bot_global ON  → responde a todos los clientes con ia_chat_activa=1 (o si ia_chat_activa es NULL/0 pero global está ON)
 // bot_global OFF → solo responde a clientes con ia_chat_activa=1 explícitamente
-// En ambos casos, si el coach está activo/disponible, la IA NO interviene.
 function botDebeResponder(clienteId) {
   try {
-    // Prioridad 1: si el coach marcó manualmente "ausente", la IA SIEMPRE puede responder.
-    // Esto evita que coach_online o last_coach_activity (que tardan 5 min en expirar) bloqueen la IA.
-    const coachId = getCoachIdDeCliente(clienteId);
-    if (coachId && isCoachAusente(coachId)) {
-      // Coach en modo ausente → ignorar coach_online, ir directo a configuración IA
-    } else {
-      // Coach NO está en modo ausente → respetar presencia por actividad
-      if (coachEstaActivoEnCliente(clienteId)) return false;
-    }
+    // Si el coach tiene abierto/activo ese hilo, la IA no interviene.
+    if (coachEstaActivoEnCliente(clienteId)) return false;
 
     const cfg = dbGet('SELECT bot_global FROM ia_config WHERE id=1');
     const botGlobal = cfg ? cfg.bot_global : 0;
     const cl = dbGet('SELECT ia_chat_activa FROM clientes WHERE id=?', [clienteId]);
     const iaCliente = cl ? cl.ia_chat_activa : 0;
-    // Responde solo si ia_chat_activa=1 explícitamente (con global ON o OFF)
-    if (botGlobal) return iaCliente === 1;
+    // Si global ON → responde salvo que cliente tenga ia_chat_activa=0 explícitamente
+    if (botGlobal) return iaCliente !== 0; // NULL o 1 → responde; 0 → no
+    // Si global OFF → solo responde si cliente tiene ia_chat_activa=1
     return iaCliente === 1;
   } catch(e) { return false; }
 }
@@ -1708,8 +1793,8 @@ async function responderConIA(clienteId, mensajeUsuario) {
     ].filter(Boolean).join('\n');
 
     const system = isEn
-      ? `You are the WolfMindset coach. You give real, practical advice on training, nutrition, recovery and technique — directly, as a coach would. Warm, motivating tone. Never mention AI or technology, never say 'the coach will follow up' — YOU are the coach, give the answer yourself. If you lack specific data, give the best general advice for their goal and level. Concise responses (2-4 sentences). NO markdown, NO asterisks, NO bullet points — plain conversational text only. Client context:\n${contexto}`
-      : `Eres el coach de WolfMindset. Das consejos reales y prácticos sobre entrenamiento, nutrición, recuperación y técnica — directamente, como haría un coach. Tono cercano, directo y motivador. Nunca menciones IA ni tecnología, nunca digas 'el coach lo confirmará' — TÚ eres el coach, da la respuesta tú mismo. Si no tienes datos específicos, da el mejor consejo general para su objetivo y nivel. Respuestas concisas (2-4 frases). SIN markdown, SIN asteriscos, SIN listas — solo texto conversacional natural. Contexto del cliente:\n${contexto}`;
+      ? `You are a WolfMindset fitness coach assistant. You respond to clients in a warm, direct, motivating tone — like a real coach who knows them personally. Keep responses concise (2-4 sentences max). Never mention AI or technology. If you don't know something specific about their plan, be honest and say the coach will follow up. NO markdown, NO asterisks, NO bullet points — plain conversational text only. Client context:\n${contexto}`
+      : `Eres el asistente del coach de WolfMindset. Respondes a los clientes con un tono cercano, directo y motivador — como un coach real que los conoce. Respuestas concisas (2-4 frases máximo). Nunca menciones IA ni tecnología. Si no sabes algo concreto de su plan, sé honesto y di que el coach lo confirmará. SIN markdown, SIN asteriscos, SIN listas — solo texto conversacional natural. Contexto del cliente:\n${contexto}`;
 
     const messages = [
       ...historial.map(m => ({ role: m.de_coach ? 'assistant' : 'user', content: m.contenido })),
@@ -1788,48 +1873,38 @@ router.post('/mensajes', async (req, res) => {
       }
 
       // ── Respuesta automática IA si el bot está activo para este cliente ──
-      // Debounce de 8s: si el cliente sigue escribiendo, espera al último mensaje antes de responder.
       if (botDebeResponder(cliente_id)) {
-        if (_iaPendingTimers[cliente_id]) clearTimeout(_iaPendingTimers[cliente_id]);
-        _iaPendingTimers[cliente_id] = setTimeout(() => {
-          delete _iaPendingTimers[cliente_id];
+        // No bloqueamos la respuesta al cliente — la IA responde en background
+        responderConIA(cliente_id, contenido.trim()).then(replyIA => {
+          if (!replyIA) return;
+          // Verificar de nuevo si el bot sigue activo — puede haberse desactivado mientras procesaba
           if (!botDebeResponder(cliente_id)) return;
-          // Leer el último mensaje real del cliente para responder con contexto completo
-          const ultimoMsg = dbGet(
-            "SELECT contenido FROM mensajes WHERE cliente_id=? AND de_coach=0 ORDER BY created_at DESC LIMIT 1",
-            [cliente_id]
-          );
-          const textoRespuesta = ultimoMsg ? ultimoMsg.contenido : contenido.trim();
-          responderConIA(cliente_id, textoRespuesta).then(replyIA => {
-            if (!replyIA) return;
-            if (!botDebeResponder(cliente_id)) return;
-            try {
-              const rIA = dbRun(
-                'INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido) VALUES (?,?,?,?,?)',
-                [cliente_id, 1, 1, replyIA, 0]
-              );
-              // Push SSE al cliente y al coach para que ambos vean el hilo sincronizado.
-              const clienteUser = dbGet('SELECT user_id, coach_id FROM clientes WHERE id=?', [cliente_id]);
-              const msgIA = {
-                id: rIA.lastInsertRowid,
-                cliente_id,
-                contenido: replyIA,
-                de_coach: 1,
-                via_ia: 1,
-                created_at: new Date().toISOString()
-              };
-              if (clienteUser) {
-                ssePush(clienteUser.user_id, 'mensaje_nuevo', msgIA);
-                const coachId = clienteUser.coach_id || getCoachIdDeCliente(cliente_id);
-                if (coachId) {
-                  ssePush(coachId, 'mensaje_nuevo', msgIA);
-                  ssePush(coachId, 'badge_msgs', { cliente_id });
-                }
+          try {
+            const rIA = dbRun(
+              'INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido) VALUES (?,?,?,?,?)',
+              [cliente_id, 1, 1, replyIA, 0]
+            );
+            // Push SSE al cliente y al coach para que ambos vean el hilo sincronizado.
+            const clienteUser = dbGet('SELECT user_id, coach_id FROM clientes WHERE id=?', [cliente_id]);
+            const msgIA = {
+              id: rIA.lastInsertRowid,
+              cliente_id,
+              contenido: replyIA,
+              de_coach: 1,
+              via_ia: 1,
+              created_at: new Date().toISOString()
+            };
+            if (clienteUser) {
+              ssePush(clienteUser.user_id, 'mensaje_nuevo', msgIA);
+              const coachId = clienteUser.coach_id || getCoachIdDeCliente(cliente_id);
+              if (coachId) {
+                ssePush(coachId, 'mensaje_nuevo', msgIA);
+                ssePush(coachId, 'badge_msgs', { cliente_id });
               }
-              saveToDisk();
-            } catch(e) { console.error('[IA Chat reply]', e.message); }
-          }).catch(() => {});
-        }, 8000); // esperar 8s por si el cliente sigue escribiendo
+            }
+            saveToDisk();
+          } catch(e) { console.error('[IA Chat reply]', e.message); }
+        }).catch(() => {});
       }
 
     } else {
@@ -1908,50 +1983,6 @@ router.put('/mensajes/:clienteId/leer', coachOnly, (req, res) => {
     saveToDisk();
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── PUT /coach/presencia — el coach activa/desactiva su disponibilidad manual ──
-// activo=true  → DISPONIBLE: la IA se pausa para todos sus clientes
-// activo=false → AUSENTE:    la IA puede responder. Estado persiste en BD.
-router.put('/coach/presencia', coachOnly, (req, res) => {
-  try {
-    const { activo } = req.body;
-    const coachId = req.user.id;
-    // Persistir en BD para que sobreviva reinicios y cambios de pantalla
-    try { dbRun('ALTER TABLE users ADD COLUMN coach_ausente INTEGER DEFAULT 0'); } catch(e) {}
-    dbRun('UPDATE users SET coach_ausente=? WHERE id=?', [activo ? 0 : 1, coachId]);
-    // Actualizar caché en memoria
-    _coachAusenteCache[coachId] = !activo;
-    if (activo) {
-      // Marcar online en todos los clientes asignados a este coach
-      dbRun(
-        "UPDATE clientes SET coach_online=1, last_coach_activity=datetime('now') WHERE coach_id=? OR coach_id IS NULL",
-        [coachId]
-      );
-      _coachLastSeen[coachId] = Date.now();
-    } else {
-      // Ausente: apagar presencia y limpiar _coachLastSeen para que el middleware no lo restablezca
-      dbRun(
-        "UPDATE clientes SET coach_online=0 WHERE coach_id=? OR coach_id IS NULL",
-        [coachId]
-      );
-      delete _coachLastSeen[coachId];
-    }
-    saveToDisk();
-    res.json({ ok: true, activo: !!activo });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── GET /coach/presencia — devuelve el estado persistido en BD ──
-router.get('/coach/presencia', coachOnly, (req, res) => {
-  try {
-    const coachId = req.user.id;
-    try { dbRun('ALTER TABLE users ADD COLUMN coach_ausente INTEGER DEFAULT 0'); } catch(e) {}
-    const u = dbGet('SELECT coach_ausente FROM users WHERE id=?', [coachId]);
-    const ausente = u ? !!u.coach_ausente : false;
-    _coachAusenteCache[coachId] = ausente;
-    res.json({ activo: !ausente });
-  } catch(e) { res.json({ activo: true }); }
 });
 
 // ── IMÁGENES DE EJERCICIOS (ruta ligera para clientes) ──────────────────────
