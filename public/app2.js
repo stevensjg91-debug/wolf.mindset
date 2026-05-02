@@ -939,23 +939,26 @@ function renderCoachFotos(fotos){
       +'<div style="flex:1;height:0.5px;background:var(--br)"></div>'
       +'</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">'+fotosHtml+'</div>'
-      +(USER&&USER.role==='coach' ? '<button onclick="coachAnalizarSemana('+fi+','+JSON.stringify(fechas)+')" id="cfa_btn_'+fi+'" style="width:100%;padding:9px;border:0.5px solid rgba(59,130,246,.3);border-radius:9px;background:rgba(37,99,235,.07);color:var(--blg);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:8px">'+btnLabel+'</button>' : '')
+      +(USER&&USER.role==='coach' ? '<button onclick="coachAnalizarSemana('+fi+',this)" data-fechas=\''+JSON.stringify(fechas).replace(/'/g,"&apos;")+'\' id="cfa_btn_'+fi+'" style="width:100%;padding:9px;border:0.5px solid rgba(59,130,246,.3);border-radius:9px;background:rgba(37,99,235,.07);color:var(--blg);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:8px">'+btnLabel+'</button>' : '')
       +'<div id="cfa_result_'+fi+'"></div>'
       +(pubAnalysis
         ?'<div style="background:rgba(37,99,235,.06);border:0.5px solid rgba(59,130,246,.2);border-radius:8px;padding:10px 12px">'
           +'<div style="font-size:10px;font-weight:700;color:var(--blg);margin-bottom:5px">💬 '+(COACH_LANG==='en'?'Coach message':'Mensaje de tu coach')+'</div>'
           +'<div style="font-size:12px;color:var(--sv2);line-height:1.7" id="cfa_pub_'+fi+'">'+pubAnalysis+'</div>'
-          +(USER&&USER.role==='coach' ? '<button onclick="coachEditarPublicado('+fi+','+JSON.stringify(allFotoIds)+')" style="margin-top:8px;padding:5px 12px;border:0.5px solid var(--br);border-radius:7px;background:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'Edit':'Editar')+'</button>' : '')
+          +(USER&&USER.role==='coach' ? '<button onclick="coachEditarPublicado('+fi+',this)" data-fotoids=\''+JSON.stringify(allFotoIds).replace(/'/g,"&apos;")+'\' style="margin-top:8px;padding:5px 12px;border:0.5px solid var(--br);border-radius:7px;background:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'Edit':'Editar')+'</button>' : '')
           +'</div>'
         :'')
       +'</div>';
   }).join('');
 }
 
-async function coachAnalizarSemana(fi, fechas){
-  const btn = document.getElementById('cfa_btn_'+fi);
+async function coachAnalizarSemana(fi, btnEl){
+  const btn = btnEl || document.getElementById('cfa_btn_'+fi);
   const resultDiv = document.getElementById('cfa_result_'+fi);
   if(!btn||!resultDiv) return;
+  // Leer fechas del atributo data-fechas (evita el bug de comillas en onclick)
+  let fechas = [];
+  try { fechas = JSON.parse(btn.getAttribute('data-fechas') || '[]'); } catch(e) { return; }
   btn.disabled = true;
   btn.textContent = COACH_LANG==='en'?'⏳ Analyzing...':'⏳ Analizando...';
   const fotos = CD.fotos||[];
@@ -1058,7 +1061,9 @@ async function coachPublicarMensaje(fi, fotoIds){
   } catch(e){ alert(COACH_LANG==='en'?'Error publishing':'Error al publicar'); }
 }
 
-function coachEditarPublicado(fi, fotoIds){
+function coachEditarPublicado(fi, btnEl){
+  let fotoIds = [];
+  try { fotoIds = JSON.parse((btnEl instanceof Element ? btnEl : document.querySelector('[data-fotoids]')).getAttribute('data-fotoids') || '[]'); } catch(e) {}
   const pubDiv = document.getElementById('cfa_pub_'+fi);
   if(!pubDiv) return;
   const textoActual = pubDiv.textContent||'';
