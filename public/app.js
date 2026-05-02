@@ -9861,55 +9861,91 @@ async function analizarFotos(){
   if(!fotos.length) return;
 
   btn.textContent = '⏳ Analizando...'; btn.disabled = true;
-
   document.getElementById('fLoad').style.display='block';
   document.getElementById('fAn').innerHTML='';
 
   try{
-    // Build multi-image message
-    const imgContent = fotos.map(([tipo, f])=>([
-      {type:'text', text:`Foto ${tipo}:`},
-      {type:'image', source:{type:'base64', media_type:f.mt, data:f.b64}}
-    ])).flat();
+    // Compress images to max 800px and 0.7 quality before sending to IA
+    async function compressB64(b64, mt){
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          const max = 800;
+          let w = img.width, h = img.height;
+          if(w > max || h > max){
+            if(w > h){ h = Math.round(h*max/w); w = max; }
+            else{ w = Math.round(w*max/h); h = max; }
+          }
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          const compressed = c.toDataURL('image/jpeg', 0.7).split(',')[1];
+          resolve({ b64: compressed, mt: 'image/jpeg' });
+        };
+        img.onerror = () => resolve({ b64, mt });
+        img.src = `data:${mt};base64,${b64}`;
+      });
+    }
 
-    imgContent.push({type:'text', text:`Analiza estas fotos de progreso del cliente ${CD.nombre}. Objetivo: ${CD.objetivo}. Haz una valoración motivadora pero honesta con: mejoras visibles, puntos fuertes, recomendaciones concretas para su objetivo.`});
+    // Compress all fotos
+    const fotosComprimidas = await Promise.all(
+      fotos.map(async ([tipo, f]) => {
+        const compressed = await compressB64(f.b64, f.mt);
+        return [tipo, compressed];
+      })
+    );
+
+    const [firstTipo, firstFoto] = fotosComprimidas[0];
+    const extraImages = fotosComprimidas.slice(1).map(([t, f]) => ({ b64: f.b64, mt: f.mt, tipo: t }));
+
+    const isEn = COACH_LANG === 'en';
+    const clientInfo = `${CD.nombre}, ${isEn?'Goal':'Objetivo'}: ${CD.objetivo}, ${isEn?'Level':'Nivel'}: ${CD.nivel||'Intermedio'}${CD.peso_actual?`, ${isEn?'Weight':'Peso'}: ${CD.peso_actual}kg`:''}`;
+
+    const system = isEn
+      ? `You are an expert WolfMindset fitness coach. Analyze progress photos with a clinical and motivating eye. Always respond in English. Be direct, warm, and specific — like a real coach who knows the client personally. No markdown, no asterisks, no bullet points. Write in flowing paragraphs.`
+      : `Eres un coach de fitness experto de WolfMindset. Analizas fotos de progreso con ojo clínico y motivador. Responde siempre en español. Sé directo, cercano y específico — como un coach real que conoce al cliente. Sin markdown, sin asteriscos, sin listas. Escribe en párrafos.`;
+
+    console.log('[IA foto] Sending', fotosComprimidas.length, 'images, first b64 size:', firstFoto.b64.length);
 
     const d = await api('/ia/foto', {
       method:'POST',
       body: JSON.stringify({
-        imageBase64: fotos[0][1].b64,
-        mediaType: fotos[0][1].mt,
-        extraImages: fotos.slice(1).map(([t,f])=>({b64:f.b64,mt:f.mt,tipo:t})),
-        system: COACH_LANG==='en'?'You are an expert WolfMindset fitness coach. Analyze progress photos with a clinical and motivating eye. Always respond in English.':'Eres un coach de fitness experto de WolfMindset. Analizas fotos de progreso con ojo clínico y motivador. Responde en español.'
+        imageBase64: firstFoto.b64,
+        mediaType: firstFoto.mt,
+        extraImages,
+        clientInfo,
+        system
       })
     });
 
     document.getElementById('fLoad').style.display='none';
 
-    // Store draft (not visible to client yet)
+    // Store draft on recent fotos
     const recentFotos = (CD.fotos||[]).slice(-3);
     for(const f of recentFotos){
       try{ await api('/fotos/'+f.id+'/analysis',{method:'PUT',body:JSON.stringify({analysis:d.reply})}); }catch(e){}
     }
     await loadCD(CD.id);
     renderFotosProgreso();
+
     const cleanDraft = d.reply.replace(/\*\*([^*]+)\*\*/g,'$1').replace(/##[^\n]+/g,'').replace(/\n{3,}/g,'\n\n').trim();
     window._lastFotoIds = recentFotos.map(f=>f.id);
     document.getElementById('fAn').innerHTML = `
       <div class="sec" style="margin:0 14px">
-        <div class="sec-hdr" style="color:var(--blg)">📝 Revisa y edita antes de publicar</div>
+        <div class="sec-hdr" style="color:var(--blg)">📝 ${isEn?'Review and edit before publishing':'Revisa y edita antes de publicar'}</div>
         <textarea id="coach_val_draft" class="ta" style="min-height:140px;font-size:13px;line-height:1.7">${cleanDraft}</textarea>
         <div style="display:flex;gap:8px;margin-top:8px">
-          <button onclick="publicarValoracion()" class="btn" style="flex:1;padding:11px;background:var(--gn)">✓ Publicar al cliente</button>
-          <button onclick="document.getElementById('fAn').innerHTML=''" style="padding:11px 14px;border:0.5px solid var(--br);border-radius:10px;background:none;color:var(--tx3);cursor:pointer;font-family:inherit">Descartar</button>
+          <button onclick="publicarValoracion()" class="btn" style="flex:1;padding:11px;background:var(--gn)">✓ ${isEn?'Publish to client':'Publicar al cliente'}</button>
+          <button onclick="document.getElementById('fAn').innerHTML=''" style="padding:11px 14px;border:0.5px solid var(--br);border-radius:10px;background:none;color:var(--tx3);cursor:pointer;font-family:inherit">${isEn?'Discard':'Descartar'}</button>
         </div>
-        <div style="font-size:11px;color:var(--tx3);margin-top:6px;text-align:center">Se publicará como mensaje de tu coach</div>
+        <div style="font-size:11px;color:var(--tx3);margin-top:6px;text-align:center">${isEn?'Will be published as a coach message':'Se publicará como mensaje de tu coach'}</div>
       </div>`;
-    btn.textContent = '✓ Borrador listo';
+    btn.textContent = isEn ? '✓ Draft ready' : '✓ Borrador listo';
     btn.style.background = 'var(--bl2)';
   } catch(e){
     document.getElementById('fLoad').style.display='none';
-    const errMsg = e?.error || e?.message || 'Error desconocido';
+    const errMsg = e?.error || e?.message || (typeof e === 'string' ? e : 'Error desconocido');
+    console.log('[IA foto] Error:', errMsg, e);
     document.getElementById('fAn').innerHTML = `<div style="padding:10px 14px;background:rgba(239,68,68,.08);border:0.5px solid rgba(239,68,68,.3);border-radius:8px;font-size:12px;color:#fca5a5;margin:0 14px">⚠️ Error al analizar: ${errMsg}</div>`;
     btn.textContent = COACH_LANG==='en'?'↺ Retry':'↺ Reintentar';
     btn.disabled = false;
