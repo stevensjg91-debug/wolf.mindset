@@ -132,7 +132,11 @@ router.get('/clientes/:id', (req, res) => {
   }
   const c = dbGet('SELECT c.*, u.nombre, u.username, u.foto_perfil FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [id]);
   if (!c) return res.status(404).json({ error: 'No encontrado' });
-  const pesos = dbAll('SELECT * FROM peso_registros WHERE cliente_id=? ORDER BY rowid ASC', [id]);
+  let pesos = dbAll('SELECT * FROM peso_registros WHERE cliente_id=? ORDER BY rowid ASC', [id]);
+  // El cliente no recibe grasa corporal: esa métrica queda solo para el coach/interno.
+  if (req.user.role === 'cliente') {
+    pesos = pesos.map(p => ({ ...p, grasa: null }));
+  }
   const dias = dbAll('SELECT * FROM dias_entreno WHERE cliente_id=? ORDER BY orden', [id]);
   dias.forEach(d => {
     d.ejercicios = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=? ORDER BY orden', [d.id]);
@@ -208,13 +212,55 @@ router.put('/clientes/:id/perfil', (req, res) => {
 
 router.post('/clientes/:id/peso', (req, res) => {
   const { peso, grasa, cintura } = req.body;
-  dbRun('INSERT INTO peso_registros (cliente_id, peso, grasa, cintura) VALUES (?, ?, ?, ?)', [req.params.id, peso, grasa||null, cintura||null]);
-  // Notificar al coach
+  const clienteId = req.params.id;
+
+  const pesoNum = peso !== undefined && peso !== null && peso !== '' ? Number(peso) : null;
+  const cinturaNum = cintura !== undefined && cintura !== null && cintura !== '' ? Number(cintura) : null;
+  // La grasa corporal nunca la guarda un cliente. Queda solo para coach/análisis interno.
+  const grasaNum = (req.user.role === 'coach' && grasa !== undefined && grasa !== null && grasa !== '') ? Number(grasa) : null;
+
+  if (pesoNum === null && cinturaNum === null && grasaNum === null) {
+    return res.status(400).json({ error: 'Peso o cintura requerido' });
+  }
+
+  // Un único registro por mes: si ya existe, se corrige/actualiza en vez de duplicar.
+  const actualMes = dbGet(
+    "SELECT * FROM peso_registros WHERE cliente_id=? AND strftime('%Y-%m', fecha)=strftime('%Y-%m','now') ORDER BY rowid DESC LIMIT 1",
+    [clienteId]
+  );
+
+  if (actualMes) {
+    dbRun(
+      'UPDATE peso_registros SET peso=?, cintura=?, grasa=?, fecha=CURRENT_TIMESTAMP WHERE id=?',
+      [
+        pesoNum !== null ? pesoNum : actualMes.peso,
+        cinturaNum !== null ? cinturaNum : actualMes.cintura,
+        grasaNum !== null ? grasaNum : actualMes.grasa,
+        actualMes.id
+      ]
+    );
+  } else {
+    dbRun('INSERT INTO peso_registros (cliente_id, peso, grasa, cintura) VALUES (?, ?, ?, ?)',
+      [clienteId, pesoNum, grasaNum, cinturaNum]);
+  }
+
+  // Mantener el perfil del cliente actualizado con las últimas medidas visibles.
+  const current = dbGet('SELECT peso_actual, cintura_actual FROM clientes WHERE id=?', [clienteId]) || {};
+  dbRun('UPDATE clientes SET peso_actual=?, cintura_actual=? WHERE id=?', [
+    pesoNum !== null ? pesoNum : current.peso_actual,
+    cinturaNum !== null ? cinturaNum : current.cintura_actual,
+    clienteId
+  ]);
+
+  // Notificar al coach sin enviar grasa si viene de cliente.
   const coachId = getCoachId();
   if(coachId) {
-    const nombre = getNombreCliente(req.params.id);
-    const detalle = grasa ? ` · ${grasa}% grasa` : '';
-    crearNotificacion(coachId, 'peso_registrado', `⚖️ ${nombre} ha registrado su peso: ${peso}kg${detalle}`);
+    const nombre = getNombreCliente(clienteId);
+    const partes = [];
+    if (pesoNum !== null) partes.push(`${pesoNum}kg`);
+    if (cinturaNum !== null) partes.push(`${cinturaNum}cm cintura`);
+    const detalleCoach = (req.user.role === 'coach' && grasaNum !== null) ? ` · ${grasaNum}% grasa` : '';
+    crearNotificacion(coachId, 'peso_registrado', `📏 ${nombre} ha registrado medidas: ${partes.join(' · ')}${detalleCoach}`);
   }
   saveToDisk();
   res.json({ ok: true });
@@ -1557,7 +1603,7 @@ async function enviarMensajeMotivador(clienteId, tipo) {
 
     // Contexto del cliente
     const ultimaSesion = dbGet(`SELECT fecha, dia_nombre, estado FROM sesiones_entreno WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1`, [clienteId]);
-    const ultimoPeso = dbGet(`SELECT peso, grasa FROM peso_registros WHERE cliente_id=? ORDER BY rowid DESC LIMIT 1`, [clienteId]);
+    const ultimoPeso = dbGet(`SELECT peso, cintura FROM peso_registros WHERE cliente_id=? ORDER BY rowid DESC LIMIT 1`, [clienteId]);
     const checkin = dbGet(`SELECT sueno, energia FROM checkins WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1`, [clienteId]);
     const totalSesiones = dbGet(`SELECT COUNT(*) as c FROM sesiones_entreno WHERE cliente_id=?`, [clienteId]);
 
@@ -1570,7 +1616,7 @@ async function enviarMensajeMotivador(clienteId, tipo) {
       `Objetivo: ${cl.objetivo || '—'}`,
       `Nivel: ${cl.nivel || '—'}`,
       cl.peso_actual ? `Peso: ${cl.peso_actual}kg` : '',
-      ultimoPeso?.grasa ? `Grasa corporal: ${ultimoPeso.grasa}%` : '',
+      ultimoPeso?.cintura ? `Cintura: ${ultimoPeso.cintura}cm` : '',
       `Total sesiones completadas: ${totalSesiones?.c || 0}`,
       diasSinEntreno < 999 ? `Días desde último entreno: ${diasSinEntreno}` : 'Sin sesiones registradas aún',
       checkin ? `Último check-in — sueño: ${checkin.sueno}/10, energía: ${checkin.energia}/10` : '',
@@ -1707,7 +1753,7 @@ async function responderConIA(clienteId, mensajeUsuario) {
     ).reverse();
 
     // Peso actual y último checkin
-    const ultimoPeso = dbGet('SELECT peso, grasa FROM peso_registros WHERE cliente_id=? ORDER BY rowid DESC LIMIT 1', [clienteId]);
+    const ultimoPeso = dbGet('SELECT peso, cintura FROM peso_registros WHERE cliente_id=? ORDER BY rowid DESC LIMIT 1', [clienteId]);
     const ultimoCheckin = dbGet('SELECT sueno, energia FROM checkins WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1', [clienteId]);
 
     const contexto = [
@@ -1715,7 +1761,7 @@ async function responderConIA(clienteId, mensajeUsuario) {
       `Objetivo: ${cl.objetivo || '—'}`,
       `Nivel: ${cl.nivel || '—'}`,
       cl.peso_actual ? `Peso: ${cl.peso_actual}kg` : '',
-      ultimoPeso?.grasa ? `Grasa: ${ultimoPeso.grasa}%` : '',
+      ultimoPeso?.cintura ? `Cintura: ${ultimoPeso.cintura}cm` : '',
       ultimoCheckin ? `Último check-in — sueño: ${ultimoCheckin.sueno}/10, energía: ${ultimoCheckin.energia}/10` : '',
       cl.lesiones ? `Lesiones/limitaciones: ${cl.lesiones}` : '',
       cl.observaciones ? `Notas: ${cl.observaciones}` : '',
