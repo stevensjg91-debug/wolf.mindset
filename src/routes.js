@@ -1381,12 +1381,36 @@ router.get('/mi-foto', (req, res) => {
 // ═══ MENSAJES (chat cliente ↔ coach) ══════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Rastrea cuándo fue el último request del coach para el endpoint /mensajes/estado
+// Rastrea cuándo fue el último request del coach para presencia general.
+// Además, el hilo abierto marca presencia por cliente en BD (last_coach_activity).
 const _coachLastSeen = {};
+const COACH_ACTIVE_MS = 5 * 60 * 1000;
 router.use((req, res, next) => {
   if (req.user && req.user.role === 'coach') _coachLastSeen[req.user.id] = Date.now();
   next();
 });
+
+function marcarCoachActivo(clienteId) {
+  try {
+    dbRun("UPDATE clientes SET coach_online=1, last_coach_activity=datetime('now') WHERE id=?", [clienteId]);
+  } catch(e) {}
+}
+
+function desactivarCoachesInactivos() {
+  try {
+    dbRun("UPDATE clientes SET coach_online=0 WHERE coach_online=1 AND (last_coach_activity IS NULL OR last_coach_activity < datetime('now','-5 minutes'))");
+  } catch(e) {}
+}
+
+function coachEstaActivoEnCliente(clienteId) {
+  try {
+    desactivarCoachesInactivos();
+    const cl = dbGet("SELECT coach_online, last_coach_activity FROM clientes WHERE id=?", [clienteId]);
+    if (!cl || !cl.coach_online || !cl.last_coach_activity) return false;
+    const last = new Date(String(cl.last_coach_activity).replace(' ', 'T') + 'Z').getTime();
+    return Number.isFinite(last) && (Date.now() - last) < COACH_ACTIVE_MS;
+  } catch(e) { return false; }
+}
 
 // Helper: cliente_id del usuario autenticado
 function getClienteIdPropio(userId) {
@@ -1424,8 +1448,9 @@ router.get('/mensajes/estado', (req, res) => {
     const clienteId = getClienteIdPropio(req.user.id);
     const coachId   = clienteId ? getCoachIdDeCliente(clienteId) : null;
     if (!coachId) return res.json({ online: false });
-    const online = (Date.now() - (_coachLastSeen[coachId] || 0)) < 3 * 60 * 1000;
-    res.json({ online });
+    const onlineGeneral = (Date.now() - (_coachLastSeen[coachId] || 0)) < COACH_ACTIVE_MS;
+    const onlineHilo = coachEstaActivoEnCliente(clienteId);
+    res.json({ online: !!(onlineGeneral || onlineHilo) });
   } catch(e) { res.json({ online: false }); }
 });
 
@@ -1460,6 +1485,8 @@ router.get('/mensajes/:clienteId', (req, res) => {
     if (req.user.role === 'cliente') {
       const propio = getClienteIdPropio(req.user.id);
       if (propio !== clienteId) return res.status(403).json({ error: 'Sin acceso' });
+    } else {
+      marcarCoachActivo(clienteId);
     }
     const msgs = dbAll(`
       SELECT m.id, m.contenido, m.de_coach, m.via_ia, m.leido, m.created_at,
@@ -1606,6 +1633,9 @@ function middlewareMensajeDiario(req, res, next) {
 // bot_global OFF → solo responde a clientes con ia_chat_activa=1 explícitamente
 function botDebeResponder(clienteId) {
   try {
+    // Si el coach tiene abierto/activo ese hilo, la IA no interviene.
+    if (coachEstaActivoEnCliente(clienteId)) return false;
+
     const cfg = dbGet('SELECT bot_global FROM ia_config WHERE id=1');
     const botGlobal = cfg ? cfg.bot_global : 0;
     const cl = dbGet('SELECT ia_chat_activa FROM clientes WHERE id=?', [clienteId]);
@@ -1697,6 +1727,8 @@ router.post('/mensajes', async (req, res) => {
       }
     }
 
+    if (de_coach) marcarCoachActivo(cliente_id);
+
     const r = dbRun(
       'INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido) VALUES (?,?,?,?,?)',
       [cliente_id, de_coach ? 1 : 0, via_ia ? 1 : 0, contenido.trim(), 0]
@@ -1715,6 +1747,14 @@ router.post('/mensajes', async (req, res) => {
             : `💬 ${nombreCliente} te ha enviado un mensaje`;
           crearNotificacion(coachId, 'mensaje_cliente', msgNotif);
           ssePush(coachId, 'badge_msgs', { cliente_id });
+          ssePush(coachId, 'mensaje_nuevo', {
+            id: r.lastInsertRowid,
+            cliente_id,
+            contenido: contenido.trim(),
+            de_coach: 0,
+            via_ia: 0,
+            created_at: new Date().toISOString()
+          });
         } catch(e) {}
       }
 
@@ -1730,16 +1770,23 @@ router.post('/mensajes', async (req, res) => {
               'INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido) VALUES (?,?,?,?,?)',
               [cliente_id, 1, 1, replyIA, 0]
             );
-            // Push SSE al cliente para que reciba la respuesta al instante
-            const clienteUser = dbGet('SELECT user_id FROM clientes WHERE id=?', [cliente_id]);
+            // Push SSE al cliente y al coach para que ambos vean el hilo sincronizado.
+            const clienteUser = dbGet('SELECT user_id, coach_id FROM clientes WHERE id=?', [cliente_id]);
+            const msgIA = {
+              id: rIA.lastInsertRowid,
+              cliente_id,
+              contenido: replyIA,
+              de_coach: 1,
+              via_ia: 1,
+              created_at: new Date().toISOString()
+            };
             if (clienteUser) {
-              ssePush(clienteUser.user_id, 'mensaje_nuevo', {
-                id: rIA.lastInsertRowid,
-                contenido: replyIA,
-                de_coach: 1,
-                via_ia: 1,
-                created_at: new Date().toISOString()
-              });
+              ssePush(clienteUser.user_id, 'mensaje_nuevo', msgIA);
+              const coachId = clienteUser.coach_id || getCoachIdDeCliente(cliente_id);
+              if (coachId) {
+                ssePush(coachId, 'mensaje_nuevo', msgIA);
+                ssePush(coachId, 'badge_msgs', { cliente_id });
+              }
             }
             saveToDisk();
           } catch(e) { console.error('[IA Chat reply]', e.message); }
@@ -1753,6 +1800,7 @@ router.post('/mensajes', async (req, res) => {
         if (clienteUser) {
           ssePush(clienteUser.user_id, 'mensaje_nuevo', {
             id: r.lastInsertRowid,
+            cliente_id,
             contenido: contenido.trim(),
             de_coach: 1,
             via_ia: via_ia ? 1 : 0,
@@ -1813,6 +1861,7 @@ router.put('/ia-chat/cliente/:id', coachOnly, (req, res) => {
 // El coach abre el hilo → marca todos los mensajes del cliente como leídos.
 router.put('/mensajes/:clienteId/leer', coachOnly, (req, res) => {
   try {
+    marcarCoachActivo(parseInt(req.params.clienteId, 10));
     dbRun(
       'UPDATE mensajes SET leido=1 WHERE cliente_id=? AND de_coach=0 AND leido=0',
       [parseInt(req.params.clienteId, 10)]
