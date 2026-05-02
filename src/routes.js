@@ -1385,8 +1385,24 @@ router.get('/mi-foto', (req, res) => {
 // Además, el hilo abierto marca presencia por cliente en BD (last_coach_activity).
 const _coachLastSeen = {};
 const COACH_ACTIVE_MS = 5 * 60 * 1000;
+
+// Caché en memoria del modo ausente por coach (persiste en campo coach_ausente de users).
+const _coachAusenteCache = {};
+function isCoachAusente(coachId) {
+  if (_coachAusenteCache[coachId] !== undefined) return _coachAusenteCache[coachId];
+  try {
+    const u = dbGet("SELECT coach_ausente FROM users WHERE id=?", [coachId]);
+    const ausente = u ? !!u.coach_ausente : false;
+    _coachAusenteCache[coachId] = ausente;
+    return ausente;
+  } catch(e) { return false; }
+}
+
 router.use((req, res, next) => {
-  if (req.user && req.user.role === 'coach') _coachLastSeen[req.user.id] = Date.now();
+  // Solo actualizar _coachLastSeen si el coach NO está en modo ausente
+  if (req.user && req.user.role === 'coach' && !isCoachAusente(req.user.id)) {
+    _coachLastSeen[req.user.id] = Date.now();
+  }
   next();
 });
 
@@ -1873,12 +1889,17 @@ router.put('/mensajes/:clienteId/leer', coachOnly, (req, res) => {
 });
 
 // ── PUT /coach/presencia — el coach activa/desactiva su disponibilidad manual ──
-// activo=true  → coach DISPONIBLE: la IA se pausa para todos sus clientes
-// activo=false → coach AUSENTE:    la IA puede volver a responder
+// activo=true  → DISPONIBLE: la IA se pausa para todos sus clientes
+// activo=false → AUSENTE:    la IA puede responder. Estado persiste en BD.
 router.put('/coach/presencia', coachOnly, (req, res) => {
   try {
     const { activo } = req.body;
     const coachId = req.user.id;
+    // Persistir en BD para que sobreviva reinicios y cambios de pantalla
+    try { dbRun('ALTER TABLE users ADD COLUMN coach_ausente INTEGER DEFAULT 0'); } catch(e) {}
+    dbRun('UPDATE users SET coach_ausente=? WHERE id=?', [activo ? 0 : 1, coachId]);
+    // Actualizar caché en memoria
+    _coachAusenteCache[coachId] = !activo;
     if (activo) {
       // Marcar online en todos los clientes asignados a este coach
       dbRun(
@@ -1887,7 +1908,7 @@ router.put('/coach/presencia', coachOnly, (req, res) => {
       );
       _coachLastSeen[coachId] = Date.now();
     } else {
-      // Apagar presencia manual — la IA podrá responder según configuración
+      // Ausente: apagar presencia y limpiar _coachLastSeen para que el middleware no lo restablezca
       dbRun(
         "UPDATE clientes SET coach_online=0 WHERE coach_id=? OR coach_id IS NULL",
         [coachId]
@@ -1899,13 +1920,16 @@ router.put('/coach/presencia', coachOnly, (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── GET /coach/presencia — devuelve el estado de disponibilidad actual del coach ──
+// ── GET /coach/presencia — devuelve el estado persistido en BD ──
 router.get('/coach/presencia', coachOnly, (req, res) => {
   try {
     const coachId = req.user.id;
-    const onlineGeneral = (Date.now() - (_coachLastSeen[coachId] || 0)) < COACH_ACTIVE_MS;
-    res.json({ activo: onlineGeneral });
-  } catch(e) { res.json({ activo: false }); }
+    try { dbRun('ALTER TABLE users ADD COLUMN coach_ausente INTEGER DEFAULT 0'); } catch(e) {}
+    const u = dbGet('SELECT coach_ausente FROM users WHERE id=?', [coachId]);
+    const ausente = u ? !!u.coach_ausente : false;
+    _coachAusenteCache[coachId] = ausente;
+    res.json({ activo: !ausente });
+  } catch(e) { res.json({ activo: true }); }
 });
 
 // ── IMÁGENES DE EJERCICIOS (ruta ligera para clientes) ──────────────────────
