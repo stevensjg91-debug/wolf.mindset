@@ -100,6 +100,11 @@ function setRegLang(lang) {
     ? 'Check the foods you usually eat. Your coach will see them when creating your diet.'
     : 'Marca los alimentos que sueles comer. Tu coach los verá al crear tu dieta.';
 
+  const defHelpEl = document.getElementById('reg_deficiencias_help');
+  if(defHelpEl) defHelpEl.textContent = lang === 'en'
+    ? 'E.g: anaemia, low Vitamin D, low ferritin, B12, omega-3... Your coach will take this into account for your diet.'
+    : 'Por ejemplo: anemia, vitamina D baja, ferritina baja, B12, omega-3... Tu coach lo tendrá en cuenta al preparar tu dieta.';
+
   // Update meal select options
   document.querySelectorAll('#reg_num_comidas option[data-' + lang + ']').forEach(opt => {
     opt.textContent = opt.getAttribute('data-' + lang);
@@ -6262,17 +6267,13 @@ let _coachMsgCache = {}; // {clienteId: [msg,...]}
 
 function hMensajesCoach(){
   return `<div id="coach_msgs_wrap" style="height:100%;display:flex;flex-direction:column">
-    <div id="coachPresenciaBtn" style="padding:10px 14px 0"></div>
-    <div id="iaChatPanelContainer" style="padding:0 14px"></div>
+    <div id="iaChatPanelContainer"></div>
     <div id="coach_msgs_list"></div>
     <div id="coach_msgs_thread" style="display:none;flex:1;display:flex;flex-direction:column;min-height:0"></div>
   </div>`;
 }
 
 async function coachMsgsInit(){
-  // Cargar y mostrar estado de presencia del coach (disponible/ausente)
-  await cargarPresenciaCoach();
-  renderPresenciaCoach();
   renderIaChatPanel(); // fire and forget — no bloquea la carga de mensajes
   window._coachMsgThread = null;
   await coachMsgsLoadList();
@@ -6678,92 +6679,214 @@ async function uploadFoto(event){
 }
 
 // PERFIL CLIENTE
+// Helper: sección de cuenta (foto, suscripción, cambiar usuario/contraseña)
+// Extraído para reutilizar en ambas vistas de hPerfil
+function _pfCuentaSection(c){
+  return `<!-- Sección cuenta -->
+  <div style="margin:0 14px 24px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;overflow:hidden">
+    <div style="padding:14px 16px 12px;border-bottom:0.5px solid var(--br)">
+      <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em">🔐 ${t('Mi cuenta')}</div>
+    </div>
+    <div style="padding:20px 16px;border-bottom:0.5px solid var(--br);display:flex;flex-direction:column;align-items:center;gap:12px">
+      <div id="pf_avatar_wrap" style="position:relative;cursor:pointer;touch-action:manipulation" onclick="document.getElementById('pf_foto_input').click()">
+        <div id="pf_avatar" style="width:96px;height:96px;border-radius:50%;background:var(--bl3);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;color:#fff;overflow:hidden;border:3px solid var(--bl2);box-shadow:0 0 0 4px rgba(37,99,235,.12)">
+          ${USER.foto_perfil ? `<img src="${USER.foto_perfil}" style="width:100%;height:100%;object-fit:cover"/>` : `<span>${USER.nombre?USER.nombre[0].toUpperCase():'?'}</span>`}
+        </div>
+        <div id="pf_foto_badge" style="position:absolute;bottom:2px;right:2px;width:26px;height:26px;background:var(--bl2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:2.5px solid var(--b);transition:.2s">📷</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:16px;font-weight:700;color:var(--sv)">${USER.nombre}</div>
+        <div style="font-size:13px;color:var(--blg);margin-top:2px">@${USER.username}</div>
+        <div style="font-size:11px;color:var(--tx3);margin-top:5px">${t('Toca la foto para cambiarla')}</div>
+      </div>
+      <input type="file" id="pf_foto_input" accept="image/*" style="display:none" onchange="subirFotoPerfil(this)"/>
+    </div>
+    <div style="padding:14px 16px;border-bottom:0.5px solid var(--br)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:15px">💳</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--sv)">${LANG==='en'?'Subscription':'Suscripción'}</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:1px">${LANG==='en'?'Your active plan':'Tu plan contratado'}</div>
+          </div>
+        </div>
+        <span id="pf_sub_badge" style="font-size:11px;font-weight:700;color:var(--tx3)">...</span>
+      </div>
+      <div id="pf_sub_info" style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:12px">
+        <div style="font-size:12px;color:var(--tx3);text-align:center">${LANG==='en'?'Loading subscription...':'Cargando suscripción...'}</div>
+      </div>
+    </div>
+    <div style="border-bottom:0.5px solid var(--br)">
+      <button onclick="pfToggleAcordeon('acc_user_body','acc_user_arrow')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:none;border:none;cursor:pointer;font-family:inherit;touch-action:manipulation">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:15px">👤</div>
+          <div style="text-align:left">
+            <div style="font-size:13px;font-weight:700;color:var(--sv)">${t('Cambiar usuario')}</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:1px">@${USER.username}</div>
+          </div>
+        </div>
+        <span id="acc_user_arrow" style="font-size:12px;color:var(--tx3);transition:transform .2s">▼</span>
+      </button>
+      <div id="acc_user_body" style="display:none;padding:0 16px 16px">
+        <div class="form-lbl">${t('Nuevo usuario')}</div>
+        <input class="inp" id="acc_new_user" placeholder="${t('Mínimo 4 caracteres')}" style="margin-bottom:8px"/>
+        <div class="form-lbl">${t('Confirmar con contraseña actual')}</div>
+        <input class="inp" id="acc_pass_confirm_user" type="password" placeholder="${t('Tu contraseña actual')}" style="margin-bottom:10px"/>
+        <button onclick="cambiarUsuario()" style="width:100%;padding:11px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">✓ ${t('Cambiar usuario')}</button>
+        <div id="acc_user_msg" style="font-size:12px;text-align:center;margin-top:8px;min-height:18px"></div>
+      </div>
+    </div>
+    <div>
+      <button onclick="pfToggleAcordeon('acc_pass_body','acc_pass_arrow')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:none;border:none;cursor:pointer;font-family:inherit;touch-action:manipulation">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:15px">🔑</div>
+          <div style="text-align:left">
+            <div style="font-size:13px;font-weight:700;color:var(--sv)">${t('Cambiar contraseña')}</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:1px">${t('Mínimo 6 caracteres')}</div>
+          </div>
+        </div>
+        <span id="acc_pass_arrow" style="font-size:12px;color:var(--tx3);transition:transform .2s">▼</span>
+      </button>
+      <div id="acc_pass_body" style="display:none;padding:0 16px 16px">
+        <div class="form-lbl">${t('Contraseña actual')}</div>
+        <input class="inp" id="acc_pass_old" type="password" placeholder="••••••" style="margin-bottom:8px"/>
+        <div class="form-lbl">${t('Nueva contraseña')}</div>
+        <input class="inp" id="acc_pass_new" type="password" placeholder="${t('Mínimo 6 caracteres')}" style="margin-bottom:8px"/>
+        <div class="form-lbl">${t('Repetir contraseña')}</div>
+        <input class="inp" id="acc_pass_rep" type="password" placeholder="${t('Repite la nueva contraseña')}" style="margin-bottom:10px"/>
+        <button onclick="cambiarContrasena()" style="width:100%;padding:11px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">✓ ${t('Cambiar contraseña')}</button>
+        <div id="acc_pass_msg" style="font-size:12px;text-align:center;margin-top:8px;min-height:18px"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Guarda solo el campo de deficiencias desde la vista simplificada del perfil
+async function guardarSoloDeficiencias(){
+  const val = document.getElementById('pf_deficiencias')?.value || '';
+  const msg = document.getElementById('pf_def_msg');
+  try {
+    await api('/clientes/'+CD.id+'/perfil', {
+      method: 'PUT',
+      body: JSON.stringify({ deficiencias: val })
+    });
+    if(CD) CD.deficiencias = val;
+    if(msg){ msg.textContent = t('✓ Guardado'); setTimeout(()=>{ if(msg) msg.textContent=''; }, 2500); }
+  } catch(e) {
+    if(msg){ msg.style.color='#f87171'; msg.textContent = t('Error al guardar'); }
+  }
+}
+
 function hPerfil(){
   const c=CD;
   const tieneData = !!(c.peso_actual||c.altura||c.edad);
   setTimeout(()=>cargarSuscripcionPerfil(), 0);
 
-  return`<div style="padding:16px 14px 8px">
-    <div id="pf_header_bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.08em;color:var(--sv)">Mi perfil</div>
-      ${tieneData?`<button id="pf_edit_btn" onclick="perfilModoEditar()" style="padding:7px 16px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">✏️ Editar</button>`:''}
+  // Vista cuando ya tiene datos del registro: solo lectura + campo deficiencias editable
+  if(tieneData){
+    return`<div style="padding:16px 14px 8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.08em;color:var(--sv)">${t('Mi perfil')}</div>
+        <button onclick="perfilModoEditar()" style="padding:7px 16px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">✏️ ${t('Editar')}</button>
+      </div>
+      <div style="font-size:13px;color:var(--tx3);margin-bottom:16px">${t('Tus datos personales.')}</div>
     </div>
-    <div style="font-size:13px;color:var(--tx3);margin-bottom:16px">${tieneData?'Tus datos personales.':'Rellena tus datos para que tu coach pueda personalizar tu plan al máximo.'}</div>
+
+    <!-- Datos del registro en modo lectura -->
+    <div style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;margin:0 14px 14px;padding:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">${t('Datos personales')}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Peso')}</div><div style="font-size:15px;font-weight:600;color:var(--sv)">${c.peso_actual?c.peso_actual+' kg':'—'}</div></div>
+        <div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Altura')}</div><div style="font-size:15px;font-weight:600;color:var(--sv)">${c.altura?c.altura+' cm':'—'}</div></div>
+        <div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Edad')}</div><div style="font-size:15px;font-weight:600;color:var(--sv)">${c.edad?c.edad+' años':'—'}</div></div>
+        <div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Sexo')}</div><div style="font-size:15px;font-weight:600;color:var(--sv)">${c.sexo||'—'}</div></div>
+        ${c.cintura_actual?`<div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Cintura')}</div><div style="font-size:15px;font-weight:600;color:var(--sv)">${c.cintura_actual} cm</div></div>`:''}
+        ${c.cadera?`<div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Cadera')}</div><div style="font-size:15px;font-weight:600;color:var(--sv)">${c.cadera} cm</div></div>`:''}
+      </div>
+      ${c.actividad?`<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Actividad')}</div><div style="font-size:13px;color:var(--sv2)">${c.actividad}</div></div>`:''}
+      ${c.dieta_tipo?`<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Alimentación')}</div><div style="font-size:13px;color:var(--sv2)">${c.dieta_tipo}</div></div>`:''}
+      ${c.alimentos_no?`<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('No puede comer')}</div><div style="font-size:13px;color:var(--sv2)">${c.alimentos_no}</div></div>`:''}
+      ${c.lesiones?`<div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Lesiones')}</div><div style="font-size:13px;color:var(--sv2)">${c.lesiones}</div></div>`:''}
+    </div>
+
+    <!-- Campo deficiencias: siempre editable, es lo que falta completar -->
+    <div style="margin:0 14px 14px;background:rgba(168,85,247,.06);border:0.5px solid rgba(168,85,247,.2);border-radius:14px;padding:14px">
+      <div style="font-size:12px;font-weight:700;color:#c084fc;margin-bottom:4px">🧪 ${t('Déficits en sangre / analíticas')}</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px;line-height:1.5">${t('Anemia, vitamina D, ferritina, B12, omega-3... Tu coach lo tendrá en cuenta para tu dieta.')}</div>
+      <textarea class="ta" id="pf_deficiencias" placeholder="${t('Ej: Vitamina D baja en última analítica, tendencia a anemia...')}" style="margin-bottom:10px">${c.deficiencias||''}</textarea>
+      <button class="btn" style="width:100%;padding:11px;font-size:14px" onclick="guardarSoloDeficiencias()">💾 ${t('Guardar')}</button>
+      <div id="pf_def_msg" style="font-size:12px;text-align:center;margin-top:6px;height:16px;color:var(--gnb)"></div>
+    </div>
+
+    ${_pfCuentaSection(c)}</div>`;
+  }
+
+  // Vista cuando NO tiene datos aún: formulario completo
+  return`<div style="padding:16px 14px 8px">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.08em;color:var(--sv);margin-bottom:4px">${t('Mi perfil')}</div>
+    <div style="font-size:13px;color:var(--tx3);margin-bottom:16px">${t('Rellena tus datos para que tu coach pueda personalizar tu plan al máximo.')}</div>
   </div>
 
-  <div id="pf_form" style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;margin:0 14px;padding:16px;display:${tieneData?'none':'block'};${tieneData?'pointer-events:none;opacity:.85':''}">
-    <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">Datos personales</div>
+  <div id="pf_form" style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;margin:0 14px;padding:16px">
+    <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">${t('Datos personales')}</div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">Peso (kg)</div><input class="inp" id="pf_peso" type="number" step="0.1" value="${c.peso_actual||''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">Altura (cm)</div><input class="inp" id="pf_altura" type="number" value="${c.altura||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">${t('Peso (kg)')}</div><input class="inp" id="pf_peso" type="number" step="0.1" value="${c.peso_actual||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">${t('Altura (cm)')}</div><input class="inp" id="pf_altura" type="number" value="${c.altura||''}" style="margin-bottom:0"/></div>
     </div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">Edad</div><input class="inp" id="pf_edad" type="number" value="${c.edad||''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">Sexo</div><select class="inp" id="pf_sexo" style="margin-bottom:0">
+      <div><div class="form-lbl">${t('Edad')}</div><input class="inp" id="pf_edad" type="number" value="${c.edad||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">${t('Sexo')}</div><select class="inp" id="pf_sexo" style="margin-bottom:0">
         <option ${c.sexo==='Hombre'?'selected':''}>Hombre</option>
         <option ${c.sexo==='Mujer'?'selected':''}>Mujer</option>
       </select></div>
     </div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">Cintura (cm)</div><input class="inp" id="pf_cintura" type="number" step="0.1" value="${c.cintura_actual||''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">Cadera (cm)</div><input class="inp" id="pf_cadera" type="number" step="0.1" value="${c.cadera||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">${t('Cintura (cm)')}</div><input class="inp" id="pf_cintura" type="number" step="0.1" value="${c.cintura_actual||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">${t('Cadera (cm)')}</div><input class="inp" id="pf_cadera" type="number" step="0.1" value="${c.cadera||''}" style="margin-bottom:0"/></div>
     </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">Nivel de actividad</div>
+    <div style="margin-bottom:10px"><div class="form-lbl">${t('Nivel de actividad')}</div>
       <select class="inp" id="pf_actividad" style="margin-bottom:0">
-        <option ${c.actividad==='Sedentario'?'selected':''}>Sedentario (poco o nada de ejercicio)</option>
-        <option ${c.actividad==='Ligero'?'selected':''}>Ligero (1-2 días/semana)</option>
-        <option ${c.actividad==='Moderada'?'selected':''}>Moderada (3-4 días/semana)</option>
-        <option ${c.actividad==='Activo'?'selected':''}>Activo (5-6 días/semana)</option>
-        <option ${c.actividad==='Muy activo'?'selected':''}>Muy activo (dobles entrenos)</option>
+        <option ${c.actividad==='Sedentario'?'selected':''}>${t('Sedentario (poco o nada de ejercicio)')}</option>
+        <option ${c.actividad==='Ligero'?'selected':''}>${t('Ligero (1-2 días/semana)')}</option>
+        <option ${c.actividad==='Moderada'?'selected':''}>${t('Moderada (3-4 días/semana)')}</option>
+        <option ${c.actividad==='Activo'?'selected':''}>${t('Activo (5-6 días/semana)')}</option>
+        <option ${c.actividad==='Muy activo'?'selected':''}>${t('Muy activo (dobles entrenos)')}</option>
       </select>
     </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">Tipo de alimentación</div>
+    <div style="margin-bottom:10px"><div class="form-lbl">${t('Tipo de alimentación')}</div>
       <select class="inp" id="pf_dieta" style="margin-bottom:0">
-        <option ${c.dieta_tipo==='Omnívoro'?'selected':''}>Omnívoro (como de todo)</option>
-        <option ${c.dieta_tipo==='Vegetariano'?'selected':''}>Vegetariano</option>
-        <option ${c.dieta_tipo==='Vegano'?'selected':''}>Vegano</option>
-        <option ${c.dieta_tipo==='Sin gluten'?'selected':''}>Sin gluten</option>
-        <option ${c.dieta_tipo==='Sin lactosa'?'selected':''}>Sin lactosa</option>
+        <option ${c.dieta_tipo==='Omnívoro'?'selected':''}>${t('Omnívoro (como de todo)')}</option>
+        <option ${c.dieta_tipo==='Vegetariano'?'selected':''}>${t('Vegetariano')}</option>
+        <option ${c.dieta_tipo==='Vegano'?'selected':''}>${t('Vegano')}</option>
+        <option ${c.dieta_tipo==='Sin gluten'?'selected':''}>${t('Sin gluten')}</option>
+        <option ${c.dieta_tipo==='Sin lactosa'?'selected':''}>${t('Sin lactosa')}</option>
       </select>
     </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">${t("Alimentos que no me gustan o no puedo comer")}</div>
-      <input class="inp" id="pf_alimentos_no" placeholder="Ej: brócoli, pescado, huevos..." value="${c.alimentos_no||''}" style="margin-bottom:0"/>
+    <div style="margin-bottom:10px"><div class="form-lbl">${t('Alimentos que no me gustan o no puedo comer')}</div>
+      <input class="inp" id="pf_alimentos_no" placeholder="${t('Ej: brócoli, pescado, huevos...')}" value="${c.alimentos_no||''}" style="margin-bottom:0"/>
     </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">${t("Lesiones / zonas con dolor / alergias")}</div>
-      <input class="inp" id="pf_lesiones" placeholder="Ej: rodilla derecha, lumbar..." value="${c.lesiones||''}" style="margin-bottom:0"/>
+    <div style="margin-bottom:10px"><div class="form-lbl">${t('Lesiones / zonas con dolor / alergias')}</div>
+      <input class="inp" id="pf_lesiones" placeholder="${t('Ej: rodilla derecha, lumbar...')}" value="${c.lesiones||''}" style="margin-bottom:0"/>
     </div>
-    <div><div class="form-lbl">${t("Otras observaciones")}</div>
-      <textarea class="ta" id="pf_ob" placeholder="Cualquier cosa que tu coach deba saber...">${c.observaciones||''}</textarea>
+    <div style="margin-bottom:10px"><div class="form-lbl">${t('Otras observaciones')}</div>
+      <textarea class="ta" id="pf_ob" placeholder="${t('Cualquier cosa que tu coach deba saber...')}">${c.observaciones||''}</textarea>
     </div>
-    <div style="margin-top:10px;background:rgba(168,85,247,.06);border:0.5px solid rgba(168,85,247,.2);border-radius:12px;padding:12px">
-      <div class="form-lbl" style="color:#c084fc;margin-bottom:6px">🧪 ¿Has tenido o tienes algún tipo de deficiencia?</div>
-      <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.5">Por ejemplo: anemia, vitamina D baja, ferritina baja, B12, omega-3... Tu coach lo tendrá en cuenta al preparar tu dieta.</div>
-      <textarea class="ta" id="pf_deficiencias" placeholder="Ej: Vitamina D baja en última analítica, tendencia a anemia..." style="margin-bottom:0">${c.deficiencias||''}</textarea>
+    <div style="background:rgba(168,85,247,.06);border:0.5px solid rgba(168,85,247,.2);border-radius:12px;padding:12px">
+      <div class="form-lbl" style="color:#c084fc;margin-bottom:6px">🧪 ${t('¿Has tenido o tienes algún tipo de deficiencia?')}</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.5">${t('Por ejemplo: anemia, vitamina D baja, ferritina baja, B12, omega-3... Tu coach lo tendrá en cuenta al preparar tu dieta.')}</div>
+      <textarea class="ta" id="pf_deficiencias" placeholder="${t('Ej: Vitamina D baja en última analítica, tendencia a anemia...')}" style="margin-bottom:0">${c.deficiencias||''}</textarea>
     </div>
   </div>
 
   <div style="padding:14px 14px 0">
-    <div id="pf_btns" style="display:${tieneData?'none':'block'}">
-      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarPerfil()">Guardar perfil</button>
+    <div id="pf_btns">
+      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarPerfil()">${t('Guardar perfil')}</button>
     </div>
     <div id="pf_msg" style="font-size:13px;text-align:center;margin-top:8px;height:20px"></div>
   </div>
 
-  <!-- Selector de idioma movido al login -->
-  <div id="pf_lang_block" style="margin:14px 14px 20px;background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px;display:${tieneData?'none':'block'}">
-    <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🌐 Idioma / Language</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <button onclick="setLangLogin('es');setLang('es')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='es'?'var(--bl2)':'var(--br)'};background:${LANG==='es'?'rgba(59,130,246,.12)':'none'};color:${LANG==='es'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
-        🇪🇸 Español
-      </button>
-      <button onclick="setLangLogin('en');setLang('en')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='en'?'var(--bl2)':'var(--br)'};background:${LANG==='en'?'rgba(59,130,246,.12)':'none'};color:${LANG==='en'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
-        🇬🇧 English
-      </button>
-    </div>
-    <div style="font-size:10px;color:var(--tx3);margin-top:8px;text-align:center">También puedes cambiarlo en la pantalla de inicio de sesión</div>
-  </div>
-
-  <!-- Sección cuenta -->
+  ${_pfCuentaSection(c)}</div>`;
+}
   <div style="margin:0 14px 24px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;overflow:hidden">
 
     <!-- Cabecera sección -->
@@ -7630,12 +7753,13 @@ async function doRegistro(){
       dieta_tipo:document.getElementById('reg_dieta').value,
       alimentos_no:document.getElementById('reg_alimentos_no').value,
       lesiones:document.getElementById('reg_lesiones').value,
+      deficiencias:document.getElementById('reg_deficiencias')?.value||'',
       observaciones:[document.getElementById('reg_obs').value.trim(), regGetDietPrefsText()].filter(Boolean).join('\n\n')
     })});
     ok.textContent='✓ Solicitud enviada. Tu coach la revisará y te dará acceso pronto. Puedes cerrar esta ventana.';
     ok.style.display='block';
     // Clear form
-    ['reg_nombre','reg_username','reg_email','reg_tel','reg_pass','reg_peso','reg_altura','reg_edad','reg_alimentos_no','reg_lesiones','reg_obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['reg_nombre','reg_username','reg_email','reg_tel','reg_pass','reg_peso','reg_altura','reg_edad','reg_alimentos_no','reg_lesiones','reg_deficiencias','reg_obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     regClearDietPrefs();
   }catch(e){err.textContent=e.error||'Error al enviar solicitud';err.style.display='block';}
 }
@@ -9344,68 +9468,6 @@ async function publicarRutinaAlCoach(){
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// PRESENCIA MANUAL DEL COACH (Disponible / Ausente)
-// ═══════════════════════════════════════════════════════════════════
-
-let _coachPresenciaActiva = false;
-
-async function cargarPresenciaCoach() {
-  try {
-    if(!TOKEN) return;
-    const r = await fetch('/api/coach/presencia', {
-      headers: { 'Authorization': 'Bearer ' + TOKEN }
-    });
-    if(!r.ok) return;
-    const d = await r.json();
-    _coachPresenciaActiva = !!d.activo;
-  } catch(e) {}
-}
-
-async function togglePresenciaCoach() {
-  const nuevo = !_coachPresenciaActiva;
-  try {
-    const r = await fetch('/api/coach/presencia', {
-      method: 'PUT',
-      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ activo: nuevo })
-    });
-    if(r.ok) {
-      _coachPresenciaActiva = nuevo;
-      renderPresenciaCoach();
-      renderIaChatPanel(); // refrescar panel IA para reflejar cambio
-    }
-  } catch(e) {}
-}
-
-function renderPresenciaCoach() {
-  const el = document.getElementById('coachPresenciaBtn');
-  if (!el) return;
-  const on = _coachPresenciaActiva;
-  el.innerHTML = `
-    <div onclick="togglePresenciaCoach()"
-         style="display:flex;align-items:center;gap:10px;
-                background:${on ? 'rgba(74,222,128,.06)' : 'rgba(248,113,113,.06)'};
-                border:0.5px solid ${on ? 'rgba(74,222,128,.3)' : 'rgba(248,113,113,.25)'};
-                border-radius:12px;padding:12px 14px;cursor:pointer;transition:.2s;margin-bottom:10px">
-      <div style="width:11px;height:11px;border-radius:50%;flex-shrink:0;transition:.2s;
-                  background:${on ? '#4ade80' : '#f87171'};
-                  box-shadow:0 0 ${on ? '7px #4ade8088' : '0px transparent'}"></div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:var(--sv)">${on ? '🟢 Disponible' : '🔴 Ausente'}</div>
-        <div style="font-size:10px;color:var(--tx3);margin-top:2px">
-          ${on ? 'Estás online — la IA está pausada' : 'Estás ausente — la IA puede responder'}
-        </div>
-      </div>
-      <div style="width:40px;height:22px;border-radius:11px;flex-shrink:0;transition:.2s;
-                  background:${on ? '#16a34a' : 'rgba(255,255,255,.15)'}; position:relative">
-        <div style="position:absolute;top:3px;${on ? 'right:3px' : 'left:3px'};
-                    width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s"></div>
-      </div>
-    </div>
-  `;
-}
-
-// ═══════════════════════════════════════════════════════════════════
 // PANEL DE CONTROL DEL BOT IA EN EL CHAT
 // ═══════════════════════════════════════════════════════════════════
 
@@ -9447,8 +9509,7 @@ async function toggleBotCliente(clienteId, activo) {
 async function renderIaChatPanel() {
   const el = document.getElementById('iaChatPanelContainer');
   if (!el) return;
-  // Siempre recarga para tener el estado más fresco (fix: no quedarse bloqueado con array vacío)
-  await cargarIaChatConfig();
+  if (!_iaChatConfig.clientes.length) await cargarIaChatConfig();
   const globalOn = _iaChatConfig.bot_global;
   el.innerHTML = `
     <div style="background:rgba(255,255,255,.04);border:0.5px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;margin-bottom:12px">
@@ -9473,11 +9534,12 @@ async function renderIaChatPanel() {
       <div style="display:flex;flex-direction:column;gap:5px;max-height:180px;overflow-y:auto">
         ${_iaChatConfig.clientes.map(c => {
           const on = c.ia_activa === 1;
-          const efectivo = on; // La IA solo está activa si ia_activa=1 explícitamente (tanto con global ON como OFF)
+          const efectivo = globalOn ? (c.ia_activa !== 0) : on;
           return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:7px;background:rgba(255,255,255,.03)">
             <div style="display:flex;align-items:center;gap:7px">
               <div style="width:7px;height:7px;border-radius:50%;background:${efectivo ? '#4ade80' : 'rgba(255,255,255,.2)'}"></div>
               <span style="font-size:12px;color:var(--sv)">${c.nombre}</span>
+              ${globalOn && !on ? '<span style="font-size:10px;color:var(--tx3)">(global)</span>' : ''}
             </div>
             <div onclick="toggleBotCliente(${c.id}, ${on ? 0 : 1})"
                  style="width:34px;height:18px;border-radius:9px;background:${on ? '#2563eb' : 'rgba(255,255,255,.15)'};
