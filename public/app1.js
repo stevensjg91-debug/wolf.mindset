@@ -144,6 +144,21 @@ let CD=null,klTab='entreno',activeDia=0,chatH=[],iaH=[],timerInts={},restInt=nul
 let LANG = localStorage.getItem('wm_lang') || 'es';
 let COACH_LANG = localStorage.getItem('wm_coach_lang') || 'es';
 
+// ── UNIDADES DE MEDIDA ────────────────────────────────────────────
+function isImperial(){ return LANG==='en'; }
+function fmtPeso(kg){ if(!kg&&kg!==0)return'—'; return isImperial()?(kg*2.20462).toFixed(1)+' lb':kg+' kg'; }
+function pesoLabel(){ return isImperial()?'lb':'kg'; }
+function pesoPlaceholder(){ return isImperial()?'185':'84.5'; }
+function fromPeso(val){ const n=parseFloat(val); if(isNaN(n))return null; return isImperial()?parseFloat((n/2.20462).toFixed(2)):n; }
+function fmtAltura(cm){ if(!cm)return'—'; if(isImperial()){const t=cm/2.54;const ft=Math.floor(t/12);const inch=Math.round(t%12);return`${ft}′${inch}″`;} return cm+' cm'; }
+function alturaLabel(){ return isImperial()?'ft / in':'cm'; }
+function alturaPlaceholder(){ return isImperial()?'5\'9"':'175'; }
+function fromAltura(val){ if(isImperial()){const s=String(val).trim();const m=s.match(/^(\d+)['''′](\d+)["""″]?$/);if(m)return Math.round((parseInt(m[1])*12+parseInt(m[2]))*2.54);const n=parseFloat(s);if(isNaN(n))return null;return n>100?Math.round(n):Math.round(n*2.54);}return parseFloat(val)||null; }
+function fmtCintura(cm){ if(!cm)return'—'; return isImperial()?(cm/2.54).toFixed(1)+' in':cm+' cm'; }
+function cinturaLabel(){ return isImperial()?'in':'cm'; }
+function cinturaPlaceholder(){ return isImperial()?'32':'82'; }
+function fromCintura(val){ const n=parseFloat(val); if(isNaN(n))return null; return isImperial()?parseFloat((n*2.54).toFixed(1)):n; }
+
 const TRANSLATIONS = {
   // ── Navegación ──
   'Entrenar':'Train','Entreno':'Workout','Dieta':'Diet','Asistente':'Assistant',
@@ -575,25 +590,20 @@ const TRANSLATIONS = {
   // ── Progreso ──
   'Semanas':'Weeks','Objetivo':'Goal','Nivel':'Level','Días/sem':'Days/wk',
   'Medición semanal':'Weekly measurement',
-  'Registrado esta semana':'Logged this week',
   'Peso registrado esta semana':'Weight logged this week',
   'Guardar peso':'Save weight',
-  'Guardar mediciones':'Save measurements',
-  'Corregir':'Edit',
   'Fotos de progreso':'Progress photos',
-  'Mis fotos':'My photos',
-  'Sin fecha':'No date',
+  'Mis fotos':'My photos','Sin fecha':'No date',
   'Valoración del coach':'Coach assessment',
-  'Ver más':'See more',
-  'Ver menos':'See less',
-  'Medidas del mes':'Monthly measurements',
-  'Cintura':'Waist',
-  'Cadera':'Hips',
-  'Peso':'Weight',
-  'Altura':'Height',
+  'Ver más':'See more','Ver menos':'See less',
+  'Registrado esta semana':'Logged this week',
+  'Guardar mediciones':'Save measurements','Corregir':'Edit',
+  'Cintura':'Waist','Cadera':'Hips','Peso':'Weight','Altura':'Height',
+  'Se guardan al subir la foto y tu coach las verá en el análisis.':'Saved when uploading — your coach will see them in the analysis.',
+  'Sube las 3 fotos para que tu coach pueda hacer una valoración completa.':'Upload all 3 photos so your coach can do a full assessment.',
   'frente':'front','posterior':'back','costado':'side',
   'FRENTE':'FRONT','POSTERIOR':'BACK','COSTADO':'SIDE',
-  'Sube las 3 fotos para que tu coach pueda hacer una valoración completa.':'Upload all 3 photos so your coach can do a full assessment.',
+  '${t("${t("Sube las 3 fotos para que tu coach pueda hacer una valoración completa.")}")}':'Upload all 3 photos so your coach can do a full assessment.',
 
   // ── Descripción ejercicio ──
   'MÚSCULOS TRABAJADOS':'MUSCLES WORKED',
@@ -842,7 +852,6 @@ function applyLang(el) {
   const nodes = [];
   while(walker.nextNode()) nodes.push(walker.currentNode);
   nodes.forEach(node => {
-    // No traducir contenido del coach (comentarios de valoración, etc.)
     if(node.parentElement?.closest('[data-no-translate]')) return;
     let text = node.textContent;
     const trimmed = text.trim();
@@ -1829,7 +1838,7 @@ function cNavM(s,btn){
 // ═══ COACH RENDER ════════════════════════════════════
 async function renderCoach(s){
   const el=document.getElementById('cContent');
-  if(s==='clientes'){const cl=await api('/clientes');window._clientesCache=cl;el.innerHTML=hClientes(cl);}
+  if(s==='clientes'){const cl=await api('/clientes');window._clientesCache=cl;el.innerHTML=hClientes(cl);cargarTareasPendientes();}
   else if(s==='nuevo'){el.innerHTML=hNuevo();}
   else if(s==='rutinas'){el.innerHTML=hRutinas();await initRutinas();}
   else if(s==='dieta-builder'){el.innerHTML=hDietaBuilder();await initDietaBuilder();}
@@ -1883,6 +1892,8 @@ function hClientes(cl){
     <button class="btn btn-sm clientes-add-btn" onclick="abrirNuevoClienteDesdeClientes()">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button>
   </div>
 
+  <div id="tareas_pendientes_wrap" style="margin-bottom:4px"></div>
+
   <div class="clientes-stats-grid">
     <div class="clientes-stat-card"><div class="mlbl">${tc('Total')}</div><div class="mval">${cl.length}</div></div>
     <div class="clientes-stat-card stat-blue"><div class="mlbl">${tc('Míos')}</div><div class="mval">${misCls}</div></div>
@@ -1920,6 +1931,48 @@ function hClientes(cl){
     }).join('')}
   </div>`;
 }
+async function cargarTareasPendientes(){
+  const wrap=document.getElementById('tareas_pendientes_wrap');
+  if(!wrap)return;
+  try{
+    const pendientes=await api('/coach/sesiones-pendientes');
+    if(!pendientes.length){wrap.innerHTML='';return;}
+    const isEn=COACH_LANG==='en';
+    const titulo=isEn?`📋 Pending reviews (${pendientes.length})`:`📋 Pendientes de revisar (${pendientes.length})`;
+    const items=pendientes.map(s=>{
+      const fecha=new Date(s.fecha);
+      const mins=Math.floor((Date.now()-fecha.getTime())/60000);
+      const haceStr=mins<60?(isEn?`${mins}m ago`:`hace ${mins}m`):mins<1440?(isEn?`${Math.floor(mins/60)}h ago`:`hace ${Math.floor(mins/60)}h`):(isEn?`${Math.floor(mins/1440)}d ago`:`hace ${Math.floor(mins/1440)}d`);
+      const ini=s.cliente_nombre?s.cliente_nombre.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase():'?';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border-radius:10px;margin-bottom:6px;cursor:pointer" onclick="verCliente(${s.cliente_id});setTimeout(()=>switchClienteTab('progreso',document.querySelector('.ctab[onclick*=progreso]')),600)">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(59,130,246,.18);color:#93c5fd;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;overflow:hidden">${s.foto_perfil?`<img src="${s.foto_perfil}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`:ini}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.cliente_nombre}</div>
+          <div style="font-size:11px;color:var(--tx3)">🏋️ ${s.dia_nombre}${s.dia_grupo?' · '+s.dia_grupo:''} · ${s.num_series} ${isEn?'sets':'series'} · ${haceStr}</div>
+        </div>
+        <button onclick="event.stopPropagation();marcarSesionRevisada(${s.id},this)" style="flex-shrink:0;padding:6px 10px;background:rgba(34,197,94,.12);border:0.5px solid rgba(34,197,94,.3);border-radius:8px;color:var(--gnb);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">✓ ${isEn?'Mark reviewed':'Revisar'}</button>
+      </div>`;
+    }).join('');
+    wrap.innerHTML=`<div style="background:var(--s);border:0.5px solid rgba(245,158,11,.25);border-radius:14px;padding:14px;margin-bottom:4px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:700;color:var(--amb);text-transform:uppercase;letter-spacing:.07em">${titulo}</div>
+        <button onclick="cargarTareasPendientes()" style="background:none;border:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">↺</button>
+      </div>${items}
+      <div style="font-size:10px;color:var(--tx3);margin-top:6px;text-align:center">${isEn?'Click to review in Progress tab':'Pulsa para revisar en tab Progreso'}</div>
+    </div>`;
+  }catch(e){const w=document.getElementById('tareas_pendientes_wrap');if(w)w.innerHTML='';}
+}
+
+async function marcarSesionRevisada(sesionId,btn){
+  if(btn){btn.disabled=true;btn.textContent='...';}
+  try{
+    await api('/sesiones/'+sesionId+'/revisar',{method:'PUT'});
+    const fila=btn?.closest('[style*="cursor:pointer"]');
+    if(fila){fila.style.transition='opacity .3s';fila.style.opacity='0';setTimeout(()=>{fila.remove();const w=document.getElementById('tareas_pendientes_wrap');if(w&&!w.querySelector('[onclick*="verCliente"]'))w.innerHTML='';},300);}
+  }catch(e){if(btn){btn.disabled=false;btn.textContent='✓';}}
+}
+
+
 function filtrarClientes(filtro){
   window._clienteFilter = filtro;
   // Re-renderizar con el mismo listado en cache
@@ -5266,7 +5319,7 @@ function renderKL(){
   }
   else if(klTab==='dieta')el.innerHTML=hDieta();
   else if(klTab==='asistente'){el.innerHTML=hAsistente();setTimeout(_chatAfterRender,30);}
-  else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();},50);setTimeout(renderFotosProgreso,150);}
+  else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();},50);setTimeout(renderFotosProgreso,200);}
   else if(klTab==='logros')el.innerHTML=hBadgesCliente();
   else if(klTab==='perfil')el.innerHTML=hPerfil();
   // Aplicar traducción + nav bar
@@ -6719,15 +6772,28 @@ function hProgreso2(){return`<div style="padding-top:8px">
   </div>
   <div id="peso_section" style="margin:0 14px 12px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:14px">
     <div id="peso_guardado_view" style="display:none;margin-bottom:10px">
-      <div style="font-size:13px;color:var(--tx3);margin-bottom:4px">Peso registrado esta semana</div>
-      <div style="font-size:28px;font-weight:700;color:var(--sv);font-family:'Bebas Neue',sans-serif" id="peso_guardado_val">—</div>
+      <div style="font-size:13px;color:var(--tx3);margin-bottom:4px">${t('Registrado esta semana')}</div>
+      <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
+        <div style="font-size:28px;font-weight:700;color:var(--sv);font-family:'Bebas Neue',sans-serif" id="peso_guardado_val">—</div>
+        <div id="medidas_guardadas_view" style="font-size:13px;color:var(--tx3)"></div>
+      </div>
     </div>
     <div id="peso_input_wrap">
-      <div style="margin-bottom:10px">
-        <div class="form-lbl">Peso (kg)</div>
-        <input class="inp" id="np" type="number" step="0.1" placeholder="84.5" style="margin-bottom:0"/>
+      <div style="display:grid;grid-template-columns:1fr ${CD.sexo==='Mujer'?'1fr 1fr':'1fr'};gap:10px;margin-bottom:12px">
+        <div>
+          <div class="form-lbl">⚖️ ${t('Peso')} (${pesoLabel()})</div>
+          <input class="inp" id="np" type="number" step="${isImperial()?'0.5':'0.1'}" placeholder="${pesoPlaceholder()}" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/>
+        </div>
+        <div>
+          <div class="form-lbl">📏 ${t('Cintura')} (${cinturaLabel()})</div>
+          <input class="inp" id="medida_cintura" type="number" step="0.1" placeholder="${cinturaPlaceholder()}" value="${CD.cintura_actual?(isImperial()?(CD.cintura_actual/2.54).toFixed(1):CD.cintura_actual):''}" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/>
+        </div>
+        ${CD.sexo==='Mujer'?`<div>
+          <div class="form-lbl">📐 ${t('Cadera')} (${cinturaLabel()})</div>
+          <input class="inp" id="medida_cadera" type="number" step="0.1" placeholder="${isImperial()?'38':'96'}" value="${CD.cadera?(isImperial()?(CD.cadera/2.54).toFixed(1):CD.cadera):''}" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/>
+        </div>`:''}
       </div>
-      <button class="btn" style="width:100%;padding:11px" onclick="guardarPeso()">${t('Guardar peso')}</button>
+      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarMediciones()">${t('Guardar mediciones')}</button>
     </div>
   </div>
   <div class="sec-lbl">${t('Fotos de progreso')}</div>
@@ -6794,17 +6860,15 @@ function hProgreso2(){return`<div style="padding-top:8px">
 async function renderFotosProgreso() {
   const wrap = document.getElementById('fotos_timeline');
   if (!wrap) return;
-
-  // Recargar fotos frescas del servidor (el coach puede haber publicado un análisis)
+  // Recargar datos frescos del servidor (el coach puede haber publicado un análisis)
   try {
     const fresh = await api('/clientes/'+CD.id);
-    if(fresh && fresh.fotos) CD.fotos = fresh.fotos;
-  } catch(e) { /* usa las fotos que ya tiene CD */ }
+    if(fresh?.fotos) CD.fotos = fresh.fotos;
+  } catch(e) {}
 
   const fotos = CD?.fotos || [];
   if (!fotos.length) { wrap.innerHTML = ''; return; }
 
-  // Agrupar por mes
   const grupos = {};
   fotos.forEach(f => {
     const mes = f.fecha ? f.fecha.slice(0, 7) : 'sin-fecha';
@@ -6817,68 +6881,88 @@ async function renderFotosProgreso() {
   wrap.innerHTML = `<div class="sec-lbl" style="margin-top:4px">${t('Mis fotos')}</div>` + meses.map(mes => {
     const fotosMes = grupos[mes];
     const label = mes !== 'sin-fecha'
-      ? new Date(mes + '-15').toLocaleDateString(LANG === 'en' ? 'en-GB' : 'es-ES', { month: 'long', year: 'numeric' })
+      ? new Date(mes+'-15').toLocaleDateString(LANG==='en'?'en-GB':'es-ES',{month:'long',year:'numeric'})
       : t('Sin fecha');
-
-    // Comentario del coach: usar el published_analysis de la primera foto del mes que lo tenga
     const fotoConComentario = fotosMes.find(f => f.published_analysis);
     const comentarioCoach = fotoConComentario?.published_analysis;
+    const mesId = mes.replace('-','_');
 
     const fotosHtml = fotosMes.map(f => {
-      const tipoLabel = f.tipo === 'posterior' ? '🔙' : f.tipo === 'costado' ? '↔️' : '🫡';
+      const tipoLabel = f.tipo==='posterior'?'🔙':f.tipo==='costado'?'↔️':'🫡';
       return `<div style="flex:1;min-width:80px;max-width:120px">
         <div style="font-size:9px;color:var(--tx3);text-align:center;margin-bottom:3px">${tipoLabel} ${t(f.tipo||'frente')}</div>
         <div style="border-radius:10px;overflow:hidden;aspect-ratio:3/4;background:var(--s2)">
-          ${f.url && !f.url.startsWith('foto_')
-            ? `<img src="${f.url}" style="width:100%;height:100%;object-fit:cover"/>`
-            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px">📷</div>`}
+          ${f.url&&!f.url.startsWith('foto_')
+            ?`<img src="${f.url}" style="width:100%;height:100%;object-fit:cover"/>`
+            :`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px">📷</div>`}
         </div>
       </div>`;
     }).join('');
 
     return `<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:var(--sv);margin-bottom:10px">📅 ${label}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${comentarioCoach ? '12px' : '0'}">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${comentarioCoach?'12px':'0'}">
         ${fotosHtml}
       </div>
-      ${comentarioCoach ? `
+      ${comentarioCoach?`
         <div style="background:rgba(37,99,235,.07);border:0.5px solid rgba(59,130,246,.25);border-radius:10px;padding:12px">
           <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">💬 ${t('Valoración del coach')}</div>
-          <div id="coach_comment_${mes.replace('-','_')}" data-no-translate="1" style="font-size:13px;color:var(--sv);line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${comentarioCoach}</div>
-          <button onclick="toggleCoachComment('coach_comment_${mes.replace('-','_')}',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>
-        </div>` : ''}
+          <div id="coach_comment_${mesId}" data-no-translate="1" style="font-size:13px;color:var(--sv);line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${comentarioCoach}</div>
+          <button onclick="toggleCoachComment('coach_comment_${mesId}',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>
+        </div>`:''}
     </div>`;
   }).join('');
 }
 
 function toggleCoachComment(id, btn){
-  const el = document.getElementById(id);
-  if(!el) return;
-  const expanded = el.style.webkitLineClamp === 'unset';
-  el.style.webkitLineClamp = expanded ? '3' : 'unset';
-  el.style.display = expanded ? '-webkit-box' : 'block';
-  btn.textContent = expanded ? t('Ver más')+' ▾' : t('Ver menos')+' ▴';
+  const el=document.getElementById(id);
+  if(!el)return;
+  const expanded=el.style.webkitLineClamp==='unset';
+  el.style.webkitLineClamp=expanded?'3':'unset';
+  el.style.display=expanded?'-webkit-box':'block';
+  btn.textContent=expanded?t('Ver más')+' ▾':t('Ver menos')+' ▴';
 }
 
-async function guardarPeso(){
-  const peso=parseFloat(document.getElementById('np').value);
-  if(!peso)return;
-  await api('/clientes/'+CD.id+'/peso',{method:'POST',body:JSON.stringify({peso,grasa:null})});
+async function guardarMediciones(){
+  const pesoInput = parseFloat(document.getElementById('np')?.value);
+  const cinturaInput = parseFloat(document.getElementById('medida_cintura')?.value)||null;
+  const caderaInput = parseFloat(document.getElementById('medida_cadera')?.value)||null;
+  if(!pesoInput) return;
+  const pesoKg = fromPeso(pesoInput);
+  const cinturaCm = cinturaInput ? fromCintura(cinturaInput) : null;
+  const caderaCm = caderaInput ? fromCintura(caderaInput) : null;
+  await api('/clientes/'+CD.id+'/peso',{method:'POST',body:JSON.stringify({peso:pesoKg,grasa:null})});
+  if(cinturaCm||caderaCm){
+    const upd={};
+    if(cinturaCm) upd.cintura_actual=cinturaCm;
+    if(caderaCm) upd.cadera=caderaCm;
+    await api('/clientes/'+CD.id+'/perfil',{method:'PUT',body:JSON.stringify(upd)});
+  }
   await loadCD(CD.id);
-  // Store date of last weigh-in
   localStorage.setItem('wm_ultimo_peso_'+CD.id, Date.now());
-  pesoModoVer(peso);
+  pesoModoVer(pesoKg, cinturaCm, caderaCm);
 }
+async function guardarPeso(){ return guardarMediciones(); }
 
-function pesoModoVer(peso){
+function pesoModoVer(pesoKg, cinturaCm, caderaCm){
   const inp=document.getElementById('peso_input_wrap');
   const view=document.getElementById('peso_guardado_view');
   const val=document.getElementById('peso_guardado_val');
   const wrap=document.getElementById('peso_edit_btn_wrap');
+  const medidasView=document.getElementById('medidas_guardadas_view');
   if(inp) inp.style.display='none';
-  if(view){view.style.display='block';}
-  if(val) val.textContent=peso+'kg ✓';
-  if(wrap) wrap.innerHTML=`<button onclick="pesoModoEditar()" style="padding:6px 14px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ Corregir</button>`;
+  if(view) view.style.display='block';
+  const pesoReal=pesoKg||CD.pesos?.slice(-1)[0]?.peso;
+  if(val) val.textContent=fmtPeso(pesoReal)+' ✓';
+  if(medidasView){
+    const c=cinturaCm||CD.cintura_actual;
+    const ca=caderaCm||CD.cadera;
+    const parts=[];
+    if(c) parts.push('📏 '+fmtCintura(c));
+    if(ca) parts.push('📐 '+fmtCintura(ca));
+    medidasView.textContent=parts.join(' · ');
+  }
+  if(wrap) wrap.innerHTML=`<button onclick="pesoModoEditar()" style="padding:6px 14px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ ${t('Corregir')}</button>`;
 }
 
 function pesoModoEditar(){
@@ -6897,9 +6981,8 @@ function initPesoSection(){
   const yaEsta = ultima && (Date.now()-ultima) < SEMANA;
   if(yaEsta){
     const ultimoPeso=CD.pesos?.length?CD.pesos[CD.pesos.length-1].peso:null;
-    if(ultimoPeso) pesoModoVer(ultimoPeso);
+    if(ultimoPeso) pesoModoVer(ultimoPeso, CD.cintura_actual, CD.cadera);
   }
-  // Renderizar gráfica de tendencia si hay suficientes datos
   renderPesoTendencia();
 }
 
