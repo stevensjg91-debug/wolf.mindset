@@ -575,12 +575,25 @@ const TRANSLATIONS = {
   // ── Progreso ──
   'Semanas':'Weeks','Objetivo':'Goal','Nivel':'Level','Días/sem':'Days/wk',
   'Medición semanal':'Weekly measurement',
+  'Registrado esta semana':'Logged this week',
   'Peso registrado esta semana':'Weight logged this week',
   'Guardar peso':'Save weight',
+  'Guardar mediciones':'Save measurements',
+  'Corregir':'Edit',
   'Fotos de progreso':'Progress photos',
+  'Mis fotos':'My photos',
+  'Sin fecha':'No date',
+  'Valoración del coach':'Coach assessment',
+  'Ver más':'See more',
+  'Ver menos':'See less',
+  'Medidas del mes':'Monthly measurements',
+  'Cintura':'Waist',
+  'Cadera':'Hips',
+  'Peso':'Weight',
+  'Altura':'Height',
   'frente':'front','posterior':'back','costado':'side',
   'FRENTE':'FRONT','POSTERIOR':'BACK','COSTADO':'SIDE',
-  '${t("${t("Sube las 3 fotos para que tu coach pueda hacer una valoración completa.")}")}':'Upload all 3 photos so your coach can do a full assessment.',
+  'Sube las 3 fotos para que tu coach pueda hacer una valoración completa.':'Upload all 3 photos so your coach can do a full assessment.',
 
   // ── Descripción ejercicio ──
   'MÚSCULOS TRABAJADOS':'MUSCLES WORKED',
@@ -829,6 +842,8 @@ function applyLang(el) {
   const nodes = [];
   while(walker.nextNode()) nodes.push(walker.currentNode);
   nodes.forEach(node => {
+    // No traducir contenido del coach (comentarios de valoración, etc.)
+    if(node.parentElement?.closest('[data-no-translate]')) return;
     let text = node.textContent;
     const trimmed = text.trim();
     // Exact match
@@ -1814,7 +1829,7 @@ function cNavM(s,btn){
 // ═══ COACH RENDER ════════════════════════════════════
 async function renderCoach(s){
   const el=document.getElementById('cContent');
-  if(s==='clientes'){const cl=await api('/clientes');window._clientesCache=cl;el.innerHTML=hClientes(cl);cargarTareasPendientes();}
+  if(s==='clientes'){const cl=await api('/clientes');window._clientesCache=cl;el.innerHTML=hClientes(cl);}
   else if(s==='nuevo'){el.innerHTML=hNuevo();}
   else if(s==='rutinas'){el.innerHTML=hRutinas();await initRutinas();}
   else if(s==='dieta-builder'){el.innerHTML=hDietaBuilder();await initDietaBuilder();}
@@ -1838,9 +1853,6 @@ async function renderCoach(s){
 
 function hClientes(cl){
   if(!cl.length)return`<div class="wm-empty-clients"><div class="wm-empty-icon">👤</div><div class="wm-empty-title">${tc('Sin clientes aún')}</div><div class="wm-empty-sub">${COACH_LANG==='en'?'Create your first client from here.':'Crea tu primer cliente desde aquí.'}</div><button class="btn" onclick="abrirNuevoClienteDesdeClientes()">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button></div>`;
-
-  // Tareas pendientes — se rellena async via cargarTareasPendientes()
-  const tareasHtml = `<div id="tareas_pendientes_wrap" style="margin-bottom:16px"></div>`;
 
   const coachColors = {
     [USER.id]: {bg:'rgba(59,130,246,.18)',color:'#93c5fd',label: USER.nombre||USER.username},
@@ -1870,8 +1882,6 @@ function hClientes(cl){
     </div>
     <button class="btn btn-sm clientes-add-btn" onclick="abrirNuevoClienteDesdeClientes()">${COACH_LANG==='en'?'＋ Add client':'＋ Añadir cliente'}</button>
   </div>
-
-  ${tareasHtml}
 
   <div class="clientes-stats-grid">
     <div class="clientes-stat-card"><div class="mlbl">${tc('Total')}</div><div class="mval">${cl.length}</div></div>
@@ -1910,48 +1920,6 @@ function hClientes(cl){
     }).join('')}
   </div>`;
 }
-async function cargarTareasPendientes(){
-  const wrap = document.getElementById('tareas_pendientes_wrap');
-  if(!wrap) return;
-  try {
-    const pendientes = await api('/coach/sesiones-pendientes');
-    if(!pendientes.length){ wrap.innerHTML=''; return; }
-    const isEn = COACH_LANG === 'en';
-    const titulo = isEn ? `📋 Pending reviews (${pendientes.length})` : `📋 Pendientes de revisar (${pendientes.length})`;
-    const items = pendientes.map(s => {
-      const fecha = new Date(s.fecha);
-      const mins = Math.floor((Date.now() - fecha.getTime()) / 60000);
-      const haceStr = mins < 60 ? (isEn?`${mins}m ago`:`hace ${mins}m`) : mins < 1440 ? (isEn?`${Math.floor(mins/60)}h ago`:`hace ${Math.floor(mins/60)}h`) : (isEn?`${Math.floor(mins/1440)}d ago`:`hace ${Math.floor(mins/1440)}d`);
-      const iniciales = s.cliente_nombre ? s.cliente_nombre.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '?';
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border-radius:10px;margin-bottom:6px;cursor:pointer" onclick="verCliente(${s.cliente_id});setTimeout(()=>switchClienteTab('progreso',document.querySelector('.ctab[onclick*=progreso]')),600)">
-        <div style="width:36px;height:36px;border-radius:50%;background:rgba(59,130,246,.18);color:#93c5fd;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;overflow:hidden">${s.foto_perfil?`<img src="${s.foto_perfil}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`:iniciales}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.cliente_nombre}</div>
-          <div style="font-size:11px;color:var(--tx3)">🏋️ ${s.dia_nombre}${s.dia_grupo?' · '+s.dia_grupo:''} · ${s.num_series} ${isEn?'sets':'series'} · ${haceStr}</div>
-        </div>
-        <button onclick="event.stopPropagation();marcarSesionRevisada(${s.id},this)" style="flex-shrink:0;padding:6px 10px;background:rgba(34,197,94,.12);border:0.5px solid rgba(34,197,94,.3);border-radius:8px;color:var(--gnb);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">✓ ${isEn?'Mark reviewed':'Revisar'}</button>
-      </div>`;
-    }).join('');
-    wrap.innerHTML = `<div style="background:var(--s);border:0.5px solid rgba(245,158,11,.25);border-radius:14px;padding:14px;margin-bottom:4px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-size:12px;font-weight:700;color:var(--amb);text-transform:uppercase;letter-spacing:.07em">${titulo}</div>
-        <button onclick="cargarTareasPendientes()" style="background:none;border:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">↺</button>
-      </div>${items}
-      <div style="font-size:10px;color:var(--tx3);margin-top:6px;text-align:center">${isEn?'Click to review in Progress tab':'Pulsa para revisar en tab Progreso'}</div>
-    </div>`;
-  } catch(e) { const w=document.getElementById('tareas_pendientes_wrap'); if(w) w.innerHTML=''; }
-}
-
-async function marcarSesionRevisada(sesionId, btn){
-  if(btn){ btn.disabled=true; btn.textContent='...'; }
-  try {
-    await api('/sesiones/'+sesionId+'/revisar', {method:'PUT'});
-    const fila = btn?.closest('[style*="cursor:pointer"]');
-    if(fila){ fila.style.transition='opacity .3s'; fila.style.opacity='0'; setTimeout(()=>{ fila.remove(); const w=document.getElementById('tareas_pendientes_wrap'); if(w&&!w.querySelector('[onclick*="verCliente"]')) w.innerHTML=''; },300); }
-  } catch(e){ if(btn){ btn.disabled=false; btn.textContent='✓'; } }
-}
-
-
 function filtrarClientes(filtro){
   window._clienteFilter = filtro;
   // Re-renderizar con el mismo listado en cache
@@ -5298,7 +5266,7 @@ function renderKL(){
   }
   else if(klTab==='dieta')el.innerHTML=hDieta();
   else if(klTab==='asistente'){el.innerHTML=hAsistente();setTimeout(_chatAfterRender,30);}
-  else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();renderFotosProgreso();},100);}
+  else if(klTab==='progreso'){el.innerHTML=hProgreso2();setTimeout(()=>{cargarGraficasCliente();initPesoSection();},50);setTimeout(renderFotosProgreso,150);}
   else if(klTab==='logros')el.innerHTML=hBadgesCliente();
   else if(klTab==='perfil')el.innerHTML=hPerfil();
   // Aplicar traducción + nav bar
@@ -5306,7 +5274,7 @@ function renderKL(){
     setTimeout(()=>{
       applyLang(el);
       applyLang(document.querySelector('#sCliente .bnav-bar'));
-    }, 50);
+    }, 80);
   }
 }
 
@@ -6823,9 +6791,16 @@ function hProgreso2(){return`<div style="padding-top:8px">
 
 // Renderiza en el perfil del cliente sus fotos agrupadas por mes
 // y muestra el comentario del coach (published_analysis) si existe
-function renderFotosProgreso() {
+async function renderFotosProgreso() {
   const wrap = document.getElementById('fotos_timeline');
   if (!wrap) return;
+
+  // Recargar fotos frescas del servidor (el coach puede haber publicado un análisis)
+  try {
+    const fresh = await api('/clientes/'+CD.id);
+    if(fresh && fresh.fotos) CD.fotos = fresh.fotos;
+  } catch(e) { /* usa las fotos que ya tiene CD */ }
+
   const fotos = CD?.fotos || [];
   if (!fotos.length) { wrap.innerHTML = ''; return; }
 
@@ -6869,10 +6844,20 @@ function renderFotosProgreso() {
       ${comentarioCoach ? `
         <div style="background:rgba(37,99,235,.07);border:0.5px solid rgba(59,130,246,.25);border-radius:10px;padding:12px">
           <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">💬 ${t('Valoración del coach')}</div>
-          <div style="font-size:13px;color:var(--sv);line-height:1.6">${comentarioCoach}</div>
+          <div id="coach_comment_${mes.replace('-','_')}" data-no-translate="1" style="font-size:13px;color:var(--sv);line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${comentarioCoach}</div>
+          <button onclick="toggleCoachComment('coach_comment_${mes.replace('-','_')}',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>
         </div>` : ''}
     </div>`;
   }).join('');
+}
+
+function toggleCoachComment(id, btn){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const expanded = el.style.webkitLineClamp === 'unset';
+  el.style.webkitLineClamp = expanded ? '3' : 'unset';
+  el.style.display = expanded ? '-webkit-box' : 'block';
+  btn.textContent = expanded ? t('Ver más')+' ▾' : t('Ver menos')+' ▴';
 }
 
 async function guardarPeso(){
