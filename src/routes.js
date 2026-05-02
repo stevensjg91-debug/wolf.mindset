@@ -1629,20 +1629,21 @@ function middlewareMensajeDiario(req, res, next) {
 
 
 // Comprueba si el bot debe responder a este cliente:
-// bot_global ON  → responde a todos los clientes con ia_chat_activa=1 (o si ia_chat_activa es NULL/0 pero global está ON)
+// bot_global ON  → responde solo a clientes con ia_chat_activa=1 explícitamente
 // bot_global OFF → solo responde a clientes con ia_chat_activa=1 explícitamente
+// En ambos casos, si el coach está activo/disponible, la IA NO interviene.
 function botDebeResponder(clienteId) {
   try {
-    // Si el coach tiene abierto/activo ese hilo, la IA no interviene.
+    // Si el coach está disponible (manual o por actividad reciente), la IA no interviene.
     if (coachEstaActivoEnCliente(clienteId)) return false;
 
     const cfg = dbGet('SELECT bot_global FROM ia_config WHERE id=1');
     const botGlobal = cfg ? cfg.bot_global : 0;
     const cl = dbGet('SELECT ia_chat_activa FROM clientes WHERE id=?', [clienteId]);
     const iaCliente = cl ? cl.ia_chat_activa : 0;
-    // Si global ON → responde salvo que cliente tenga ia_chat_activa=0 explícitamente
-    if (botGlobal) return iaCliente !== 0; // NULL o 1 → responde; 0 → no
-    // Si global OFF → solo responde si cliente tiene ia_chat_activa=1
+    // Tanto con global ON como OFF: solo responde si ia_chat_activa=1 explícitamente
+    // Esto evita que clientes con NULL o 0 reciban respuestas IA sin configurar
+    if (botGlobal) return iaCliente === 1;
     return iaCliente === 1;
   } catch(e) { return false; }
 }
@@ -1869,6 +1870,42 @@ router.put('/mensajes/:clienteId/leer', coachOnly, (req, res) => {
     saveToDisk();
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PUT /coach/presencia — el coach activa/desactiva su disponibilidad manual ──
+// activo=true  → coach DISPONIBLE: la IA se pausa para todos sus clientes
+// activo=false → coach AUSENTE:    la IA puede volver a responder
+router.put('/coach/presencia', coachOnly, (req, res) => {
+  try {
+    const { activo } = req.body;
+    const coachId = req.user.id;
+    if (activo) {
+      // Marcar online en todos los clientes asignados a este coach
+      dbRun(
+        "UPDATE clientes SET coach_online=1, last_coach_activity=datetime('now') WHERE coach_id=? OR coach_id IS NULL",
+        [coachId]
+      );
+      _coachLastSeen[coachId] = Date.now();
+    } else {
+      // Apagar presencia manual — la IA podrá responder según configuración
+      dbRun(
+        "UPDATE clientes SET coach_online=0 WHERE coach_id=? OR coach_id IS NULL",
+        [coachId]
+      );
+      delete _coachLastSeen[coachId];
+    }
+    saveToDisk();
+    res.json({ ok: true, activo: !!activo });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /coach/presencia — devuelve el estado de disponibilidad actual del coach ──
+router.get('/coach/presencia', coachOnly, (req, res) => {
+  try {
+    const coachId = req.user.id;
+    const onlineGeneral = (Date.now() - (_coachLastSeen[coachId] || 0)) < COACH_ACTIVE_MS;
+    res.json({ activo: onlineGeneral });
+  } catch(e) { res.json({ activo: false }); }
 });
 
 // ── IMÁGENES DE EJERCICIOS (ruta ligera para clientes) ──────────────────────
