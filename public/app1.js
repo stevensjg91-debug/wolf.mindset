@@ -2638,7 +2638,9 @@ async function coachAnalizarFotos(grupoId) {
             peso: c?.peso_actual,
             altura: c?.altura,
             edad: c?.edad,
-            sexo: c?.sexo
+            sexo: c?.sexo,
+            cintura: c?.cintura_actual,
+            cadera: c?.cadera
           })
         });
       } else {
@@ -2672,7 +2674,9 @@ async function coachAnalizarFotos(grupoId) {
           peso: c?.peso_actual,
           altura: c?.altura,
           edad: c?.edad,
-          sexo: c?.sexo
+          sexo: c?.sexo,
+          cintura: c?.cintura_actual,
+          cadera: c?.cadera
         })
       });
     }
@@ -6763,6 +6767,21 @@ function hProgreso2(){return`<div style="padding-top:8px">
       ${t("Sube las 3 fotos para que tu coach pueda hacer una valoración completa.")}<br>
       📏 Posición: de pie, cuerpo entero, buena iluminación.
     </div>
+    <!-- Medidas mensuales junto a la foto -->
+    <div style="background:var(--s);border:0.5px solid var(--br);border-radius:12px;padding:12px;margin-bottom:4px">
+      <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">📐 ${t('Medidas del mes')}</div>
+      <div style="display:grid;grid-template-columns:${CD.sexo==='Mujer'?'1fr 1fr':'1fr'};gap:10px">
+        <div>
+          <div class="form-lbl" style="margin-bottom:4px">📏 ${t('Cintura')} (cm)</div>
+          <input class="inp" id="medida_cintura" type="number" step="0.1" placeholder="${CD.cintura_actual||'82'}" value="${CD.cintura_actual||''}" style="margin-bottom:0"/>
+        </div>
+        ${CD.sexo==='Mujer'?`<div>
+          <div class="form-lbl" style="margin-bottom:4px">📐 ${t('Cadera')} (cm)</div>
+          <input class="inp" id="medida_cadera" type="number" step="0.1" placeholder="${CD.cadera||'96'}" value="${CD.cadera||''}" style="margin-bottom:0"/>
+        </div>`:''}
+      </div>
+      <div style="font-size:10px;color:var(--tx3);margin-top:8px;line-height:1.4">💡 ${t('Se guardan al subir la foto y tu coach las verá en el análisis.')}</div>
+    </div>
     <!-- Analizar fotos solo disponible para coach desde su panel -->
   </div>
   <!-- Gráfica tendencia peso -->
@@ -6822,7 +6841,8 @@ function renderFotosProgreso() {
       ${comentarioCoach ? `
         <div style="background:rgba(37,99,235,.07);border:0.5px solid rgba(59,130,246,.25);border-radius:10px;padding:12px">
           <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">💬 ${t('Valoración del coach')}</div>
-          <div style="font-size:13px;color:var(--sv);line-height:1.6">${comentarioCoach}</div>
+          <div id="coach_msg_${mes.replace('-','_')}" style="font-size:13px;color:var(--sv);line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${comentarioCoach}</div>
+          <button onclick="(function(el,btn){const exp=el.style.webkitLineClamp==='unset';el.style.webkitLineClamp=exp?'3':'unset';el.style.display=exp?'-webkit-box':'block';btn.textContent=exp?'${t('Ver más')} ▾':'${t('Ver menos')} ▴';})(document.getElementById('coach_msg_${mes.replace('-','_')}'),this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>
         </div>` : ''}
     </div>`;
   }).join('');
