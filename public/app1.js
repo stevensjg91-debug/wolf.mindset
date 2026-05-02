@@ -2567,87 +2567,41 @@ async function coachAnalizarFotos(grupoId) {
   const mesAnteriorKey = meses[mesIdx + 1];
   const fotosAnteriores = mesAnteriorKey ? grupos[mesAnteriorKey] : null;
 
-  // Convertir fotos a base64 para enviar a la IA
-  async function urlToB64(url) {
-    if (!url || url.startsWith('foto_')) return null;
-    try {
-      const resp = await fetch(url);
-      const blob = await resp.blob();
-      return new Promise(res => {
-        const rd = new FileReader();
-        rd.onload = e => {
-          const full = e.target.result;
-          res({ b64: full.split(',')[1], mt: full.split(';')[0].split(':')[1] });
-        };
-        rd.readAsDataURL(blob);
-      });
-    } catch(e) { return null; }
-  }
-
   try {
     const isEn = COACH_LANG === 'en';
-    const clienteInfo = c ? `${c.nombre}, ${tc('Objetivo')}: ${c.objetivo}, ${tc('Nivel')}: ${c.nivel}, ${tc('Semana')} ${c.semanas}` : '';
 
-    // Convertir fotos actuales
-    const fotosDespuesB64 = (await Promise.all(fotosMes.map(f => urlToB64(f.url)))).filter(Boolean);
+    // URLs de fotos actuales (solo las que tienen URL real de Cloudinary)
+    const urlsActuales = fotosMes.map(f => f.url).filter(u => u && !u.startsWith('foto_'));
+    const urlsAnteriores = fotosAnteriores
+      ? fotosAnteriores.map(f => f.url).filter(u => u && !u.startsWith('foto_'))
+      : [];
 
-    if (!fotosDespuesB64.length) {
-      // No hay URLs reales (fotos guardadas localmente), usar análisis sin imagen
-      const textoFallback = isEn
-        ? `${c?.nombre || 'Client'} — Week ${c?.semanas || '?'}\n\nI can see your dedication in uploading your progress photos. Keep maintaining consistency with your ${c?.objetivo || 'goal'} — your discipline is what will make the difference. Focus this week on progressive overload and recovery. You're building the foundation that will show in the next photos!`
-        : `${c?.nombre || 'Cliente'} — Semana ${c?.semanas || '?'}\n\nVeo tu dedicación en subir tus fotos de progreso. Sigue manteniendo la constancia con tu objetivo de ${c?.objetivo || 'tu objetivo'} — tu disciplina es lo que marcará la diferencia. Esta semana céntrate en la sobrecarga progresiva y el descanso. ¡Estás construyendo la base que se verá en las próximas fotos!`;
-      textarea.value = textoFallback;
-      resWrap.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = '↺ ' + tc('Volver a analizar');
-      return;
-    }
+    const mesActualLabel = mes !== 'sin-fecha'
+      ? new Date(mes + '-15').toLocaleDateString(isEn ? 'en-GB' : 'es-ES', { month: 'long', year: 'numeric' })
+      : '';
+    const mesAnteriorLabel = mesAnteriorKey
+      ? new Date(mesAnteriorKey + '-15').toLocaleDateString(isEn ? 'en-GB' : 'es-ES', { month: 'long', year: 'numeric' })
+      : '';
 
-    let reply;
-    if (fotosAnteriores && fotosAnteriores.length) {
-      // Con comparativa
-      const fotosAntesB64 = (await Promise.all(fotosAnteriores.map(f => urlToB64(f.url)))).filter(Boolean);
-      const mesAnteriorLabel = new Date(mesAnteriorKey + '-15').toLocaleDateString(isEn ? 'en-GB' : 'es-ES', { month: 'long' });
-      const mesActualLabel = new Date(mes + '-15').toLocaleDateString(isEn ? 'en-GB' : 'es-ES', { month: 'long' });
+    const r = await api('/ia/analizar-fotos-coach', {
+      method: 'POST',
+      body: JSON.stringify({
+        urlsActuales,
+        urlsAnteriores: urlsAnteriores.length ? urlsAnteriores : null,
+        clienteNombre: c?.nombre || '',
+        objetivo: c?.objetivo || '',
+        nivel: c?.nivel || '',
+        semanaActual: mesActualLabel,
+        semanaAnterior: mesAnteriorLabel,
+        lang: COACH_LANG,
+        peso: c?.peso_actual,
+        altura: c?.altura,
+        edad: c?.edad,
+        sexo: c?.sexo
+      })
+    });
 
-      const r = await api('/ia/comparar-fotos', {
-        method: 'POST',
-        body: JSON.stringify({
-          fotosAntes: fotosAntesB64,
-          fotosDespues: fotosDespuesB64,
-          clienteNombre: c?.nombre || '',
-          objetivo: c?.objetivo || '',
-          nivel: c?.nivel || '',
-          semanaAntes: mesAnteriorLabel,
-          semanaDespues: mesActualLabel,
-          lang: COACH_LANG,
-          pedirGrasa: true,
-          peso: c?.peso_actual,
-          altura: c?.altura,
-          edad: c?.edad,
-          sexo: c?.sexo
-        })
-      });
-      reply = r.reply;
-    } else {
-      // Sin comparativa: primer mes
-      const primera = fotosDespuesB64[0];
-      const r = await api('/ia/foto', {
-        method: 'POST',
-        body: JSON.stringify({
-          imageBase64: primera.b64,
-          mediaType: primera.mt,
-          extraImages: fotosDespuesB64.slice(1),
-          clientInfo: clienteInfo,
-          system: isEn
-            ? 'You are an expert WolfMindset fitness coach. First month — no comparison available. Analyze the physique with a trained, motivating eye. Always estimate body fat % visually. Be specific, personal and motivating. No markdown, no asterisks, no mention of AI.'
-            : 'Eres un coach de fitness experto de WolfMindset. Primer mes — no hay comparativa disponible. Analiza el físico con ojo entrenado y motivador. Siempre estima el % de grasa corporal visualmente. Sé específico, personal y motivador. Sin markdown, sin asteriscos, sin mencionar IA.'
-        })
-      });
-      reply = r.reply;
-    }
-
-    textarea.value = reply;
+    textarea.value = r.reply;
     resWrap.style.display = 'block';
     btn.disabled = false;
     btn.textContent = '↺ ' + tc('Volver a analizar');
