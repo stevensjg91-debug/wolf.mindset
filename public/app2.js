@@ -640,16 +640,38 @@ async function uploadFotoTipo(event, tipo){
     const img = document.getElementById('foto_img_'+tipo);
     if(preview && img){ img.src = b64full; preview.style.display='block'; }
 
-    // Store for analysis
+    // Store for analysis (en memoria, no en BD)
     _fotosSubidas[tipo] = { b64, mt, url: b64full };
 
-    // Save full base64 to server
+    // ── Subir a Cloudinary y guardar solo la URL ──────────────────
     try{
+      let urlFinal = null;
+
+      // Intentar subir a Cloudinary si está configurado
+      const cloudName = window.CLOUDINARY_CLOUD_NAME;
+      const uploadPreset = window.CLOUDINARY_UPLOAD_PRESET;
+
+      if(cloudName && uploadPreset){
+        const formData = new FormData();
+        formData.append('file', b64full);
+        formData.append('upload_preset', uploadPreset);
+        formData.append('folder', 'wolfmindset/fotos');
+
+        const cdnRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+          method: 'POST',
+          body: formData
+        });
+        const cdnData = await cdnRes.json();
+        if(cdnData.secure_url) urlFinal = cdnData.secure_url;
+      }
+
+      // Fallback: si Cloudinary no está configurado, guardar base64 (comportamiento anterior)
+      if(!urlFinal) urlFinal = b64full;
+
       await api('/clientes/'+CD.id+'/fotos', {
         method:'POST',
-        body: JSON.stringify({ url: b64full, analysis:'', tipo })
+        body: JSON.stringify({ url: urlFinal, analysis:'', tipo })
       });
-      // Refresh fotos display
       await loadCD(CD.id);
       renderFotosProgreso();
     }catch(e){ console.log('Error guardando foto:', e); }
