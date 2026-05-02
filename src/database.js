@@ -46,6 +46,14 @@ async function initDB() {
   )`);
   try { db.run("INSERT OR IGNORE INTO ia_config (id, bot_global) VALUES (1, 0)"); } catch(e) {}
 
+  // ── Mensajes diarios y bienvenida ─────────────────────────────────────────
+  // ultimo_acceso_dia: fecha (YYYY-MM-DD) del último día que se envió mensaje diario
+  try { db.run("ALTER TABLE clientes ADD COLUMN ultimo_acceso_dia TEXT DEFAULT NULL"); } catch(e) {}
+  // bienvenida_enviada: 1 si ya se envió el mensaje de bienvenida
+  try { db.run("ALTER TABLE clientes ADD COLUMN bienvenida_enviada INTEGER DEFAULT 0"); } catch(e) {}
+  // bienvenida_pendiente: 1 cuando el coach aprueba — se envía en el primer acceso
+  try { db.run("ALTER TABLE clientes ADD COLUMN bienvenida_pendiente INTEGER DEFAULT 0"); } catch(e) {}
+
   db.run(`CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, objetivo TEXT DEFAULT 'Volumen', nivel TEXT DEFAULT 'Intermedio', semanas INTEGER DEFAULT 1, kcal_internas INTEGER DEFAULT 2500, prot INTEGER DEFAULT 160, carbs INTEGER DEFAULT 280, fat INTEGER DEFAULT 80, comida_libre TEXT DEFAULT 'Elige lo que mas te apetezca.', mensaje_semana TEXT DEFAULT '', notas_coach TEXT DEFAULT '', peso_actual REAL DEFAULT 0, altura INTEGER DEFAULT 0, edad INTEGER DEFAULT 0, sexo TEXT DEFAULT 'Hombre', actividad TEXT DEFAULT 'Moderada', cintura_actual REAL DEFAULT 0, cadera REAL DEFAULT 0, observaciones TEXT DEFAULT '', dieta_tipo TEXT DEFAULT 'Omnivoro', alimentos_no TEXT DEFAULT '', lesiones TEXT DEFAULT '')`);
 
   const newCols = ['peso_actual REAL','altura INTEGER','edad INTEGER','sexo TEXT','actividad TEXT','cintura_actual REAL','cadera REAL','observaciones TEXT'];
