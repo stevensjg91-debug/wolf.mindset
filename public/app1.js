@@ -100,11 +100,6 @@ function setRegLang(lang) {
     ? 'Check the foods you usually eat. Your coach will see them when creating your diet.'
     : 'Marca los alimentos que sueles comer. Tu coach los verá al crear tu dieta.';
 
-  const defHelpEl = document.getElementById('reg_deficiencias_help');
-  if(defHelpEl) defHelpEl.textContent = lang === 'en'
-    ? 'E.g: anaemia, low Vitamin D, low ferritin, B12, omega-3... Your coach will take this into account for your diet.'
-    : 'Por ejemplo: anemia, vitamina D baja, ferritina baja, B12, omega-3... Tu coach lo tendrá en cuenta al preparar tu dieta.';
-
   // Update meal select options
   document.querySelectorAll('#reg_num_comidas option[data-' + lang + ']').forEach(opt => {
     opt.textContent = opt.getAttribute('data-' + lang);
@@ -2456,6 +2451,246 @@ function switchClienteTab(tab, btn) {
     if(edit && edit.style.display !== 'none') {
       // ya está en modo edición, ok
     }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FOTOS DE PROGRESO — PANEL COACH
+// Muestra fotos del cliente agrupadas por sesión (mes), con botón
+// "🔍 Analizar con IA" que genera valoración editable y se publica
+// al cliente como comentario debajo de la foto.
+// ═══════════════════════════════════════════════════════════════════
+
+function renderCoachFotos(fotos) {
+  const wrap = document.getElementById('coach_fotos_timeline');
+  if (!wrap) return;
+  const c = window._coachClienteActual;
+
+  if (!fotos || !fotos.length) {
+    wrap.innerHTML = `<div style="font-size:13px;color:var(--tx3);padding:10px 0">${tc('El cliente aún no ha subido fotos.')}</div>`;
+    return;
+  }
+
+  // Agrupar fotos por mes (YYYY-MM)
+  const grupos = {};
+  fotos.forEach(f => {
+    const mes = f.fecha ? f.fecha.slice(0, 7) : 'sin-fecha';
+    if (!grupos[mes]) grupos[mes] = [];
+    grupos[mes].push(f);
+  });
+
+  const meses = Object.keys(grupos).sort().reverse(); // más reciente primero
+
+  wrap.innerHTML = meses.map((mes, mesIdx) => {
+    const fotosMes = grupos[mes];
+    const label = mes !== 'sin-fecha'
+      ? new Date(mes + '-15').toLocaleDateString(COACH_LANG === 'en' ? 'en-GB' : 'es-ES', { month: 'long', year: 'numeric' })
+      : tc('Sin fecha');
+
+    // Mes anterior para comparativa (siguiente en el array ordenado descendente)
+    const mesAnteriorKey = meses[mesIdx + 1];
+    const fotosAnteriores = mesAnteriorKey ? grupos[mesAnteriorKey] : null;
+    const hayComparativa = !!(fotosAnteriores && fotosAnteriores.length);
+
+    const fotosHtml = fotosMes.map(f => {
+      const tipoLabel = f.tipo === 'posterior' ? '🔙 Posterior' : f.tipo === 'costado' ? '↔️ Costado' : '🫡 Frente';
+      const pub = f.published_analysis;
+      return `<div style="flex:1;min-width:90px;max-width:140px">
+        <div style="font-size:10px;color:var(--tx3);text-align:center;margin-bottom:4px">${tipoLabel}</div>
+        <div style="position:relative;border-radius:10px;overflow:hidden;aspect-ratio:3/4;background:var(--s2)">
+          ${f.url && !f.url.startsWith('foto_')
+            ? `<img src="${f.url}" style="width:100%;height:100%;object-fit:cover"/>`
+            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px">📷</div>`}
+        </div>
+        ${pub ? `<div style="margin-top:6px;font-size:10px;color:var(--gnb);text-align:center">✓ ${tc('Publicado')}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    const grupoId = 'fotogrp_' + mes.replace('-', '_');
+
+    return `<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px;margin-bottom:14px">
+      <!-- Cabecera mes -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;color:var(--sv)">📅 ${label}</div>
+        <div style="font-size:10px;color:var(--tx3)">${fotosMes.length} ${tc('foto')}${fotosMes.length !== 1 ? 's' : ''}</div>
+      </div>
+
+      <!-- Miniaturas -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        ${fotosHtml}
+      </div>
+
+      <!-- Botón analizar -->
+      <button id="btn_analizar_${grupoId}"
+        onclick="coachAnalizarFotos('${grupoId}')"
+        style="width:100%;padding:11px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">
+        🔍 ${hayComparativa ? tc('Analizar y comparar con mes anterior') : tc('Analizar fotos con IA')}
+      </button>
+
+      <!-- Zona resultado IA -->
+      <div id="resultado_${grupoId}" style="margin-top:10px;display:none">
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:6px">
+          ${tc('Edita el mensaje si quieres y publícalo al cliente:')}
+        </div>
+        <textarea id="texto_${grupoId}"
+          style="width:100%;min-height:120px;background:var(--s);border:0.5px solid rgba(59,130,246,.3);border-radius:10px;padding:10px;font-size:13px;color:var(--sv);font-family:inherit;resize:vertical;box-sizing:border-box;line-height:1.5"
+          placeholder="${tc('Valoración del coach...')}"></textarea>
+        <button onclick="coachPublicarAnalisis('${grupoId}')"
+          style="width:100%;margin-top:8px;padding:11px;background:var(--gn);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">
+          ✅ ${tc('Publicar al cliente')}
+        </button>
+        <div id="pub_msg_${grupoId}" style="font-size:12px;text-align:center;margin-top:6px;height:16px;color:var(--gnb)"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Guardar referencia a los grupos para el análisis
+  window._coachFotosGrupos = grupos;
+  window._coachFotosMeses = meses;
+}
+
+async function coachAnalizarFotos(grupoId) {
+  const btn = document.getElementById('btn_analizar_' + grupoId);
+  const resWrap = document.getElementById('resultado_' + grupoId);
+  const textarea = document.getElementById('texto_' + grupoId);
+  if (!btn || !resWrap || !textarea) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ ' + tc('Analizando...');
+
+  const c = window._coachClienteActual;
+  const grupos = window._coachFotosGrupos || {};
+  const meses = window._coachFotosMeses || [];
+  const mes = grupoId.replace('fotogrp_', '').replace('_', '-');
+  const mesIdx = meses.indexOf(mes);
+  const fotosMes = grupos[mes] || [];
+  const mesAnteriorKey = meses[mesIdx + 1];
+  const fotosAnteriores = mesAnteriorKey ? grupos[mesAnteriorKey] : null;
+
+  // Convertir fotos a base64 para enviar a la IA
+  async function urlToB64(url) {
+    if (!url || url.startsWith('foto_')) return null;
+    try {
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      return new Promise(res => {
+        const rd = new FileReader();
+        rd.onload = e => {
+          const full = e.target.result;
+          res({ b64: full.split(',')[1], mt: full.split(';')[0].split(':')[1] });
+        };
+        rd.readAsDataURL(blob);
+      });
+    } catch(e) { return null; }
+  }
+
+  try {
+    const isEn = COACH_LANG === 'en';
+    const clienteInfo = c ? `${c.nombre}, ${tc('Objetivo')}: ${c.objetivo}, ${tc('Nivel')}: ${c.nivel}, ${tc('Semana')} ${c.semanas}` : '';
+
+    // Convertir fotos actuales
+    const fotosDespuesB64 = (await Promise.all(fotosMes.map(f => urlToB64(f.url)))).filter(Boolean);
+
+    if (!fotosDespuesB64.length) {
+      // No hay URLs reales (fotos guardadas localmente), usar análisis sin imagen
+      const textoFallback = isEn
+        ? `${c?.nombre || 'Client'} — Week ${c?.semanas || '?'}\n\nI can see your dedication in uploading your progress photos. Keep maintaining consistency with your ${c?.objetivo || 'goal'} — your discipline is what will make the difference. Focus this week on progressive overload and recovery. You're building the foundation that will show in the next photos!`
+        : `${c?.nombre || 'Cliente'} — Semana ${c?.semanas || '?'}\n\nVeo tu dedicación en subir tus fotos de progreso. Sigue manteniendo la constancia con tu objetivo de ${c?.objetivo || 'tu objetivo'} — tu disciplina es lo que marcará la diferencia. Esta semana céntrate en la sobrecarga progresiva y el descanso. ¡Estás construyendo la base que se verá en las próximas fotos!`;
+      textarea.value = textoFallback;
+      resWrap.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = '↺ ' + tc('Volver a analizar');
+      return;
+    }
+
+    let reply;
+    if (fotosAnteriores && fotosAnteriores.length) {
+      // Con comparativa
+      const fotosAntesB64 = (await Promise.all(fotosAnteriores.map(f => urlToB64(f.url)))).filter(Boolean);
+      const mesAnteriorLabel = new Date(mesAnteriorKey + '-15').toLocaleDateString(isEn ? 'en-GB' : 'es-ES', { month: 'long' });
+      const mesActualLabel = new Date(mes + '-15').toLocaleDateString(isEn ? 'en-GB' : 'es-ES', { month: 'long' });
+
+      const r = await api('/ia/comparar-fotos', {
+        method: 'POST',
+        body: JSON.stringify({
+          fotosAntes: fotosAntesB64,
+          fotosDespues: fotosDespuesB64,
+          clienteNombre: c?.nombre || '',
+          objetivo: c?.objetivo || '',
+          nivel: c?.nivel || '',
+          semanaAntes: mesAnteriorLabel,
+          semanaDespues: mesActualLabel,
+          lang: COACH_LANG,
+          pedirGrasa: true,
+          peso: c?.peso_actual,
+          altura: c?.altura,
+          edad: c?.edad,
+          sexo: c?.sexo
+        })
+      });
+      reply = r.reply;
+    } else {
+      // Sin comparativa: primer mes
+      const primera = fotosDespuesB64[0];
+      const r = await api('/ia/foto', {
+        method: 'POST',
+        body: JSON.stringify({
+          imageBase64: primera.b64,
+          mediaType: primera.mt,
+          extraImages: fotosDespuesB64.slice(1),
+          clientInfo: clienteInfo,
+          system: isEn
+            ? 'You are an expert WolfMindset fitness coach. First month — no comparison available. Analyze the physique with a trained, motivating eye. Always estimate body fat % visually. Be specific, personal and motivating. No markdown, no asterisks, no mention of AI.'
+            : 'Eres un coach de fitness experto de WolfMindset. Primer mes — no hay comparativa disponible. Analiza el físico con ojo entrenado y motivador. Siempre estima el % de grasa corporal visualmente. Sé específico, personal y motivador. Sin markdown, sin asteriscos, sin mencionar IA.'
+        })
+      });
+      reply = r.reply;
+    }
+
+    textarea.value = reply;
+    resWrap.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = '↺ ' + tc('Volver a analizar');
+
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '🔍 ' + tc('Analizar fotos con IA');
+    textarea.value = tc('Error al analizar. Inténtalo de nuevo.');
+    resWrap.style.display = 'block';
+  }
+}
+
+async function coachPublicarAnalisis(grupoId) {
+  const textarea = document.getElementById('texto_' + grupoId);
+  const msgEl = document.getElementById('pub_msg_' + grupoId);
+  if (!textarea || !textarea.value.trim()) return;
+
+  const texto = textarea.value.trim();
+  const mes = grupoId.replace('fotogrp_', '').replace('_', '-');
+  const grupos = window._coachFotosGrupos || {};
+  const fotosMes = grupos[mes] || [];
+
+  // Publicar en la primera foto del grupo (la representativa)
+  const fotoRef = fotosMes[0];
+  if (!fotoRef) return;
+
+  try {
+    await api('/fotos/' + fotoRef.id + '/publicar', {
+      method: 'POST',
+      body: JSON.stringify({ texto })
+    });
+
+    // Recargar datos del cliente para que el cliente vea el análisis
+    await loadCD(window._coachClienteId);
+    const c = window._coachClienteActual;
+    if (c) renderCoachFotos(c.fotos);
+
+    if (msgEl) {
+      msgEl.textContent = '✓ ' + tc('Publicado al cliente');
+      setTimeout(() => { if(msgEl) msgEl.textContent = ''; }, 3000);
+    }
+  } catch(e) {
+    if (msgEl) { msgEl.style.color = '#f87171'; msgEl.textContent = tc('Error al publicar'); }
   }
 }
 
@@ -6504,12 +6739,64 @@ function hProgreso2(){return`<div style="padding-top:8px">
   <div id="peso_tendencia_wrap" style="padding:0 14px 12px"></div>
   <input type="file" id="fUp" accept="image/*" style="display:none" onchange="uploadFoto(event)"/>
   <div id="fLoad" style="display:none;padding:0 14px 10px"><div class="ia-chip"><div class="ia-chip-title">Analizando tu progreso...</div></div></div>
-  <!-- Fotos timeline -->
+  <!-- Fotos timeline con comentarios del coach -->
   <div id="fotos_timeline" style="padding:0 14px"></div>
-
   <div id="fAn" style="padding:0 14px 10px"></div>
-  ${CD.fotos&&CD.fotos.length?`<div class="sec-lbl">${t('Valoraciones anteriores')}</div><div style="padding:0 14px">${CD.fotos.map(f=>`<div class="ia-chip" style="margin-bottom:10px"><div class="ia-chip-title">${new Date(f.fecha).toLocaleDateString(LANG==='en'?'en-GB':'es-ES')}</div><div class="ia-result-body">${f.analysis}</div></div>`).join('')}</div>`:''}
 </div>`;}
+
+// Renderiza en el perfil del cliente sus fotos agrupadas por mes
+// y muestra el comentario del coach (published_analysis) si existe
+function renderFotosProgreso() {
+  const wrap = document.getElementById('fotos_timeline');
+  if (!wrap) return;
+  const fotos = CD?.fotos || [];
+  if (!fotos.length) { wrap.innerHTML = ''; return; }
+
+  // Agrupar por mes
+  const grupos = {};
+  fotos.forEach(f => {
+    const mes = f.fecha ? f.fecha.slice(0, 7) : 'sin-fecha';
+    if (!grupos[mes]) grupos[mes] = [];
+    grupos[mes].push(f);
+  });
+
+  const meses = Object.keys(grupos).sort().reverse();
+
+  wrap.innerHTML = `<div class="sec-lbl" style="margin-top:4px">${t('Mis fotos')}</div>` + meses.map(mes => {
+    const fotosMes = grupos[mes];
+    const label = mes !== 'sin-fecha'
+      ? new Date(mes + '-15').toLocaleDateString(LANG === 'en' ? 'en-GB' : 'es-ES', { month: 'long', year: 'numeric' })
+      : t('Sin fecha');
+
+    // Comentario del coach: usar el published_analysis de la primera foto del mes que lo tenga
+    const fotoConComentario = fotosMes.find(f => f.published_analysis);
+    const comentarioCoach = fotoConComentario?.published_analysis;
+
+    const fotosHtml = fotosMes.map(f => {
+      const tipoLabel = f.tipo === 'posterior' ? '🔙' : f.tipo === 'costado' ? '↔️' : '🫡';
+      return `<div style="flex:1;min-width:80px;max-width:120px">
+        <div style="font-size:9px;color:var(--tx3);text-align:center;margin-bottom:3px">${tipoLabel} ${t(f.tipo||'frente')}</div>
+        <div style="border-radius:10px;overflow:hidden;aspect-ratio:3/4;background:var(--s2)">
+          ${f.url && !f.url.startsWith('foto_')
+            ? `<img src="${f.url}" style="width:100%;height:100%;object-fit:cover"/>`
+            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px">📷</div>`}
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--sv);margin-bottom:10px">📅 ${label}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${comentarioCoach ? '12px' : '0'}">
+        ${fotosHtml}
+      </div>
+      ${comentarioCoach ? `
+        <div style="background:rgba(37,99,235,.07);border:0.5px solid rgba(59,130,246,.25);border-radius:10px;padding:12px">
+          <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">💬 ${t('Valoración del coach')}</div>
+          <div style="font-size:13px;color:var(--sv);line-height:1.6">${comentarioCoach}</div>
+        </div>` : ''}
+    </div>`;
+  }).join('');
+}
 
 async function guardarPeso(){
   const peso=parseFloat(document.getElementById('np').value);
@@ -6679,214 +6966,92 @@ async function uploadFoto(event){
 }
 
 // PERFIL CLIENTE
-// Helper: sección de cuenta (foto, suscripción, cambiar usuario/contraseña)
-// Extraído para reutilizar en ambas vistas de hPerfil
-function _pfCuentaSection(c){
-  return `<!-- Sección cuenta -->
-  <div style="margin:0 14px 24px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;overflow:hidden">
-    <div style="padding:14px 16px 12px;border-bottom:0.5px solid var(--br)">
-      <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em">🔐 ${t('Mi cuenta')}</div>
-    </div>
-    <div style="padding:20px 16px;border-bottom:0.5px solid var(--br);display:flex;flex-direction:column;align-items:center;gap:12px">
-      <div id="pf_avatar_wrap" style="position:relative;cursor:pointer;touch-action:manipulation" onclick="document.getElementById('pf_foto_input').click()">
-        <div id="pf_avatar" style="width:96px;height:96px;border-radius:50%;background:var(--bl3);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;color:#fff;overflow:hidden;border:3px solid var(--bl2);box-shadow:0 0 0 4px rgba(37,99,235,.12)">
-          ${USER.foto_perfil ? `<img src="${USER.foto_perfil}" style="width:100%;height:100%;object-fit:cover"/>` : `<span>${USER.nombre?USER.nombre[0].toUpperCase():'?'}</span>`}
-        </div>
-        <div id="pf_foto_badge" style="position:absolute;bottom:2px;right:2px;width:26px;height:26px;background:var(--bl2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:2.5px solid var(--b);transition:.2s">📷</div>
-      </div>
-      <div style="text-align:center">
-        <div style="font-size:16px;font-weight:700;color:var(--sv)">${USER.nombre}</div>
-        <div style="font-size:13px;color:var(--blg);margin-top:2px">@${USER.username}</div>
-        <div style="font-size:11px;color:var(--tx3);margin-top:5px">${t('Toca la foto para cambiarla')}</div>
-      </div>
-      <input type="file" id="pf_foto_input" accept="image/*" style="display:none" onchange="subirFotoPerfil(this)"/>
-    </div>
-    <div style="padding:14px 16px;border-bottom:0.5px solid var(--br)">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:15px">💳</div>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:var(--sv)">${LANG==='en'?'Subscription':'Suscripción'}</div>
-            <div style="font-size:11px;color:var(--tx3);margin-top:1px">${LANG==='en'?'Your active plan':'Tu plan contratado'}</div>
-          </div>
-        </div>
-        <span id="pf_sub_badge" style="font-size:11px;font-weight:700;color:var(--tx3)">...</span>
-      </div>
-      <div id="pf_sub_info" style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:12px">
-        <div style="font-size:12px;color:var(--tx3);text-align:center">${LANG==='en'?'Loading subscription...':'Cargando suscripción...'}</div>
-      </div>
-    </div>
-    <div style="border-bottom:0.5px solid var(--br)">
-      <button onclick="pfToggleAcordeon('acc_user_body','acc_user_arrow')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:none;border:none;cursor:pointer;font-family:inherit;touch-action:manipulation">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:15px">👤</div>
-          <div style="text-align:left">
-            <div style="font-size:13px;font-weight:700;color:var(--sv)">${t('Cambiar usuario')}</div>
-            <div style="font-size:11px;color:var(--tx3);margin-top:1px">@${USER.username}</div>
-          </div>
-        </div>
-        <span id="acc_user_arrow" style="font-size:12px;color:var(--tx3);transition:transform .2s">▼</span>
-      </button>
-      <div id="acc_user_body" style="display:none;padding:0 16px 16px">
-        <div class="form-lbl">${t('Nuevo usuario')}</div>
-        <input class="inp" id="acc_new_user" placeholder="${t('Mínimo 4 caracteres')}" style="margin-bottom:8px"/>
-        <div class="form-lbl">${t('Confirmar con contraseña actual')}</div>
-        <input class="inp" id="acc_pass_confirm_user" type="password" placeholder="${t('Tu contraseña actual')}" style="margin-bottom:10px"/>
-        <button onclick="cambiarUsuario()" style="width:100%;padding:11px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">✓ ${t('Cambiar usuario')}</button>
-        <div id="acc_user_msg" style="font-size:12px;text-align:center;margin-top:8px;min-height:18px"></div>
-      </div>
-    </div>
-    <div>
-      <button onclick="pfToggleAcordeon('acc_pass_body','acc_pass_arrow')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:none;border:none;cursor:pointer;font-family:inherit;touch-action:manipulation">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:15px">🔑</div>
-          <div style="text-align:left">
-            <div style="font-size:13px;font-weight:700;color:var(--sv)">${t('Cambiar contraseña')}</div>
-            <div style="font-size:11px;color:var(--tx3);margin-top:1px">${t('Mínimo 6 caracteres')}</div>
-          </div>
-        </div>
-        <span id="acc_pass_arrow" style="font-size:12px;color:var(--tx3);transition:transform .2s">▼</span>
-      </button>
-      <div id="acc_pass_body" style="display:none;padding:0 16px 16px">
-        <div class="form-lbl">${t('Contraseña actual')}</div>
-        <input class="inp" id="acc_pass_old" type="password" placeholder="••••••" style="margin-bottom:8px"/>
-        <div class="form-lbl">${t('Nueva contraseña')}</div>
-        <input class="inp" id="acc_pass_new" type="password" placeholder="${t('Mínimo 6 caracteres')}" style="margin-bottom:8px"/>
-        <div class="form-lbl">${t('Repetir contraseña')}</div>
-        <input class="inp" id="acc_pass_rep" type="password" placeholder="${t('Repite la nueva contraseña')}" style="margin-bottom:10px"/>
-        <button onclick="cambiarContrasena()" style="width:100%;padding:11px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">✓ ${t('Cambiar contraseña')}</button>
-        <div id="acc_pass_msg" style="font-size:12px;text-align:center;margin-top:8px;min-height:18px"></div>
-      </div>
-    </div>
-  </div>`;
-}
-
-// Guarda solo el campo de deficiencias desde la vista simplificada del perfil
-async function guardarSoloDeficiencias(){
-  const val = document.getElementById('pf_deficiencias')?.value || '';
-  const msg = document.getElementById('pf_def_msg');
-  try {
-    await api('/clientes/'+CD.id+'/perfil', {
-      method: 'PUT',
-      body: JSON.stringify({ deficiencias: val })
-    });
-    if(CD) CD.deficiencias = val;
-    if(msg){ msg.textContent = t('✓ Guardado'); setTimeout(()=>{ if(msg) msg.textContent=''; }, 2500); }
-  } catch(e) {
-    if(msg){ msg.style.color='#f87171'; msg.textContent = t('Error al guardar'); }
-  }
-}
-
 function hPerfil(){
   const c=CD;
   const tieneData = !!(c.peso_actual||c.altura||c.edad);
   setTimeout(()=>cargarSuscripcionPerfil(), 0);
 
-  // Vista cuando ya tiene datos del registro: solo lectura + campo deficiencias editable
-  if(tieneData){
-    return`<div style="padding:16px 14px 8px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.08em;color:var(--sv)">${t('Mi perfil')}</div>
-        <button onclick="perfilModoEditar()" style="padding:7px 16px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">✏️ ${t('Editar')}</button>
-      </div>
-      <div style="font-size:13px;color:var(--tx3);margin-bottom:16px">${t('Tus datos personales.')}</div>
-    </div>
-
-    <!-- Datos del registro en modo lectura -->
-    <div style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;margin:0 14px 14px;padding:16px">
-      <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">${t('Datos personales')}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-        <div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Peso')}</div><div style="font-size:15px;font-weight:600;color:var(--sv)">${c.peso_actual?c.peso_actual+' kg':'—'}</div></div>
-        <div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Altura')}</div><div style="font-size:15px;font-weight:600;color:var(--sv)">${c.altura?c.altura+' cm':'—'}</div></div>
-        <div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Edad')}</div><div style="font-size:15px;font-weight:600;color:var(--sv)">${c.edad?c.edad+' años':'—'}</div></div>
-        <div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Sexo')}</div><div style="font-size:15px;font-weight:600;color:var(--sv)">${c.sexo||'—'}</div></div>
-        ${c.cintura_actual?`<div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Cintura')}</div><div style="font-size:15px;font-weight:600;color:var(--sv)">${c.cintura_actual} cm</div></div>`:''}
-        ${c.cadera?`<div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Cadera')}</div><div style="font-size:15px;font-weight:600;color:var(--sv)">${c.cadera} cm</div></div>`:''}
-      </div>
-      ${c.actividad?`<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Actividad')}</div><div style="font-size:13px;color:var(--sv2)">${c.actividad}</div></div>`:''}
-      ${c.dieta_tipo?`<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Alimentación')}</div><div style="font-size:13px;color:var(--sv2)">${c.dieta_tipo}</div></div>`:''}
-      ${c.alimentos_no?`<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('No puede comer')}</div><div style="font-size:13px;color:var(--sv2)">${c.alimentos_no}</div></div>`:''}
-      ${c.lesiones?`<div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">${t('Lesiones')}</div><div style="font-size:13px;color:var(--sv2)">${c.lesiones}</div></div>`:''}
-    </div>
-
-    <!-- Campo deficiencias: siempre editable, es lo que falta completar -->
-    <div style="margin:0 14px 14px;background:rgba(168,85,247,.06);border:0.5px solid rgba(168,85,247,.2);border-radius:14px;padding:14px">
-      <div style="font-size:12px;font-weight:700;color:#c084fc;margin-bottom:4px">🧪 ${t('Déficits en sangre / analíticas')}</div>
-      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px;line-height:1.5">${t('Anemia, vitamina D, ferritina, B12, omega-3... Tu coach lo tendrá en cuenta para tu dieta.')}</div>
-      <textarea class="ta" id="pf_deficiencias" placeholder="${t('Ej: Vitamina D baja en última analítica, tendencia a anemia...')}" style="margin-bottom:10px">${c.deficiencias||''}</textarea>
-      <button class="btn" style="width:100%;padding:11px;font-size:14px" onclick="guardarSoloDeficiencias()">💾 ${t('Guardar')}</button>
-      <div id="pf_def_msg" style="font-size:12px;text-align:center;margin-top:6px;height:16px;color:var(--gnb)"></div>
-    </div>
-
-    ${_pfCuentaSection(c)}</div>`;
-  }
-
-  // Vista cuando NO tiene datos aún: formulario completo
   return`<div style="padding:16px 14px 8px">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.08em;color:var(--sv);margin-bottom:4px">${t('Mi perfil')}</div>
-    <div style="font-size:13px;color:var(--tx3);margin-bottom:16px">${t('Rellena tus datos para que tu coach pueda personalizar tu plan al máximo.')}</div>
+    <div id="pf_header_bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.08em;color:var(--sv)">Mi perfil</div>
+      ${tieneData?`<button id="pf_edit_btn" onclick="perfilModoEditar()" style="padding:7px 16px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">✏️ Editar</button>`:''}
+    </div>
+    <div style="font-size:13px;color:var(--tx3);margin-bottom:16px">${tieneData?'Tus datos personales.':'Rellena tus datos para que tu coach pueda personalizar tu plan al máximo.'}</div>
   </div>
 
-  <div id="pf_form" style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;margin:0 14px;padding:16px">
-    <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">${t('Datos personales')}</div>
+  <div id="pf_form" style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;margin:0 14px;padding:16px;display:${tieneData?'none':'block'};${tieneData?'pointer-events:none;opacity:.85':''}">
+    <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">Datos personales</div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">${t('Peso (kg)')}</div><input class="inp" id="pf_peso" type="number" step="0.1" value="${c.peso_actual||''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">${t('Altura (cm)')}</div><input class="inp" id="pf_altura" type="number" value="${c.altura||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">Peso (kg)</div><input class="inp" id="pf_peso" type="number" step="0.1" value="${c.peso_actual||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">Altura (cm)</div><input class="inp" id="pf_altura" type="number" value="${c.altura||''}" style="margin-bottom:0"/></div>
     </div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">${t('Edad')}</div><input class="inp" id="pf_edad" type="number" value="${c.edad||''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">${t('Sexo')}</div><select class="inp" id="pf_sexo" style="margin-bottom:0">
+      <div><div class="form-lbl">Edad</div><input class="inp" id="pf_edad" type="number" value="${c.edad||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">Sexo</div><select class="inp" id="pf_sexo" style="margin-bottom:0">
         <option ${c.sexo==='Hombre'?'selected':''}>Hombre</option>
         <option ${c.sexo==='Mujer'?'selected':''}>Mujer</option>
       </select></div>
     </div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">${t('Cintura (cm)')}</div><input class="inp" id="pf_cintura" type="number" step="0.1" value="${c.cintura_actual||''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">${t('Cadera (cm)')}</div><input class="inp" id="pf_cadera" type="number" step="0.1" value="${c.cadera||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">Cintura (cm)</div><input class="inp" id="pf_cintura" type="number" step="0.1" value="${c.cintura_actual||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">Cadera (cm)</div><input class="inp" id="pf_cadera" type="number" step="0.1" value="${c.cadera||''}" style="margin-bottom:0"/></div>
     </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">${t('Nivel de actividad')}</div>
+    <div style="margin-bottom:10px"><div class="form-lbl">Nivel de actividad</div>
       <select class="inp" id="pf_actividad" style="margin-bottom:0">
-        <option ${c.actividad==='Sedentario'?'selected':''}>${t('Sedentario (poco o nada de ejercicio)')}</option>
-        <option ${c.actividad==='Ligero'?'selected':''}>${t('Ligero (1-2 días/semana)')}</option>
-        <option ${c.actividad==='Moderada'?'selected':''}>${t('Moderada (3-4 días/semana)')}</option>
-        <option ${c.actividad==='Activo'?'selected':''}>${t('Activo (5-6 días/semana)')}</option>
-        <option ${c.actividad==='Muy activo'?'selected':''}>${t('Muy activo (dobles entrenos)')}</option>
+        <option ${c.actividad==='Sedentario'?'selected':''}>Sedentario (poco o nada de ejercicio)</option>
+        <option ${c.actividad==='Ligero'?'selected':''}>Ligero (1-2 días/semana)</option>
+        <option ${c.actividad==='Moderada'?'selected':''}>Moderada (3-4 días/semana)</option>
+        <option ${c.actividad==='Activo'?'selected':''}>Activo (5-6 días/semana)</option>
+        <option ${c.actividad==='Muy activo'?'selected':''}>Muy activo (dobles entrenos)</option>
       </select>
     </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">${t('Tipo de alimentación')}</div>
+    <div style="margin-bottom:10px"><div class="form-lbl">Tipo de alimentación</div>
       <select class="inp" id="pf_dieta" style="margin-bottom:0">
-        <option ${c.dieta_tipo==='Omnívoro'?'selected':''}>${t('Omnívoro (como de todo)')}</option>
-        <option ${c.dieta_tipo==='Vegetariano'?'selected':''}>${t('Vegetariano')}</option>
-        <option ${c.dieta_tipo==='Vegano'?'selected':''}>${t('Vegano')}</option>
-        <option ${c.dieta_tipo==='Sin gluten'?'selected':''}>${t('Sin gluten')}</option>
-        <option ${c.dieta_tipo==='Sin lactosa'?'selected':''}>${t('Sin lactosa')}</option>
+        <option ${c.dieta_tipo==='Omnívoro'?'selected':''}>Omnívoro (como de todo)</option>
+        <option ${c.dieta_tipo==='Vegetariano'?'selected':''}>Vegetariano</option>
+        <option ${c.dieta_tipo==='Vegano'?'selected':''}>Vegano</option>
+        <option ${c.dieta_tipo==='Sin gluten'?'selected':''}>Sin gluten</option>
+        <option ${c.dieta_tipo==='Sin lactosa'?'selected':''}>Sin lactosa</option>
       </select>
     </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">${t('Alimentos que no me gustan o no puedo comer')}</div>
-      <input class="inp" id="pf_alimentos_no" placeholder="${t('Ej: brócoli, pescado, huevos...')}" value="${c.alimentos_no||''}" style="margin-bottom:0"/>
+    <div style="margin-bottom:10px"><div class="form-lbl">${t("Alimentos que no me gustan o no puedo comer")}</div>
+      <input class="inp" id="pf_alimentos_no" placeholder="Ej: brócoli, pescado, huevos..." value="${c.alimentos_no||''}" style="margin-bottom:0"/>
     </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">${t('Lesiones / zonas con dolor / alergias')}</div>
-      <input class="inp" id="pf_lesiones" placeholder="${t('Ej: rodilla derecha, lumbar...')}" value="${c.lesiones||''}" style="margin-bottom:0"/>
+    <div style="margin-bottom:10px"><div class="form-lbl">${t("Lesiones / zonas con dolor / alergias")}</div>
+      <input class="inp" id="pf_lesiones" placeholder="Ej: rodilla derecha, lumbar..." value="${c.lesiones||''}" style="margin-bottom:0"/>
     </div>
-    <div style="margin-bottom:10px"><div class="form-lbl">${t('Otras observaciones')}</div>
-      <textarea class="ta" id="pf_ob" placeholder="${t('Cualquier cosa que tu coach deba saber...')}">${c.observaciones||''}</textarea>
+    <div><div class="form-lbl">${t("Otras observaciones")}</div>
+      <textarea class="ta" id="pf_ob" placeholder="Cualquier cosa que tu coach deba saber...">${c.observaciones||''}</textarea>
     </div>
-    <div style="background:rgba(168,85,247,.06);border:0.5px solid rgba(168,85,247,.2);border-radius:12px;padding:12px">
-      <div class="form-lbl" style="color:#c084fc;margin-bottom:6px">🧪 ${t('¿Has tenido o tienes algún tipo de deficiencia?')}</div>
-      <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.5">${t('Por ejemplo: anemia, vitamina D baja, ferritina baja, B12, omega-3... Tu coach lo tendrá en cuenta al preparar tu dieta.')}</div>
-      <textarea class="ta" id="pf_deficiencias" placeholder="${t('Ej: Vitamina D baja en última analítica, tendencia a anemia...')}" style="margin-bottom:0">${c.deficiencias||''}</textarea>
+    <div style="margin-top:10px;background:rgba(168,85,247,.06);border:0.5px solid rgba(168,85,247,.2);border-radius:12px;padding:12px">
+      <div class="form-lbl" style="color:#c084fc;margin-bottom:6px">🧪 ¿Has tenido o tienes algún tipo de deficiencia?</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.5">Por ejemplo: anemia, vitamina D baja, ferritina baja, B12, omega-3... Tu coach lo tendrá en cuenta al preparar tu dieta.</div>
+      <textarea class="ta" id="pf_deficiencias" placeholder="Ej: Vitamina D baja en última analítica, tendencia a anemia..." style="margin-bottom:0">${c.deficiencias||''}</textarea>
     </div>
   </div>
 
   <div style="padding:14px 14px 0">
-    <div id="pf_btns">
-      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarPerfil()">${t('Guardar perfil')}</button>
+    <div id="pf_btns" style="display:${tieneData?'none':'block'}">
+      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarPerfil()">Guardar perfil</button>
     </div>
     <div id="pf_msg" style="font-size:13px;text-align:center;margin-top:8px;height:20px"></div>
   </div>
 
-  ${_pfCuentaSection(c)}</div>`;
-}
+  <!-- Selector de idioma movido al login -->
+  <div id="pf_lang_block" style="margin:14px 14px 20px;background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:14px;display:${tieneData?'none':'block'}">
+    <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🌐 Idioma / Language</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button onclick="setLangLogin('es');setLang('es')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='es'?'var(--bl2)':'var(--br)'};background:${LANG==='es'?'rgba(59,130,246,.12)':'none'};color:${LANG==='es'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+        🇪🇸 Español
+      </button>
+      <button onclick="setLangLogin('en');setLang('en')" style="padding:10px;border-radius:10px;border:1.5px solid ${LANG==='en'?'var(--bl2)':'var(--br)'};background:${LANG==='en'?'rgba(59,130,246,.12)':'none'};color:${LANG==='en'?'var(--blg)':'var(--tx3)'};font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+        🇬🇧 English
+      </button>
+    </div>
+    <div style="font-size:10px;color:var(--tx3);margin-top:8px;text-align:center">También puedes cambiarlo en la pantalla de inicio de sesión</div>
+  </div>
+
+  <!-- Sección cuenta -->
   <div style="margin:0 14px 24px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;overflow:hidden">
 
     <!-- Cabecera sección -->
@@ -7753,13 +7918,12 @@ async function doRegistro(){
       dieta_tipo:document.getElementById('reg_dieta').value,
       alimentos_no:document.getElementById('reg_alimentos_no').value,
       lesiones:document.getElementById('reg_lesiones').value,
-      deficiencias:document.getElementById('reg_deficiencias')?.value||'',
       observaciones:[document.getElementById('reg_obs').value.trim(), regGetDietPrefsText()].filter(Boolean).join('\n\n')
     })});
     ok.textContent='✓ Solicitud enviada. Tu coach la revisará y te dará acceso pronto. Puedes cerrar esta ventana.';
     ok.style.display='block';
     // Clear form
-    ['reg_nombre','reg_username','reg_email','reg_tel','reg_pass','reg_peso','reg_altura','reg_edad','reg_alimentos_no','reg_lesiones','reg_deficiencias','reg_obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['reg_nombre','reg_username','reg_email','reg_tel','reg_pass','reg_peso','reg_altura','reg_edad','reg_alimentos_no','reg_lesiones','reg_obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     regClearDietPrefs();
   }catch(e){err.textContent=e.error||'Error al enviar solicitud';err.style.display='block';}
 }
