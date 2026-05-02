@@ -961,7 +961,12 @@ async function coachAnalizarSemana(fi, btnEl){
   try { fechas = JSON.parse(btn.getAttribute('data-fechas') || '[]'); } catch(e) { return; }
   btn.disabled = true;
   btn.textContent = COACH_LANG==='en'?'⏳ Analyzing...':'⏳ Analizando...';
-  const fotos = CD.fotos||[];
+
+  // Usar _coachClienteActual (contexto del coach), no CD (contexto del cliente)
+  const clienteData = window._coachClienteActual;
+  if(!clienteData){ btn.disabled=false; return; }
+  const fotos = clienteData.fotos||[];
+
   const grupos = {};
   fotos.forEach(f=>{
     const fecha=(f.fecha||'').split('T')[0].split(' ')[0]||'Sin fecha';
@@ -969,33 +974,34 @@ async function coachAnalizarSemana(fi, btnEl){
     grupos[fecha][f.tipo||'frente']=f;
   });
   const gActual = grupos[fechas[fi]];
-  const fotosDespues = Object.values(gActual)
-    .filter(f=>f.url&&f.url.startsWith('data:'))
-    .map(f=>({b64:f.url.split(',')[1],mt:f.url.split(';')[0].split(':')[1],tipo:f.tipo}));
-  let fotosAntes = [];
-  if(fi>0){
-    const gAnterior = grupos[fechas[fi-1]];
-    fotosAntes = Object.values(gAnterior)
-      .filter(f=>f.url&&f.url.startsWith('data:'))
-      .map(f=>({b64:f.url.split(',')[1],mt:f.url.split(';')[0].split(':')[1],tipo:f.tipo}));
+  if(!gActual){ btn.disabled=false; btn.textContent=COACH_LANG==='en'?'✦ Analyze':'✦ Analizar'; return; }
+
+  // URLs actuales (Cloudinary) — el servidor las descarga
+  const urlsActuales = Object.values(gActual).map(f=>f.url).filter(u=>u&&!u.startsWith('foto_'));
+  let urlsAnteriores = [];
+  if(fi>0 && grupos[fechas[fi-1]]){
+    urlsAnteriores = Object.values(grupos[fechas[fi-1]]).map(f=>f.url).filter(u=>u&&!u.startsWith('foto_'));
   }
+
+  const mesActual = fechas[fi] ? new Date(fechas[fi]).toLocaleDateString(COACH_LANG==='en'?'en-GB':'es-ES',{month:'long',year:'numeric'}) : '';
+  const mesAnterior = fi>0&&fechas[fi-1] ? new Date(fechas[fi-1]).toLocaleDateString(COACH_LANG==='en'?'en-GB':'es-ES',{month:'long',year:'numeric'}) : '';
+
   try {
-    const d = await api('/ia/comparar-fotos',{
+    const d = await api('/ia/analizar-fotos-coach',{
       method:'POST',
       body:JSON.stringify({
-        fotosAntes, fotosDespues,
-        clienteNombre: CD.nombre,
-        objetivo: CD.objetivo,
-        nivel: CD.nivel,
-        semanaAntes: fi>0?fi:null,
-        semanaDespues: fi+1,
+        urlsActuales,
+        urlsAnteriores: urlsAnteriores.length ? urlsAnteriores : null,
+        clienteNombre: clienteData.nombre,
+        objetivo: clienteData.objetivo,
+        nivel: clienteData.nivel,
+        semanaActual: mesActual,
+        semanaAnterior: mesAnterior,
         lang: COACH_LANG||'es',
-        // Pedir estimación de grasa corporal
-        pedirGrasa: true,
-        peso: CD.peso_actual,
-        altura: CD.altura,
-        edad: CD.edad,
-        sexo: CD.sexo
+        peso: clienteData.peso_actual,
+        altura: clienteData.altura,
+        edad: clienteData.edad,
+        sexo: clienteData.sexo
       })
     });
 
@@ -1033,7 +1039,7 @@ async function coachAnalizarSemana(fi, btnEl){
       +'<div style="font-size:10px;font-weight:700;color:var(--blg);margin-bottom:8px">📝 '+(COACH_LANG==='en'?'Edit before sending to client':'Revisa y edita antes de enviar')+'</div>'
       +'<textarea id="cfa_ta_'+fi+'" style="width:100%;background:rgba(0,0,0,.2);border:0.5px solid var(--br);border-radius:8px;padding:10px;color:var(--sv);font-size:12px;line-height:1.7;resize:vertical;min-height:120px;font-family:inherit;box-sizing:border-box">'+draft+'</textarea>'
       +'<div style="display:flex;gap:8px;margin-top:8px">'
-      +'<button onclick="coachPublicarMensaje('+fi+','+JSON.stringify(allFotoIds)+')" style="flex:2;padding:10px;background:var(--gn);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'✓ Send to client':'✓ Publicar al cliente')+'</button>'
+      +'<button onclick="coachPublicarMensaje('+fi+',this)" data-fotoids=\''+JSON.stringify(allFotoIds).replace(/'/g,"&apos;")+'\' style="flex:2;padding:10px;background:var(--gn);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'✓ Send to client':'✓ Publicar al cliente')+'</button>'
       +'<button onclick="document.getElementById(\'cfa_result_'+fi+'\').innerHTML=\'\'" style="flex:1;padding:10px;background:none;border:0.5px solid var(--br);border-radius:8px;color:var(--tx3);font-size:12px;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'Discard':'Descartar')+'</button>'
       +'</div>'
       +'<div style="font-size:10px;color:var(--tx3);margin-top:6px;text-align:center">'+(COACH_LANG==='en'?'Will appear on client\'s photos as a coach message':'Aparecerá en las fotos del cliente como mensaje de tu coach')+'</div>'
@@ -1047,17 +1053,23 @@ async function coachAnalizarSemana(fi, btnEl){
   }
 }
 
-async function coachPublicarMensaje(fi, fotoIds){
+async function coachPublicarMensaje(fi, btnEl){
   const ta = document.getElementById('cfa_ta_'+fi);
   if(!ta) return;
   const texto = ta.value.trim();
   if(!texto) return;
+  let fotoIds = [];
+  try { fotoIds = JSON.parse((btnEl instanceof Element ? btnEl : document.querySelector('[data-fotoids]')).getAttribute('data-fotoids') || '[]'); } catch(e) {}
   try {
     for(const fid of fotoIds){
       await api('/fotos/'+fid+'/publicar',{method:'POST',body:JSON.stringify({texto})});
     }
-    await loadCD(CD.id);
-    renderCoachFotos(CD.fotos);
+    const clienteData = window._coachClienteActual;
+    if(clienteData) {
+      await loadCD(clienteData.id);
+      const c = window._coachClienteActual;
+      if(c) renderCoachFotos(c.fotos);
+    }
   } catch(e){ alert(COACH_LANG==='en'?'Error publishing':'Error al publicar'); }
 }
 
