@@ -5,6 +5,7 @@ const { ssePush, ssePushCoaches } = require('./sse');
 
 const router = express.Router();
 router.use(authMiddleware);
+router.use(middlewareMensajeDiario);
 
 // Ensure push_subscriptions table exists
 try {
@@ -583,6 +584,8 @@ router.get('/clientes-pendientes', coachOnly, (req, res) => {
 
 router.put('/usuarios/:id/aprobar', coachOnly, (req, res) => {
   dbRun("UPDATE users SET estado = 'activo' WHERE id = ?", [req.params.id]);
+  // Marcar bienvenida pendiente — se enviará cuando el cliente abra la app por primera vez
+  try { dbRun("UPDATE clientes SET bienvenida_pendiente=1 WHERE user_id=?", [req.params.id]); } catch(e) {}
   res.json({ ok: true });
 });
 
@@ -1471,7 +1474,132 @@ router.get('/mensajes/:clienteId', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── HELPERS IA CHAT ───────────────────────────────────────────────────────────
+// ── MENSAJES DIARIOS Y BIENVENIDA ─────────────────────────────────────────────
+
+// Genera y envía un mensaje motivador personalizado al cliente via chat
+async function enviarMensajeMotivador(clienteId, tipo) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return;
+  try {
+    const cl = dbGet(`SELECT c.*, u.nombre, u.lang FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?`, [clienteId]);
+    if (!cl) return;
+    const isEn = cl.lang === 'en';
+
+    // Contexto del cliente
+    const ultimaSesion = dbGet(`SELECT fecha, dia_nombre, estado FROM sesiones_entreno WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1`, [clienteId]);
+    const ultimoPeso = dbGet(`SELECT peso, grasa FROM peso_registros WHERE cliente_id=? ORDER BY rowid DESC LIMIT 1`, [clienteId]);
+    const checkin = dbGet(`SELECT sueno, energia FROM checkins WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1`, [clienteId]);
+    const totalSesiones = dbGet(`SELECT COUNT(*) as c FROM sesiones_entreno WHERE cliente_id=?`, [clienteId]);
+
+    const diasSinEntreno = ultimaSesion
+      ? Math.floor((Date.now() - new Date(ultimaSesion.fecha).getTime()) / 86400000)
+      : 999;
+
+    const contexto = [
+      `Nombre: ${cl.nombre}`,
+      `Objetivo: ${cl.objetivo || '—'}`,
+      `Nivel: ${cl.nivel || '—'}`,
+      cl.peso_actual ? `Peso: ${cl.peso_actual}kg` : '',
+      ultimoPeso?.grasa ? `Grasa corporal: ${ultimoPeso.grasa}%` : '',
+      `Total sesiones completadas: ${totalSesiones?.c || 0}`,
+      diasSinEntreno < 999 ? `Días desde último entreno: ${diasSinEntreno}` : 'Sin sesiones registradas aún',
+      checkin ? `Último check-in — sueño: ${checkin.sueno}/10, energía: ${checkin.energia}/10` : '',
+      cl.lesiones ? `Lesiones/limitaciones: ${cl.lesiones}` : '',
+    ].filter(Boolean).join('\n');
+
+    let prompt;
+    if (tipo === 'bienvenida') {
+      prompt = isEn
+        ? `Write a warm, personal welcome message (3-4 sentences) for a new client joining WolfMindset. Make them feel part of the team, excited about their goal, and confident in the process. End with a concrete first action they can take today. Client context:\n${contexto}`
+        : `Escribe un mensaje de bienvenida cálido y personal (3-4 frases) para un nuevo cliente que se une a WolfMindset. Hazle sentir parte del equipo, emocionado por su objetivo y confiado en el proceso. Termina con una primera acción concreta que puede hacer hoy. Contexto del cliente:\n${contexto}`;
+    } else {
+      // Mensaje diario — varía según estado del cliente
+      const tono = diasSinEntreno === 0 ? 'celebratorio' :
+                   diasSinEntreno > 5  ? 'reconectando, empujando a volver' :
+                   diasSinEntreno > 2  ? 'recordatorio amable' : 'motivador del día';
+      prompt = isEn
+        ? `Write a short daily motivational message (2-3 sentences, ${tono} tone) for this client. Make it personal, specific to their goal and current state. No generic phrases. Client context:\n${contexto}`
+        : `Escribe un mensaje motivacional diario corto (2-3 frases, tono ${tono}) para este cliente. Hazlo personal, específico a su objetivo y estado actual. Sin frases genéricas. Contexto del cliente:\n${contexto}`;
+    }
+
+    const system = isEn
+      ? 'You are the WolfMindset coach. Write directly to the client in first person (as the coach). Warm, direct, no mention of AI or technology. No markdown, no asterisks.'
+      : 'Eres el coach de WolfMindset. Escribe directamente al cliente en primera persona (como el coach). Cercano, directo, sin mencionar IA ni tecnología. Sin markdown, sin asteriscos.';
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 200, system, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await response.json();
+    if (!data.content?.[0]?.text) return;
+
+    const texto = data.content[0].text.trim();
+
+    // Insertar en chat como mensaje del coach (via_ia=1)
+    const rMsg = dbRun(
+      'INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido) VALUES (?,?,?,?,?)',
+      [clienteId, 1, 1, texto, 0]
+    );
+
+    // Push SSE al cliente para que lo reciba al instante
+    try {
+      ssePush(cl.user_id, 'mensaje_nuevo', {
+        id: rMsg.lastInsertRowid,
+        contenido: texto,
+        de_coach: 1,
+        via_ia: 1,
+        created_at: new Date().toISOString()
+      });
+    } catch(e) {}
+
+    // Notificar al coach
+    const coachId = getCoachId();
+    if (coachId) {
+      const msgNotif = cl.lang === 'en'
+        ? `🤖 Daily message sent to ${cl.nombre}`
+        : `🤖 Mensaje diario enviado a ${cl.nombre}`;
+      crearNotificacion(coachId, 'mensaje_diario', msgNotif);
+      ssePush(coachId, 'badge_msgs', { cliente_id: clienteId });
+    }
+
+    saveToDisk();
+  } catch(e) { console.error('[MensajeDiario]', e.message); }
+}
+
+// Middleware: detecta primer acceso del día de un cliente y dispara mensaje motivador
+// Se añade como middleware en el router después de authMiddleware
+function middlewareMensajeDiario(req, res, next) {
+  // Solo para clientes, solo en GETs (no en cada POST)
+  if (!req.user || req.user.role !== 'cliente') return next();
+  if (req.method !== 'GET') return next();
+
+  try {
+    const hoy = new Date().toISOString().split('T')[0];
+    const cl = dbGet('SELECT id, ultimo_acceso_dia, bienvenida_enviada, bienvenida_pendiente FROM clientes WHERE user_id=?', [req.user.id]);
+    if (!cl) return next();
+
+    // Enviar bienvenida si está pendiente (coach aprobó al cliente)
+    if (cl.bienvenida_pendiente && !cl.bienvenida_enviada) {
+      dbRun('UPDATE clientes SET bienvenida_enviada=1, bienvenida_pendiente=0, ultimo_acceso_dia=? WHERE id=?', [hoy, cl.id]);
+      enviarMensajeMotivador(cl.id, 'bienvenida').catch(() => {});
+      return next();
+    }
+
+    // Enviar mensaje diario si es el primer acceso de hoy
+    if (cl.ultimo_acceso_dia !== hoy) {
+      dbRun('UPDATE clientes SET ultimo_acceso_dia=? WHERE id=?', [hoy, cl.id]);
+      // Solo si ya pasó la bienvenida
+      if (cl.bienvenida_enviada) {
+        enviarMensajeMotivador(cl.id, 'diario').catch(() => {});
+      }
+    }
+  } catch(e) {}
+
+  next();
+}
+
+
 
 // Comprueba si el bot debe responder a este cliente:
 // bot_global ON  → responde a todos los clientes con ia_chat_activa=1 (o si ia_chat_activa es NULL/0 pero global está ON)
