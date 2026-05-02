@@ -48,6 +48,9 @@ async function initDB() {
 
   // ── Asistente IA en chat ──────────────────────────────────────────────────
   try { db.run("ALTER TABLE clientes ADD COLUMN ia_chat_activa INTEGER DEFAULT 0"); } catch(e) {}
+  // Control de presencia del coach por cliente: evita que la IA responda encima del coach.
+  try { db.run("ALTER TABLE clientes ADD COLUMN coach_online INTEGER DEFAULT 0"); } catch(e) {}
+  try { db.run("ALTER TABLE clientes ADD COLUMN last_coach_activity DATETIME DEFAULT NULL"); } catch(e) {}
   db.run(`CREATE TABLE IF NOT EXISTS ia_config (
     id INTEGER PRIMARY KEY DEFAULT 1,
     bot_global INTEGER DEFAULT 0,
