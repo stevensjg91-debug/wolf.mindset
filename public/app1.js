@@ -9340,6 +9340,68 @@ async function publicarRutinaAlCoach(){
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// PRESENCIA MANUAL DEL COACH (Disponible / Ausente)
+// ═══════════════════════════════════════════════════════════════════
+
+let _coachPresenciaActiva = false;
+
+async function cargarPresenciaCoach() {
+  try {
+    if(!TOKEN) return;
+    const r = await fetch('/api/coach/presencia', {
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+    });
+    if(!r.ok) return;
+    const d = await r.json();
+    _coachPresenciaActiva = !!d.activo;
+  } catch(e) {}
+}
+
+async function togglePresenciaCoach() {
+  const nuevo = !_coachPresenciaActiva;
+  try {
+    const r = await fetch('/api/coach/presencia', {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activo: nuevo })
+    });
+    if(r.ok) {
+      _coachPresenciaActiva = nuevo;
+      renderPresenciaCoach();
+      renderIaChatPanel(); // refrescar panel IA para reflejar cambio
+    }
+  } catch(e) {}
+}
+
+function renderPresenciaCoach() {
+  const el = document.getElementById('coachPresenciaBtn');
+  if (!el) return;
+  const on = _coachPresenciaActiva;
+  el.innerHTML = `
+    <div onclick="togglePresenciaCoach()"
+         style="display:flex;align-items:center;gap:10px;
+                background:${on ? 'rgba(74,222,128,.06)' : 'rgba(248,113,113,.06)'};
+                border:0.5px solid ${on ? 'rgba(74,222,128,.3)' : 'rgba(248,113,113,.25)'};
+                border-radius:12px;padding:12px 14px;cursor:pointer;transition:.2s;margin-bottom:10px">
+      <div style="width:11px;height:11px;border-radius:50%;flex-shrink:0;transition:.2s;
+                  background:${on ? '#4ade80' : '#f87171'};
+                  box-shadow:0 0 ${on ? '7px #4ade8088' : '0px transparent'}"></div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--sv)">${on ? '🟢 Disponible' : '🔴 Ausente'}</div>
+        <div style="font-size:10px;color:var(--tx3);margin-top:2px">
+          ${on ? 'Estás online — la IA está pausada' : 'Estás ausente — la IA puede responder'}
+        </div>
+      </div>
+      <div style="width:40px;height:22px;border-radius:11px;flex-shrink:0;transition:.2s;
+                  background:${on ? '#16a34a' : 'rgba(255,255,255,.15)'}; position:relative">
+        <div style="position:absolute;top:3px;${on ? 'right:3px' : 'left:3px'};
+                    width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s"></div>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // PANEL DE CONTROL DEL BOT IA EN EL CHAT
 // ═══════════════════════════════════════════════════════════════════
 
@@ -9381,7 +9443,8 @@ async function toggleBotCliente(clienteId, activo) {
 async function renderIaChatPanel() {
   const el = document.getElementById('iaChatPanelContainer');
   if (!el) return;
-  if (!_iaChatConfig.clientes.length) await cargarIaChatConfig();
+  // Siempre recarga para tener el estado más fresco (fix: no quedarse bloqueado con array vacío)
+  await cargarIaChatConfig();
   const globalOn = _iaChatConfig.bot_global;
   el.innerHTML = `
     <div style="background:rgba(255,255,255,.04);border:0.5px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;margin-bottom:12px">
@@ -9406,12 +9469,11 @@ async function renderIaChatPanel() {
       <div style="display:flex;flex-direction:column;gap:5px;max-height:180px;overflow-y:auto">
         ${_iaChatConfig.clientes.map(c => {
           const on = c.ia_activa === 1;
-          const efectivo = globalOn ? (c.ia_activa !== 0) : on;
+          const efectivo = on; // La IA solo está activa si ia_activa=1 explícitamente (tanto con global ON como OFF)
           return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:7px;background:rgba(255,255,255,.03)">
             <div style="display:flex;align-items:center;gap:7px">
               <div style="width:7px;height:7px;border-radius:50%;background:${efectivo ? '#4ade80' : 'rgba(255,255,255,.2)'}"></div>
               <span style="font-size:12px;color:var(--sv)">${c.nombre}</span>
-              ${globalOn && !on ? '<span style="font-size:10px;color:var(--tx3)">(global)</span>' : ''}
             </div>
             <div onclick="toggleBotCliente(${c.id}, ${on ? 0 : 1})"
                  style="width:34px;height:18px;border-radius:9px;background:${on ? '#2563eb' : 'rgba(255,255,255,.15)'};
