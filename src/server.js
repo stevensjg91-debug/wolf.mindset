@@ -127,7 +127,10 @@ async function sendWebPush(subscription, payload) {
 global.sendPushToUser = async function(userId, title, body, urlPath='/') {
   try {
     const { dbAll, dbRun, saveToDisk } = require('./database');
-    const subs = dbAll('SELECT id, subscription FROM push_subscriptions WHERE user_id=?', [userId]);
+    // Table may not exist yet on first boot
+    let subs = [];
+    try { subs = dbAll('SELECT id, subscription FROM push_subscriptions WHERE user_id=?', [userId]); }
+    catch(te) { return; } // table not ready yet
     for(const row of subs) {
       try {
         const sub = JSON.parse(row.subscription);
@@ -273,6 +276,17 @@ app.get('*', (req, res) => {
 });
 
 initDB().then(() => {
+  // Ensure push_subscriptions table exists (may be missing in older DBs)
+  try {
+    const { dbRun } = require('./database');
+    dbRun(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      subscription TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log('✓ push_subscriptions table ready');
+  } catch(e) { console.log('push_subscriptions table error:', e.message); }
   const rows = dbAll(
     "SELECT COUNT(*) as c FROM ejercicios_config WHERE imagen_url IS NOT NULL AND imagen_url != ''",
     []
