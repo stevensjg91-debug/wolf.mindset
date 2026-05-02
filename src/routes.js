@@ -1385,6 +1385,9 @@ router.get('/mi-foto', (req, res) => {
 // Además, el hilo abierto marca presencia por cliente en BD (last_coach_activity).
 const _coachLastSeen = {};
 const COACH_ACTIVE_MS = 5 * 60 * 1000;
+// Debounce timers para respuesta IA: evita que la IA responda a cada mensaje por separado
+// cuando el cliente escribe varios mensajes seguidos. Se espera 8s desde el último mensaje.
+const _iaPendingTimers = {};
 
 // Caché en memoria del modo ausente por coach (persiste en campo coach_ausente de users).
 const _coachAusenteCache = {};
@@ -1785,38 +1788,48 @@ router.post('/mensajes', async (req, res) => {
       }
 
       // ── Respuesta automática IA si el bot está activo para este cliente ──
+      // Debounce de 8s: si el cliente sigue escribiendo, espera al último mensaje antes de responder.
       if (botDebeResponder(cliente_id)) {
-        // No bloqueamos la respuesta al cliente — la IA responde en background
-        responderConIA(cliente_id, contenido.trim()).then(replyIA => {
-          if (!replyIA) return;
-          // Verificar de nuevo si el bot sigue activo — puede haberse desactivado mientras procesaba
+        if (_iaPendingTimers[cliente_id]) clearTimeout(_iaPendingTimers[cliente_id]);
+        _iaPendingTimers[cliente_id] = setTimeout(() => {
+          delete _iaPendingTimers[cliente_id];
           if (!botDebeResponder(cliente_id)) return;
-          try {
-            const rIA = dbRun(
-              'INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido) VALUES (?,?,?,?,?)',
-              [cliente_id, 1, 1, replyIA, 0]
-            );
-            // Push SSE al cliente y al coach para que ambos vean el hilo sincronizado.
-            const clienteUser = dbGet('SELECT user_id, coach_id FROM clientes WHERE id=?', [cliente_id]);
-            const msgIA = {
-              id: rIA.lastInsertRowid,
-              cliente_id,
-              contenido: replyIA,
-              de_coach: 1,
-              via_ia: 1,
-              created_at: new Date().toISOString()
-            };
-            if (clienteUser) {
-              ssePush(clienteUser.user_id, 'mensaje_nuevo', msgIA);
-              const coachId = clienteUser.coach_id || getCoachIdDeCliente(cliente_id);
-              if (coachId) {
-                ssePush(coachId, 'mensaje_nuevo', msgIA);
-                ssePush(coachId, 'badge_msgs', { cliente_id });
+          // Leer el último mensaje real del cliente para responder con contexto completo
+          const ultimoMsg = dbGet(
+            "SELECT contenido FROM mensajes WHERE cliente_id=? AND de_coach=0 ORDER BY created_at DESC LIMIT 1",
+            [cliente_id]
+          );
+          const textoRespuesta = ultimoMsg ? ultimoMsg.contenido : contenido.trim();
+          responderConIA(cliente_id, textoRespuesta).then(replyIA => {
+            if (!replyIA) return;
+            if (!botDebeResponder(cliente_id)) return;
+            try {
+              const rIA = dbRun(
+                'INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido) VALUES (?,?,?,?,?)',
+                [cliente_id, 1, 1, replyIA, 0]
+              );
+              // Push SSE al cliente y al coach para que ambos vean el hilo sincronizado.
+              const clienteUser = dbGet('SELECT user_id, coach_id FROM clientes WHERE id=?', [cliente_id]);
+              const msgIA = {
+                id: rIA.lastInsertRowid,
+                cliente_id,
+                contenido: replyIA,
+                de_coach: 1,
+                via_ia: 1,
+                created_at: new Date().toISOString()
+              };
+              if (clienteUser) {
+                ssePush(clienteUser.user_id, 'mensaje_nuevo', msgIA);
+                const coachId = clienteUser.coach_id || getCoachIdDeCliente(cliente_id);
+                if (coachId) {
+                  ssePush(coachId, 'mensaje_nuevo', msgIA);
+                  ssePush(coachId, 'badge_msgs', { cliente_id });
+                }
               }
-            }
-            saveToDisk();
-          } catch(e) { console.error('[IA Chat reply]', e.message); }
-        }).catch(() => {});
+              saveToDisk();
+            } catch(e) { console.error('[IA Chat reply]', e.message); }
+          }).catch(() => {});
+        }, 8000); // esperar 8s por si el cliente sigue escribiendo
       }
 
     } else {
