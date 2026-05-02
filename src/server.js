@@ -260,6 +260,21 @@ app.get('/api/eventos', (req, res) => {
 
 app.use('/api', apiRoutes);
 
+// Serve JS/CSS files with no-cache headers to prevent stale versions
+app.get('/app.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.sendFile(require('path').join(__dirname, '../public/app.js'));
+});
+app.get('/app1.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.sendFile(require('path').join(__dirname, '../public/app1.js'));
+});
+app.get('/app2.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.sendFile(require('path').join(__dirname, '../public/app2.js'));
+});
+
 // Wildcard al final — sirve index.html con cache buster inyectado
 const BUILD_VERSION = Date.now();
 let _indexHtml = null;
