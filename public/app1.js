@@ -2638,9 +2638,7 @@ async function coachAnalizarFotos(grupoId) {
             peso: c?.peso_actual,
             altura: c?.altura,
             edad: c?.edad,
-            sexo: c?.sexo,
-            cintura: c?.cintura_actual,
-            cadera: c?.cadera
+            sexo: c?.sexo
           })
         });
       } else {
@@ -2674,9 +2672,7 @@ async function coachAnalizarFotos(grupoId) {
           peso: c?.peso_actual,
           altura: c?.altura,
           edad: c?.edad,
-          sexo: c?.sexo,
-          cintura: c?.cintura_actual,
-          cadera: c?.cadera
+          sexo: c?.sexo
         })
       });
     }
@@ -6708,15 +6704,28 @@ function hProgreso2(){return`<div style="padding-top:8px">
   </div>
   <div id="peso_section" style="margin:0 14px 12px;background:var(--s);border:0.5px solid var(--br);border-radius:14px;padding:14px">
     <div id="peso_guardado_view" style="display:none;margin-bottom:10px">
-      <div style="font-size:13px;color:var(--tx3);margin-bottom:4px">Peso registrado esta semana</div>
-      <div style="font-size:28px;font-weight:700;color:var(--sv);font-family:'Bebas Neue',sans-serif" id="peso_guardado_val">—</div>
+      <div style="font-size:13px;color:var(--tx3);margin-bottom:4px">${t('Registrado esta semana')}</div>
+      <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
+        <div style="font-size:28px;font-weight:700;color:var(--sv);font-family:'Bebas Neue',sans-serif" id="peso_guardado_val">—</div>
+        <div id="medidas_guardadas_view" style="font-size:13px;color:var(--tx3)"></div>
+      </div>
     </div>
     <div id="peso_input_wrap">
-      <div style="margin-bottom:10px">
-        <div class="form-lbl">Peso (kg)</div>
-        <input class="inp" id="np" type="number" step="0.1" placeholder="84.5" style="margin-bottom:0"/>
+      <div style="display:grid;grid-template-columns:1fr ${CD.sexo==='Mujer'?'1fr 1fr':'1fr'};gap:10px;margin-bottom:12px">
+        <div>
+          <div class="form-lbl">⚖️ ${t('Peso')} (kg)</div>
+          <input class="inp" id="np" type="number" step="0.1" placeholder="84.5" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/>
+        </div>
+        <div>
+          <div class="form-lbl">📏 ${t('Cintura')} (cm)</div>
+          <input class="inp" id="medida_cintura" type="number" step="0.1" placeholder="${CD.cintura_actual||'82'}" value="${CD.cintura_actual||''}" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/>
+        </div>
+        ${CD.sexo==='Mujer'?`<div>
+          <div class="form-lbl">📐 ${t('Cadera')} (cm)</div>
+          <input class="inp" id="medida_cadera" type="number" step="0.1" placeholder="${CD.cadera||'96'}" value="${CD.cadera||''}" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/>
+        </div>`:''}
       </div>
-      <button class="btn" style="width:100%;padding:11px" onclick="guardarPeso()">${t('Guardar peso')}</button>
+      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarMediciones()">${t('Guardar mediciones')}</button>
     </div>
   </div>
   <div class="sec-lbl">${t('Fotos de progreso')}</div>
@@ -6766,21 +6775,6 @@ function hProgreso2(){return`<div style="padding-top:8px">
     <div style="font-size:11px;color:var(--tx3);text-align:center;margin-bottom:10px;line-height:1.5">
       ${t("Sube las 3 fotos para que tu coach pueda hacer una valoración completa.")}<br>
       📏 Posición: de pie, cuerpo entero, buena iluminación.
-    </div>
-    <!-- Medidas mensuales junto a la foto -->
-    <div style="background:var(--s);border:0.5px solid var(--br);border-radius:12px;padding:12px;margin-bottom:4px">
-      <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">📐 ${t('Medidas del mes')}</div>
-      <div style="display:grid;grid-template-columns:${CD.sexo==='Mujer'?'1fr 1fr':'1fr'};gap:10px">
-        <div>
-          <div class="form-lbl" style="margin-bottom:4px">📏 ${t('Cintura')} (cm)</div>
-          <input class="inp" id="medida_cintura" type="number" step="0.1" placeholder="${CD.cintura_actual||'82'}" value="${CD.cintura_actual||''}" style="margin-bottom:0"/>
-        </div>
-        ${CD.sexo==='Mujer'?`<div>
-          <div class="form-lbl" style="margin-bottom:4px">📐 ${t('Cadera')} (cm)</div>
-          <input class="inp" id="medida_cadera" type="number" step="0.1" placeholder="${CD.cadera||'96'}" value="${CD.cadera||''}" style="margin-bottom:0"/>
-        </div>`:''}
-      </div>
-      <div style="font-size:10px;color:var(--tx3);margin-top:8px;line-height:1.4">💡 ${t('Se guardan al subir la foto y tu coach las verá en el análisis.')}</div>
     </div>
     <!-- Analizar fotos solo disponible para coach desde su panel -->
   </div>
@@ -6841,32 +6835,57 @@ function renderFotosProgreso() {
       ${comentarioCoach ? `
         <div style="background:rgba(37,99,235,.07);border:0.5px solid rgba(59,130,246,.25);border-radius:10px;padding:12px">
           <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">💬 ${t('Valoración del coach')}</div>
-          <div id="coach_msg_${mes.replace('-','_')}" style="font-size:13px;color:var(--sv);line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${comentarioCoach}</div>
-          <button onclick="(function(el,btn){const exp=el.style.webkitLineClamp==='unset';el.style.webkitLineClamp=exp?'3':'unset';el.style.display=exp?'-webkit-box':'block';btn.textContent=exp?'${t('Ver más')} ▾':'${t('Ver menos')} ▴';})(document.getElementById('coach_msg_${mes.replace('-','_')}'),this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>
+          <div style="font-size:13px;color:var(--sv);line-height:1.6">${comentarioCoach}</div>
         </div>` : ''}
     </div>`;
   }).join('');
 }
 
-async function guardarPeso(){
-  const peso=parseFloat(document.getElementById('np').value);
-  if(!peso)return;
-  await api('/clientes/'+CD.id+'/peso',{method:'POST',body:JSON.stringify({peso,grasa:null})});
+async function guardarMediciones(){
+  const peso = parseFloat(document.getElementById('np')?.value);
+  const cintura = parseFloat(document.getElementById('medida_cintura')?.value) || null;
+  const cadera = parseFloat(document.getElementById('medida_cadera')?.value) || null;
+  if(!peso) return;
+
+  // Guardar peso
+  await api('/clientes/'+CD.id+'/peso', {method:'POST', body:JSON.stringify({peso, grasa:null})});
+
+  // Guardar cintura y cadera en perfil si se introdujeron
+  if(cintura || cadera){
+    const upd = {};
+    if(cintura) upd.cintura_actual = cintura;
+    if(cadera) upd.cadera = cadera;
+    await api('/clientes/'+CD.id+'/perfil', {method:'PUT', body:JSON.stringify(upd)});
+  }
+
   await loadCD(CD.id);
-  // Store date of last weigh-in
   localStorage.setItem('wm_ultimo_peso_'+CD.id, Date.now());
-  pesoModoVer(peso);
+  pesoModoVer(peso, cintura, cadera);
 }
 
-function pesoModoVer(peso){
+// Mantener compatibilidad con llamadas antiguas
+async function guardarPeso(){
+  return guardarMediciones();
+}
+
+function pesoModoVer(peso, cintura, cadera){
   const inp=document.getElementById('peso_input_wrap');
   const view=document.getElementById('peso_guardado_view');
   const val=document.getElementById('peso_guardado_val');
   const wrap=document.getElementById('peso_edit_btn_wrap');
+  const medidasView=document.getElementById('medidas_guardadas_view');
   if(inp) inp.style.display='none';
-  if(view){view.style.display='block';}
-  if(val) val.textContent=peso+'kg ✓';
-  if(wrap) wrap.innerHTML=`<button onclick="pesoModoEditar()" style="padding:6px 14px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ Corregir</button>`;
+  if(view) view.style.display='block';
+  if(val) val.textContent=(peso||CD.pesos?.slice(-1)[0]?.peso||'—')+'kg ✓';
+  if(medidasView){
+    const c = cintura || CD.cintura_actual;
+    const ca = cadera || CD.cadera;
+    const parts = [];
+    if(c) parts.push(`📏 ${c}cm`);
+    if(ca) parts.push(`📐 ${ca}cm`);
+    medidasView.textContent = parts.join(' · ');
+  }
+  if(wrap) wrap.innerHTML=`<button onclick="pesoModoEditar()" style="padding:6px 14px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ ${t('Corregir')}</button>`;
 }
 
 function pesoModoEditar(){
@@ -6885,7 +6904,7 @@ function initPesoSection(){
   const yaEsta = ultima && (Date.now()-ultima) < SEMANA;
   if(yaEsta){
     const ultimoPeso=CD.pesos?.length?CD.pesos[CD.pesos.length-1].peso:null;
-    if(ultimoPeso) pesoModoVer(ultimoPeso);
+    if(ultimoPeso) pesoModoVer(ultimoPeso, CD.cintura_actual, CD.cadera);
   }
   // Renderizar gráfica de tendencia si hay suficientes datos
   renderPesoTendencia();
