@@ -126,15 +126,21 @@ async function sendWebPush(subscription, payload) {
 // Global push function — called from routes.js
 global.sendPushToUser = async function(userId, title, body, urlPath='/') {
   try {
-    const { dbAll } = require('./database');
-    const subs = dbAll('SELECT subscription FROM push_subscriptions WHERE user_id=?', [userId]);
+    const { dbAll, dbRun, saveToDisk } = require('./database');
+    const subs = dbAll('SELECT id, subscription FROM push_subscriptions WHERE user_id=?', [userId]);
     for(const row of subs) {
       try {
         const sub = JSON.parse(row.subscription);
-        await sendWebPush(sub, { title, body, url: urlPath });
-      } catch(e) {}
+        const status = await sendWebPush(sub, { title, body, url: urlPath });
+        // 404/410 = subscription expired/invalid — remove from DB
+        if(status === 404 || status === 410 || status === 0) {
+          console.log('[Push] Removing invalid subscription id', row.id, 'status', status);
+          dbRun('DELETE FROM push_subscriptions WHERE id=?', [row.id]);
+          saveToDisk();
+        }
+      } catch(e) { console.log('[Push] sendPushToUser inner error:', e.message); }
     }
-  } catch(e) {}
+  } catch(e) { console.log('[Push] sendPushToUser error:', e.message); }
 };
 const cors = require('cors');
 const path = require('path');
