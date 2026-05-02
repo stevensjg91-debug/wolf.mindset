@@ -390,72 +390,76 @@ router.post('/ia/chat', async (req, res) => {
 });
 
 router.post('/ia/foto', async (req, res) => {
-  const { imageBase64, mediaType, extraImages, system } = req.body;
+  const { imageBase64, mediaType, extraImages, system, clientInfo } = req.body;
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'API key no configurada en las variables de entorno' });
-  if (!imageBase64 || !mediaType) return res.status(400).json({ error: 'imageBase64 y mediaType son requeridos' });
+  if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
+  if (!imageBase64 || !mediaType) return res.status(400).json({ error: 'imageBase64 y mediaType requeridos' });
 
   try {
-    // Build content array with all images
+    const isEn = system?.includes('English');
     const content = [];
 
-    // First image (frente)
-    content.push({ type: 'text', text: system?.includes('English') ? 'Front photo:' : 'Foto frente:' });
+    // Images first (no text label needed)
     content.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } });
-
-    // Extra images (posterior, costado)
     if (extraImages && extraImages.length) {
       for (const img of extraImages) {
         if (img.b64 && img.mt) {
-          const label = img.tipo || '';
-          content.push({ type: 'text', text: system?.includes('English') ? `${label} photo:` : `Foto ${label}:` });
           content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } });
         }
       }
     }
 
-    // Add the analysis prompt
-    const prompt = system?.includes('English')
-      ? 'Analyze these progress photos. Give a motivating but honest assessment including: visible improvements, strong points, and concrete recommendations for their goal. Be direct and specific, like a real coach. No markdown, no asterisks.'
-      : 'Analiza estas fotos de progreso. Da una valoración motivadora pero honesta incluyendo: mejoras visibles, puntos fuertes, y recomendaciones concretas para su objetivo. Sé directo y específico, como un coach real. Sin markdown, sin asteriscos.';
+    const prompt = isEn
+      ? `Analyze the physique of this client (${clientInfo || 'fitness client'}).
+Write a personal coach message (4-5 sentences) that:
+1. Highlights 2-3 genuine strong points visible in the photo (specific muscle groups, posture, body composition)
+2. Points out 1-2 areas to focus on to reach their goal
+3. Gives 1 concrete actionable tip for this week
+4. Ends with a motivating push
+Tone: direct, warm, personal. No markdown, no asterisks, no lists. Natural flowing sentences.`
+      : `Analiza el físico de este cliente (${clientInfo || 'cliente fitness'}).
+Escribe un mensaje personal del coach (4-5 frases) que:
+1. Destaque 2-3 puntos fuertes reales visibles en la foto (grupos musculares específicos, postura, composición corporal)
+2. Señale 1-2 áreas en las que enfocarse para alcanzar su objetivo
+3. Dé 1 consejo concreto y accionable para esta semana
+4. Termine con una motivación real
+Tono: directo, cercano, personal. Sin markdown, sin asteriscos, sin listas. Frases naturales.`;
+
     content.push({ type: 'text', text: prompt });
 
     const reqBody = JSON.stringify({
       model: 'claude-opus-4-5',
-      max_tokens: 1024,
+      max_tokens: 600,
       system: system || 'Eres un coach de fitness experto. Responde en español.',
       messages: [{ role: 'user', content }]
     });
 
-    console.log('[IA foto] Sending request, images:', content.filter(c=>c.type==='image').length, 'body size:', reqBody.length);
+    console.log('[IA foto] images:', content.filter(c=>c.type==='image').length, 'size:', reqBody.length);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
       body: reqBody
     });
 
     const rawText = await response.text();
-    console.log('[IA foto] Response status:', response.status, 'length:', rawText.length);
+    console.log('[IA foto] status:', response.status, 'len:', rawText.length);
 
     if (!response.ok) {
-      console.log('[IA foto] Error body:', rawText.slice(0, 300));
-      return res.status(500).json({ error: `API error ${response.status}: ${rawText.slice(0, 200)}` });
+      console.log('[IA foto] error:', rawText.slice(0, 300));
+      return res.status(500).json({ error: `API ${response.status}: ${rawText.slice(0, 200)}` });
     }
 
     let data;
-    try { data = JSON.parse(rawText); }
-    catch(pe) { return res.status(500).json({ error: 'Respuesta malformada de la IA: ' + rawText.slice(0,100) }); }
+    try { data = JSON.parse(rawText); } catch(pe) {
+      return res.status(500).json({ error: 'Respuesta malformada: ' + rawText.slice(0, 100) });
+    }
 
-    if (data.error) return res.status(500).json({ error: data.error.message || 'Error de la API de IA' });
-    if (!data.content || !data.content[0]) return res.status(500).json({ error: 'Respuesta vacía de la IA' });
+    if (data.error) return res.status(500).json({ error: data.error.message || 'Error API' });
+    if (!data.content?.[0]?.text) return res.status(500).json({ error: 'Respuesta vacía' });
     res.json({ reply: data.content[0].text });
   } catch(e) {
-    console.log('[IA foto] Exception:', e.message);
+    console.log('[IA foto] exception:', e.message);
     res.status(500).json({ error: e.message || 'Error IA foto' });
   }
 });
