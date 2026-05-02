@@ -2032,8 +2032,8 @@ async function verCliente(id){
     <div style="margin-top:14px;padding-top:14px;border-top:0.5px solid var(--br)">
       <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${tc('🔑 Contraseña del cliente')}</div>
       <div style="display:flex;gap:8px;align-items:center">
-        <input class="inp" id="nueva_pass_${c.id}" type="text" placeholder="${tc('Nueva contraseña')}" style="margin-bottom:0;flex:1"/>
-        <button onclick="resetearContrasena(${c.id})" class="btn btn-sm" style="flex-shrink:0;white-space:nowrap">${tc('Resetear')}</button>
+        <input class="inp" id="nueva_pass_${c.id}" type="password" placeholder="${tc('Nueva contraseña (mín. 4 caracteres)')}" style="margin-bottom:0;flex:1"/>
+        <button onclick="resetearContrasena(${c.id})" class="btn btn-sm" style="flex-shrink:0;white-space:nowrap;background:var(--bl2);color:#fff">${tc('Guardar')}</button>
       </div>
       <div id="reset_msg_${c.id}" style="font-size:11px;margin-top:6px;height:16px"></div>
     </div>
@@ -3614,6 +3614,16 @@ function hEquipo(){
     </div>
     <button onclick="guardarPerfilCoach()" class="btn" style="width:100%;padding:11px;background:var(--bl2)">✓ ${COACH_LANG==='en'?'Save profile':'Guardar perfil'}</button>
     <div id="coach_perfil_msg" style="font-size:12px;text-align:center;margin-top:6px;height:18px"></div>
+
+    <!-- Cambio de contraseña del coach -->
+    <div style="margin-top:16px;padding-top:16px;border-top:0.5px solid var(--br)">
+      <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🔑 ${COACH_LANG==='en'?'Change my password':'Cambiar mi contraseña'}</div>
+      <input class="inp" id="coach_pass_old" type="password" placeholder="${COACH_LANG==='en'?'Current password':'Contraseña actual'}" style="margin-bottom:8px"/>
+      <input class="inp" id="coach_pass_new" type="password" placeholder="${COACH_LANG==='en'?'New password (min. 6 chars)':'Nueva contraseña (mín. 6 caracteres)'}" style="margin-bottom:8px"/>
+      <input class="inp" id="coach_pass_rep" type="password" placeholder="${COACH_LANG==='en'?'Repeat new password':'Repite la nueva contraseña'}" style="margin-bottom:10px"/>
+      <button onclick="cambiarPasswordCoach()" class="btn" style="width:100%;padding:10px;background:var(--s3);border:0.5px solid var(--br);color:var(--sv)">${COACH_LANG==='en'?'Update password':'Actualizar contraseña'}</button>
+      <div id="coach_pass_msg" style="font-size:11px;text-align:center;margin-top:6px;height:16px"></div>
+    </div>
   </div>
 
   <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.08em;color:var(--sv);margin-bottom:4px">${tc('Mi equipo')}</div>
@@ -3677,6 +3687,29 @@ async function guardarPerfilCoach() {
     msg.style.color='#86efac'; msg.textContent='✓ '+(COACH_LANG==='en'?'Saved':'Guardado');
     setTimeout(()=>{ if(msg) msg.textContent=''; }, 3000);
   } catch(e) { msg.style.color='#f87171'; msg.textContent=e.error||'Error'; }
+}
+
+async function cambiarPasswordCoach() {
+  const old = document.getElementById('coach_pass_old')?.value?.trim();
+  const nw  = document.getElementById('coach_pass_new')?.value?.trim();
+  const rep = document.getElementById('coach_pass_rep')?.value?.trim();
+  const msg = document.getElementById('coach_pass_msg');
+  if(!msg) return;
+  if(!old || !nw || !rep) { msg.style.color='#f87171'; msg.textContent=COACH_LANG==='en'?'Fill all fields':'Rellena todos los campos'; return; }
+  if(nw.length < 6) { msg.style.color='#f87171'; msg.textContent=COACH_LANG==='en'?'Min. 6 characters':'Mínimo 6 caracteres'; return; }
+  if(nw !== rep) { msg.style.color='#f87171'; msg.textContent=COACH_LANG==='en'?'Passwords do not match':'Las contraseñas no coinciden'; return; }
+  try {
+    const r = await api('/auth/change-my-password', { method:'POST', body: JSON.stringify({ password_actual: old, password_nueva: nw }) });
+    if(r.ok) {
+      msg.style.color='#86efac'; msg.textContent='✓ '+(COACH_LANG==='en'?'Password updated':'Contraseña actualizada');
+      document.getElementById('coach_pass_old').value='';
+      document.getElementById('coach_pass_new').value='';
+      document.getElementById('coach_pass_rep').value='';
+    } else {
+      msg.style.color='#f87171'; msg.textContent=r.error||(COACH_LANG==='en'?'Error':'Error');
+    }
+  } catch(e) { msg.style.color='#f87171'; msg.textContent=e.error||(COACH_LANG==='en'?'Connection error':'Error de conexión'); }
+  setTimeout(()=>{ if(msg) msg.textContent=''; }, 4000);
 }
 
 async function initEquipo(){
