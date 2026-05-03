@@ -5373,15 +5373,16 @@ function hStreakBanner(){
 function hMensajeCoach(){
   const msg = CD.mensaje_semana;
   if(!msg) return '';
-  const corto = msg.length > 120;
-  return`<div style="background:linear-gradient(135deg,rgba(37,99,235,.1),rgba(17,17,19,.9));border:0.5px solid rgba(59,130,246,.25);border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start">
-    <span style="font-size:22px;flex-shrink:0">🐺</span>
-    <div style="flex:1;min-width:0;overflow:hidden">
-      <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">${t('Mensaje de tu coach')}</div>
-      <div style="overflow:hidden">
-        <div id="coach_msg_txt" data-clamp="3" data-expanded="0" style="font-size:13px;color:var(--sv2);line-height:1.6;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${msg}</div>
+  return`<div style="background:linear-gradient(135deg,rgba(37,99,235,.1),rgba(17,17,19,.9));border:0.5px solid rgba(59,130,246,.25);border-radius:14px;overflow:hidden;margin-bottom:14px">
+    <button onclick="toggleAcordeonCoach('semana')" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:none;border:none;padding:12px 16px;cursor:pointer;font-family:inherit;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">🐺</span>
+        <span style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em">${t('Mensaje de tu coach')}</span>
       </div>
-      ${corto?`<button onclick="toggleCoachComment('coach_msg_txt',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:5px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}
+      <span id="coach_arr_semana" style="color:var(--blg);font-size:12px;transition:transform .3s;display:inline-block;flex-shrink:0">▾</span>
+    </button>
+    <div id="coach_acc_semana" style="max-height:0px;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .25s ease">
+      <div style="padding:0 16px 14px 16px;font-size:13px;color:var(--sv2);line-height:1.6">${msg}</div>
     </div>
   </div>`;
 }
