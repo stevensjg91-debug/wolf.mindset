@@ -12,7 +12,7 @@ const REG_STRINGS = {
     desc: 'Fill in your details and your coach will review your request. We will notify you when you have access.',
     lbl_nombre: 'Full name *', lbl_usuario: 'Username *', lbl_email: 'Email *',
     lbl_telefono: 'Phone *', lbl_pass: 'Password *', lbl_objetivo: 'Goal',
-    lbl_nivel: 'Level', lbl_peso: 'Weight (kg)', lbl_altura: 'Height (cm)',
+    lbl_nivel: 'Level', lbl_peso: 'Weight (lb)', lbl_altura: 'Height (ft/in)',
     lbl_edad: 'Age', lbl_sexo: 'Sex', lbl_actividad: 'Activity level',
     lbl_dieta: 'Diet type', lbl_alimentos_no: 'Foods I cannot eat (optional)',
     lbl_lesiones: 'Injuries / painful areas (optional)', lbl_obs: 'Other notes (optional)',
@@ -186,7 +186,7 @@ const TRANSLATIONS = {
   '📋 Check-in semanal':'📋 Weekly check-in',
   '😴 ¿Cómo dormiste?':'😴 How did you sleep?',
   '⚡ Energía hoy':'⚡ Energy today',
-  '⚖️ Peso hoy (kg)':'⚖️ Weight today (kg)',
+  '⚖️ Peso hoy (kg)':'⚖️ Weight today (lb)',
   'Ej: 78.5':'E.g. 78.5','Guardar':'Save',
 
   // ── Notif banner ──
@@ -283,9 +283,9 @@ const TRANSLATIONS = {
   'Tus datos personales.':'Your personal data.',
   'Rellena tus datos para que tu coach pueda personalizar tu plan al máximo.':'Fill in your data so your coach can fully personalize your plan.',
   'Datos personales':'Personal data',
-  'Peso (kg)':'Weight (kg)','Altura (cm)':'Height (cm)',
+  'Peso (kg)':'Weight (lb)','Altura (cm)':'Height (ft/in)',
   'Edad':'Age','Sexo':'Sex','Hombre':'Male','Mujer':'Female',
-  'Cintura (cm)':'Waist (cm)','Cadera (cm)':'Hip (cm)',
+  'Cintura (cm)':'Waist (in)','Cadera (cm)':'Hip (in)',
   'Nivel de actividad':'Activity level',
   'Sedentario (poco o nada de ejercicio)':'Sedentary (little or no exercise)',
   'Ligero (1-2 días/semana)':'Light (1-2 days/week)',
@@ -511,7 +511,7 @@ const TRANSLATIONS = {
   'ACCESO MIEMBROS':'MEMBER ACCESS',
   'Alimentos que no puedo comer (opcional)':'Foods I cannot eat (optional)',
   'Alta (5-6 días/semana)':'High (5-6 days/week)',
-  'Altura (cm)':'Height (cm)',
+  'Altura (cm)':'Height (ft/in)',
   'Asistente IA':'AI Assistant',
   'Añadir día de entreno':'Add training day',
   'Cerrar sesión':'Log out',
@@ -543,7 +543,7 @@ const TRANSLATIONS = {
   'Otras observaciones (opcional)':'Other notes (optional)',
   'Pecho + Tríceps':'Chest + Triceps',
   'Perder peso':'Lose weight',
-  'Peso (kg)':'Weight (kg)',
+  'Peso (kg)':'Weight (lb)',
   'Primer Entreno':'First Workout',
   'Recomposición':'Body recomp',
   'Recordar contraseña':'Remember password',
@@ -676,7 +676,7 @@ const TRANSLATIONS = {
   '📋 Check-in semanal':'📋 Weekly check-in',
   'Activar':'Enable',
   'Guardar':'Save',
-  '⚖️ Peso hoy (kg)':'⚖️ Today weight (kg)',
+  '⚖️ Peso hoy (kg)':'⚖️ Today weight (lb)',
 
   // ── Login / Registro ──
   'Recordar contraseña':'Remember password',
@@ -1094,7 +1094,7 @@ const COACH_TRANSLATIONS = {
   'Notas internas (opcional)':'Internal notes (optional)',
   '✓ Activar / Renovar':'✓ Activate / Renew',
   'Datos personales del cliente':'Client personal data',
-  'Peso (kg)':'Weight (kg)','Altura':'Height',
+  'Peso (kg)':'Weight (lb)','Altura':'Height',
   'Edad':'Age','Sexo':'Sex','Actividad':'Activity',
   'Cintura/Cadera':'Waist/Hip',
   'Moderada':'Moderate','Ligera':'Light','Sedentario':'Sedentary',
@@ -2065,7 +2065,7 @@ async function verCliente(id){
       <div><div class="form-lbl">${tc('Edad')}</div><div style="font-size:16px;font-weight:700;color:var(--sv)">${c.edad?c.edad+' '+tc('años'):tc('Sin datos')}</div></div>
       <div><div class="form-lbl">${tc('Sexo')}</div><div style="font-size:16px;font-weight:700;color:var(--sv)">${c.sexo?tc(c.sexo):tc('Sin datos')}</div></div>
       <div><div class="form-lbl">${tc('Actividad')}</div><div style="font-size:13px;font-weight:600;color:var(--sv2)">${c.actividad?tc(c.actividad):tc('Sin datos')}</div></div>
-      <div><div class="form-lbl">${tc('Cintura/Cadera')}</div><div style="font-size:13px;font-weight:600;color:var(--sv2)">${c.cintura_actual?c.cintura_actual+'cm / '+(c.cadera||'—')+'cm':tc('Sin datos')}</div></div>
+      <div><div class="form-lbl">${tc('Cintura/Cadera')}</div><div style="font-size:13px;font-weight:600;color:var(--sv2)">${c.cintura_actual?fmtCintura(c.cintura_actual)+' / '+(c.cadera?fmtCintura(c.cadera):'—'):tc('Sin datos')}</div></div>
     </div>
     ${c.lesiones?`<div style="background:rgba(239,68,68,.08);border:0.5px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 11px;font-size:12px;color:#fca5a5;margin-top:8px">⚠️ <span style="font-weight:700">${tc('Lesiones:')}</span> ${c.lesiones}</div>`:''}
     ${c.dieta_tipo&&c.dieta_tipo!=='Omnivoro'?`<div style="background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:8px;padding:8px 11px;font-size:12px;color:var(--gnb);margin-top:6px">🥗 <span style="font-weight:700">${tc('Dieta:')}</span> ${tc(c.dieta_tipo)}</div>`:''}
@@ -2175,7 +2175,7 @@ async function verCliente(id){
         <div class="g2" style="gap:8px;margin-bottom:8px">
           <div><div class="form-lbl">${tc('Series')}</div><input type="number" id="tab_ex_series" class="inp" style="margin-bottom:0"/></div>
           <div><div class="form-lbl">${tc('Reps')}</div><input id="tab_ex_reps" class="inp" style="margin-bottom:0" placeholder="10-12"/></div>
-          <div><div class="form-lbl">${tc('Peso obj.')} (kg)</div><input type="number" id="tab_ex_peso" class="inp" style="margin-bottom:0" step="0.5"/></div>
+          <div><div class="form-lbl">${tc('Peso obj.')} (${COACH_LANG==='en'?'lb':'kg'})</div><input type="number" id="tab_ex_peso" class="inp" style="margin-bottom:0" step="0.5"/></div>
           <div><div class="form-lbl">${tc('Descanso (s)')}</div><input type="number" id="tab_ex_descanso" class="inp" style="margin-bottom:0"/></div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
@@ -3529,7 +3529,7 @@ function hRutinas(){return`
         <div class="g2" style="gap:10px;margin-bottom:10px">
           <div><div class="form-lbl">${COACH_LANG==='en'?'Sets':'Series'}</div><input class="inp" id="rb_add_series" type="number" value="3" min="1" max="10" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/></div>
           <div><div class="form-lbl">Reps</div><input class="inp" id="rb_add_reps" value="10-12" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/></div>
-          <div><div class="form-lbl">${COACH_LANG==='en'?'Target weight (kg)':'Peso objetivo (kg)'}</div><input class="inp" id="rb_add_peso" type="number" value="0" step="2.5" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/></div>
+          <div><div class="form-lbl">${COACH_LANG==='en'?'Target weight (lb)':'Peso objetivo (kg)'}</div><input class="inp" id="rb_add_peso" type="number" value="0" step="2.5" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/></div>
           <div><div class="form-lbl">${COACH_LANG==='en'?'Rest (sec)':'Descanso (seg)'}</div><input class="inp" id="rb_add_descanso" type="number" value="90" style="margin-bottom:0;font-size:18px;font-weight:700;text-align:center"/></div>
           <div style="display:flex;flex-direction:column;justify-content:flex-end">
             <div class="form-lbl">RIR</div>
@@ -4394,7 +4394,7 @@ async function dbSelCliente(id){
         <div>🎯 ${c.objetivo||'Sin objetivo'}</div>
         <div>🥗 ${tc(c.dieta_tipo)||c.dieta_tipo||tc('Omnívoro')}</div>
         <div>📊 ${c.nivel||'Principiante'}</div>
-        <div>⚖️ ${c.peso_actual||'—'}kg · ${c.altura||'—'}cm</div>
+        <div>⚖️ ${c.peso_actual?fmtPeso(c.peso_actual):'—'} · ${c.altura?fmtAltura(c.altura):'—'}</div>
         <div>🔥 ${COACH_LANG==='en'?'Activity:':'Actividad:'} ${tc(c.actividad)||c.actividad||'—'}</div>
       </div>
       ${c.alimentos_no?`<div style="font-size:11px;color:#fca5a5;margin-bottom:4px">❌ No puede: ${c.alimentos_no}</div>`:''}
@@ -4632,9 +4632,9 @@ async function cargarDashboard() {
         const col = c.objetivo?.toLowerCase().includes('déficit') || c.objetivo?.toLowerCase().includes('pérdida')
           ? (diff < 0 ? '#86efac' : diff > 0 ? '#fca5a5' : 'var(--tx3)')
           : (diff > 0 ? '#86efac' : diff < 0 ? '#fca5a5' : 'var(--tx3)');
-        pesoTexto = `<span style="color:${col}">${signo}${Math.abs(diff).toFixed(1)}kg</span>`;
+        pesoTexto = `<span style="color:${col}">${signo}${isImperial()?(Math.abs(diff)*2.20462).toFixed(1):Math.abs(diff).toFixed(1)}${pesoLabel()}</span>`;
       } else if(c.peso_actual) {
-        pesoTexto = c.peso_actual+'kg';
+        pesoTexto = fmtPeso(c.peso_actual);
       }
 
       // ── Actualizar UI ────────────────────────────
@@ -5373,16 +5373,15 @@ function hStreakBanner(){
 function hMensajeCoach(){
   const msg = CD.mensaje_semana;
   if(!msg) return '';
-  return`<div style="background:linear-gradient(135deg,rgba(37,99,235,.1),rgba(17,17,19,.9));border:0.5px solid rgba(59,130,246,.25);border-radius:14px;overflow:hidden;margin-bottom:14px">
-    <button onclick="toggleAcordeonCoach('semana')" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:none;border:none;padding:12px 16px;cursor:pointer;font-family:inherit;gap:8px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:20px">🐺</span>
-        <span style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em">${t('Mensaje de tu coach')}</span>
+  const corto = msg.length > 120;
+  return`<div style="background:linear-gradient(135deg,rgba(37,99,235,.1),rgba(17,17,19,.9));border:0.5px solid rgba(59,130,246,.25);border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start">
+    <span style="font-size:22px;flex-shrink:0">🐺</span>
+    <div style="flex:1;min-width:0;overflow:hidden">
+      <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">${t('Mensaje de tu coach')}</div>
+      <div style="overflow:hidden">
+        <div id="coach_msg_txt" data-clamp="3" data-expanded="0" style="font-size:13px;color:var(--sv2);line-height:1.6;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${msg}</div>
       </div>
-      <span id="coach_arr_semana" style="color:var(--blg);font-size:12px;transition:transform .3s;display:inline-block;flex-shrink:0">▾</span>
-    </button>
-    <div id="coach_acc_semana" style="max-height:0px;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .25s ease">
-      <div style="padding:0 16px 14px 16px;font-size:13px;color:var(--sv2);line-height:1.6">${msg}</div>
+      ${corto?`<button onclick="toggleCoachComment('coach_msg_txt',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:5px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}
     </div>
   </div>`;
 }
@@ -5447,7 +5446,7 @@ function hCheckinBanner(){
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <div style="flex:1">
-        <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">⚖️ Peso hoy (kg)</div>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">${t('⚖️ Peso hoy (kg)')} (${pesoLabel()})</div>
         <input id="ci_peso" type="number" step="0.1" placeholder="Ej: 78.5" style="width:100%;padding:7px 10px;border:0.5px solid var(--br);border-radius:8px;background:var(--b);color:var(--sv);font-size:14px;font-weight:700;box-sizing:border-box;font-family:inherit"/>
       </div>
       <button onclick="guardarCheckin()" style="margin-top:18px;padding:8px 16px;background:var(--gn);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0" data-i18n="Guardar">Guardar</button>
@@ -5582,14 +5581,14 @@ function hPreviewDia(i){
 
   const exList = d.ejercicios.map((e,ei)=>{
     const ult = ultimoPorEx[e.nombre];
-    const ultStr = ult ? `${ult.peso_real}kg × ${ult.reps_real} reps` : '—';
+    const ultStr = ult ? `${fmtPeso(ult.peso_real)} × ${ult.reps_real} reps` : '—';
     const imgUrl = e.imagen_url || (window.exConfig&&window.exConfig[e.nombre]?.imagen_url) || '';
     const bg = getExerciseBg(e.nombre);
     return`<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--br)">
       ${renderExImg(e.nombre, 44, e.grupo||EX_GROUP_MAP[e.nombre]||'', e.imagen_url||'')}
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:2px">${e.nombre}</div>
-        <div style="font-size:12px;color:var(--tx3)">${e.series} × ${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''}</div>
+        <div style="font-size:12px;color:var(--tx3)">${e.series} × ${e.reps}${e.peso_objetivo>0?' · '+fmtPeso(e.peso_objetivo):''}</div>
         ${ult?`<div style="font-size:11px;color:var(--sv3);margin-top:1px">${t('Anterior')}: ${ultStr}</div>`:''}
         ${e.es_principal?`<span style="font-size:10px;background:rgba(245,158,11,.2);color:var(--amb);padding:1px 6px;border-radius:4px;font-weight:700">⭐</span>`:''}
       </div>
@@ -5838,7 +5837,7 @@ function openKeyboard(ei, si, field){
   const disp = document.getElementById('kb_display');
   if(kb){ kb.style.display='block'; }
   if(lbl) {
-    lbl.textContent = field==='peso' ? 'kg' : field==='reps' ? 'reps' : 'RIR';
+    lbl.textContent = field==='peso' ? pesoLabel() : field==='reps' ? 'reps' : 'RIR';
     // Hint especial para RIR
     lbl.style.color = field==='rir' ? 'var(--blg)' : '';
   }
@@ -6911,7 +6910,14 @@ async function renderFotosProgreso() {
       </div>
       ${comentarioCoach?`
   <div style="border:0.5px solid rgba(59,130,246,.25);border-radius:10px;overflow:hidden">
-    <button onclick="toggleAcordeonCoach('${mesId}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:rgba(37,99,235,.07);border:none;padding:10px 12px;cursor:pointer;font-family:inherit;gap:8px">
+    <button onclick="
+      var body=document.getElementById('coach_acc_${mesId}');
+      var arrow=document.getElementById('coach_arr_${mesId}');
+      var open=body.style.maxHeight&&body.style.maxHeight!=='0px';
+      body.style.maxHeight=open?'0px':body.scrollHeight+'px';
+      body.style.opacity=open?'0':'1';
+      arrow.style.transform=open?'rotate(0deg)':'rotate(180deg)';
+    " style="width:100%;display:flex;align-items:center;justify-content:space-between;background:rgba(37,99,235,.07);border:none;padding:10px 12px;cursor:pointer;font-family:inherit;gap:8px">
       <div style="display:flex;align-items:center;gap:7px">
         <span style="font-size:15px">💬</span>
         <span style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.07em">${t('Valoración del coach')}</span>
@@ -6944,15 +6950,7 @@ function toggleCoachComment(id, btn){
     btn.textContent=t('Ver más')+' ▾';
   }
 }
-function toggleAcordeonCoach(mesId){
-  var body = document.getElementById('coach_acc_' + mesId);
-  var arrow = document.getElementById('coach_arr_' + mesId);
-  if(!body) return;
-  var open = body.style.maxHeight && body.style.maxHeight !== '0px';
-  body.style.maxHeight = open ? '0px' : body.scrollHeight + 'px';
-  body.style.opacity = open ? '0' : '1';
-  if(arrow) arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
-}
+
 async function guardarMediciones(){
   const pesoInput = parseFloat(document.getElementById('np')?.value);
   const cinturaInput = parseFloat(document.getElementById('medida_cintura')?.value)||null;
@@ -7053,8 +7051,8 @@ function renderPesoTendencia(){
   const trendColor = Math.abs(diff) < 0.3 ? '#a1a1aa' : esBueno ? '#22c55e' : '#f59e0b';
   const trendIcon = diff < -0.3 ? '↘' : diff > 0.3 ? '↗' : '→';
   const trendLabel = diff < -0.3
-    ? `${Math.abs(diff).toFixed(1)}kg ${LANG==='en'?'less':'menos'}`
-    : diff > 0.3 ? `+${diff.toFixed(1)}kg`
+    ? `${isImperial()?(Math.abs(diff)*2.20462).toFixed(1):Math.abs(diff).toFixed(1)}${pesoLabel()} ${LANG==='en'?'less':'menos'}`
+    : diff > 0.3 ? `+${isImperial()?(diff*2.20462).toFixed(1):diff.toFixed(1)}${pesoLabel()}`
     : (LANG==='en'?'Stable weight':'Peso estable');
 
   // Eje Y (3 labels)
@@ -7079,8 +7077,8 @@ function renderPesoTendencia(){
     ? `Blue line: actual records · ${trendColorName.charAt(0).toUpperCase()+trendColorName.slice(1)} line: smoothed trend`
     : `Línea azul: registros reales · Línea ${trendColorName}: tendencia suavizada`;
   const recordsText = LANG==='en'
-    ? `${pesos.length} records · ${pesos[0]?.peso||'?'}kg → ${pesos[pesos.length-1]?.peso||'?'}kg`
-    : `${pesos.length} registros · ${pesos[0]?.peso||'?'}kg → ${pesos[pesos.length-1]?.peso||'?'}kg`;
+    ? `${pesos.length} records · ${fmtPeso(pesos[0]?.peso)} → ${fmtPeso(pesos[pesos.length-1]?.peso)}`
+    : `${pesos.length} registros · ${fmtPeso(pesos[0]?.peso)} → ${fmtPeso(pesos[pesos.length-1]?.peso)}`;
 
   wrap.innerHTML = `
     <div class="sec-lbl" style="margin-bottom:6px">${t('📈 Tendencia de peso')}</div>
@@ -7151,14 +7149,14 @@ function hPerfil(){
       <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.08em;color:var(--sv)">Mi perfil</div>
       ${tieneData?`<button id="pf_edit_btn" onclick="perfilModoEditar()" style="padding:7px 16px;background:var(--bl2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">✏️ Editar</button>`:''}
     </div>
-    <div style="font-size:13px;color:var(--tx3);margin-bottom:16px">${tieneData?'Tus datos personales.':'Rellena tus datos para que tu coach pueda personalizar tu plan al máximo.'}</div>
+    <div style="font-size:13px;color:var(--tx3);margin-bottom:16px">${tieneData?t('Tus datos personales.'):t('Rellena tus datos para que tu coach pueda personalizar tu plan al máximo.')}</div>
   </div>
 
   <div id="pf_form" style="background:var(--s);border:0.5px solid var(--br);border-radius:14px;margin:0 14px;padding:16px;display:${tieneData?'none':'block'};${tieneData?'pointer-events:none;opacity:.85':''}">
-    <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">Datos personales</div>
+    <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">${t('Datos personales')}</div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">Peso (kg)</div><input class="inp" id="pf_peso" type="number" step="0.1" value="${c.peso_actual||''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">Altura (cm)</div><input class="inp" id="pf_altura" type="number" value="${c.altura||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">${t('Peso')} (${pesoLabel()})</div><input class="inp" id="pf_peso" type="number" step="${isImperial()?'0.5':'0.1'}" placeholder="${pesoPlaceholder()}" value="${c.peso_actual?(isImperial()?(c.peso_actual*2.20462).toFixed(1):c.peso_actual):''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">${t('Altura')} (${alturaLabel()})</div><input class="inp" id="pf_altura" type="text" placeholder="${alturaPlaceholder()}" value="${c.altura?isImperial()?fmtAltura(c.altura):c.altura):''}" style="margin-bottom:0"/></div>
     </div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
       <div><div class="form-lbl">Edad</div><input class="inp" id="pf_edad" type="number" value="${c.edad||''}" style="margin-bottom:0"/></div>
@@ -7168,8 +7166,8 @@ function hPerfil(){
       </select></div>
     </div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
-      <div><div class="form-lbl">Cintura (cm)</div><input class="inp" id="pf_cintura" type="number" step="0.1" value="${c.cintura_actual||''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">Cadera (cm)</div><input class="inp" id="pf_cadera" type="number" step="0.1" value="${c.cadera||''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">${t('Cintura')} (${cinturaLabel()})</div><input class="inp" id="pf_cintura" type="number" step="0.1" placeholder="${cinturaPlaceholder()}" value="${c.cintura_actual?(isImperial()?(c.cintura_actual/2.54).toFixed(1):c.cintura_actual):''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">${t('Cadera')} (${cinturaLabel()})</div><input class="inp" id="pf_cadera" type="number" step="0.1" placeholder="${isImperial()?'38':'96'}" value="${c.cadera?(isImperial()?(c.cadera/2.54).toFixed(1):c.cadera):''}" style="margin-bottom:0"/></div>
     </div>
     <div style="margin-bottom:10px"><div class="form-lbl">Nivel de actividad</div>
       <select class="inp" id="pf_actividad" style="margin-bottom:0">
@@ -7207,7 +7205,7 @@ function hPerfil(){
 
   <div style="padding:14px 14px 0">
     <div id="pf_btns" style="display:${tieneData?'none':'block'}">
-      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarPerfil()">Guardar perfil</button>
+      <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarPerfil()">${t('Guardar perfil')}</button>
     </div>
     <div id="pf_msg" style="font-size:13px;text-align:center;margin-top:8px;height:20px"></div>
   </div>
@@ -7544,13 +7542,13 @@ async function guardarPerfil(){
   try{
     const pf = (id) => document.getElementById(id);
     await api('/clientes/'+CD.id+'/perfil',{method:'PUT',body:JSON.stringify({
-      peso_actual: parseFloat(pf('pf_peso')?.value)||null,
-      altura: parseInt(pf('pf_altura')?.value)||null,
+      peso_actual: fromPeso(pf('pf_peso')?.value)||null,
+      altura: fromAltura(pf('pf_altura')?.value)||null,
       edad: parseInt(pf('pf_edad')?.value)||null,
       sexo: pf('pf_sexo')?.value||'Hombre',
       actividad: pf('pf_actividad')?.value||'Moderada',
-      cintura_actual: parseFloat(pf('pf_cintura')?.value)||null,
-      cadera: parseFloat(pf('pf_cadera')?.value)||null,
+      cintura_actual: fromCintura(pf('pf_cintura')?.value)||null,
+      cadera: fromCintura(pf('pf_cadera')?.value)||null,
       dieta_tipo: pf('pf_dieta')?.value||'Omnívoro',
       alimentos_no: pf('pf_alimentos_no')?.value||'',
       lesiones: pf('pf_lesiones')?.value||'',
@@ -8117,7 +8115,7 @@ function hPendientes(p){
       <span class="badge b-am">${COACH_LANG==='en'?'Pending':'Pendiente'}</span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">
-      ${[[tc('Objetivo'),tc(c.objetivo)||c.objetivo],[tc('Nivel'),tc(c.nivel)||c.nivel],[COACH_LANG==='en'?'Weight':'Peso',c.peso_actual?c.peso_actual+'kg':'—'],[COACH_LANG==='en'?'Height':'Altura',c.altura?c.altura+'cm':'—'],[tc('Edad'),c.edad?c.edad+(COACH_LANG==='en'?' y':' años'):'—'],[tc('Sexo'),c.sexo?tc(c.sexo):'—']].map(([l,v])=>`<div style="background:var(--s);border:0.5px solid var(--br);border-radius:8px;padding:7px 9px"><div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${l}</div><div style="font-size:12px;font-weight:600;color:var(--sv2);margin-top:1px">${v}</div></div>`).join('')}
+      ${[[tc('Objetivo'),tc(c.objetivo)||c.objetivo],[tc('Nivel'),tc(c.nivel)||c.nivel],[COACH_LANG==='en'?'Weight':'Peso',c.peso_actual?fmtPeso(c.peso_actual):'—'],[COACH_LANG==='en'?'Height':'Altura',c.altura?fmtAltura(c.altura):'—'],[tc('Edad'),c.edad?c.edad+(COACH_LANG==='en'?' y':' años'):'—'],[tc('Sexo'),c.sexo?tc(c.sexo):'—']].map(([l,v])=>`<div style="background:var(--s);border:0.5px solid var(--br);border-radius:8px;padding:7px 9px"><div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${l}</div><div style="font-size:12px;font-weight:600;color:var(--sv2);margin-top:1px">${v}</div></div>`).join('')}
     </div>
     ${c.lesiones?`<div style="background:rgba(239,68,68,.08);border:0.5px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 10px;font-size:12px;color:#fca5a5;margin-bottom:6px">⚠️ <span style="font-weight:700">${tc('Lesiones:')}</span> ${c.lesiones}</div>`:''}
     ${c.dieta_tipo&&c.dieta_tipo!=='Omnivoro'?`<div style="background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--gnb);margin-bottom:6px">🥗 <span style="font-weight:700">${tc('Dieta:')}</span> ${tc(c.dieta_tipo)}</div>`:''}
@@ -8393,10 +8391,10 @@ async function cargarGraficasCliente(){
               return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid var(--br)">
                 <div>
                   <div style="font-size:12px;font-weight:700;color:var(--sv)">${esPrincipal?'⭐ ':''}${nom}</div>
-                  <div style="font-size:10px;color:var(--tx3)">${d.peso}kg × ${d.reps} ${t('reps')} · ${fechaStr}</div>
+                  <div style="font-size:10px;color:var(--tx3)">${fmtPeso(d.peso)} × ${d.reps} ${t('reps')} · ${fechaStr}</div>
                 </div>
                 <div style="text-align:right;flex-shrink:0;margin-left:10px">
-                  <div style="font-size:16px;font-weight:800;color:var(--gnb)">${d.rm1}kg</div>
+                  <div style="font-size:16px;font-weight:800;color:var(--gnb)">${fmtPeso(d.rm1)}</div>
                   <div style="font-size:9px;color:var(--tx3)">${t('1RM est.')}</div>
                 </div>
               </div>`;
@@ -8461,20 +8459,21 @@ function renderGraficaSVG(nombre, data){
   // Dots + tooltips
   const dots = puntos.map((p,i)=>`
     <circle cx="${scaleX(i).toFixed(1)}" cy="${scaleY(p[1].peso).toFixed(1)}" r="3" fill="#3b82f6" stroke="#1e3a5f" stroke-width="1.5"/>
-    <title>${p[0]}: ${p[1].peso}kg × ${p[1].reps} reps${p[1].rir!=null?' · RIR '+p[1].rir:''}</title>`).join('');
+    <title>${p[0]}: ${fmtPeso(p[1].peso)} × ${p[1].reps} reps${p[1].rir!=null?' · RIR '+p[1].rir:''}</title>`).join('');
 
   // Last value
   const last = puntos[puntos.length-1];
   const prev = puntos.length > 1 ? puntos[puntos.length-2] : null;
   const diff = prev ? (last[1].peso - prev[1].peso) : 0;
-  const diffStr = diff > 0 ? `+${diff.toFixed(1)}kg` : diff < 0 ? `${diff.toFixed(1)}kg` : '';
+  const diffDisp = isImperial() ? diff*2.20462 : diff;
+  const diffStr = diff > 0 ? `+${diffDisp.toFixed(1)}${pesoLabel()}` : diff < 0 ? `${diffDisp.toFixed(1)}${pesoLabel()}` : '';
   const diffColor = diff > 0 ? '#86efac' : diff < 0 ? '#fca5a5' : '#a1a1aa';
 
   return `<div style="background:var(--s);border:0.5px solid var(--br);border-radius:12px;padding:12px;margin-bottom:10px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
       <div style="font-size:12px;font-weight:700;color:var(--sv)">${nombre}</div>
       <div style="text-align:right">
-        <span style="font-size:16px;font-weight:800;color:var(--sv)">${last[1].peso}kg</span>
+        <span style="font-size:16px;font-weight:800;color:var(--sv)">${fmtPeso(last[1].peso)}</span>
         ${diffStr?` <span style="font-size:11px;font-weight:600;color:${diffColor}">${diffStr}</span>`:''}
       </div>
     </div>
@@ -8893,7 +8892,7 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
                     style="flex:1;min-width:0;padding:6px 2px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:13px;font-weight:700;text-align:center;font-family:inherit"/>
                   <button onclick="revAjustarPeso('rev_kg_${exId}_${si}', 2.5)" style="width:20px;height:30px;border-radius:5px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;padding:0">+</button>
                 </div>
-                <div style="font-size:11px;color:var(--tx3);text-align:center">${ult && si===e.series-1 ? ult.peso_real+'kg' : '—'}</div>
+                <div style="font-size:11px;color:var(--tx3);text-align:center">${ult && si===e.series-1 ? fmtPeso(ult.peso_real) : '—'}</div>
               </div>`;
             }).join('')}
           </div>
