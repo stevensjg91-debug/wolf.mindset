@@ -7156,7 +7156,7 @@ function hPerfil(){
     <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">${t('Datos personales')}</div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
       <div><div class="form-lbl">${t('Peso')} (${pesoLabel()})</div><input class="inp" id="pf_peso" type="number" step="${isImperial()?'0.5':'0.1'}" placeholder="${pesoPlaceholder()}" value="${c.peso_actual?(isImperial()?(c.peso_actual*2.20462).toFixed(1):c.peso_actual):''}" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">${t('Altura')} (${alturaLabel()})</div><input class="inp" id="pf_altura" type="text" placeholder="${alturaPlaceholder()}" value="${c.altura?isImperial()?fmtAltura(c.altura):c.altura):''}" style="margin-bottom:0"/></div>
+      <div><div class="form-lbl">${t('Altura')} (${alturaLabel()})</div><input class="inp" id="pf_altura" type="text" placeholder="${alturaPlaceholder()}" value="${c.altura?(isImperial()?fmtAltura(c.altura):c.altura):''}" style="margin-bottom:0"/></div>
     </div>
     <div class="g2" style="gap:10px;margin-bottom:10px">
       <div><div class="form-lbl">Edad</div><input class="inp" id="pf_edad" type="number" value="${c.edad||''}" style="margin-bottom:0"/></div>
