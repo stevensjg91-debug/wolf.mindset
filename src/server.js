@@ -289,7 +289,25 @@ app.get('*', (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(getIndexHtml());
 });
+app.get('*', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(getIndexHtml());
+});
 
+// 🔽 PEGA ESTO AQUÍ
+app.get('/api/backup-db', (req, res) => {
+  const secret = req.query.secret;
+  if (secret !== 'wolfbackup2025') return res.status(403).end();
+
+  const path = require('path');
+  const dbPath = process.env.DB_PATH || 
+    path.join(__dirname, '../../data/wolfmindset.db');
+
+  res.download(dbPath);
+});
+
+// 🔽 ESTO YA LO TENÍAS
+initDB().then(() => {
 initDB().then(() => {
   // Ensure push_subscriptions table exists (may be missing in older DBs)
   try {
