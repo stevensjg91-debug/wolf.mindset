@@ -6909,11 +6909,25 @@ async function renderFotosProgreso() {
         ${fotosHtml}
       </div>
       ${comentarioCoach?`
-        <div style="background:rgba(37,99,235,.07);border:0.5px solid rgba(59,130,246,.25);border-radius:10px;padding:12px;overflow:hidden">
-          <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">💬 ${t('Valoración del coach')}</div>
-          <div id="coach_comment_${mesId}" data-no-translate="1" data-clamp="3" data-expanded="0" style="font-size:13px;color:var(--sv);line-height:1.6;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${comentarioCoach}</div>
-          <button onclick="toggleCoachComment('coach_comment_${mesId}',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>
-        </div>`:''}
+  <div style="border:0.5px solid rgba(59,130,246,.25);border-radius:10px;overflow:hidden">
+    <button onclick="
+      var body=document.getElementById('coach_acc_${mesId}');
+      var arrow=document.getElementById('coach_arr_${mesId}');
+      var open=body.style.maxHeight&&body.style.maxHeight!=='0px';
+      body.style.maxHeight=open?'0px':body.scrollHeight+'px';
+      body.style.opacity=open?'0':'1';
+      arrow.style.transform=open?'rotate(0deg)':'rotate(180deg)';
+    " style="width:100%;display:flex;align-items:center;justify-content:space-between;background:rgba(37,99,235,.07);border:none;padding:10px 12px;cursor:pointer;font-family:inherit;gap:8px">
+      <div style="display:flex;align-items:center;gap:7px">
+        <span style="font-size:15px">💬</span>
+        <span style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.07em">${t('Valoración del coach')}</span>
+      </div>
+      <span id="coach_arr_${mesId}" style="color:var(--blg);font-size:12px;transition:transform .3s;display:inline-block">▾</span>
+    </button>
+    <div id="coach_acc_${mesId}" style="max-height:0px;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .25s ease">
+      <div style="padding:12px;font-size:13px;color:var(--sv);line-height:1.6;background:rgba(37,99,235,.04)">${comentarioCoach}</div>
+    </div>
+  </div>`:''}
     </div>`;
   }).join('');
 }
