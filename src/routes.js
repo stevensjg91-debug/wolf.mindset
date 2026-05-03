@@ -1744,6 +1744,23 @@ function middlewareMensajeDiario(req, res, next) {
     if (cl.bienvenida_pendiente && !cl.bienvenida_enviada) {
       dbRun('UPDATE clientes SET bienvenida_enviada=1, bienvenida_pendiente=0, ultimo_acceso_dia=? WHERE id=?', [hoy, cl.id]);
       enviarMensajeMotivador(cl.id, 'bienvenida').catch(() => {});
+
+      // Notificar al coach que el cliente ha accedido por primera vez
+      try {
+        const coachId = getCoachId();
+        if (coachId) {
+          const u = dbGet('SELECT nombre FROM users WHERE id=?', [req.user.id]);
+          const nombre = u?.nombre || req.user.username;
+          const coach = dbGet('SELECT lang FROM users WHERE id=?', [coachId]);
+          const isEn = coach?.lang === 'en';
+          const msg = isEn
+            ? `🎉 ${nombre} has logged into the app for the first time!`
+            : `🎉 ${nombre} ha accedido a la app por primera vez`;
+          crearNotificacion(coachId, 'primer_acceso', msg);
+          ssePushCoaches('notificacion', { tipo: 'primer_acceso', mensaje: msg });
+        }
+      } catch(e) {}
+
       return next();
     }
 
