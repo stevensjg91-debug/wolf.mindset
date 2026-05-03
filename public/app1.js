@@ -5373,11 +5373,13 @@ function hStreakBanner(){
 function hMensajeCoach(){
   const msg = CD.mensaje_semana;
   if(!msg) return '';
+  const corto = msg.length > 120;
   return`<div style="background:linear-gradient(135deg,rgba(37,99,235,.1),rgba(17,17,19,.9));border:0.5px solid rgba(59,130,246,.25);border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start">
     <span style="font-size:22px;flex-shrink:0">🐺</span>
-    <div>
+    <div style="flex:1;min-width:0">
       <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">${t('Mensaje de tu coach')}</div>
-      <div style="font-size:13px;color:var(--sv2);line-height:1.5">${msg}</div>
+      <div id="coach_msg_txt" style="font-size:13px;color:var(--sv2);line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${msg}</div>
+      ${corto?`<button onclick="(function(btn){var el=document.getElementById('coach_msg_txt');var collapsed=el.style.webkitLineClamp!=='unset'&&el.style.webkitLineClamp!=='';if(collapsed){el.style.webkitLineClamp='unset';el.style.display='block';btn.textContent=t('Ver menos')+' ▴';}else{el.style.webkitLineClamp='3';el.style.display='-webkit-box';btn.textContent=t('Ver más')+' ▾';}})(this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:5px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}
     </div>
   </div>`;
 }
