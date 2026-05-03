@@ -5378,8 +5378,8 @@ function hMensajeCoach(){
     <span style="font-size:22px;flex-shrink:0">🐺</span>
     <div style="flex:1;min-width:0">
       <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">${t('Mensaje de tu coach')}</div>
-      <div id="coach_msg_txt" style="font-size:13px;color:var(--sv2);line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${msg}</div>
-      ${corto?`<button onclick="(function(btn){var el=document.getElementById('coach_msg_txt');var collapsed=el.style.webkitLineClamp!=='unset'&&el.style.webkitLineClamp!=='';if(collapsed){el.style.webkitLineClamp='unset';el.style.display='block';btn.textContent=t('Ver menos')+' ▴';}else{el.style.webkitLineClamp='3';el.style.display='-webkit-box';btn.textContent=t('Ver más')+' ▾';}})(this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:5px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}
+      <div id="coach_msg_txt" data-max-h="4.8em" data-expanded="0" style="font-size:13px;color:var(--sv2);line-height:1.6;max-height:4.8em;overflow:hidden">${msg}</div>
+      ${corto?`<button onclick="toggleCoachComment('coach_msg_txt',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:5px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}
     </div>
   </div>`;
 }
@@ -6760,7 +6760,7 @@ function coachMsgsVolverLista(){
 
 
 function hProgreso2(){return`<div style="padding-top:8px">
-  ${CD.mensaje_semana?`<div class="motiv-card"><div id="motiv_msg_txt" style="font-size:14px;color:var(--sv2);line-height:1.7;font-weight:500;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${CD.mensaje_semana}</div>${CD.mensaje_semana.length>100?`<button onclick="toggleCoachComment('motiv_msg_txt',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}</div>`:''}
+  ${CD.mensaje_semana?`<div class="motiv-card"><div id="motiv_msg_txt" data-max-h="5.1em" data-expanded="0" style="font-size:14px;color:var(--sv2);line-height:1.7;font-weight:500;max-height:5.1em;overflow:hidden">${CD.mensaje_semana}</div>${CD.mensaje_semana.length>100?`<button onclick="toggleCoachComment('motiv_msg_txt',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}</div>`:''}
   <div class="stats-g">
     <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Semanas')}</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.semanas}</div></div>
     <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Objetivo')}</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${t(CD.objetivo||'')}</div></div>
@@ -6909,7 +6909,7 @@ async function renderFotosProgreso() {
       ${comentarioCoach?`
         <div style="background:rgba(37,99,235,.07);border:0.5px solid rgba(59,130,246,.25);border-radius:10px;padding:12px">
           <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">💬 ${t('Valoración del coach')}</div>
-          <div id="coach_comment_${mesId}" data-no-translate="1" style="font-size:13px;color:var(--sv);line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${comentarioCoach}</div>
+          <div id="coach_comment_${mesId}" data-no-translate="1" data-max-h="4.8em" data-expanded="0" style="font-size:13px;color:var(--sv);line-height:1.6;max-height:4.8em;overflow:hidden">${comentarioCoach}</div>
           <button onclick="toggleCoachComment('coach_comment_${mesId}',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>
         </div>`:''}
     </div>`;
@@ -6919,15 +6919,16 @@ async function renderFotosProgreso() {
 function toggleCoachComment(id, btn){
   const el=document.getElementById(id);
   if(!el)return;
-  // Si webkitLineClamp es '3' o tiene valor → está colapsado → expandir
-  const collapsed = el.style.webkitLineClamp !== 'unset' && el.style.webkitLineClamp !== '';
-  if(collapsed){
-    el.style.webkitLineClamp='unset';
-    el.style.display='block';
+  const expanded = el.getAttribute('data-expanded')==='1';
+  if(!expanded){
+    el.style.maxHeight='none';
+    el.style.overflow='visible';
+    el.setAttribute('data-expanded','1');
     btn.textContent=t('Ver menos')+' ▴';
   } else {
-    el.style.webkitLineClamp='3';
-    el.style.display='-webkit-box';
+    el.style.maxHeight=el.getAttribute('data-max-h')||'5em';
+    el.style.overflow='hidden';
+    el.setAttribute('data-expanded','0');
     btn.textContent=t('Ver más')+' ▾';
   }
 }
