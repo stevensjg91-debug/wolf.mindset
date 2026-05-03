@@ -902,18 +902,18 @@ router.post('/auth/registro', async (req, res) => {
 
     // Notificar al coach de la nueva solicitud en tiempo real
     const coachId = getCoachId();
-    if(coachId) {
+   if(coachId) {
       const coach = dbGet('SELECT lang FROM users WHERE id=?', [coachId]);
       const isEn = coach?.lang === 'en';
       const msg = isEn
         ? `🙋 New access request from ${nombre}${objetivo ? ' · Goal: '+objetivo : ''}`
         : `🙋 Nueva solicitud de acceso de ${nombre}${objetivo ? ' · Objetivo: '+objetivo : ''}`;
-     crearNotificacion(coachId, 'nuevo_registro', msg);
-ssePushCoaches('notificacion', { tipo: 'nuevo_registro', mensaje: msg });
-// Push notification al coach aunque tenga la app cerrada
-if(global.sendPushToUser) {
-  global.sendPushToUser(coachId, 'WolfMindset 🐺', msg, '/');
-}
+      crearNotificacion(coachId, 'nuevo_registro', msg);
+      ssePushCoaches('notificacion', { tipo: 'nuevo_registro', mensaje: msg });
+      if(global.sendPushToUser) {
+        global.sendPushToUser(coachId, 'WolfMindset 🐺', msg, '/');
+      }
+    }
 
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
