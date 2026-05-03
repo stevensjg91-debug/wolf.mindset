@@ -173,6 +173,12 @@ async function initDB() {
   )`);
   try { db.run('CREATE INDEX IF NOT EXISTS idx_mensajes_cliente  ON mensajes(cliente_id, created_at)'); } catch(e) {}
   try { db.run('CREATE INDEX IF NOT EXISTS idx_mensajes_noleidos ON mensajes(cliente_id, leido, de_coach)'); } catch(e) {}
+
+  // ── Notificaciones ──────────────────────────────────────────────────
+  db.run(`CREATE TABLE IF NOT EXISTS notificaciones (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, tipo TEXT NOT NULL, mensaje TEXT NOT NULL, leida INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP)`);
+
+  // ── Push subscriptions ───────────────────────────────────────────
+  db.run(`CREATE TABLE IF NOT EXISTS push_subscriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, subscription TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
 }
 
 function dbRun(sql, params = []) {
