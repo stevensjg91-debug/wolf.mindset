@@ -863,12 +863,17 @@ function renderFotosProgreso(){
       (()=>{
         const pubMsg = Object.values(g).find(f=>f.published_analysis)?.published_analysis||'';
         return pubMsg
-          ? '<div style="background:rgba(37,99,235,.07);border:0.5px solid rgba(59,130,246,.25);border-radius:10px;padding:12px 14px;margin-top:6px">'
-            +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">'
-            +'<div style="width:22px;height:22px;border-radius:50%;background:var(--bl2);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0">💬</div>'
-            +'<div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.08em">Mensaje de tu coach</div>'
+          ? '<div style="border:0.5px solid rgba(59,130,246,.25);border-radius:10px;overflow:hidden;margin-top:6px">'
+            +'<button onclick="toggleAcordeonCoach(\'msg_'+Date.now()+'\')" id="coach_msg_btn_'+Date.now()+'" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:rgba(37,99,235,.07);border:none;padding:10px 12px;cursor:pointer;font-family:inherit;gap:8px" data-acc-id="coach_msg_acc_'+Date.now()+'" data-arr-id="coach_msg_arr_'+Date.now()+'">'
+            +'<div style="display:flex;align-items:center;gap:7px">'
+            +'<span style="font-size:15px">💬</span>'
+            +'<span style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.07em">Mensaje de tu coach</span>'
             +'</div>'
-            +'<div style="font-size:13px;color:var(--sv);line-height:1.75">'+pubMsg+'</div>'
+            +'<span style="color:var(--blg);font-size:12px;transition:transform .3s;display:inline-block" data-arr>▾</span>'
+            +'</button>'
+            +'<div style="max-height:0px;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .25s ease" data-acc>'
+            +'<div style="padding:12px;font-size:13px;color:var(--sv);line-height:1.75">'+pubMsg+'</div>'
+            +'</div>'
             +'</div>'
           : '';
       })()+
@@ -942,10 +947,15 @@ function renderCoachFotos(fotos){
       +(USER&&USER.role==='coach' ? '<button onclick="coachAnalizarSemana('+fi+',this)" data-fechas=\''+JSON.stringify(fechas).replace(/'/g,"&apos;")+'\' id="cfa_btn_'+fi+'" style="width:100%;padding:9px;border:0.5px solid rgba(59,130,246,.3);border-radius:9px;background:rgba(37,99,235,.07);color:var(--blg);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:8px">'+btnLabel+'</button>' : '')
       +'<div id="cfa_result_'+fi+'"></div>'
       +(pubAnalysis
-        ?'<div style="background:rgba(37,99,235,.06);border:0.5px solid rgba(59,130,246,.2);border-radius:8px;padding:10px 12px">'
-          +'<div style="font-size:10px;font-weight:700;color:var(--blg);margin-bottom:5px">💬 '+(COACH_LANG==='en'?'Coach message':'Mensaje de tu coach')+'</div>'
-          +'<div style="font-size:12px;color:var(--sv2);line-height:1.7" id="cfa_pub_'+fi+'">'+pubAnalysis+'</div>'
-          +(USER&&USER.role==='coach' ? '<button onclick="coachEditarPublicado('+fi+',this)" data-fotoids=\''+JSON.stringify(allFotoIds).replace(/'/g,"&apos;")+'\' style="margin-top:8px;padding:5px 12px;border:0.5px solid var(--br);border-radius:7px;background:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'Edit':'Editar')+'</button>' : '')
+        ?'<div style="border:0.5px solid rgba(59,130,246,.2);border-radius:8px;overflow:hidden">'
+          +'<button onclick="toggleAcordeonCoach(\'cfa_'+fi+'\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:rgba(37,99,235,.06);border:none;padding:9px 12px;cursor:pointer;font-family:inherit;gap:8px">'
+          +'<span style="font-size:10px;font-weight:700;color:var(--blg)">💬 '+(COACH_LANG==='en'?'Coach message':'Mensaje de tu coach')+'</span>'
+          +'<span id="coach_arr_cfa_'+fi+'" style="color:var(--blg);font-size:12px;transition:transform .3s;display:inline-block">▾</span>'
+          +'</button>'
+          +'<div id="coach_acc_cfa_'+fi+'" style="max-height:0px;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .25s ease">'
+          +'<div style="padding:10px 12px;font-size:12px;color:var(--sv2);line-height:1.7" id="cfa_pub_'+fi+'">'+pubAnalysis+'</div>'
+          +(USER&&USER.role==='coach' ? '<div style="padding:0 12px 10px"><button onclick="coachEditarPublicado('+fi+',this)" data-fotoids=\''+JSON.stringify(allFotoIds).replace(/'/g,"&apos;")+'\' style="padding:5px 12px;border:0.5px solid var(--br);border-radius:7px;background:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">'+(COACH_LANG==='en'?'Edit':'Editar')+'</button></div>' : '')
+          +'</div>'
           +'</div>'
         :'')
       +'</div>';
@@ -1380,4 +1390,22 @@ function dbEliminarFav(nombre, btn){
   btn.remove();
   if(!document.getElementById('db_favoritos_chips')?.children.length)
     document.getElementById('db_favoritos_wrap').style.display='none';
+}
+
+function toggleAcordeonCoach(mesId){
+  var body = document.getElementById("coach_acc_" + mesId);
+  var arrow = document.getElementById("coach_arr_" + mesId);
+  if(!body){
+    // fallback para bloques con data-acc/data-arr
+    var btn = event && event.currentTarget;
+    if(btn){
+      body = btn.nextElementSibling;
+      arrow = btn.querySelector("[data-arr]");
+    }
+  }
+  if(!body) return;
+  var open = body.style.maxHeight && body.style.maxHeight !== "0px";
+  body.style.maxHeight = open ? "0px" : body.scrollHeight + "px";
+  body.style.opacity = open ? "0" : "1";
+  if(arrow) arrow.style.transform = open ? "rotate(0deg)" : "rotate(180deg)";
 }
