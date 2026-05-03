@@ -5761,7 +5761,7 @@ function hEntreno(){
       </div>
       ${e.nota_coach?`<div style="background:linear-gradient(135deg,rgba(180,130,0,0.18),rgba(245,158,11,0.1));border-left:3px solid #f59e0b;padding:8px 12px;margin:0 0 8px;display:flex;gap:8px;align-items:flex-start"><span style="font-size:14px">🐺</span><div><div style="font-size:9px;color:#fcd34d;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1px">${t('Coach dice')}</div><div style="font-size:12px;color:#fde68a;font-weight:600">${e.nota_coach}</div></div></div>`:''}
       <div class="strong-serie-header" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px 1fr 1fr'}">
-        <span>${t('SET')}</span><span>${t('PREVIOUS')}</span><span>✓</span><span>KG</span><span>${t('REPS')}</span>${e.rir!=null?'<span>RIR</span>':''}
+        <span>${t('SET')}</span><span>${t('PREVIOUS')}</span><span>✓</span><span>${pesoLabel().toUpperCase()}</span><span>${t('REPS')}</span>${e.rir!=null?'<span>RIR</span>':''}
       </div>
       ${seriesRows}
       <!-- Nota del cliente para el coach -->
