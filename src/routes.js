@@ -633,24 +633,69 @@ router.put('/ejercicios-config/:nombre', coachOnly, (req, res) => {
 });
 
 // ── BASE DE DATOS EJERCICIOS Y ALIMENTOS ──────────────────────────
+// Caché en memoria para datos estáticos. Expira cada 24h y se limpia al recargar la BD.
+const DB_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const dbListCache = {
+  ejercicios: new Map(),
+  alimentos: new Map()
+};
+
+function makeDbCacheKey(query) {
+  return JSON.stringify(Object.keys(query || {}).sort().reduce((acc, key) => {
+    acc[key] = query[key];
+    return acc;
+  }, {}));
+}
+
+function getDbCache(bucket, key) {
+  const item = dbListCache[bucket].get(key);
+  if (!item) return null;
+  if (Date.now() - item.ts > DB_CACHE_TTL_MS) {
+    dbListCache[bucket].delete(key);
+    return null;
+  }
+  return item.data;
+}
+
+function setDbCache(bucket, key, data) {
+  dbListCache[bucket].set(key, { ts: Date.now(), data });
+}
+
+function resetDbListCache() {
+  dbListCache.ejercicios.clear();
+  dbListCache.alimentos.clear();
+}
+
 router.get('/ejercicios-db', (req, res) => {
+  const cacheKey = makeDbCacheKey(req.query);
+  const cached = getDbCache('ejercicios', cacheKey);
+  if (cached) return res.json(cached);
+
   const { grupo, buscar } = req.query;
   let sql = 'SELECT * FROM ejercicios_db WHERE 1=1';
   const params = [];
   if (grupo && grupo !== 'Todos' && grupo !== 'All') { sql += ' AND grupo=?'; params.push(grupo); }
   if (buscar) { sql += ' AND (nombre LIKE ? OR musculos LIKE ?)'; params.push('%'+buscar+'%','%'+buscar+'%'); }
   sql += ' ORDER BY nombre';
-  res.json(dbAll(sql, params));
+  const data = dbAll(sql, params);
+  setDbCache('ejercicios', cacheKey, data);
+  res.json(data);
 });
 
 router.get('/alimentos-db', (req, res) => {
+  const cacheKey = makeDbCacheKey(req.query);
+  const cached = getDbCache('alimentos', cacheKey);
+  if (cached) return res.json(cached);
+
   const { categoria, buscar } = req.query;
   let sql = 'SELECT * FROM alimentos_db WHERE 1=1';
   const params = [];
   if (categoria && categoria !== 'Todos') { sql += ' AND categoria=?'; params.push(categoria); }
   if (buscar) { sql += ' AND nombre LIKE ?'; params.push('%'+buscar+'%'); }
   sql += ' ORDER BY categoria, nombre';
-  res.json(dbAll(sql, params));
+  const data = dbAll(sql, params);
+  setDbCache('alimentos', cacheKey, data);
+  res.json(data);
 });
 
 // ── CLIENTES PENDIENTES ────────────────────────────────────────────
@@ -689,6 +734,7 @@ router.post('/reload-ejercicios', (req, res) => {
       [a.categoria,a.nombre,a.calorias,a.proteinas,a.carbos,a.grasas]));
     const { saveToDisk } = require('./database');
     saveToDisk();
+    resetDbListCache();
     res.json({ ok: true, ejercicios: EJERCICIOS.length, alimentos: ALIMENTOS.length });
   } catch(e) {
     res.status(500).json({ error: e.message });
