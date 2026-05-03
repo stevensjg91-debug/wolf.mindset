@@ -1,12 +1,6 @@
 [build]
 builder = "NIXPACKS"
 
-[build.nixpacksPlan.phases.setup]
-nixPkgs = ["nodejs_18", "python3", "make", "gcc-unwrapped"]
-
-[build.nixpacksPlan.phases.install]
-cmds = ["npm install"]
-
 [deploy]
 startCommand = "npm start"
 restartPolicyType = "ON_FAILURE"
