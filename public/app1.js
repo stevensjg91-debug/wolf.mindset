@@ -5376,9 +5376,11 @@ function hMensajeCoach(){
   const corto = msg.length > 120;
   return`<div style="background:linear-gradient(135deg,rgba(37,99,235,.1),rgba(17,17,19,.9));border:0.5px solid rgba(59,130,246,.25);border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start">
     <span style="font-size:22px;flex-shrink:0">🐺</span>
-    <div style="flex:1;min-width:0">
+    <div style="flex:1;min-width:0;overflow:hidden">
       <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">${t('Mensaje de tu coach')}</div>
-      <div id="coach_msg_txt" data-clamp="3" data-expanded="0" style="font-size:13px;color:var(--sv2);line-height:1.6;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${msg}</div>
+      <div style="overflow:hidden">
+        <div id="coach_msg_txt" data-clamp="3" data-expanded="0" style="font-size:13px;color:var(--sv2);line-height:1.6;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${msg}</div>
+      </div>
       ${corto?`<button onclick="toggleCoachComment('coach_msg_txt',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:5px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}
     </div>
   </div>`;
@@ -6760,7 +6762,7 @@ function coachMsgsVolverLista(){
 
 
 function hProgreso2(){return`<div style="padding-top:8px">
-  ${CD.mensaje_semana?`<div class="motiv-card"><div id="motiv_msg_txt" data-clamp="3" data-expanded="0" style="font-size:14px;color:var(--sv2);line-height:1.7;font-weight:500;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${CD.mensaje_semana}</div>${CD.mensaje_semana.length>100?`<button onclick="toggleCoachComment('motiv_msg_txt',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}</div>`:''}
+  ${CD.mensaje_semana?`<div class="motiv-card"><div style="overflow:hidden"><div id="motiv_msg_txt" data-clamp="3" data-expanded="0" style="font-size:14px;color:var(--sv2);line-height:1.7;font-weight:500;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${CD.mensaje_semana}</div></div>${CD.mensaje_semana.length>100?`<button onclick="toggleCoachComment('motiv_msg_txt',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}</div>`:''}
   <div class="stats-g">
     <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Semanas')}</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.semanas}</div></div>
     <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Objetivo')}</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${t(CD.objetivo||'')}</div></div>
@@ -6907,7 +6909,7 @@ async function renderFotosProgreso() {
         ${fotosHtml}
       </div>
       ${comentarioCoach?`
-        <div style="background:rgba(37,99,235,.07);border:0.5px solid rgba(59,130,246,.25);border-radius:10px;padding:12px">
+        <div style="background:rgba(37,99,235,.07);border:0.5px solid rgba(59,130,246,.25);border-radius:10px;padding:12px;overflow:hidden">
           <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">💬 ${t('Valoración del coach')}</div>
           <div id="coach_comment_${mesId}" data-no-translate="1" data-clamp="3" data-expanded="0" style="font-size:13px;color:var(--sv);line-height:1.6;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${comentarioCoach}</div>
           <button onclick="toggleCoachComment('coach_comment_${mesId}',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>
