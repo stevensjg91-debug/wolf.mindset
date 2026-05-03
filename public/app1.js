@@ -6910,14 +6910,7 @@ async function renderFotosProgreso() {
       </div>
       ${comentarioCoach?`
   <div style="border:0.5px solid rgba(59,130,246,.25);border-radius:10px;overflow:hidden">
-    <button onclick="
-      var body=document.getElementById('coach_acc_${mesId}');
-      var arrow=document.getElementById('coach_arr_${mesId}');
-      var open=body.style.maxHeight&&body.style.maxHeight!=='0px';
-      body.style.maxHeight=open?'0px':body.scrollHeight+'px';
-      body.style.opacity=open?'0':'1';
-      arrow.style.transform=open?'rotate(0deg)':'rotate(180deg)';
-    " style="width:100%;display:flex;align-items:center;justify-content:space-between;background:rgba(37,99,235,.07);border:none;padding:10px 12px;cursor:pointer;font-family:inherit;gap:8px">
+    <button onclick="toggleAcordeonCoach('${mesId}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:rgba(37,99,235,.07);border:none;padding:10px 12px;cursor:pointer;font-family:inherit;gap:8px">
       <div style="display:flex;align-items:center;gap:7px">
         <span style="font-size:15px">💬</span>
         <span style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.07em">${t('Valoración del coach')}</span>
@@ -6950,7 +6943,15 @@ function toggleCoachComment(id, btn){
     btn.textContent=t('Ver más')+' ▾';
   }
 }
-
+function toggleAcordeonCoach(mesId){
+  var body = document.getElementById('coach_acc_' + mesId);
+  var arrow = document.getElementById('coach_arr_' + mesId);
+  if(!body) return;
+  var open = body.style.maxHeight && body.style.maxHeight !== '0px';
+  body.style.maxHeight = open ? '0px' : body.scrollHeight + 'px';
+  body.style.opacity = open ? '0' : '1';
+  if(arrow) arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+}
 async function guardarMediciones(){
   const pesoInput = parseFloat(document.getElementById('np')?.value);
   const cinturaInput = parseFloat(document.getElementById('medida_cintura')?.value)||null;
