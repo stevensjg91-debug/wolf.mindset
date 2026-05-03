@@ -910,10 +910,6 @@ router.post('/auth/registro', async (req, res) => {
         : `🙋 Nueva solicitud de acceso de ${nombre}${objetivo ? ' · Objetivo: '+objetivo : ''}`;
       crearNotificacion(coachId, 'nuevo_registro', msg);
       ssePushCoaches('notificacion', { tipo: 'nuevo_registro', mensaje: msg });
-      // Push notification al coach aunque tenga la app cerrada
-      if(global.sendPushToUser) {
-        global.sendPushToUser(coachId, 'WolfMindset 🐺', msg, '/');
-      }
     }
 
     res.json({ ok: true });
