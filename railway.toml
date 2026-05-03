@@ -1,17 +1,11 @@
 [build]
 builder = "NIXPACKS"
-nixpacksPlan = """
-providers = []
 
-[phases.setup]
+[build.nixpacksPlan.phases.setup]
 nixPkgs = ["nodejs_18", "python3", "make", "gcc-unwrapped"]
 
-[phases.install]
+[build.nixpacksPlan.phases.install]
 cmds = ["npm install"]
-
-[phases.build]
-cmds = []
-"""
 
 [deploy]
 startCommand = "npm start"
