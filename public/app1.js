@@ -6760,7 +6760,7 @@ function coachMsgsVolverLista(){
 
 
 function hProgreso2(){return`<div style="padding-top:8px">
-  ${CD.mensaje_semana?`<div class="motiv-card"><div style="font-size:14px;color:var(--sv2);line-height:1.7;font-weight:500">${CD.mensaje_semana}</div></div>`:''}
+  ${CD.mensaje_semana?`<div class="motiv-card"><div id="motiv_msg_txt" style="font-size:14px;color:var(--sv2);line-height:1.7;font-weight:500;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${CD.mensaje_semana}</div>${CD.mensaje_semana.length>100?`<button onclick="toggleCoachComment('motiv_msg_txt',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}</div>`:''}
   <div class="stats-g">
     <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Semanas')}</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.semanas}</div></div>
     <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Objetivo')}</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${t(CD.objetivo||'')}</div></div>
