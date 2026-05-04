@@ -9996,7 +9996,7 @@ async function tabMoveEx(clienteId, diaId, exIndex, dir){
   try{
     const c = await api('/clientes/'+clienteId);
     const dia = (c.dias || []).find(d => String(d.id) === String(diaId));
-    if(!dia || !dia.ejercicios) return;
+    if(!dia || !dia.ejercicios) throw new Error('Día no encontrado');
 
     const arr = dia.ejercicios;
     const newIndex = exIndex + dir;
@@ -10011,8 +10011,11 @@ async function tabMoveEx(clienteId, diaId, exIndex, dir){
       });
     }
 
-    await abrirCliente(clienteId);
+    window._coachClienteActual = await api('/clientes/'+clienteId);
+    switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
+
   }catch(e){
-    alert('Error moviendo ejercicio');
+    console.error('tabMoveEx error:', e);
+    alert('Error moviendo ejercicio: ' + (e.message || e.error || 'desconocido'));
   }
 }
