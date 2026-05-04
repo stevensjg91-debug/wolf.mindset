@@ -10066,19 +10066,29 @@ async function renderIaChatPanel() {
         await Promise.all(arr.map((ex, i) =>
           api('/ejercicios/' + ex.id, { method: 'PUT', body: JSON.stringify({ orden: i }) })
         ));
-        // Guardar qué días están abiertos antes de re-renderizar
-        const openDias = [...document.querySelectorAll('[id^="tab_dia_body_"]')]
-          .filter(el => el.style.display !== 'none')
-          .map(el => el.id.replace('tab_dia_body_', ''));
-        await verCliente(clienteId);
-        setTimeout(() => {
-          switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
-          // Reabrir los días que estaban abiertos
-          setTimeout(() => openDias.forEach(id => {
-            const el = document.getElementById('tab_dia_body_' + id);
-            if (el) el.style.display = 'block';
-          }), 50);
-        }, 50);
+        // Actualizar solo el contenido del día en el DOM — sin parpadeo
+        const bodyEl = document.getElementById('tab_dia_body_' + diaId);
+        if (bodyEl) {
+          bodyEl.innerHTML = arr.map((e, ei) => `
+  <div class="ex-drag-row" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--br)">
+    <div class="drag-handle" draggable="true"
+      data-cliente="${clienteId}" data-dia="${diaId}" data-idx="${ei}"
+      style="width:26px;height:40px;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--tx3);font-size:16px;border-radius:6px;background:rgba(255,255,255,.04);border:0.5px solid var(--br);flex-shrink:0"
+      title="Arrastra para reordenar">⠿</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:700;color:var(--sv)">${e.nombre}</div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:1px">${e.series}×${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''} · ${e.descanso}s${e.rir!=null?' · RIR'+e.rir:''}${e.es_principal?' ⭐':''}</div>
+      ${e.nota_coach?`<div style="font-size:10px;color:var(--amb);margin-top:2px">📝 ${e.nota_coach}</div>`:''}
+    </div>
+    <button onclick="tabEntrenoEditEx(${e.id})" style="background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);border-radius:6px;color:var(--blg);cursor:pointer;font-size:11px;padding:5px 8px;font-weight:600;white-space:nowrap">✏️ Editar</button>
+    <button onclick="tabEntrenoDelEx(${e.id},${diaId})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px;padding:4px">✕</button>
+  </div>`).join('');
+          // Actualizar también _coachClienteActual en memoria
+          if (window._coachClienteActual) {
+            const d = (window._coachClienteActual.dias || []).find(d => String(d.id) === String(diaId));
+            if (d) d.ejercicios = arr;
+          }
+        }
       } catch(err) {
         console.error('drag reorder error:', err);
         alert('Error al reordenar');
