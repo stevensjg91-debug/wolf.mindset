@@ -10028,12 +10028,3 @@ async function tabMoveEx(clienteId, diaId, exIndex, dir){
     alert('Error moviendo ejercicio: ' + (e.message || 'desconocido'));
   }
 }
-
-    window._coachClienteActual = await api('/clientes/'+clienteId);
-    switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
-
-  }catch(e){
-    console.error('tabMoveEx error:', e);
-    alert('Error moviendo ejercicio: ' + (e.message || e.error || 'desconocido'));
-  }
-}
