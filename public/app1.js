@@ -10066,8 +10066,19 @@ async function renderIaChatPanel() {
         await Promise.all(arr.map((ex, i) =>
           api('/ejercicios/' + ex.id, { method: 'PUT', body: JSON.stringify({ orden: i }) })
         ));
+        // Guardar qué días están abiertos antes de re-renderizar
+        const openDias = [...document.querySelectorAll('[id^="tab_dia_body_"]')]
+          .filter(el => el.style.display !== 'none')
+          .map(el => el.id.replace('tab_dia_body_', ''));
         await verCliente(clienteId);
-        setTimeout(() => switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]')), 50);
+        setTimeout(() => {
+          switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
+          // Reabrir los días que estaban abiertos
+          setTimeout(() => openDias.forEach(id => {
+            const el = document.getElementById('tab_dia_body_' + id);
+            if (el) el.style.display = 'block';
+          }), 50);
+        }, 50);
       } catch(err) {
         console.error('drag reorder error:', err);
         alert('Error al reordenar');
