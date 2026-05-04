@@ -1937,11 +1937,16 @@ function hClientes(cl){
           <span class="badge b-sv">${tc('Sem')} ${c.semanas}</span>
           ${c.peso_actual?`<span class="badge b-bl">${c.peso_actual}kg</span>`:''}
         </div>
-        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap" onclick="event.stopPropagation()">
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center;justify-content:space-between" onclick="event.stopPropagation()">
           ${c.archivado
             ? `<button class="btn btn-sm" onclick="restaurarCliente(${c.id})">↩ ${tc('Restaurar')}</button>`
             : `<button class="btn btn-sm" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.28);color:#fcd34d" onclick="archivarCliente(${c.id})">🗄️ ${tc('Archivar')}</button>`}
-          <button class="btn btn-sm" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#fca5a5" onclick="borrarClientePermanente(${c.id})">🗑️ ${tc('Borrar permanente')}</button>
+          <div style="position:relative">
+            <button onclick="toggleCardMenu(event,${c.id})" style="background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:8px;color:var(--tx3);cursor:pointer;padding:5px 10px;font-size:15px;line-height:1">⋯</button>
+            <div id="card_menu_${c.id}" style="display:none;position:absolute;right:0;bottom:36px;background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:4px;z-index:99;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.4)">
+              <button onclick="event.stopPropagation();toggleCardMenu(event,${c.id});borrarClientePermanente(${c.id})" style="width:100%;text-align:left;background:none;border:none;color:#fca5a5;cursor:pointer;padding:8px 12px;font-size:13px;border-radius:7px;font-family:inherit" onmouseover="this.style.background='rgba(239,68,68,.12)'" onmouseout="this.style.background='none'">🗑️ ${tc('Borrar permanente')}</button>
+            </div>
+          </div>
         </div>
       </div>`;
     }).join('')}
@@ -1974,6 +1979,24 @@ async function restaurarCliente(id){
     await api('/clientes/'+id+'/restaurar',{method:'PUT'});
     await refrescarClientesCoach();
   }catch(e){alert(e.error||e.message||'Error');}
+}
+
+function toggleCardMenu(e, id) {
+  e.stopPropagation();
+  // Cerrar cualquier otro menú abierto
+  document.querySelectorAll('[id^="card_menu_"]').forEach(m => {
+    if (m.id !== 'card_menu_' + id) m.style.display = 'none';
+  });
+  const menu = document.getElementById('card_menu_' + id);
+  if (!menu) return;
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  // Cerrar al hacer click fuera
+  if (menu.style.display === 'block') {
+    setTimeout(() => {
+      const close = (ev) => { menu.style.display = 'none'; document.removeEventListener('click', close); };
+      document.addEventListener('click', close);
+    }, 0);
+  }
 }
 
 async function borrarClientePermanente(id){
@@ -2165,12 +2188,23 @@ async function verCliente(id){
     <div class="form-lbl">${COACH_LANG==='en'?'Coach notes (private)':'Notas coach'}</div><textarea class="ta" id="notasc">${c.notas_coach||''}</textarea>
     <!-- Reseteo de contraseña -->
     <div style="margin-top:14px;padding-top:14px;border-top:0.5px solid var(--br)">
-      <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${tc('🔑 Contraseña del cliente')}</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input class="inp" id="nueva_pass_${c.id}" type="password" placeholder="${tc('Nueva contraseña (mín. 4 caracteres)')}" style="margin-bottom:0;flex:1"/>
-        <button onclick="resetearContrasena(${c.id})" class="btn btn-sm" style="flex-shrink:0;white-space:nowrap;background:var(--bl2);color:#fff">${tc('Guardar')}</button>
+      <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">${tc('🔑 Acceso del cliente')}</div>
+      <div style="margin-bottom:8px">
+        <div class="form-lbl" style="margin-bottom:4px">${COACH_LANG==='en'?'Username (login)':'Usuario (login)'}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="inp" id="nuevo_user_${c.id}" value="${c.username||''}" placeholder="username" style="margin-bottom:0;flex:1;font-family:monospace;font-size:13px"/>
+          <button onclick="cambiarUsernameCliente(${c.id})" class="btn btn-sm" style="flex-shrink:0;white-space:nowrap;background:var(--bl2);color:#fff">${tc('Guardar')}</button>
+        </div>
+        <div id="user_msg_${c.id}" style="font-size:11px;margin-top:4px;height:16px"></div>
       </div>
-      <div id="reset_msg_${c.id}" style="font-size:11px;margin-top:6px;height:16px"></div>
+      <div>
+        <div class="form-lbl" style="margin-bottom:4px">${tc('Nueva contraseña')}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="inp" id="nueva_pass_${c.id}" type="password" placeholder="${tc('Nueva contraseña (mín. 4 caracteres)')}" style="margin-bottom:0;flex:1"/>
+          <button onclick="resetearContrasena(${c.id})" class="btn btn-sm" style="flex-shrink:0;white-space:nowrap;background:var(--bl2);color:#fff">${tc('Guardar')}</button>
+        </div>
+        <div id="reset_msg_${c.id}" style="font-size:11px;margin-top:4px;height:16px"></div>
+      </div>
     </div>
   </div>
   <!-- ESTADO RÁPIDO: peso + último entreno -->
@@ -8037,6 +8071,19 @@ function closeVideo(){
 
 
 // REGISTRO PÚBLICO
+async function cambiarUsernameCliente(userId) {
+  const inp = document.getElementById('nuevo_user_' + userId);
+  const msg = document.getElementById('user_msg_' + userId);
+  const username = inp?.value?.trim();
+  if (!username || username.length < 3) { msg.style.color='#fca5a5'; msg.textContent = COACH_LANG==='en'?'Min. 3 characters':'Mínimo 3 caracteres'; return; }
+  try {
+    const r = await api('/clientes/' + userId + '/username', { method: 'PUT', body: JSON.stringify({ username }) });
+    if (r.ok || r.id || r.message) { msg.style.color='var(--gnb)'; msg.textContent = '✓ ' + (COACH_LANG==='en'?'Username updated':'Usuario actualizado'); }
+    else { msg.style.color='#fca5a5'; msg.textContent = r.error || 'Error'; }
+  } catch(e) { msg.style.color='#fca5a5'; msg.textContent = COACH_LANG==='en'?'Connection error':'Error de conexión'; }
+  setTimeout(() => { if(msg) msg.textContent = ''; }, 3000);
+}
+
 async function resetearContrasena(userId){
   const inp = document.getElementById('nueva_pass_'+userId);
   const msg = document.getElementById('reset_msg_'+userId);
