@@ -271,7 +271,8 @@ router.put('/clientes/:id/username', coachOnly, (req, res) => {
   res.json({ ok: true });
 });
 
-router.put('/clientes/:id', coachOnly, (req, res) => { kcal_internas, prot, carbs, fat, comida_libre, mensaje_semana, notas_coach, peso_actual, altura, edad, sexo, actividad, cintura_actual, cadera, observaciones, dieta_tipo, alimentos_no, lesiones } = req.body;
+router.put('/clientes/:id', coachOnly, (req, res) => {
+  const { objetivo, nivel, semanas, kcal_internas, prot, carbs, fat, comida_libre, mensaje_semana, notas_coach, peso_actual, altura, edad, sexo, actividad, cintura_actual, cadera, observaciones, dieta_tipo, alimentos_no, lesiones } = req.body;
   const c = dbGet('SELECT * FROM clientes WHERE id=?', [req.params.id]);
   if (!c) return res.status(404).json({ error: 'No encontrado' });
   dbRun(`UPDATE clientes SET objetivo=?, nivel=?, semanas=?, kcal_internas=?, prot=?, carbs=?, fat=?, comida_libre=?, mensaje_semana=?, notas_coach=?, peso_actual=?, altura=?, edad=?, sexo=?, actividad=?, cintura_actual=?, cadera=?, observaciones=?, dieta_tipo=?, alimentos_no=?, lesiones=? WHERE id=?`,
