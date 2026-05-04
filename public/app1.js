@@ -2212,10 +2212,10 @@ async function verCliente(id){
             <div id="tab_dia_body_${d.id}" style="display:none;padding:0 13px 12px">
              ${d.ejercicios.length ? d.ejercicios.map((e,ei)=>`
   <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--br)">
-    <div style="display:flex;flex-direction:column;gap:4px">
-      <button onclick="event.stopPropagation();tabMoveEx(${c.id},${d.id},${ei},-1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↑</button>
-      <button onclick="event.stopPropagation();tabMoveEx(${c.id},${d.id},${ei},1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↓</button>
-    </div>
+    <div class="drag-handle" draggable="true"
+      data-cliente="${c.id}" data-dia="${d.id}" data-idx="${ei}"
+      style="width:26px;height:40px;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--tx3);font-size:16px;border-radius:6px;background:rgba(255,255,255,.04);border:0.5px solid var(--br);flex-shrink:0"
+      title="Arrastra para reordenar">⠿</div>
 
     <div style="flex:1;min-width:0">
       <div style="font-size:13px;font-weight:700;color:var(--sv)">${e.nombre}</div>
@@ -2564,6 +2564,10 @@ function switchClienteTab(tab, btn) {
       const principales = c.dias.flatMap(d=>(d.ejercicios||[]).filter(e=>e.es_principal).map(e=>e.nombre)).filter((n,i,a)=>a.indexOf(n)===i);
     // Gráficas de progreso eliminadas
     }
+    setTimeout(() => {
+      const panel = document.getElementById('ctab_entreno');
+      if(panel) _initExDrag(panel);
+    }, 100);
   }
   if(tab === 'progreso') {
     const c = window._coachClienteActual;
@@ -5700,7 +5704,7 @@ function empezarEntreno(i){
   doneShown = false;
   const klEl = document.getElementById('klContent');
   klEl.innerHTML = hEntreno();
-  setTimeout(()=>{ applyLang(klEl); iniciarEntreno(); }, 100);
+  setTimeout(()=>{ applyLang(klEl); iniciarEntreno(); _initExDrag(klEl); }, 100);
 }
 
 // Modal descripción ejercicio
@@ -5819,10 +5823,10 @@ const imgUrl =
     return`<div class="strong-ex-card ${exDone?'done-ex':''}" id="exc_${ei}">
      <div class="strong-ex-header">
 
-  <div style="display:flex;flex-direction:column;gap:4px;margin-right:6px">
-    <button onclick="moveEx(${activeDia}, ${ei}, -1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↑</button>
-    <button onclick="moveEx(${activeDia}, ${ei}, 1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↓</button>
-  </div>
+  <div class="drag-handle" draggable="true"
+    data-dia-idx="${activeDia}" data-idx="${ei}"
+    style="width:26px;height:40px;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--tx3);font-size:16px;border-radius:6px;background:rgba(255,255,255,.04);border:0.5px solid var(--br);flex-shrink:0;margin-right:6px"
+    title="Arrastra para reordenar">⠿</div>
 
   ${renderExImg(e.nombre, 52, e.grupo||EX_GROUP_MAP[e.nombre]||'', imgUrl)}
 
@@ -6259,7 +6263,7 @@ function selDia(i){
   if(vistaActual==='entreno'){
     const klEl = document.getElementById('klContent');
     klEl.innerHTML=hEntreno();
-    setTimeout(()=>{ applyLang(klEl); iniciarEntreno(); }, 50);
+    setTimeout(()=>{ applyLang(klEl); iniciarEntreno(); _initExDrag(klEl); }, 50);
   } else {
     abrirPreviewDia(i);
   }
@@ -9972,52 +9976,117 @@ async function renderIaChatPanel() {
     </div>
   `;
 }
+// ── Drag & Drop reordenamiento de ejercicios ─────────────────────────────────
+let _dragSrc = null;
+
+function _initExDrag(container) {
+  const handles = container.querySelectorAll('.drag-handle');
+  handles.forEach(handle => {
+    const row = handle.closest('[id^="exc_"], [style*="border-bottom"]') || handle.parentElement;
+
+    handle.addEventListener('dragstart', e => {
+      _dragSrc = handle;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => row.style.opacity = '0.4', 0);
+    });
+    handle.addEventListener('dragend', () => {
+      row.style.opacity = '';
+      container.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', async e => {
+      e.preventDefault();
+      e.stopPropagation();
+      row.classList.remove('drag-over');
+      if (!_dragSrc || _dragSrc === handle) return;
+
+      const srcHandle = _dragSrc;
+      const isCoach = srcHandle.dataset.cliente !== undefined;
+
+      if (isCoach) {
+        // Vista coach: tabMoveEx
+        const clienteId = srcHandle.dataset.cliente;
+        const diaId = srcHandle.dataset.dia;
+        const fromIdx = parseInt(srcHandle.dataset.idx);
+        const toIdx = parseInt(handle.dataset.idx);
+        if (isNaN(fromIdx) || isNaN(toIdx) || fromIdx === toIdx) return;
+        try {
+          const c = await api('/clientes/' + clienteId);
+          const dia = (c.dias || []).find(d => String(d.id) === String(diaId));
+          if (!dia || !dia.ejercicios) return;
+          const arr = dia.ejercicios;
+          const [moved] = arr.splice(fromIdx, 1);
+          arr.splice(toIdx, 0, moved);
+          arr.forEach((ex, i) => ex.orden = i);
+          await Promise.all(arr.map((ex, i) =>
+            api('/ejercicios/' + ex.id, { method: 'PUT', body: JSON.stringify({ orden: i }) })
+          ));
+          window._coachClienteActual = await api('/clientes/' + clienteId);
+          switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
+        } catch(err) {
+          console.error('drag reorder error:', err);
+        }
+      } else {
+        // Vista cliente: moveEx en memoria
+        const diaIdx = parseInt(srcHandle.dataset.diaIdx);
+        const fromIdx = parseInt(srcHandle.dataset.idx);
+        const toIdx = parseInt(handle.dataset.idx);
+        if (!CD || !CD.dias || !CD.dias[diaIdx] || fromIdx === toIdx) return;
+        const arr = CD.dias[diaIdx].ejercicios || [];
+        const [moved] = arr.splice(fromIdx, 1);
+        arr.splice(toIdx, 0, moved);
+        arr.forEach((ex, i) => ex.orden = i);
+        const el = document.getElementById('klContent');
+        if (el && typeof hEntreno === 'function') el.innerHTML = hEntreno();
+      }
+      _dragSrc = null;
+    });
+  });
+}
+
+// Inicializar drag tras cada render
+const _origHEntreno = typeof hEntreno !== 'undefined' ? hEntreno : null;
+function _afterRender(containerId) {
+  const c = document.getElementById(containerId);
+  if (c) _initExDrag(c);
+}
+
+// Estilo drag-over
+(function(){
+  const s = document.createElement('style');
+  s.textContent = '.drag-over { outline: 2px dashed var(--blg) !important; border-radius: 8px; } .drag-handle:active { cursor: grabbing; }';
+  document.head.appendChild(s);
+})();
+
+// Compatibilidad con render existente — se llama manualmente donde se usa
 function moveEx(diaIndex, exIndex, dir){
   if(!CD || !CD.dias || !CD.dias[diaIndex]) return;
-
-  const dia = CD.dias[diaIndex];
-  const arr = dia.ejercicios || [];
+  const arr = CD.dias[diaIndex].ejercicios || [];
   const newIndex = exIndex + dir;
-
   if(newIndex < 0 || newIndex >= arr.length) return;
-
   [arr[exIndex], arr[newIndex]] = [arr[newIndex], arr[exIndex]];
-
-  arr.forEach((e,i)=>{
-    e.orden = i;
-  });
-
+  arr.forEach((e,i) => e.orden = i);
   const el = document.getElementById('klContent');
-  if(el && typeof hEntreno === 'function'){
-    el.innerHTML = hEntreno();
-  }
+  if(el && typeof hEntreno === 'function') el.innerHTML = hEntreno();
 }
 async function tabMoveEx(clienteId, diaId, exIndex, dir){
   try{
     const c = await api('/clientes/'+clienteId);
-    const dia = (c.dias || []).find(d => String(d.id) === String(diaId));
-    if(!dia || !dia.ejercicios) return;
-
+    const dia = (c.dias||[]).find(d=>String(d.id)===String(diaId));
+    if(!dia||!dia.ejercicios) return;
     const arr = dia.ejercicios;
     const newIndex = exIndex + dir;
-    if(newIndex < 0 || newIndex >= arr.length) return;
-
-    [arr[exIndex], arr[newIndex]] = [arr[newIndex], arr[exIndex]];
-    arr.forEach((e,i)=> e.orden = i);
-
-   
-
-    for(let i=0;i<arr.length;i++){
-      await api('/ejercicios/'+arr[i].id, {
-        method:'PUT',
-        body: JSON.stringify({ orden:i })
-      });
-    }
-
+    if(newIndex<0||newIndex>=arr.length) return;
+    [arr[exIndex],arr[newIndex]]=[arr[newIndex],arr[exIndex]];
+    arr.forEach((e,i)=>e.orden=i);
+    await Promise.all(arr.map((e,i)=>api('/ejercicios/'+e.id,{method:'PUT',body:JSON.stringify({orden:i})})));
     window._coachClienteActual = await api('/clientes/'+clienteId);
-switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
-  }catch(e){
-    console.error('tabMoveEx error:', e);
-    alert('Error moviendo ejercicio');
-  }
+    switchClienteTab('entreno',document.querySelector('.ctab[onclick*="entreno"]'));
+  }catch(e){ console.error('tabMoveEx error:',e); }
 }
