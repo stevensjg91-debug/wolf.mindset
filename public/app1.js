@@ -5811,9 +5811,16 @@ const imgUrl =
     }).join('');
 
     return`<div class="strong-ex-card ${exDone?'done-ex':''}" id="exc_${ei}">
-      <div class="strong-ex-header">
-       ${renderExImg(e.nombre, 52, e.grupo||EX_GROUP_MAP[e.nombre]||'', imgUrl)}
-        <div style="flex:1;min-width:0">
+     <div class="strong-ex-header">
+
+  <div style="display:flex;flex-direction:column;gap:4px;margin-right:6px">
+    <button onclick="moveEx(${activeDia}, ${ei}, -1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↑</button>
+    <button onclick="moveEx(${activeDia}, ${ei}, 1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↓</button>
+  </div>
+
+  ${renderExImg(e.nombre, 52, e.grupo||EX_GROUP_MAP[e.nombre]||'', imgUrl)}
+
+  <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${t(e.grupo||'')||''}</div>
             ${e.es_principal?`<span style="font-size:10px;background:rgba(245,158,11,.2);color:var(--amb);padding:1px 6px;border-radius:4px;font-weight:700">⭐ Principal</span>`:''}
@@ -9958,4 +9965,24 @@ async function renderIaChatPanel() {
       </div>
     </div>
   `;
+}
+function moveEx(diaIndex, exIndex, dir){
+  if(!CD || !CD.dias || !CD.dias[diaIndex]) return;
+
+  const dia = CD.dias[diaIndex];
+  const arr = dia.ejercicios || [];
+  const newIndex = exIndex + dir;
+
+  if(newIndex < 0 || newIndex >= arr.length) return;
+
+  [arr[exIndex], arr[newIndex]] = [arr[newIndex], arr[exIndex]];
+
+  arr.forEach((e,i)=>{
+    e.orden = i;
+  });
+
+  const el = document.getElementById('klContent');
+  if(el && typeof hEntreno === 'function'){
+    el.innerHTML = hEntreno();
+  }
 }
