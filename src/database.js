@@ -179,6 +179,18 @@ async function initDB() {
 
   // ── Push subscriptions ───────────────────────────────────────────
   db.run(`CREATE TABLE IF NOT EXISTS push_subscriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, subscription TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+
+  // ── Checkins semanales ────────────────────────────────────────────
+  db.run(`CREATE TABLE IF NOT EXISTS checkins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER,
+    semana TEXT,
+    sueno INTEGER,
+    energia INTEGER,
+    peso REAL,
+    fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  try { db.run("ALTER TABLE checkins ADD COLUMN peso REAL"); } catch(e) {}
 }
 
 function dbRun(sql, params = []) {
