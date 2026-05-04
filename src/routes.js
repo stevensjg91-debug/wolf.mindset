@@ -372,9 +372,12 @@ router.put('/ejercicios/:id', (req, res) => {
   youtube_url!=null?youtube_url:e.youtube_url||'',
   imagen_url!=null?imagen_url:e.imagen_url||'',
   nota_coach!=null?nota_coach:e.nota_coach||'',
-  orden!=null?orden:e.orden,
+ (orden!=null ? orden : e.orden),
   req.params.id
 ]
+);
+
+  saveToDisk();
   res.json({ ok: true });
 });
 
