@@ -1937,16 +1937,11 @@ function hClientes(cl){
           <span class="badge b-sv">${tc('Sem')} ${c.semanas}</span>
           ${c.peso_actual?`<span class="badge b-bl">${c.peso_actual}kg</span>`:''}
         </div>
-        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center;justify-content:space-between" onclick="event.stopPropagation()">
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap" onclick="event.stopPropagation()">
           ${c.archivado
             ? `<button class="btn btn-sm" onclick="restaurarCliente(${c.id})">↩ ${tc('Restaurar')}</button>`
             : `<button class="btn btn-sm" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.28);color:#fcd34d" onclick="archivarCliente(${c.id})">🗄️ ${tc('Archivar')}</button>`}
-          <div style="position:relative">
-            <button onclick="toggleCardMenu(event,${c.id})" style="background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:8px;color:var(--tx3);cursor:pointer;padding:5px 10px;font-size:15px;line-height:1">⋯</button>
-            <div id="card_menu_${c.id}" style="display:none;position:absolute;right:0;bottom:36px;background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:4px;z-index:99;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.4)">
-              <button onclick="event.stopPropagation();toggleCardMenu(event,${c.id});borrarClientePermanente(${c.id})" style="width:100%;text-align:left;background:none;border:none;color:#fca5a5;cursor:pointer;padding:8px 12px;font-size:13px;border-radius:7px;font-family:inherit" onmouseover="this.style.background='rgba(239,68,68,.12)'" onmouseout="this.style.background='none'">🗑️ ${tc('Borrar permanente')}</button>
-            </div>
-          </div>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#fca5a5" onclick="borrarClientePermanente(${c.id})">🗑️ ${tc('Borrar permanente')}</button>
         </div>
       </div>`;
     }).join('')}
@@ -1979,24 +1974,6 @@ async function restaurarCliente(id){
     await api('/clientes/'+id+'/restaurar',{method:'PUT'});
     await refrescarClientesCoach();
   }catch(e){alert(e.error||e.message||'Error');}
-}
-
-function toggleCardMenu(e, id) {
-  e.stopPropagation();
-  // Cerrar cualquier otro menú abierto
-  document.querySelectorAll('[id^="card_menu_"]').forEach(m => {
-    if (m.id !== 'card_menu_' + id) m.style.display = 'none';
-  });
-  const menu = document.getElementById('card_menu_' + id);
-  if (!menu) return;
-  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-  // Cerrar al hacer click fuera
-  if (menu.style.display === 'block') {
-    setTimeout(() => {
-      const close = (ev) => { menu.style.display = 'none'; document.removeEventListener('click', close); };
-      document.addEventListener('click', close);
-    }, 0);
-  }
 }
 
 async function borrarClientePermanente(id){
@@ -2188,23 +2165,12 @@ async function verCliente(id){
     <div class="form-lbl">${COACH_LANG==='en'?'Coach notes (private)':'Notas coach'}</div><textarea class="ta" id="notasc">${c.notas_coach||''}</textarea>
     <!-- Reseteo de contraseña -->
     <div style="margin-top:14px;padding-top:14px;border-top:0.5px solid var(--br)">
-      <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">${tc('🔑 Acceso del cliente')}</div>
-      <div style="margin-bottom:8px">
-        <div class="form-lbl" style="margin-bottom:4px">${COACH_LANG==='en'?'Username (login)':'Usuario (login)'}</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input class="inp" id="nuevo_user_${c.id}" value="${c.username||''}" placeholder="username" style="margin-bottom:0;flex:1;font-family:monospace;font-size:13px"/>
-          <button onclick="cambiarUsernameCliente(${c.id})" class="btn btn-sm" style="flex-shrink:0;white-space:nowrap;background:var(--bl2);color:#fff">${tc('Guardar')}</button>
-        </div>
-        <div id="user_msg_${c.id}" style="font-size:11px;margin-top:4px;height:16px"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${tc('🔑 Contraseña del cliente')}</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="inp" id="nueva_pass_${c.id}" type="password" placeholder="${tc('Nueva contraseña (mín. 4 caracteres)')}" style="margin-bottom:0;flex:1"/>
+        <button onclick="resetearContrasena(${c.id})" class="btn btn-sm" style="flex-shrink:0;white-space:nowrap;background:var(--bl2);color:#fff">${tc('Guardar')}</button>
       </div>
-      <div>
-        <div class="form-lbl" style="margin-bottom:4px">${tc('Nueva contraseña')}</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input class="inp" id="nueva_pass_${c.id}" type="password" placeholder="${tc('Nueva contraseña (mín. 4 caracteres)')}" style="margin-bottom:0;flex:1"/>
-          <button onclick="resetearContrasena(${c.id})" class="btn btn-sm" style="flex-shrink:0;white-space:nowrap;background:var(--bl2);color:#fff">${tc('Guardar')}</button>
-        </div>
-        <div id="reset_msg_${c.id}" style="font-size:11px;margin-top:4px;height:16px"></div>
-      </div>
+      <div id="reset_msg_${c.id}" style="font-size:11px;margin-top:6px;height:16px"></div>
     </div>
   </div>
   <!-- ESTADO RÁPIDO: peso + último entreno -->
@@ -2245,11 +2211,11 @@ async function verCliente(id){
             </div>
             <div id="tab_dia_body_${d.id}" style="display:none;padding:0 13px 12px">
              ${d.ejercicios.length ? d.ejercicios.map((e,ei)=>`
-  <div class="ex-drag-row" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--br)">
-    <div class="drag-handle" draggable="true"
-      data-cliente="${c.id}" data-dia="${d.id}" data-idx="${ei}"
-      style="width:26px;height:40px;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--tx3);font-size:16px;border-radius:6px;background:rgba(255,255,255,.04);border:0.5px solid var(--br);flex-shrink:0"
-      title="Arrastra para reordenar">⠿</div>
+  <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--br)">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <button onclick="event.stopPropagation();tabMoveEx(${c.id},${d.id},${ei},-1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↑</button>
+      <button onclick="event.stopPropagation();tabMoveEx(${c.id},${d.id},${ei},1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↓</button>
+    </div>
 
     <div style="flex:1;min-width:0">
       <div style="font-size:13px;font-weight:700;color:var(--sv)">${e.nombre}</div>
@@ -2598,10 +2564,6 @@ function switchClienteTab(tab, btn) {
       const principales = c.dias.flatMap(d=>(d.ejercicios||[]).filter(e=>e.es_principal).map(e=>e.nombre)).filter((n,i,a)=>a.indexOf(n)===i);
     // Gráficas de progreso eliminadas
     }
-    setTimeout(() => {
-      const panel = document.getElementById('ctab_entreno');
-      if(panel) _initExDrag(panel);
-    }, 100);
   }
   if(tab === 'progreso') {
     const c = window._coachClienteActual;
@@ -5383,57 +5345,9 @@ async function sendIA(){
   const inp=document.getElementById('iaIn'),msg=inp.value.trim();if(!msg)return;inp.value='';
   const msgs=document.getElementById('iaMsgs');
   msgs.innerHTML+=`<div class="msg msg-u">${msg}</div>`;msgs.scrollTop=msgs.scrollHeight;
-
-  // Asegurar que tenemos el cache de clientes
-  if (!window._clientesCache || !window._clientesCache.length) {
-    try { window._clientesCache = await api('/clientes?incluir_archivados=1'); } catch(e) {}
-  }
-
-  // Detectar si el mensaje menciona algún cliente por nombre
-  const clientes = window._clientesCache || [];
-  let clienteCtx = '';
-  const msgLower = msg.toLowerCase();
-  for (const cl of clientes) {
-    const partes = (cl.nombre||'').toLowerCase().split(/\s+/);
-    const match = partes.some(p => p.length > 2 && msgLower.includes(p));
-    if (match) {
-      try {
-        const full = await api('/clientes/' + cl.id);
-        const alimentos = (full.dieta?.comidas||[]).flatMap(c=>(c.items||[]).map(a=>`${a.nombre} ${a.gramos}g`)).filter(Boolean);
-        const ejercicios = (full.dias||[]).flatMap(d=>(d.ejercicios||[]).map(e=>e.nombre)).filter(Boolean);
-        clienteCtx = `
-
-=== FICHA COMPLETA: ${full.nombre} ===
-Objetivo: ${full.objetivo} | Nivel: ${full.nivel} | Semanas: ${full.semanas}
-Peso: ${full.peso_actual||'?'}kg | Altura: ${full.altura||'?'}cm | Edad: ${full.edad||'?'} | Sexo: ${full.sexo||'?'}
-Kcal objetivo: ${full.kcal_internas} | Proteína: ${full.prot}g | Carbos: ${full.carbs}g | Grasas: ${full.fat}g
-Lesiones: ${full.lesiones||'Ninguna'}
-Deficiencias/notas médicas: ${full.deficiencias||'Ninguna'}
-Alimentos no permitidos: ${full.alimentos_no||'Ninguno'}
-Tipo de dieta: ${full.dieta_tipo||'Omnívoro'}
-Alimentos en su dieta actual: ${alimentos.length ? alimentos.join(', ') : 'Sin dieta asignada'}
-Ejercicios en su rutina actual: ${ejercicios.length ? ejercicios.join(', ') : 'Sin rutina asignada'}
-Notas del coach: ${full.notas_coach||'Ninguna'}
-===
-USA ESTOS DATOS para responder con precisión. NO pidas información que ya tienes aquí.`;
-      } catch(e) {}
-      break;
-    }
-  }
-
-  const systemPrompt = `Eres el asistente IA privado del coach WolfMindset. Ayudas con progresión de carga, periodización, ajustes calóricos, generación de rutinas y dietas completas. Cuando tienes la ficha de un cliente la usas directamente sin pedir más datos.${clienteCtx} ${COACH_LANG==='en'?'Always respond in English. Technical and concise.':'Respuestas técnicas y concisas en español.'}`;
-
   iaH.push({role:'user',content:msg});document.getElementById('iaTyping').style.display='block';
-  try{
-    const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:iaH,system:systemPrompt})});
-    iaH.push({role:'assistant',content:d.reply});
-    document.getElementById('iaTyping').style.display='none';
-    msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${d.reply}</div>`;
-    msgs.scrollTop=msgs.scrollHeight;
-  }catch(e){
-    document.getElementById('iaTyping').style.display='none';
-    msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>Error. Inténtalo de nuevo.</div>`;
-  }
+  try{const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:iaH,system:`Eres el asistente IA privado del coach WolfMindset. Ayudas con progresión de carga, periodización, ajustes calóricos, generación de rutinas y dietas completas. ${COACH_LANG==='en'?'Always respond in English. Technical and concise.':'Respuestas técnicas y concisas en español.'}`})});iaH.push({role:'assistant',content:d.reply});document.getElementById('iaTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${d.reply}</div>`;msgs.scrollTop=msgs.scrollHeight;}
+  catch(e){document.getElementById('iaTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>Error. Inténtalo de nuevo.</div>`;}
 }
 
 // ═══ CLIENTE ══════════════════════════════════════════
@@ -5661,7 +5575,7 @@ function hSeleccionDia(){
     const yaHecha = !!estadoHoy;
     const borderColor = estadoHoy==='completado'?'rgba(34,197,94,.4)':estadoHoy==='incompleto'?'rgba(245,158,11,.3)':'var(--br)';
     const bgColor = estadoHoy==='completado'?'rgba(34,197,94,.05)':estadoHoy==='incompleto'?'rgba(245,158,11,.04)':'var(--s2)';
-    return`<div onclick="${yaHecha?'':'abrirPreviewDia('+i+')'}" style="background:${bgColor};border:0.5px solid ${borderColor};border-radius:16px;padding:14px;cursor:${yaHecha?'default':'pointer'};transition:.15s">
+    return`<div onclick="abrirPreviewDia(${i})" style="background:${bgColor};border:0.5px solid ${borderColor};border-radius:16px;padding:14px;cursor:pointer;transition:.15s">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div style="flex:1;min-width:0">
           <div style="font-size:16px;font-weight:700;color:var(--sv);margin-bottom:2px">${d.nombre}</div>
@@ -5786,7 +5700,7 @@ function empezarEntreno(i){
   doneShown = false;
   const klEl = document.getElementById('klContent');
   klEl.innerHTML = hEntreno();
-  setTimeout(()=>{ applyLang(klEl); iniciarEntreno(); _initExDrag(klEl); }, 100);
+  setTimeout(()=>{ applyLang(klEl); iniciarEntreno(); }, 100);
 }
 
 // Modal descripción ejercicio
@@ -5902,13 +5816,13 @@ const imgUrl =
       </div>`;
     }).join('');
 
-    return`<div class="strong-ex-card ex-drag-row ${exDone?'done-ex':''}" id="exc_${ei}">
+    return`<div class="strong-ex-card ${exDone?'done-ex':''}" id="exc_${ei}">
      <div class="strong-ex-header">
 
-  <div class="drag-handle" draggable="true"
-    data-dia-idx="${activeDia}" data-idx="${ei}"
-    style="width:26px;height:40px;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--tx3);font-size:16px;border-radius:6px;background:rgba(255,255,255,.04);border:0.5px solid var(--br);flex-shrink:0;margin-right:6px"
-    title="Arrastra para reordenar">⠿</div>
+  <div style="display:flex;flex-direction:column;gap:4px;margin-right:6px">
+    <button onclick="moveEx(${activeDia}, ${ei}, -1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↑</button>
+    <button onclick="moveEx(${activeDia}, ${ei}, 1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↓</button>
+  </div>
 
   ${renderExImg(e.nombre, 52, e.grupo||EX_GROUP_MAP[e.nombre]||'', imgUrl)}
 
@@ -6345,44 +6259,13 @@ function selDia(i){
   if(vistaActual==='entreno'){
     const klEl = document.getElementById('klContent');
     klEl.innerHTML=hEntreno();
-    setTimeout(()=>{ applyLang(klEl); iniciarEntreno(); _initExDrag(klEl); }, 50);
+    setTimeout(()=>{ applyLang(klEl); iniciarEntreno(); }, 50);
   } else {
     abrirPreviewDia(i);
   }
 }
 
 // DIETA CLIENTE
-async function generarRecetaIA() {
-  const btn = document.querySelector('button[onclick="generarRecetaIA()"]');
-  const result = document.getElementById('receta_ia_result');
-  if (!CD || !CD.comidas) return;
-
-  const alimentos = CD.comidas.flatMap(c => (c.items||[]).map(a => `${a.nombre} (${a.gramos}g)`)).filter(Boolean);
-  if (!alimentos.length) { result.style.display='block'; result.textContent = LANG==='en'?'No foods assigned yet.':'No tienes alimentos asignados aún.'; return; }
-
-  if (btn) { btn.disabled=true; btn.textContent = LANG==='en'?'⏳ Generating...':'⏳ Generando...'; }
-  result.style.display = 'none';
-
-  const prompt = LANG==='en'
-    ? `Create a creative and delicious recipe using ONLY these foods from my diet plan: ${alimentos.join(', ')}. Include: name, ingredients with grams, step-by-step instructions, and macros. Keep it practical and tasty.`
-    : `Crea una receta creativa y deliciosa usando SOLO estos alimentos de mi dieta: ${alimentos.join(', ')}. Incluye: nombre de la receta, ingredientes con gramos, pasos de preparación y macros aproximados. Práctica y apetecible.`;
-
-  try {
-    const d = await api('/ia/chat', { method:'POST', body: JSON.stringify({
-      messages: [{ role:'user', content: prompt }],
-      system: LANG==='en'
-        ? 'You are a sports nutritionist and chef. Create practical, tasty recipes using only the exact foods listed. Respect the quantities. Format clearly.'
-        : 'Eres nutricionista deportivo y cocinero. Crea recetas prácticas y apetecibles usando solo los alimentos indicados. Respeta las cantidades. Formato claro y legible.'
-    })});
-    result.style.display = 'block';
-    result.textContent = d.reply;
-  } catch(e) {
-    result.style.display = 'block';
-    result.textContent = LANG==='en'?'Error generating recipe. Try again.':'Error generando receta. Inténtalo de nuevo.';
-  }
-  if (btn) { btn.disabled=false; btn.innerHTML = `🍽️ ${LANG==='en'?'Generate another recipe':'Generar otra receta'}`; }
-}
-
 function hDieta(){
   const esVeg = CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano';
   const acc = esVeg ? '#22c55e' : '#3b82f6';
@@ -6536,14 +6419,6 @@ function hDieta(){
         </div>`:''}
       </div>`;
     })()}
-
-    <!-- GENERADOR DE RECETAS IA -->
-    <div style="margin:10px 14px 0">
-      <button onclick="generarRecetaIA()" style="width:100%;padding:12px;background:rgba(59,130,246,.12);border:0.5px solid rgba(59,130,246,.3);border-radius:12px;color:#93c5fd;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px">
-        🍽️ ${LANG==='en'?'Generate recipe with my foods':'Generar receta con mis alimentos'}
-      </button>
-      <div id="receta_ia_result" style="display:none;margin-top:10px;background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:14px;font-size:13px;color:var(--sv2);line-height:1.7;white-space:pre-wrap"></div>
-    </div>
 
     <!-- NOTA PESOS EN CRUDO -->
     <div style="margin:10px 14px;background:${accBg};border:0.5px solid ${acc}60;border-radius:12px;padding:11px 14px">
@@ -6965,13 +6840,6 @@ function coachMsgsVolverLista(){
 
 
 function hProgreso2(){return`<div style="padding-top:8px">
-  ${CD.mensaje_semana?`<div class="motiv-card"><div style="overflow:hidden"><div id="motiv_msg_txt" data-clamp="3" data-expanded="0" style="font-size:14px;color:var(--sv2);line-height:1.7;font-weight:500;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${CD.mensaje_semana}</div></div>${CD.mensaje_semana.length>100?`<button onclick="toggleCoachComment('motiv_msg_txt',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}</div>`:''}
-  <div class="stats-g">
-    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Semanas')}</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.semanas}</div></div>
-    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Objetivo')}</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${t(CD.objetivo||'')}</div></div>
-    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Nivel')}</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${t(CD.nivel||'')}</div></div>
-    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Días/sem')}</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.dias.length}</div></div>
-  </div>
   <div id="progreso_graficas_wrap"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin:0 14px 6px">
     <div class="sec-lbl" style="margin:0">${t('Medición semanal')}</div>
@@ -8158,19 +8026,6 @@ function closeVideo(){
 
 
 // REGISTRO PÚBLICO
-async function cambiarUsernameCliente(userId) {
-  const inp = document.getElementById('nuevo_user_' + userId);
-  const msg = document.getElementById('user_msg_' + userId);
-  const username = inp?.value?.trim();
-  if (!username || username.length < 3) { msg.style.color='#fca5a5'; msg.textContent = COACH_LANG==='en'?'Min. 3 characters':'Mínimo 3 caracteres'; return; }
-  try {
-    const r = await api('/clientes/' + userId + '/username', { method: 'PUT', body: JSON.stringify({ username }) });
-    if (r.ok || r.id || r.message) { msg.style.color='var(--gnb)'; msg.textContent = '✓ ' + (COACH_LANG==='en'?'Username updated':'Usuario actualizado'); }
-    else { msg.style.color='#fca5a5'; msg.textContent = r.error || 'Error'; }
-  } catch(e) { msg.style.color='#fca5a5'; msg.textContent = COACH_LANG==='en'?'Connection error':'Error de conexión'; }
-  setTimeout(() => { if(msg) msg.textContent = ''; }, 3000);
-}
-
 async function resetearContrasena(userId){
   const inp = document.getElementById('nueva_pass_'+userId);
   const msg = document.getElementById('reset_msg_'+userId);
@@ -8628,7 +8483,8 @@ async function cargarGraficasCliente(){
       }
     }
 
-    wrap.innerHTML = prsHtml + graficasHtml;
+    // Progreso solo muestra gráficas de ejercicios principales; las marcas personales/detalles quedan en Historial.
+    wrap.innerHTML = graficasHtml;
 
   } catch(e){ console.log('Error graficas:', e); }
 }
@@ -10110,164 +9966,52 @@ async function renderIaChatPanel() {
     </div>
   `;
 }
-// ── Drag & Drop reordenamiento de ejercicios (event delegation) ──────────────
-(function(){
-  let _dragSrc = null;
-  let _dragOver = null;
-
-  // Estilo drag-over
-  const s = document.createElement('style');
-  s.textContent = `
-    .ex-drag-row { transition: opacity .15s; }
-    .ex-drag-row.dragging { opacity: 0.35; }
-    .ex-drag-row.drag-over { outline: 2px dashed var(--blg, #3b82f6) !important; border-radius: 8px; background: rgba(59,130,246,.06); }
-    .drag-handle { cursor: grab; user-select: none; }
-    .drag-handle:active { cursor: grabbing; }
-  `;
-  document.head.appendChild(s);
-
-  // Añadir clase ex-drag-row a los rows al renderizar (se llama tras cada render)
-  window._initExDrag = function(container) {
-    if (!container) return;
-    container.querySelectorAll('.drag-handle').forEach(handle => {
-      const row = handle.parentElement;
-      if (row) row.classList.add('ex-drag-row');
-    });
-  };
-
-  // dragstart — delegado en document
-  document.addEventListener('dragstart', e => {
-    const handle = e.target.closest('.drag-handle');
-    if (!handle) return;
-    _dragSrc = handle;
-    const row = handle.parentElement;
-    if (row) { row.classList.add('ex-drag-row'); setTimeout(() => row.classList.add('dragging'), 0); }
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', '1');
-  });
-
-  document.addEventListener('dragend', e => {
-    const handle = e.target.closest('.drag-handle');
-    if (!handle) return;
-    document.querySelectorAll('.ex-drag-row.dragging').forEach(el => el.classList.remove('dragging'));
-    document.querySelectorAll('.ex-drag-row.drag-over').forEach(el => el.classList.remove('drag-over'));
-    _dragOver = null;
-  });
-
-  document.addEventListener('dragover', e => {
-    const row = e.target.closest('.ex-drag-row');
-    if (!row || !_dragSrc) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (_dragOver && _dragOver !== row) _dragOver.classList.remove('drag-over');
-    _dragOver = row;
-    row.classList.add('drag-over');
-  });
-
-  document.addEventListener('dragleave', e => {
-    const row = e.target.closest('.ex-drag-row');
-    if (row) row.classList.remove('drag-over');
-  });
-
-  document.addEventListener('drop', async e => {
-    const targetRow = e.target.closest('.ex-drag-row');
-    if (!targetRow || !_dragSrc) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    const targetHandle = targetRow.querySelector('.drag-handle');
-    if (!targetHandle || targetHandle === _dragSrc) { _dragSrc = null; return; }
-
-    const srcHandle = _dragSrc;
-    _dragSrc = null;
-    targetRow.classList.remove('drag-over');
-
-    const isCoach = srcHandle.dataset.cliente !== undefined && srcHandle.dataset.cliente !== '';
-
-    if (isCoach) {
-      const clienteId = srcHandle.dataset.cliente;
-      const diaId = srcHandle.dataset.dia;
-      const fromIdx = parseInt(srcHandle.dataset.idx);
-      const toIdx = parseInt(targetHandle.dataset.idx);
-      if (isNaN(fromIdx) || isNaN(toIdx) || fromIdx === toIdx || srcHandle.dataset.dia !== targetHandle.dataset.dia) return;
-      try {
-        const c = await api('/clientes/' + clienteId);
-        const dia = (c.dias || []).find(d => String(d.id) === String(diaId));
-        if (!dia || !dia.ejercicios) return;
-        const arr = dia.ejercicios;
-        const [moved] = arr.splice(fromIdx, 1);
-        arr.splice(toIdx, 0, moved);
-        await Promise.all(arr.map((ex, i) =>
-          api('/ejercicios/' + ex.id, { method: 'PUT', body: JSON.stringify({ orden: i }) })
-        ));
-        // Actualizar solo el contenido del día en el DOM — sin parpadeo
-        const bodyEl = document.getElementById('tab_dia_body_' + diaId);
-        if (bodyEl) {
-          bodyEl.innerHTML = arr.map((e, ei) => `
-  <div class="ex-drag-row" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--br)">
-    <div class="drag-handle" draggable="true"
-      data-cliente="${clienteId}" data-dia="${diaId}" data-idx="${ei}"
-      style="width:26px;height:40px;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--tx3);font-size:16px;border-radius:6px;background:rgba(255,255,255,.04);border:0.5px solid var(--br);flex-shrink:0"
-      title="Arrastra para reordenar">⠿</div>
-    <div style="flex:1;min-width:0">
-      <div style="font-size:13px;font-weight:700;color:var(--sv)">${e.nombre}</div>
-      <div style="font-size:11px;color:var(--tx3);margin-top:1px">${e.series}×${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''} · ${e.descanso}s${e.rir!=null?' · RIR'+e.rir:''}${e.es_principal?' ⭐':''}</div>
-      ${e.nota_coach?`<div style="font-size:10px;color:var(--amb);margin-top:2px">📝 ${e.nota_coach}</div>`:''}
-    </div>
-    <button onclick="tabEntrenoEditEx(${e.id})" style="background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);border-radius:6px;color:var(--blg);cursor:pointer;font-size:11px;padding:5px 8px;font-weight:600;white-space:nowrap">✏️ Editar</button>
-    <button onclick="tabEntrenoDelEx(${e.id},${diaId})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px;padding:4px">✕</button>
-  </div>`).join('');
-          // Actualizar también _coachClienteActual en memoria
-          if (window._coachClienteActual) {
-            const d = (window._coachClienteActual.dias || []).find(d => String(d.id) === String(diaId));
-            if (d) d.ejercicios = arr;
-          }
-        }
-      } catch(err) {
-        console.error('drag reorder error:', err);
-        alert('Error al reordenar');
-      }
-    } else {
-      const diaIdx = parseInt(srcHandle.dataset.diaIdx);
-      const fromIdx = parseInt(srcHandle.dataset.idx);
-      const toIdx = parseInt(targetHandle.dataset.idx);
-      if (!CD || !CD.dias || !CD.dias[diaIdx] || isNaN(fromIdx) || isNaN(toIdx) || fromIdx === toIdx) return;
-      const arr = CD.dias[diaIdx].ejercicios || [];
-      const [moved] = arr.splice(fromIdx, 1);
-      arr.splice(toIdx, 0, moved);
-      arr.forEach((ex, i) => ex.orden = i);
-      const el = document.getElementById('klContent');
-      if (el && typeof hEntreno === 'function') {
-        el.innerHTML = hEntreno();
-        setTimeout(() => _initExDrag(el), 50);
-      }
-    }
-  });
-})();
-
-// Compatibilidad con render existente — se llama manualmente donde se usa
 function moveEx(diaIndex, exIndex, dir){
   if(!CD || !CD.dias || !CD.dias[diaIndex]) return;
-  const arr = CD.dias[diaIndex].ejercicios || [];
+
+  const dia = CD.dias[diaIndex];
+  const arr = dia.ejercicios || [];
   const newIndex = exIndex + dir;
+
   if(newIndex < 0 || newIndex >= arr.length) return;
+
   [arr[exIndex], arr[newIndex]] = [arr[newIndex], arr[exIndex]];
-  arr.forEach((e,i) => e.orden = i);
+
+  arr.forEach((e,i)=>{
+    e.orden = i;
+  });
+
   const el = document.getElementById('klContent');
-  if(el && typeof hEntreno === 'function') el.innerHTML = hEntreno();
+  if(el && typeof hEntreno === 'function'){
+    el.innerHTML = hEntreno();
+  }
 }
 async function tabMoveEx(clienteId, diaId, exIndex, dir){
   try{
     const c = await api('/clientes/'+clienteId);
-    const dia = (c.dias||[]).find(d=>String(d.id)===String(diaId));
-    if(!dia||!dia.ejercicios) return;
+    const dia = (c.dias || []).find(d => String(d.id) === String(diaId));
+    if(!dia || !dia.ejercicios) return;
+
     const arr = dia.ejercicios;
     const newIndex = exIndex + dir;
-    if(newIndex<0||newIndex>=arr.length) return;
-    [arr[exIndex],arr[newIndex]]=[arr[newIndex],arr[exIndex]];
-    arr.forEach((e,i)=>e.orden=i);
-    await Promise.all(arr.map((e,i)=>api('/ejercicios/'+e.id,{method:'PUT',body:JSON.stringify({orden:i})})));
+    if(newIndex < 0 || newIndex >= arr.length) return;
+
+    [arr[exIndex], arr[newIndex]] = [arr[newIndex], arr[exIndex]];
+    arr.forEach((e,i)=> e.orden = i);
+
+   
+
+    for(let i=0;i<arr.length;i++){
+      await api('/ejercicios/'+arr[i].id, {
+        method:'PUT',
+        body: JSON.stringify({ orden:i })
+      });
+    }
+
     window._coachClienteActual = await api('/clientes/'+clienteId);
-    switchClienteTab('entreno',document.querySelector('.ctab[onclick*="entreno"]'));
-  }catch(e){ console.error('tabMoveEx error:',e); }
+switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
+  }catch(e){
+    console.error('tabMoveEx error:', e);
+    alert('Error moviendo ejercicio');
+  }
 }
