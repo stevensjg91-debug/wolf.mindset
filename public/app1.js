@@ -10005,11 +10005,29 @@ async function tabMoveEx(clienteId, diaId, exIndex, dir){
     [arr[exIndex], arr[newIndex]] = [arr[newIndex], arr[exIndex]];
 
     for(let i=0;i<arr.length;i++){
-      await api('/ejercicios/'+arr[i].id, {
+      const res = await fetch('/api/ejercicios/'+arr[i].id, {
         method:'PUT',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Bearer '+TOKEN
+        },
         body: JSON.stringify({ orden:i })
       });
+
+      if(!res.ok){
+        const txt = await res.text();
+        throw new Error(txt);
+      }
     }
+
+    window._coachClienteActual = await api('/clientes/'+clienteId);
+    switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
+
+  }catch(e){
+    console.error('tabMoveEx error:', e);
+    alert('Error moviendo ejercicio: ' + (e.message || 'desconocido'));
+  }
+}
 
     window._coachClienteActual = await api('/clientes/'+clienteId);
     switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
