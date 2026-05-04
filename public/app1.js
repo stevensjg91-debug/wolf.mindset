@@ -5575,7 +5575,7 @@ function hSeleccionDia(){
     const yaHecha = !!estadoHoy;
     const borderColor = estadoHoy==='completado'?'rgba(34,197,94,.4)':estadoHoy==='incompleto'?'rgba(245,158,11,.3)':'var(--br)';
     const bgColor = estadoHoy==='completado'?'rgba(34,197,94,.05)':estadoHoy==='incompleto'?'rgba(245,158,11,.04)':'var(--s2)';
-    return`<div onclick="abrirPreviewDia(${i})" style="background:${bgColor};border:0.5px solid ${borderColor};border-radius:16px;padding:14px;cursor:pointer;transition:.15s">
+    return`<div onclick="${yaHecha?'':'abrirPreviewDia('+i+')'}" style="background:${bgColor};border:0.5px solid ${borderColor};border-radius:16px;padding:14px;cursor:${yaHecha?'default':'pointer'};transition:.15s">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div style="flex:1;min-width:0">
           <div style="font-size:16px;font-weight:700;color:var(--sv);margin-bottom:2px">${d.nombre}</div>
@@ -6840,6 +6840,13 @@ function coachMsgsVolverLista(){
 
 
 function hProgreso2(){return`<div style="padding-top:8px">
+  ${CD.mensaje_semana?`<div class="motiv-card"><div style="overflow:hidden"><div id="motiv_msg_txt" data-clamp="3" data-expanded="0" style="font-size:14px;color:var(--sv2);line-height:1.7;font-weight:500;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${CD.mensaje_semana}</div></div>${CD.mensaje_semana.length>100?`<button onclick="toggleCoachComment('motiv_msg_txt',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}</div>`:''}
+  <div class="stats-g">
+    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Semanas')}</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.semanas}</div></div>
+    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Objetivo')}</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${t(CD.objetivo||'')}</div></div>
+    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Nivel')}</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${t(CD.nivel||'')}</div></div>
+    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Días/sem')}</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.dias.length}</div></div>
+  </div>
   <div id="progreso_graficas_wrap"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin:0 14px 6px">
     <div class="sec-lbl" style="margin:0">${t('Medición semanal')}</div>
@@ -8483,8 +8490,7 @@ async function cargarGraficasCliente(){
       }
     }
 
-    // Progreso solo muestra gráficas de ejercicios principales; las marcas personales/detalles quedan en Historial.
-    wrap.innerHTML = graficasHtml;
+    wrap.innerHTML = prsHtml + graficasHtml;
 
   } catch(e){ console.log('Error graficas:', e); }
 }
