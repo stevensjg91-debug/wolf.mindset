@@ -10005,8 +10005,7 @@ async function tabMoveEx(clienteId, diaId, exIndex, dir){
     [arr[exIndex], arr[newIndex]] = [arr[newIndex], arr[exIndex]];
     arr.forEach((e,i)=> e.orden = i);
 
-    window._coachClienteActual = c;
-    switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
+   
 
     for(let i=0;i<arr.length;i++){
       await api('/ejercicios/'+arr[i].id, {
@@ -10016,7 +10015,7 @@ async function tabMoveEx(clienteId, diaId, exIndex, dir){
     }
 
     window._coachClienteActual = await api('/clientes/'+clienteId);
-
+switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
   }catch(e){
     console.error('tabMoveEx error:', e);
     alert('Error moviendo ejercicio');
