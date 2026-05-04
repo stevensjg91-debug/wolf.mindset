@@ -2210,16 +2210,22 @@ async function verCliente(id){
               </div>
             </div>
             <div id="tab_dia_body_${d.id}" style="display:none;padding:0 13px 12px">
-              ${d.ejercicios.length ? d.ejercicios.map(e=>`
-                <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--br)">
-                  <div style="flex:1;min-width:0">
-                    <div style="font-size:13px;font-weight:700;color:var(--sv)">${e.nombre}</div>
-                    <div style="font-size:11px;color:var(--tx3);margin-top:1px">${e.series}×${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''} · ${e.descanso}s${e.rir!=null?' · RIR'+e.rir:''}${e.es_principal?' ⭐':''}</div>
-                    ${e.nota_coach?`<div style="font-size:10px;color:var(--amb);margin-top:2px">📝 ${e.nota_coach}</div>`:''}
-                  </div>
-                  <button onclick="tabEntrenoEditEx(${e.id})" style="background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);border-radius:6px;color:var(--blg);cursor:pointer;font-size:11px;padding:5px 8px;font-weight:600;white-space:nowrap">${tc('✏️ Editar')}</button>
-                  <button onclick="tabEntrenoDelEx(${e.id},${d.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px;padding:4px">✕</button>
-                </div>`).join('')
+             ${d.ejercicios.length ? d.ejercicios.map((e,ei)=>`
+  <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--br)">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <button onclick="event.stopPropagation();tabMoveEx(${c.id},${d.id},${ei},-1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↑</button>
+      <button onclick="event.stopPropagation();tabMoveEx(${c.id},${d.id},${ei},1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↓</button>
+    </div>
+
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:700;color:var(--sv)">${e.nombre}</div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:1px">${e.series}×${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''} · ${e.descanso}s${e.rir!=null?' · RIR'+e.rir:''}${e.es_principal?' ⭐':''}</div>
+      ${e.nota_coach?`<div style="font-size:10px;color:var(--amb);margin-top:2px">📝 ${e.nota_coach}</div>`:''}
+    </div>
+
+    <button onclick="tabEntrenoEditEx(${e.id})" style="background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);border-radius:6px;color:var(--blg);cursor:pointer;font-size:11px;padding:5px 8px;font-weight:600;white-space:nowrap">${tc('✏️ Editar')}</button>
+    <button onclick="tabEntrenoDelEx(${e.id},${d.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px;padding:4px">✕</button>
+  </div>`).join('')
               : `<div style="font-size:12px;color:var(--tx3);padding:8px 0">${tc('Sin ejercicios aún.')}</div>`}
             </div>
           </div>`).join('')
@@ -9984,5 +9990,29 @@ function moveEx(diaIndex, exIndex, dir){
   const el = document.getElementById('klContent');
   if(el && typeof hEntreno === 'function'){
     el.innerHTML = hEntreno();
+  }
+}
+async function tabMoveEx(clienteId, diaId, exIndex, dir){
+  try{
+    const c = await api('/clientes/'+clienteId);
+    const dia = (c.dias || []).find(d => String(d.id) === String(diaId));
+    if(!dia || !dia.ejercicios) return;
+
+    const arr = dia.ejercicios;
+    const newIndex = exIndex + dir;
+    if(newIndex < 0 || newIndex >= arr.length) return;
+
+    [arr[exIndex], arr[newIndex]] = [arr[newIndex], arr[exIndex]];
+
+    for(let i=0;i<arr.length;i++){
+      await api('/ejercicios/'+arr[i].id, {
+        method:'PUT',
+        body: JSON.stringify({ orden:i })
+      });
+    }
+
+    await abrirCliente(clienteId);
+  }catch(e){
+    alert('Error moviendo ejercicio');
   }
 }
