@@ -1025,6 +1025,7 @@ const COACH_TRANSLATIONS = {
   'Suscripción activa':'Active subscription','Sin suscripción':'No subscription',
   'Renovar suscripción':'Renew subscription','Cancelar suscripción':'Cancel subscription',
   'Contraseña del cliente':'Client password','Resetear':'Reset',
+  'Archivados':'Archived','Archivar':'Archive','Restaurar':'Restore','Borrar permanente':'Permanent delete',
   'Nueva contraseña':'New password','Mín 6 caracteres':'Min 6 chars',
   // Botones
   'Guardar':'Save','Publicar':'Publish','Eliminar':'Delete','Editar':'Edit',
@@ -1838,7 +1839,7 @@ function cNavM(s,btn){
 // ═══ COACH RENDER ════════════════════════════════════
 async function renderCoach(s){
   const el=document.getElementById('cContent');
-  if(s==='clientes'){const cl=await api('/clientes');window._clientesCache=cl;el.innerHTML=hClientes(cl);cargarTareasPendientes();}
+  if(s==='clientes'){const cl=await api('/clientes?incluir_archivados=1');window._clientesCache=cl;el.innerHTML=hClientes(cl);cargarTareasPendientes();}
   else if(s==='nuevo'){el.innerHTML=hNuevo();}
   else if(s==='rutinas'){el.innerHTML=hRutinas();await initRutinas();}
   else if(s==='dieta-builder'){el.innerHTML=hDietaBuilder();await initDietaBuilder();}
@@ -1875,12 +1876,15 @@ function hClientes(cl){
   if(typeof window._clienteFilter === 'undefined') window._clienteFilter = 'todos';
   const filter = window._clienteFilter;
 
-  const clFiltrados = filter === 'todos' ? cl :
-    filter === 'mios' ? cl.filter(c => !c.coach_id || c.coach_id === USER.id) :
-    cl.filter(c => c.coach_id && c.coach_id !== USER.id);
+  const activos = cl.filter(c => !c.archivado);
+  const archivados = cl.filter(c => c.archivado);
+  const clFiltrados = filter === 'archivados' ? archivados :
+    filter === 'todos' ? activos :
+    filter === 'mios' ? activos.filter(c => !c.coach_id || c.coach_id === USER.id) :
+    activos.filter(c => c.coach_id && c.coach_id !== USER.id);
 
-  const misCls = cl.filter(c => !c.coach_id || c.coach_id === USER.id).length;
-  const otrosCls = cl.filter(c => c.coach_id && c.coach_id !== USER.id).length;
+  const misCls = activos.filter(c => !c.coach_id || c.coach_id === USER.id).length;
+  const otrosCls = activos.filter(c => c.coach_id && c.coach_id !== USER.id).length;
   const otroCoachNombre = Object.values(coachColors).find((v,i) => i > 0)?.label || 'Partner';
 
   return`
@@ -1895,7 +1899,7 @@ function hClientes(cl){
   <div id="tareas_pendientes_wrap" style="margin-bottom:4px"></div>
 
   <div class="clientes-stats-grid">
-    <div class="clientes-stat-card"><div class="mlbl">${tc('Total')}</div><div class="mval">${cl.length}</div></div>
+    <div class="clientes-stat-card"><div class="mlbl">${tc('Total')}</div><div class="mval">${activos.length}</div></div>
     <div class="clientes-stat-card stat-blue"><div class="mlbl">${tc('Míos')}</div><div class="mval">${misCls}</div></div>
     <div class="clientes-stat-card stat-purple"><div class="mlbl">${otroCoachNombre}</div><div class="mval">${otrosCls}</div></div>
   </div>
@@ -1904,6 +1908,7 @@ function hClientes(cl){
     <button class="clientes-filter ${filter==='todos'?'on':''}" onclick="filtrarClientes('todos')">${tc('Todos')}</button>
     <button class="clientes-filter blue ${filter==='mios'?'on':''}" onclick="filtrarClientes('mios')">🔵 ${tc('Míos')}</button>
     <button class="clientes-filter purple ${filter==='otros'?'on':''}" onclick="filtrarClientes('otros')">🟣 ${otroCoachNombre}</button>
+    <button class="clientes-filter ${filter==='archivados'?'on':''}" onclick="filtrarClientes('archivados')">🗄️ ${tc('Archivados')} (${archivados.length})</button>
   </div>
 
   <div class="cc-grid clientes-card-grid">
@@ -1914,8 +1919,8 @@ function hClientes(cl){
       const avatar = c.foto_perfil
         ? `<img src="${c.foto_perfil}" alt="${c.nombre}"/>`
         : `<span>${ini(c.nombre)}</span>`;
-      return`<div class="cc cliente-card ${esMio?'own':'partner'}" onclick="verCliente(${c.id})">
-        <div class="cliente-coach-badge" style="background:${cc.bg};color:${cc.color}">${esMio?'🔵':'🟣'} ${cc.label}</div>
+      return`<div class="cc cliente-card ${esMio?'own':'partner'} ${c.archivado?'archived':''}" onclick="${c.archivado?'':'verCliente('+c.id+')'}" style="${c.archivado?'opacity:.72;filter:grayscale(.25);':''}">
+        <div class="cliente-coach-badge" style="background:${c.archivado?'rgba(148,163,184,.16)':cc.bg};color:${c.archivado?'#cbd5e1':cc.color}">${c.archivado?'🗄️ '+tc('Archivados'):(esMio?'🔵':'🟣')+' '+cc.label}</div>
         <div class="cliente-card-main">
           <div class="cliente-avatar" style="background:${a.bg};color:${a.tx};border-color:${esMio?'rgba(59,130,246,.45)':'rgba(168,85,247,.45)'}">${avatar}</div>
           <div class="cliente-info">
@@ -1927,10 +1932,60 @@ function hClientes(cl){
           <span class="badge b-sv">${tc('Sem')} ${c.semanas}</span>
           ${c.peso_actual?`<span class="badge b-bl">${c.peso_actual}kg</span>`:''}
         </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap" onclick="event.stopPropagation()">
+          ${c.archivado
+            ? `<button class="btn btn-sm" onclick="restaurarCliente(${c.id})">↩ ${tc('Restaurar')}</button>`
+            : `<button class="btn btn-sm" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.28);color:#fcd34d" onclick="archivarCliente(${c.id})">🗄️ ${tc('Archivar')}</button>`}
+          <button class="btn btn-sm" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#fca5a5" onclick="borrarClientePermanente(${c.id})">🗑️ ${tc('Borrar permanente')}</button>
+        </div>
       </div>`;
     }).join('')}
   </div>`;
 }
+
+async function refrescarClientesCoach(){
+  const cl = await api('/clientes?incluir_archivados=1');
+  window._clientesCache = cl;
+  const cont = document.getElementById('cContent');
+  if(cont) cont.innerHTML = hClientes(cl);
+  cargarTareasPendientes();
+  setTimeout(()=>{ applyCoachLang(document.getElementById('cContent')); },50);
+}
+
+async function archivarCliente(id){
+  const nombre = (window._clientesCache||[]).find(c=>String(c.id)===String(id))?.nombre || 'cliente';
+  const msg = COACH_LANG==='en'
+    ? `Archive ${nombre}?\n\nThe client will disappear from active lists and access will be blocked, but history is kept.`
+    : `¿Archivar a ${nombre}?\n\nDesaparecerá de las listas activas y se bloqueará el acceso, pero se conserva todo su historial.`;
+  if(!confirm(msg)) return;
+  try{
+    await api('/clientes/'+id+'/archivar',{method:'PUT'});
+    await refrescarClientesCoach();
+  }catch(e){alert(e.error||e.message||'Error');}
+}
+
+async function restaurarCliente(id){
+  try{
+    await api('/clientes/'+id+'/restaurar',{method:'PUT'});
+    await refrescarClientesCoach();
+  }catch(e){alert(e.error||e.message||'Error');}
+}
+
+async function borrarClientePermanente(id){
+  const nombre = (window._clientesCache||[]).find(c=>String(c.id)===String(id))?.nombre || 'cliente';
+  const aviso = COACH_LANG==='en'
+    ? `PERMANENT DELETE: ${nombre}\n\nThis deletes the client account, profile, routines, diet, photos, weight logs, check-ins, messages, subscriptions and workout history. This cannot be undone.`
+    : `BORRADO PERMANENTE: ${nombre}\n\nEsto elimina cuenta, perfil, rutinas, dieta, fotos, pesos, check-ins, mensajes, suscripción e historial de entrenos. No se puede deshacer.`;
+  if(!confirm(aviso)) return;
+  const txt = prompt(COACH_LANG==='en'?'Type BORRAR to confirm permanent deletion:':'Escribe BORRAR para confirmar el borrado permanente:');
+  if(String(txt||'').toUpperCase() !== 'BORRAR') return;
+  try{
+    await api('/clientes/'+id+'/permanente?confirm=BORRAR',{method:'DELETE'});
+    if(window._lastClienteId===id){window._lastClienteId=null;window._coachClienteId=null;window._coachClienteActual=null;}
+    await refrescarClientesCoach();
+  }catch(e){alert(e.error||e.message||'Error');}
+}
+
 async function cargarTareasPendientes(){
   const wrap=document.getElementById('tareas_pendientes_wrap');
   if(!wrap)return;
