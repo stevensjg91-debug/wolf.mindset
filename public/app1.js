@@ -145,16 +145,16 @@ let LANG = localStorage.getItem('wm_lang') || 'es';
 let COACH_LANG = localStorage.getItem('wm_coach_lang') || 'es';
 
 // ── UNIDADES DE MEDIDA ────────────────────────────────────────────
-function isImperial(){ return LANG==='en'; }
-function fmtPeso(kg){ if(!kg&&kg!==0)return'—'; return isImperial()?(kg*2.20462).toFixed(1)+' lb':kg+' kg'; }
-function pesoLabel(){ return isImperial()?'lb':'kg'; }
-function pesoPlaceholder(){ return isImperial()?'185':'84.5'; }
-function fromPeso(val){ const n=parseFloat(val); if(isNaN(n))return null; return isImperial()?parseFloat((n/2.20462).toFixed(2)):n; }
-function fmtAltura(cm){ if(!cm)return'—'; if(isImperial()){const t=cm/2.54;const ft=Math.floor(t/12);const inch=Math.round(t%12);return`${ft}′${inch}″`;} return cm+' cm'; }
-function alturaLabel(){ return isImperial()?'ft / in':'cm'; }
-function alturaPlaceholder(){ return isImperial()?'5\'9"':'175'; }
-function fromAltura(val){ if(isImperial()){const s=String(val).trim();const m=s.match(/^(\d+)['''′](\d+)["""″]?$/);if(m)return Math.round((parseInt(m[1])*12+parseInt(m[2]))*2.54);const n=parseFloat(s);if(isNaN(n))return null;return n>100?Math.round(n):Math.round(n*2.54);}return parseFloat(val)||null; }
-function fmtCintura(cm){ if(!cm)return'—'; return isImperial()?(cm/2.54).toFixed(1)+' in':cm+' cm'; }
+function isImperial(lang){ const l = lang !== undefined ? lang : LANG; return l==='en'; }
+function fmtPeso(kg, lang){ if(!kg&&kg!==0)return'—'; return isImperial(lang)?(kg*2.20462).toFixed(1)+' lb':kg+' kg'; }
+function pesoLabel(lang){ return isImperial(lang)?'lb':'kg'; }
+function pesoPlaceholder(lang){ return isImperial(lang)?'185':'84.5'; }
+function fromPeso(val, lang){ const n=parseFloat(val); if(isNaN(n))return null; return isImperial(lang)?parseFloat((n/2.20462).toFixed(2)):n; }
+function fmtAltura(cm, lang){ if(!cm)return'—'; if(isImperial(lang)){const t=cm/2.54;const ft=Math.floor(t/12);const inch=Math.round(t%12);return`${ft}′${inch}″`;} return cm+' cm'; }
+function alturaLabel(lang){ return isImperial(lang)?'ft / in':'cm'; }
+function alturaPlaceholder(lang){ return isImperial(lang)?'5\'9"':'175'; }
+function fromAltura(val, lang){ if(isImperial(lang)){const s=String(val).trim();const m=s.match(/^(\d+)['''′](\d+)["""″]?$/);if(m)return Math.round((parseInt(m[1])*12+parseInt(m[2]))*2.54);const n=parseFloat(s);if(isNaN(n))return null;return n>100?Math.round(n):Math.round(n*2.54);}return parseFloat(val)||null; }
+function fmtCintura(cm, lang){ if(!cm)return'—'; return isImperial(lang)?(cm/2.54).toFixed(1)+' in':cm+' cm'; }
 function cinturaLabel(){ return isImperial()?'in':'cm'; }
 function cinturaPlaceholder(){ return isImperial()?'32':'82'; }
 function fromCintura(val){ const n=parseFloat(val); if(isNaN(n))return null; return isImperial()?parseFloat((n*2.54).toFixed(1)):n; }
@@ -1723,6 +1723,13 @@ async function verificarSuscripcionCliente(clienteId) {
     const s = await api('/clientes/'+clienteId+'/suscripcion');
     if(!s || !s.fecha_fin) return; // Sin suscripción configurada, dejar pasar
 
+    // Calcular días restantes en frontend desde fecha_fin
+    const _hoy = new Date(); _hoy.setHours(0,0,0,0);
+    const _fin = new Date(s.fecha_fin); _fin.setHours(0,0,0,0);
+    s.dias_restantes = Math.max(0, Math.ceil((_fin - _hoy) / (1000*60*60*24)));
+    s.vencida = _fin < _hoy;
+    s.proxima_a_vencer = !s.vencida && s.dias_restantes <= 5;
+
     if(s.vencida || s.estado === 'cancelada') {
       // Bloquear acceso — mostrar pantalla de suscripción vencida
       const appEl = document.getElementById('sCliente');
@@ -2165,10 +2172,14 @@ async function verCliente(id){
     <div class="form-lbl">${COACH_LANG==='en'?'Coach notes (private)':'Notas coach'}</div><textarea class="ta" id="notasc">${c.notas_coach||''}</textarea>
     <!-- Reseteo de contraseña -->
     <div style="margin-top:14px;padding-top:14px;border-top:0.5px solid var(--br)">
-      <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${tc('🔑 Contraseña del cliente')}</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input class="inp" id="nueva_pass_${c.id}" type="password" placeholder="${tc('Nueva contraseña (mín. 4 caracteres)')}" style="margin-bottom:0;flex:1"/>
+      <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">${tc('🔑 Contraseña del cliente')}</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <input class="inp" id="nueva_pass_${c.id}" type="text" placeholder="${tc('Nueva contraseña temporal')}" style="margin-bottom:0;flex:1;font-family:monospace;letter-spacing:.08em"/>
         <button onclick="resetearContrasena(${c.id})" class="btn btn-sm" style="flex-shrink:0;white-space:nowrap;background:var(--bl2);color:#fff">${tc('Guardar')}</button>
+        <button onclick="(()=>{const v=document.getElementById('nueva_pass_${c.id}').value;if(v){navigator.clipboard.writeText(v);const b=event.target;b.textContent='✓';setTimeout(()=>b.textContent='📋',1500);}})()" class="btn btn-sm" style="flex-shrink:0;background:var(--s3);border:0.5px solid var(--br);color:var(--sv)" title="Copiar">📋</button>
+      </div>
+      <div style="font-size:11px;color:var(--amb);background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.2);border-radius:8px;padding:6px 8px;line-height:1.5">
+        ⚠️ ${COACH_LANG==='en'?'Show password is visible so you can copy and send it to the client. The client can change it from their account settings.':'La contraseña es visible para que puedas copiarla y enviársela. El cliente puede cambiarla desde su cuenta.'}
       </div>
       <div id="reset_msg_${c.id}" style="font-size:11px;margin-top:6px;height:16px"></div>
     </div>
@@ -4460,7 +4471,7 @@ async function dbSelCliente(id){
         <div>🎯 ${c.objetivo||'Sin objetivo'}</div>
         <div>🥗 ${tc(c.dieta_tipo)||c.dieta_tipo||tc('Omnívoro')}</div>
         <div>📊 ${c.nivel||'Principiante'}</div>
-        <div>⚖️ ${c.peso_actual?fmtPeso(c.peso_actual):'—'} · ${c.altura?fmtAltura(c.altura):'—'}</div>
+        <div>⚖️ ${c.peso_actual?fmtPeso(c.peso_actual,COACH_LANG):'—'} · ${c.altura?fmtAltura(c.altura,COACH_LANG):'—'}</div>
         <div>🔥 ${COACH_LANG==='en'?'Activity:':'Actividad:'} ${tc(c.actividad)||c.actividad||'—'}</div>
       </div>
       ${c.alimentos_no?`<div style="font-size:11px;color:#fca5a5;margin-bottom:4px">❌ No puede: ${c.alimentos_no}</div>`:''}
@@ -5053,6 +5064,17 @@ async function cargarSuscripcionCliente(clienteId) {
       return;
     }
 
+    // Calcular días restantes en frontend desde fecha_fin (no fiarse del backend)
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const fin = s.fecha_fin ? new Date(s.fecha_fin) : null;
+    if(fin) fin.setHours(0,0,0,0);
+    const diasRestantes = fin ? Math.max(0, Math.ceil((fin - hoy) / (1000*60*60*24))) : 0;
+    const vencida = fin ? fin < hoy : true;
+    const proximaAVencer = !vencida && diasRestantes <= 5;
+    s.dias_restantes = diasRestantes;
+    s.vencida = vencida;
+    s.proxima_a_vencer = proximaAVencer;
+
     const diasColor = s.vencida ? '#fca5a5' : s.proxima_a_vencer ? 'var(--amb)' : 'var(--gnb)';
     const estadoTexto = s.vencida ? ('🔴 '+(COACH_LANG==='en'?'Expired':'Vencida')) : s.proxima_a_vencer ? ('⚠️ '+(COACH_LANG==='en'?'Expires in':'Vence en')+' '+s.dias_restantes+'d') : ('✅ '+(COACH_LANG==='en'?'Active':'Activa'));
 
@@ -5575,7 +5597,7 @@ function hSeleccionDia(){
     const yaHecha = !!estadoHoy;
     const borderColor = estadoHoy==='completado'?'rgba(34,197,94,.4)':estadoHoy==='incompleto'?'rgba(245,158,11,.3)':'var(--br)';
     const bgColor = estadoHoy==='completado'?'rgba(34,197,94,.05)':estadoHoy==='incompleto'?'rgba(245,158,11,.04)':'var(--s2)';
-    return`<div onclick="${yaHecha?'':'abrirPreviewDia('+i+')'}" style="background:${bgColor};border:0.5px solid ${borderColor};border-radius:16px;padding:14px;cursor:${yaHecha?'default':'pointer'};transition:.15s">
+    return`<div onclick="abrirPreviewDia(${i})" style="background:${bgColor};border:0.5px solid ${borderColor};border-radius:16px;padding:14px;cursor:pointer;transition:.15s">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div style="flex:1;min-width:0">
           <div style="font-size:16px;font-weight:700;color:var(--sv);margin-bottom:2px">${d.nombre}</div>
@@ -5586,15 +5608,15 @@ function hSeleccionDia(){
           <div style="font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em">${t('ejerc.')}</div>
         </div>
       </div>
-      ${estadoHoy
-        ? `<span style="display:inline-flex;align-items:center;gap:4px;background:${estadoHoy==='completado'?'rgba(34,197,94,.12)':'rgba(245,158,11,.12)'};border:0.5px solid ${estadoHoy==='completado'?'rgba(34,197,94,.3)':'rgba(245,158,11,.3)'};border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:${estadoHoy==='completado'?'var(--gnb)':'var(--amb)'}">${estadoHoy==='completado'?t('✓ Completado hoy'):t('⚠ Incompleto hoy')}</span>`
-        : `<div style="font-size:12px;color:var(--tx3);margin-bottom:8px;line-height:1.5">${exNames||'Sin ejercicios'}</div>
-           <div style="display:flex;align-items:center;gap:5px">
-             <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#52525b" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="#52525b" stroke-width="1.3" stroke-linecap="round"/></svg>
-             <span style="font-size:11px;color:var(--tx3)">${lastStr}</span>
-             <span style="margin-left:auto;font-size:11px;color:var(--tx3)">${totalSeries} series</span>
-           </div>`
-      }
+      <div style="font-size:12px;color:var(--tx3);margin-bottom:8px;line-height:1.5">${exNames||'Sin ejercicios'}</div>
+      <div style="display:flex;align-items:center;gap:5px">
+        ${estadoHoy
+          ? `<span style="display:inline-flex;align-items:center;gap:4px;background:${estadoHoy==='completado'?'rgba(34,197,94,.12)':'rgba(245,158,11,.12)'};border:0.5px solid ${estadoHoy==='completado'?'rgba(34,197,94,.3)':'rgba(245,158,11,.3)'};border-radius:20px;padding:3px 8px;font-size:11px;font-weight:700;color:${estadoHoy==='completado'?'var(--gnb)':'var(--amb)'}">${estadoHoy==='completado'?t('✓ Hoy'):t('⚠ Incompleto')}</span>`
+          : `<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#52525b" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="#52525b" stroke-width="1.3" stroke-linecap="round"/></svg>
+             <span style="font-size:11px;color:var(--tx3)">${lastStr}</span>`
+        }
+        <span style="margin-left:auto;font-size:11px;color:var(--tx3)">${totalSeries} series</span>
+      </div>
     </div>`;
   }).join('');
 
@@ -6840,14 +6862,50 @@ function coachMsgsVolverLista(){
 
 
 function hProgreso2(){return`<div style="padding-top:8px">
-  ${CD.mensaje_semana?`<div class="motiv-card"><div style="overflow:hidden"><div id="motiv_msg_txt" data-clamp="3" data-expanded="0" style="font-size:14px;color:var(--sv2);line-height:1.7;font-weight:500;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${CD.mensaje_semana}</div></div>${CD.mensaje_semana.length>100?`<button onclick="toggleCoachComment('motiv_msg_txt',this)" style="background:none;border:none;color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;margin-top:6px;padding:0;font-family:inherit">${t('Ver más')} ▾</button>`:''}</div>`:''}
-  <div class="stats-g">
-    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Semanas')}</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.semanas}</div></div>
-    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Objetivo')}</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${t(CD.objetivo||'')}</div></div>
-    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Nivel')}</div><div style="font-size:15px;font-weight:700;color:var(--sv)">${t(CD.nivel||'')}</div></div>
-    <div class="stat-card"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-weight:600">${t('Días/sem')}</div><div style="font-size:22px;font-weight:700;color:var(--sv)">${CD.dias.length}</div></div>
+  <div class="sec-lbl">${t('Fotos de progreso')}</div>
+  <div style="padding:0 14px 12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      ${['frente','posterior','costado'].map(tipo=>`
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label for="fUp_${tipo}" style="cursor:pointer;display:block">
+          <div style="aspect-ratio:3/4;border:1.5px dashed rgba(59,130,246,.4);border-radius:10px;background:var(--s2);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden">
+            <svg viewBox="0 0 60 80" style="width:50%;opacity:.2;position:absolute" fill="none" xmlns="http://www.w3.org/2000/svg">
+              ${tipo==='frente'?`
+              <circle cx="30" cy="10" r="8" fill="#93c5fd"/>
+              <path d="M18 22 Q30 18 42 22 L44 50 H16 Z" fill="#93c5fd"/>
+              <path d="M16 25 L8 45 M44 25 L52 45" stroke="#93c5fd" stroke-width="4" stroke-linecap="round"/>
+              <path d="M20 50 L18 75 M40 50 L42 75" stroke="#93c5fd" stroke-width="5" stroke-linecap="round"/>
+              `:tipo==='posterior'?`
+              <circle cx="30" cy="10" r="8" fill="#93c5fd"/>
+              <path d="M18 22 Q30 18 42 22 L44 50 H16 Z" fill="#93c5fd"/>
+              <path d="M16 25 L8 45 M44 25 L52 45" stroke="#93c5fd" stroke-width="4" stroke-linecap="round"/>
+              <path d="M20 50 L18 75 M40 50 L42 75" stroke="#93c5fd" stroke-width="5" stroke-linecap="round"/>
+              `:`
+              <circle cx="28" cy="10" r="8" fill="#93c5fd"/>
+              <path d="M22 22 Q28 18 36 22 L38 50 H18 Z" fill="#93c5fd"/>
+              <path d="M18 25 L10 45 M38 25 L42 44" stroke="#93c5fd" stroke-width="4" stroke-linecap="round"/>
+              <path d="M20 50 L19 75 M36 50 L37 75" stroke="#93c5fd" stroke-width="5" stroke-linecap="round"/>
+              `}
+            </svg>
+            <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(59,130,246,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.08) 1px,transparent 1px);background-size:33% 25%"></div>
+            <div id="foto_preview_${tipo}" style="position:absolute;inset:0;display:none">
+              <img id="foto_img_${tipo}" style="width:100%;height:100%;object-fit:cover"/>
+              <div style="position:absolute;top:4px;right:4px;background:rgba(34,197,94,.9);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px">✓</div>
+            </div>
+            <div style="position:relative;z-index:1;text-align:center;padding:6px">
+              <div style="font-size:18px;margin-bottom:4px">📷</div>
+              <div style="font-size:10px;font-weight:700;color:var(--sv2);text-transform:uppercase;letter-spacing:.05em">${t(tipo)}</div>
+            </div>
+          </div>
+        </label>
+        <input type="file" id="fUp_${tipo}" accept="image/*" style="display:none" onchange="uploadFotoTipo(event,'${tipo}')"/>
+      </div>`).join('')}
+    </div>
+    <div style="font-size:11px;color:var(--tx3);text-align:center;margin-bottom:10px;line-height:1.5">
+      ${t("Sube las 3 fotos para que tu coach pueda hacer una valoración completa.")}<br>
+      📏 Posición: de pie, cuerpo entero, buena iluminación.
+    </div>
   </div>
-  <div id="progreso_graficas_wrap"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin:0 14px 6px">
     <div class="sec-lbl" style="margin:0">${t('Medición semanal')}</div>
     <div id="peso_edit_btn_wrap"></div>
@@ -6878,61 +6936,10 @@ function hProgreso2(){return`<div style="padding-top:8px">
       <button class="btn" style="width:100%;padding:13px;font-size:15px" onclick="guardarMediciones()">${t('Guardar mediciones')}</button>
     </div>
   </div>
-  <div class="sec-lbl">${t('Fotos de progreso')}</div>
-  <div style="padding:0 14px 12px">
-    <!-- 3 foto slots -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-      ${['frente','posterior','costado'].map(tipo=>`
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <label for="fUp_${tipo}" style="cursor:pointer;display:block">
-          <!-- Guide grid -->
-          <div style="aspect-ratio:3/4;border:1.5px dashed rgba(59,130,246,.4);border-radius:10px;background:var(--s2);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden">
-            <!-- Human silhouette SVG guide -->
-            <svg viewBox="0 0 60 80" style="width:50%;opacity:.2;position:absolute" fill="none" xmlns="http://www.w3.org/2000/svg">
-              ${tipo==='frente'?`
-              <circle cx="30" cy="10" r="8" fill="#93c5fd"/>
-              <path d="M18 22 Q30 18 42 22 L44 50 H16 Z" fill="#93c5fd"/>
-              <path d="M16 25 L8 45 M44 25 L52 45" stroke="#93c5fd" stroke-width="4" stroke-linecap="round"/>
-              <path d="M20 50 L18 75 M40 50 L42 75" stroke="#93c5fd" stroke-width="5" stroke-linecap="round"/>
-              `:tipo==='posterior'?`
-              <circle cx="30" cy="10" r="8" fill="#93c5fd"/>
-              <path d="M18 22 Q30 18 42 22 L44 50 H16 Z" fill="#93c5fd"/>
-              <path d="M16 25 L8 45 M44 25 L52 45" stroke="#93c5fd" stroke-width="4" stroke-linecap="round"/>
-              <path d="M20 50 L18 75 M40 50 L42 75" stroke="#93c5fd" stroke-width="5" stroke-linecap="round"/>
-              `:`
-              <circle cx="28" cy="10" r="8" fill="#93c5fd"/>
-              <path d="M22 22 Q28 18 36 22 L38 50 H18 Z" fill="#93c5fd"/>
-              <path d="M18 25 L10 45 M38 25 L42 44" stroke="#93c5fd" stroke-width="4" stroke-linecap="round"/>
-              <path d="M20 50 L19 75 M36 50 L37 75" stroke="#93c5fd" stroke-width="5" stroke-linecap="round"/>
-              `}
-            </svg>
-            <!-- Grid lines -->
-            <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(59,130,246,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.08) 1px,transparent 1px);background-size:33% 25%"></div>
-            <!-- Uploaded photo preview -->
-            <div id="foto_preview_${tipo}" style="position:absolute;inset:0;display:none">
-              <img id="foto_img_${tipo}" style="width:100%;height:100%;object-fit:cover"/>
-              <div style="position:absolute;top:4px;right:4px;background:rgba(34,197,94,.9);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px">✓</div>
-            </div>
-            <div style="position:relative;z-index:1;text-align:center;padding:6px">
-              <div style="font-size:18px;margin-bottom:4px">📷</div>
-              <div style="font-size:10px;font-weight:700;color:var(--sv2);text-transform:uppercase;letter-spacing:.05em">${t(tipo)}</div>
-            </div>
-          </div>
-        </label>
-        <input type="file" id="fUp_${tipo}" accept="image/*" style="display:none" onchange="uploadFotoTipo(event,'${tipo}')"/>
-      </div>`).join('')}
-    </div>
-    <div style="font-size:11px;color:var(--tx3);text-align:center;margin-bottom:10px;line-height:1.5">
-      ${t("Sube las 3 fotos para que tu coach pueda hacer una valoración completa.")}<br>
-      📏 Posición: de pie, cuerpo entero, buena iluminación.
-    </div>
-    <!-- Analizar fotos solo disponible para coach desde su panel -->
-  </div>
-  <!-- Gráfica tendencia peso -->
   <div id="peso_tendencia_wrap" style="padding:0 14px 12px"></div>
+  <div id="progreso_graficas_wrap"></div>
   <input type="file" id="fUp" accept="image/*" style="display:none" onchange="uploadFoto(event)"/>
   <div id="fLoad" style="display:none;padding:0 14px 10px"><div class="ia-chip"><div class="ia-chip-title">Analizando tu progreso...</div></div></div>
-  <!-- Fotos timeline con comentarios del coach -->
   <div id="fotos_timeline" style="padding:0 14px"></div>
   <div id="fAn" style="padding:0 14px 10px"></div>
 </div>`;}
@@ -7801,6 +7808,7 @@ function calcGastoCoach(c){
 
 // ═══ CALCULADORA COACH PRO + AUTOGUARDADO ═══════════════════════════
 function calcularMacrosCoachCliente(c){
+  // Datos en BD siempre en kg y cm — nunca convertir aquí
   const peso = parseFloat(c.peso_actual || c.peso || 0);
   const altura = parseInt(c.altura || 0);
   const edad = parseInt(c.edad || 0);
@@ -8015,13 +8023,13 @@ function openVideo(url, nombre){
   let embedUrl = url;
   if(url.includes('youtube.com/shorts/')){
     const id = url.split('shorts/')[1].split('?')[0];
-    embedUrl = 'https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0';
+    embedUrl = 'https://www.youtube.com/embed/' + id + '?autoplay=1&mute=1&rel=0&playsinline=1';
   } else if(url.includes('youtu.be/')){
     const id = url.split('youtu.be/')[1].split('?')[0];
-    embedUrl = 'https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0';
+    embedUrl = 'https://www.youtube.com/embed/' + id + '?autoplay=1&mute=1&rel=0&playsinline=1';
   } else if(url.includes('youtube.com/watch')){
     const id = new URLSearchParams(url.split('?')[1]).get('v');
-    embedUrl = 'https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0';
+    embedUrl = 'https://www.youtube.com/embed/' + id + '?autoplay=1&mute=1&rel=0&playsinline=1';
   }
   frame.src = embedUrl;
   modal.style.display = 'flex';
@@ -8193,7 +8201,7 @@ function hPendientes(p){
       <span class="badge b-am">${COACH_LANG==='en'?'Pending':'Pendiente'}</span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">
-      ${[[tc('Objetivo'),tc(c.objetivo)||c.objetivo],[tc('Nivel'),tc(c.nivel)||c.nivel],[COACH_LANG==='en'?'Weight':'Peso',c.peso_actual?fmtPeso(c.peso_actual):'—'],[COACH_LANG==='en'?'Height':'Altura',c.altura?fmtAltura(c.altura):'—'],[tc('Edad'),c.edad?c.edad+(COACH_LANG==='en'?' y':' años'):'—'],[tc('Sexo'),c.sexo?tc(c.sexo):'—']].map(([l,v])=>`<div style="background:var(--s);border:0.5px solid var(--br);border-radius:8px;padding:7px 9px"><div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${l}</div><div style="font-size:12px;font-weight:600;color:var(--sv2);margin-top:1px">${v}</div></div>`).join('')}
+      ${[[tc('Objetivo'),tc(c.objetivo)||c.objetivo],[tc('Nivel'),tc(c.nivel)||c.nivel],[COACH_LANG==='en'?'Weight (lb)':'Peso (kg)',c.peso_actual?fmtPeso(c.peso_actual,COACH_LANG):'—'],[COACH_LANG==='en'?'Height (ft)':'Altura (cm)',c.altura?fmtAltura(c.altura,COACH_LANG):'—'],[tc('Edad'),c.edad?c.edad+(COACH_LANG==='en'?' y':' años'):'—'],[tc('Sexo'),c.sexo?tc(c.sexo):'—']].map(([l,v])=>`<div style="background:var(--s);border:0.5px solid var(--br);border-radius:8px;padding:7px 9px"><div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${l}</div><div style="font-size:12px;font-weight:600;color:var(--sv2);margin-top:1px">${v}</div></div>`).join('')}
     </div>
     ${c.lesiones?`<div style="background:rgba(239,68,68,.08);border:0.5px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 10px;font-size:12px;color:#fca5a5;margin-bottom:6px">⚠️ <span style="font-weight:700">${tc('Lesiones:')}</span> ${c.lesiones}</div>`:''}
     ${c.dieta_tipo&&c.dieta_tipo!=='Omnivoro'?`<div style="background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--gnb);margin-bottom:6px">🥗 <span style="font-weight:700">${tc('Dieta:')}</span> ${tc(c.dieta_tipo)}</div>`:''}
