@@ -1709,6 +1709,11 @@ async function loadCD(id){
 
   try {
     window.exImages = await api('/ejercicios-imagenes');
+     // 🔥 NORMALIZAR NOMBRES (FIX)
+window.exImagesNormalized = {};
+Object.keys(window.exImages).forEach(k=>{
+  window.exImagesNormalized[k.trim().toLowerCase()] = window.exImages[k];
+});
   } catch(e) {
     window.exImages = window.exImages || {};
   }
@@ -5775,7 +5780,13 @@ function hEntreno(){
     const exDone=e._series.every(s=>s.done);
     const ytUrl=e.youtube_url||EX_YT[e.nombre]||'';
     const cfg=(window.exConfig&&window.exConfig[e.nombre])||{};
-   const imgUrl=(window.exImages&&window.exImages[e.nombre])||e.imagen_url||cfg.imagen_url||'';
+   const key = e.nombre ? e.nombre.trim().toLowerCase() : '';
+const imgUrl =
+  (window.exImagesNormalized && window.exImagesNormalized[key]) ||
+  (window.exImages && window.exImages[e.nombre]) ||
+  e.imagen_url ||
+  cfg.imagen_url ||
+  '';
     const seriesRows=e._series.map((s,si)=>{
       const timerKey=`${ei}_${si}`;
       const rt=runningTimers[timerKey];
