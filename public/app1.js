@@ -9996,7 +9996,7 @@ async function tabMoveEx(clienteId, diaId, exIndex, dir){
   try{
     const c = await api('/clientes/'+clienteId);
     const dia = (c.dias || []).find(d => String(d.id) === String(diaId));
-    if(!dia || !dia.ejercicios) throw new Error('Día no encontrado');
+    if(!dia || !dia.ejercicios) return;
 
     const arr = dia.ejercicios;
     const newIndex = exIndex + dir;
@@ -10004,23 +10004,24 @@ async function tabMoveEx(clienteId, diaId, exIndex, dir){
 
     [arr[exIndex], arr[newIndex]] = [arr[newIndex], arr[exIndex]];
 
+    arr.forEach((e,i)=> e.orden = i);
+
+    window._coachClienteActual = c;
+    switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
+
     for(let i=0;i<arr.length;i++){
-      const res = await fetch('/api/ejercicios/'+arr[i].id, {
+      await api('/ejercicios/'+arr[i].id, {
         method:'PUT',
-        headers:{
-          'Content-Type':'application/json',
-          'Authorization':'Bearer '+TOKEN
-        },
         body: JSON.stringify({ orden:i })
       });
-
-      if(!res.ok){
-        const txt = await res.text();
-        throw new Error(txt);
-      }
     }
 
     window._coachClienteActual = await api('/clientes/'+clienteId);
+  }catch(e){
+    console.error('tabMoveEx error:', e);
+    alert('Error moviendo ejercicio');
+  }
+}eActual = await api('/clientes/'+clienteId);
     switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
 
   }catch(e){
