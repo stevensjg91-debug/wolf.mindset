@@ -264,7 +264,7 @@ RESPONDE EXACTAMENTE en este formato JSON:
   try {
     const d = await api('/ia/chat', {method:'POST', body:JSON.stringify({
       messages:[{role:'user', content:prompt}],
-      system:`Eres un nutricionista deportivo experto. Responde SIEMPRE con JSON válido y compacto, sin texto adicional, sin bloques de código markdown. Todas las cantidades en crudo. Máximo 2 variaciones por comida, máximo 4 alimentos cada una. Clasifica cada alimento antes de combinarlo. Aplica criterio culinario real: cada comida debe ser un plato que existe y tiene sentido. Si no puedes hacer una variación coherente, no la incluyas. Sigue estrictamente las reglas del prompt.`
+      system:`You are an expert sports nutritionist. Always respond with valid compact JSON, no extra text, no markdown code blocks. All quantities raw/uncooked. Max 2 variations per meal, max 4 foods each. Apply real culinary sense. Do not include macro summaries in the "nota" field. ${LANG==='en'?'Write ALL text fields (nombre, nota, ajustes, alternativas) in English.':'Escribe todos los campos de texto en español.'}`
     })});
 
     let plan;
@@ -394,7 +394,7 @@ function renderPlanDietaCoach(plan, cliente){
       </div>` : '';
     const alimentosHtml = (alims)=>alims.map(a=>`
       <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0">
-        <span style="color:var(--sv2)">${a.nombre}${a.detalle?' <span style="color:var(--tx3);font-size:11px">('+a.detalle+')</span>':''}</span>
+        <span style="color:var(--sv2)">${a.nombre}${a.detalle?' <span style="color:var(--tx3);font-size:11px">('+((LANG==="en"&&a.detalle==="en crudo")?"raw":a.detalle)+')</span>':''}</span>
         <span style="color:${accent};font-weight:700">${a.cantidad}</span>
       </div>`).join('');
     return`<div style="padding:12px 0;border-bottom:0.5px solid var(--br)">
@@ -404,7 +404,7 @@ function renderPlanDietaCoach(plan, cliente){
           <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:6px">${m.emoji||'🍽️'} ${translateMealName(m.nombre)}</div>
           ${varBtns}
           <div id="coach_var_${mi}">${alimentosHtml(m.alimentos)}</div>
-          ${m.nota?`<div style="font-size:11px;color:var(--tx3);margin-top:4px;font-style:italic">${m.nota}</div>`:''}
+          ${m.nota&&!m.nota.match(/Aprox|kcal|prot|carbs|grasas/i)?`<div style="font-size:11px;color:var(--tx3);margin-top:4px;font-style:italic">${m.nota}</div>`:''}
         </div>
       </div>
     </div>`;
@@ -413,8 +413,8 @@ function renderPlanDietaCoach(plan, cliente){
   const altHtml = plan.alternativas ? `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
       <div><div style="font-size:10px;color:${accent};font-weight:700;margin-bottom:4px">${t('Proteínas')}</div>${(plan.alternativas.proteinas||[]).map(p=>`<div style="font-size:11px;color:var(--sv3)">${p}</div>`).join('')}</div>
-      <div><div style="font-size:10px;color:${accent};font-weight:700;margin-bottom:4px">${COACH_LANG==='en'?'Carbs':t('Carbos')}</div>${(plan.alternativas.carbos||[]).map(p=>`<div style="font-size:11px;color:var(--sv3)">${p}</div>`).join('')}</div>
-      <div><div style="font-size:10px;color:${accent};font-weight:700;margin-bottom:4px">${COACH_LANG==='en'?'Fats':t('Grasas')}</div>${(plan.alternativas.grasas||[]).map(p=>`<div style="font-size:11px;color:var(--sv3)">${p}</div>`).join('')}</div>
+      <div><div style="font-size:10px;color:${accent};font-weight:700;margin-bottom:4px">${LANG==='en'?'Carbs':t('Carbos')}</div>${(plan.alternativas.carbos||[]).map(p=>`<div style="font-size:11px;color:var(--sv3)">${p}</div>`).join('')}</div>
+      <div><div style="font-size:10px;color:${accent};font-weight:700;margin-bottom:4px">${LANG==='en'?'Fats':t('Grasas')}</div>${(plan.alternativas.grasas||[]).map(p=>`<div style="font-size:11px;color:var(--sv3)">${p}</div>`).join('')}</div>
     </div>` : '';
 
   return `
@@ -428,8 +428,8 @@ function renderPlanDietaCoach(plan, cliente){
       </div>
       ${mealHtml}
     </div>
-    ${plan.alternativas?`<div style="background:var(--s2);border-radius:12px;padding:14px;margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${COACH_LANG==='en'?'Alternatives & swaps':t('Alternativas e intercambios')}</div>${altHtml}</div>`:''}
-    ${plan.ajustes?.length?`<div style="background:var(--s2);border-radius:12px;padding:14px;margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${COACH_LANG==='en'?'Adjustments if needed':t('Ajustes si es necesario')}</div>${plan.ajustes.map(a=>`<div style="display:flex;gap:10px;margin-bottom:8px;align-items:flex-start"><div style="width:28px;height:28px;border-radius:50%;background:${accentBg};border:0.5px solid ${accent}40;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${a.icono}</div><div><div style="font-size:12px;font-weight:700;color:var(--sv)">${a.titulo}</div><div style="font-size:11px;color:var(--tx3)">${a.texto}</div></div></div>`).join('')}</div>`:''}`;
+    ${plan.alternativas?`<div style="background:var(--s2);border-radius:12px;padding:14px;margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${LANG==='en'?'Alternatives & swaps':t('Alternativas e intercambios')}</div>${altHtml}</div>`:''}
+    ${plan.ajustes?.length?`<div style="background:var(--s2);border-radius:12px;padding:14px;margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${LANG==='en'?'Adjustments if needed':t('Ajustes si es necesario')}</div>${plan.ajustes.map(a=>`<div style="display:flex;gap:10px;margin-bottom:8px;align-items:flex-start"><div style="width:28px;height:28px;border-radius:50%;background:${accentBg};border:0.5px solid ${accent}40;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${a.icono}</div><div><div style="font-size:12px;font-weight:700;color:var(--sv)">${a.titulo}</div><div style="font-size:11px;color:var(--tx3)">${a.texto}</div></div></div>`).join('')}</div>`:''}`;
 }
 
 
