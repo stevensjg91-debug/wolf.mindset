@@ -5384,23 +5384,29 @@ async function sendIA(){
   const msgs=document.getElementById('iaMsgs');
   msgs.innerHTML+=`<div class="msg msg-u">${msg}</div>`;msgs.scrollTop=msgs.scrollHeight;
 
-  // Detectar si el mensaje menciona algún cliente y construir contexto
+  // Asegurar que tenemos el cache de clientes
+  if (!window._clientesCache || !window._clientesCache.length) {
+    try { window._clientesCache = await api('/clientes?incluir_archivados=1'); } catch(e) {}
+  }
+
+  // Detectar si el mensaje menciona algún cliente por nombre
   const clientes = window._clientesCache || [];
   let clienteCtx = '';
+  const msgLower = msg.toLowerCase();
   for (const cl of clientes) {
-    const nombre = (cl.nombre||'').toLowerCase();
-    if (nombre && msg.toLowerCase().includes(nombre.split(' ')[0].toLowerCase())) {
-      // Cargar datos completos del cliente
+    const partes = (cl.nombre||'').toLowerCase().split(/\s+/);
+    const match = partes.some(p => p.length > 2 && msgLower.includes(p));
+    if (match) {
       try {
         const full = await api('/clientes/' + cl.id);
-        const alimentos = (full.dieta?.comidas||[]).flatMap(c=>(c.items||[]).map(a=>a.nombre)).filter(Boolean);
+        const alimentos = (full.dieta?.comidas||[]).flatMap(c=>(c.items||[]).map(a=>`${a.nombre} ${a.gramos}g`)).filter(Boolean);
         const ejercicios = (full.dias||[]).flatMap(d=>(d.ejercicios||[]).map(e=>e.nombre)).filter(Boolean);
         clienteCtx = `
 
-=== DATOS DEL CLIENTE: ${full.nombre} ===
+=== FICHA COMPLETA: ${full.nombre} ===
 Objetivo: ${full.objetivo} | Nivel: ${full.nivel} | Semanas: ${full.semanas}
 Peso: ${full.peso_actual||'?'}kg | Altura: ${full.altura||'?'}cm | Edad: ${full.edad||'?'} | Sexo: ${full.sexo||'?'}
-Kcal: ${full.kcal_internas} | Proteína: ${full.prot}g | Carbos: ${full.carbs}g | Grasas: ${full.fat}g
+Kcal objetivo: ${full.kcal_internas} | Proteína: ${full.prot}g | Carbos: ${full.carbs}g | Grasas: ${full.fat}g
 Lesiones: ${full.lesiones||'Ninguna'}
 Deficiencias/notas médicas: ${full.deficiencias||'Ninguna'}
 Alimentos no permitidos: ${full.alimentos_no||'Ninguno'}
@@ -5408,13 +5414,14 @@ Tipo de dieta: ${full.dieta_tipo||'Omnívoro'}
 Alimentos en su dieta actual: ${alimentos.length ? alimentos.join(', ') : 'Sin dieta asignada'}
 Ejercicios en su rutina actual: ${ejercicios.length ? ejercicios.join(', ') : 'Sin rutina asignada'}
 Notas del coach: ${full.notas_coach||'Ninguna'}
-===`;
+===
+USA ESTOS DATOS para responder con precisión. NO pidas información que ya tienes aquí.`;
       } catch(e) {}
       break;
     }
   }
 
-  const systemPrompt = `Eres el asistente IA privado del coach WolfMindset. Ayudas con progresión de carga, periodización, ajustes calóricos, generación de rutinas y dietas completas. Cuando tienes datos de un cliente los usas para dar respuestas personalizadas y precisas. Tienes en cuenta siempre las lesiones, deficiencias y restricciones alimentarias del cliente.${clienteCtx} ${COACH_LANG==='en'?'Always respond in English. Technical and concise.':'Respuestas técnicas y concisas en español.'}`;
+  const systemPrompt = `Eres el asistente IA privado del coach WolfMindset. Ayudas con progresión de carga, periodización, ajustes calóricos, generación de rutinas y dietas completas. Cuando tienes la ficha de un cliente la usas directamente sin pedir más datos.${clienteCtx} ${COACH_LANG==='en'?'Always respond in English. Technical and concise.':'Respuestas técnicas y concisas en español.'}`;
 
   iaH.push({role:'user',content:msg});document.getElementById('iaTyping').style.display='block';
   try{
