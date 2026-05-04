@@ -357,11 +357,24 @@ router.get('/ejercicios/:id', (req, res) => {
 router.put('/ejercicios/:id', (req, res) => {
   const e = dbGet('SELECT * FROM ejercicios_dia WHERE id=?', [req.params.id]);
   if (!e) return res.status(404).json({ error: 'No encontrado' });
-  const { series, reps, peso_objetivo, descanso, es_pr, youtube_url, imagen_url, nota_coach } = req.body;
+ const { series, reps, peso_objetivo, descanso, es_pr, youtube_url, imagen_url, nota_coach, orden } = req.body;
   const rir_val = 'rir' in req.body ? req.body.rir : e.rir;
   const esp_val = req.body.es_principal!=null ? req.body.es_principal : (e.es_principal||0);
-  dbRun('UPDATE ejercicios_dia SET series=?, reps=?, peso_objetivo=?, descanso=?, rir=?, es_principal=?, es_pr=?, youtube_url=?, imagen_url=?, nota_coach=? WHERE id=?',
-    [series||e.series, reps||e.reps, peso_objetivo!=null?peso_objetivo:e.peso_objetivo, descanso||e.descanso, rir_val, esp_val, es_pr!=null?es_pr:e.es_pr, youtube_url!=null?youtube_url:e.youtube_url||'', imagen_url!=null?imagen_url:e.imagen_url||'', nota_coach!=null?nota_coach:e.nota_coach||'', req.params.id]);
+  ddbRun('UPDATE ejercicios_dia SET series=?, reps=?, peso_objetivo=?, descanso=?, rir=?, es_principal=?, es_pr=?, youtube_url=?, imagen_url=?, nota_coach=?, orden=? WHERE id=?',
+   [
+  series||e.series,
+  reps||e.reps,
+  peso_objetivo!=null?peso_objetivo:e.peso_objetivo,
+  descanso||e.descanso,
+  rir_val,
+  esp_val,
+  es_pr!=null?es_pr:e.es_pr,
+  youtube_url!=null?youtube_url:e.youtube_url||'',
+  imagen_url!=null?imagen_url:e.imagen_url||'',
+  nota_coach!=null?nota_coach:e.nota_coach||'',
+  orden!=null?orden:e.orden,
+  req.params.id
+]
   res.json({ ok: true });
 });
 
