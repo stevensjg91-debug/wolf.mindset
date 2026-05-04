@@ -360,7 +360,7 @@ router.put('/ejercicios/:id', (req, res) => {
  const { series, reps, peso_objetivo, descanso, es_pr, youtube_url, imagen_url, nota_coach, orden } = req.body;
   const rir_val = 'rir' in req.body ? req.body.rir : e.rir;
   const esp_val = req.body.es_principal!=null ? req.body.es_principal : (e.es_principal||0);
-  ddbRun('UPDATE ejercicios_dia SET series=?, reps=?, peso_objetivo=?, descanso=?, rir=?, es_principal=?, es_pr=?, youtube_url=?, imagen_url=?, nota_coach=?, orden=? WHERE id=?',
+ dbRun('UPDATE ejercicios_dia SET series=?, reps=?, peso_objetivo=?, descanso=?, rir=?, es_principal=?, es_pr=?, youtube_url=?, imagen_url=?, nota_coach=?, orden=? WHERE id=?',
    [
   series||e.series,
   reps||e.reps,
