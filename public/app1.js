@@ -10066,8 +10066,8 @@ async function renderIaChatPanel() {
         await Promise.all(arr.map((ex, i) =>
           api('/ejercicios/' + ex.id, { method: 'PUT', body: JSON.stringify({ orden: i }) })
         ));
-        window._coachClienteActual = await api('/clientes/' + clienteId);
-        switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
+        await verCliente(clienteId);
+        setTimeout(() => switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]')), 50);
       } catch(err) {
         console.error('drag reorder error:', err);
         alert('Error al reordenar');
