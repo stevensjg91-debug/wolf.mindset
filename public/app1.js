@@ -5381,6 +5381,14 @@ function renderKL(){
   const el=document.getElementById('klContent');
   if(!CD){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--tx3)">Cargando...</div>';return;}
   if(klTab==='entreno'){
+    // Si había un entreno en curso, restaurarlo directamente
+    if(vistaActual === 'entreno' && activeDia !== null){
+      const klEl = document.getElementById('klContent');
+      restaurarEstadoEntreno();
+      klEl.innerHTML = hEntreno();
+      setTimeout(()=>{ applyLang(klEl); }, 50);
+      return;
+    }
     // Load today's sessions from server first, then render — ensures state is correct across devices
     const hoy = new Date().toISOString().split('T')[0];
     Promise.all([
@@ -5708,8 +5716,60 @@ function hPreviewDia(i){
 }
 
 function volverSeleccion(){
+  limpiarEstadoEntreno();
   vistaActual = 'seleccion';
   renderSeleccion();
+}
+
+
+// ═══ PERSISTENCIA ESTADO ENTRENO EN CURSO ═══════════════
+function _wkKey(){ return 'wm_wk_'+( CD && CD.id ? CD.id : 'x')+'_'+activeDia; }
+
+function guardarEstadoEntreno(){
+  if(vistaActual !== 'entreno') return;
+  const dia = CD && CD.dias && CD.dias[activeDia];
+  if(!dia) return;
+  const data = {
+    activeDia,
+    workoutStartTime,
+    ejercicios: dia.ejercicios.map(e => ({
+      _series: e._series ? e._series.map(s => ({
+        done: s.done, peso: s.peso, reps: s.reps, reps_real: s.reps_real, rir_real: s.rir_real
+      })) : null
+    }))
+  };
+  try { localStorage.setItem(_wkKey(), JSON.stringify(data)); } catch(e){}
+}
+
+function restaurarEstadoEntreno(){
+  try {
+    const raw = localStorage.getItem(_wkKey());
+    if(!raw) return false;
+    const data = JSON.parse(raw);
+    if(data.activeDia !== activeDia) return false;
+    const dia = CD && CD.dias && CD.dias[activeDia];
+    if(!dia) return false;
+    // Restaurar _series de cada ejercicio
+    data.ejercicios.forEach((ex, ei) => {
+      if(ex._series && dia.ejercicios[ei]){
+        if(!dia.ejercicios[ei]._series){
+          dia.ejercicios[ei]._series = Array.from({length: dia.ejercicios[ei].series}, (_,i) =>
+            ({done:false, peso: dia.ejercicios[ei].peso_objetivo, reps: parseFirstNum(dia.ejercicios[ei].reps), reps_real: parseFirstNum(dia.ejercicios[ei].reps)}));
+        }
+        ex._series.forEach((s, si) => {
+          if(dia.ejercicios[ei]._series[si]){
+            Object.assign(dia.ejercicios[ei]._series[si], s);
+          }
+        });
+      }
+    });
+    if(data.workoutStartTime) workoutStartTime = data.workoutStartTime;
+    return true;
+  } catch(e){ return false; }
+}
+
+function limpiarEstadoEntreno(){
+  try { localStorage.removeItem(_wkKey()); } catch(e){}
 }
 
 function empezarEntreno(i){
@@ -5720,9 +5780,11 @@ function empezarEntreno(i){
   runningTimers = {};
   activeInput = null;
   doneShown = false;
+  // Restaurar series guardadas si las hay
+  const hayEstado = restaurarEstadoEntreno();
   const klEl = document.getElementById('klContent');
   klEl.innerHTML = hEntreno();
-  setTimeout(()=>{ applyLang(klEl); iniciarEntreno(); }, 100);
+  setTimeout(()=>{ applyLang(klEl); iniciarEntreno(hayEstado); }, 100);
 }
 
 // Modal descripción ejercicio
@@ -5994,6 +6056,7 @@ function kbConfirm(){
       closeKeyboard();
       if(!e._series[si].done){
         e._series[si].done=true;
+        guardarEstadoEntreno();
         soundDing();
         const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
         if(allDone && !doneShown){
@@ -6013,6 +6076,7 @@ function kbConfirm(){
     closeKeyboard();
     if(!e._series[si].done){
       e._series[si].done=true;
+      guardarEstadoEntreno();
       soundDing();
       const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
       if(allDone && !doneShown){
@@ -8654,19 +8718,34 @@ function soundComplete(){ // Entreno completado — fanfare épico
   }catch(e){}
 }
 
-function soundBell(){ // Descanso terminado — campanita tabata
+function soundBell(){ // Descanso terminado — alarma potente multicapa
   try{
     const ctx=getACtx();
-    [0, 0.18, 0.36].forEach((t,i)=>{
-      const o=ctx.createOscillator(), g=ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.type='sine';
-      o.frequency.setValueAtTime(i===2?1318:1046,ctx.currentTime+t);
-      g.gain.setValueAtTime(0,ctx.currentTime+t);
-      g.gain.linearRampToValueAtTime(0.5,ctx.currentTime+t+0.01);
-      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.5);
-      o.start(ctx.currentTime+t); o.stop(ctx.currentTime+t+0.5);
+    // 3 pitidos fuertes con 2 osciladores cada uno (sine + square) para más potencia
+    const hits = [0, 0.28, 0.56];
+    hits.forEach((t, i) => {
+      // Capa 1: sine agudo — cuerpo del sonido
+      const o1=ctx.createOscillator(), g1=ctx.createGain();
+      o1.connect(g1); g1.connect(ctx.destination);
+      o1.type='sine';
+      o1.frequency.setValueAtTime(i===2?1568:1047, ctx.currentTime+t); // G6 o C6
+      g1.gain.setValueAtTime(0, ctx.currentTime+t);
+      g1.gain.linearRampToValueAtTime(0.9, ctx.currentTime+t+0.008);
+      g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+t+0.55);
+      o1.start(ctx.currentTime+t); o1.stop(ctx.currentTime+t+0.6);
+
+      // Capa 2: square subarmónico — punch y presencia
+      const o2=ctx.createOscillator(), g2=ctx.createGain();
+      o2.connect(g2); g2.connect(ctx.destination);
+      o2.type='square';
+      o2.frequency.setValueAtTime(i===2?784:523, ctx.currentTime+t);
+      g2.gain.setValueAtTime(0, ctx.currentTime+t);
+      g2.gain.linearRampToValueAtTime(0.25, ctx.currentTime+t+0.008);
+      g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+t+0.3);
+      o2.start(ctx.currentTime+t); o2.stop(ctx.currentTime+t+0.35);
     });
+    // Vibración agresiva
+    vibratePattern([300, 100, 300, 100, 500]);
   }catch(e){}
 }
 
@@ -9866,7 +9945,7 @@ function hBadgesCliente(){
 
 function cerrarDoneOverlay(){
   document.getElementById('doneOv').classList.remove('show');
-  // Go back to day selection showing completed status
+  limpiarEstadoEntreno();
   vistaActual = 'seleccion';
   klTab = 'entreno';
   renderSeleccion();
