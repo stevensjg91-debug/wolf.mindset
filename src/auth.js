@@ -72,4 +72,16 @@ router.post('/solicitar-reset', async (req, res) => {
   res.json({ ok: true, msg: 'Contacta con tu coach para resetear tu contraseña.' });
 });
 
+// POST /api/auth/reset-password — coach resetea contraseña de un cliente
+router.post('/reset-password', authMiddleware, coachOnly, async (req, res) => {
+  const { userId, newPassword } = req.body;
+  if (!userId || !newPassword) return res.status(400).json({ error: 'Faltan datos' });
+  if (String(newPassword).length < 4) return res.status(400).json({ error: 'Mínimo 4 caracteres' });
+  const user = dbGet('SELECT id FROM users WHERE id = ?', [userId]);
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+  const hash = bcrypt.hashSync(String(newPassword), 10);
+  dbRun('UPDATE users SET password = ? WHERE id = ?', [hash, userId]);
+  res.json({ ok: true });
+});
+
 module.exports = { router, authMiddleware, coachOnly };
