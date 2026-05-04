@@ -45,6 +45,51 @@ function getNombreCliente(clienteId) {
   } catch(e) { return 'Un cliente'; }
 }
 
+function ensureClientArchiveSchema() {
+  // Usamos users.estado='archivado' para no tocar la estructura principal de clientes.
+  // Así archivar es reversible y el cliente queda oculto/bloqueado sin borrar historial.
+  try { dbRun("UPDATE users SET estado='activo' WHERE role='cliente' AND (estado IS NULL OR estado='')"); } catch(e) {}
+}
+
+function getClienteConUsuario(clienteId) {
+  return dbGet(`SELECT c.id, c.user_id, u.nombre, u.estado, u.role
+    FROM clientes c JOIN users u ON u.id = c.user_id
+    WHERE c.id=?`, [clienteId]);
+}
+
+function borrarClientePermanentemente(clienteId) {
+  const c = getClienteConUsuario(clienteId);
+  if (!c) return null;
+  if (c.role && c.role !== 'cliente') throw new Error('Este usuario no es cliente');
+
+  // Hijos directos de estructuras anidadas
+  const dias = dbAll('SELECT id FROM dias_entreno WHERE cliente_id=?', [clienteId]);
+  dias.forEach(d => { try { dbRun('DELETE FROM ejercicios_dia WHERE dia_id=?', [d.id]); } catch(e) {} });
+
+  const comidas = dbAll('SELECT id FROM comidas WHERE cliente_id=?', [clienteId]);
+  comidas.forEach(m => { try { dbRun('DELETE FROM alimentos WHERE comida_id=?', [m.id]); } catch(e) {} });
+
+  const recetas = dbAll('SELECT id FROM recetas WHERE cliente_id=?', [clienteId]);
+  recetas.forEach(r => { try { dbRun('DELETE FROM receta_ingredientes WHERE receta_id=?', [r.id]); } catch(e) {} });
+
+  const sesiones = dbAll('SELECT id FROM sesiones_entreno WHERE cliente_id=?', [clienteId]);
+  sesiones.forEach(se => { try { dbRun('DELETE FROM series_log WHERE sesion_id=?', [se.id]); } catch(e) {} });
+
+  // Tablas que dependen directamente del cliente
+  [
+    'peso_registros','fotos','dias_entreno','comidas','recetas','plan_meta',
+    'semana_borrador','semana_estado','sesiones_entreno','suscripciones',
+    'checkins','mensajes'
+  ].forEach(t => { try { dbRun(`DELETE FROM ${t} WHERE cliente_id=?`, [clienteId]); } catch(e) {} });
+
+  // Cuenta y datos asociados al usuario del cliente
+  try { dbRun('DELETE FROM notificaciones WHERE user_id=?', [c.user_id]); } catch(e) {}
+  try { dbRun('DELETE FROM push_subscriptions WHERE user_id=?', [c.user_id]); } catch(e) {}
+  try { dbRun('DELETE FROM clientes WHERE id=?', [clienteId]); } catch(e) {}
+  try { dbRun('DELETE FROM users WHERE id=?', [c.user_id]); } catch(e) {}
+  saveToDisk();
+  return c;
+}
 
 function ensureTrainingTrackingSchema() {
   try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN estado TEXT DEFAULT 'completado'"); } catch(e) {}
@@ -115,13 +160,57 @@ function chequearVencimientosAuto() {
 }
 
 router.get('/clientes', coachOnly, (req, res) => {
+  ensureClientArchiveSchema();
   chequearVencimientosAuto();
-  const clientes = dbAll(`SELECT c.*, u.nombre, u.username, u.foto_perfil,
+  const incluirArchivados = req.query.incluir_archivados === '1' || req.query.estado === 'archivados';
+  const soloArchivados = req.query.estado === 'archivados';
+  let where = "WHERE COALESCE(u.estado,'activo') != 'archivado'";
+  if (incluirArchivados) where = "WHERE 1=1";
+  if (soloArchivados) where = "WHERE COALESCE(u.estado,'activo') = 'archivado'";
+
+  const clientes = dbAll(`SELECT c.*, u.nombre, u.username, u.foto_perfil, u.estado as user_estado,
+    CASE WHEN COALESCE(u.estado,'activo') = 'archivado' THEN 1 ELSE 0 END as archivado,
     (SELECT peso FROM peso_registros WHERE cliente_id=c.id ORDER BY rowid DESC LIMIT 1) as peso_actual,
     (SELECT grasa FROM peso_registros WHERE cliente_id=c.id ORDER BY rowid DESC LIMIT 1) as grasa_actual,
     (SELECT COUNT(*) FROM fotos WHERE cliente_id=c.id) as fotos_count
-    FROM clientes c JOIN users u ON c.user_id=u.id`);
+    FROM clientes c JOIN users u ON c.user_id=u.id
+    ${where}`);
   res.json(clientes);
+});
+
+
+// ── ARCHIVAR / RESTAURAR / BORRAR CLIENTE ─────────────────────────
+router.put('/clientes/:id/archivar', coachOnly, (req, res) => {
+  try {
+    ensureClientArchiveSchema();
+    const c = getClienteConUsuario(req.params.id);
+    if (!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+    dbRun("UPDATE users SET estado='archivado' WHERE id=? AND role='cliente'", [c.user_id]);
+    try { dbRun("UPDATE suscripciones SET estado='cancelada' WHERE cliente_id=? AND estado='activa'", [req.params.id]); } catch(e) {}
+    saveToDisk();
+    res.json({ ok: true, archivado: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/clientes/:id/restaurar', coachOnly, (req, res) => {
+  try {
+    ensureClientArchiveSchema();
+    const c = getClienteConUsuario(req.params.id);
+    if (!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+    dbRun("UPDATE users SET estado='activo' WHERE id=? AND role='cliente'", [c.user_id]);
+    saveToDisk();
+    res.json({ ok: true, archivado: false });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete('/clientes/:id/permanente', coachOnly, (req, res) => {
+  try {
+    const confirmacion = String(req.query.confirm || req.body?.confirm || '').toUpperCase();
+    if (confirmacion !== 'BORRAR') return res.status(400).json({ error: 'Confirmación requerida' });
+    const c = borrarClientePermanentemente(req.params.id);
+    if (!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+    res.json({ ok: true, deleted: true, nombre: c.nombre });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/clientes/:id', (req, res) => {
