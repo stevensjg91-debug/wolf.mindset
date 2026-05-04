@@ -2211,7 +2211,7 @@ async function verCliente(id){
             </div>
             <div id="tab_dia_body_${d.id}" style="display:none;padding:0 13px 12px">
              ${d.ejercicios.length ? d.ejercicios.map((e,ei)=>`
-  <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--br)">
+  <div class="ex-drag-row" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--br)">
     <div class="drag-handle" draggable="true"
       data-cliente="${c.id}" data-dia="${d.id}" data-idx="${ei}"
       style="width:26px;height:40px;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--tx3);font-size:16px;border-radius:6px;background:rgba(255,255,255,.04);border:0.5px solid var(--br);flex-shrink:0"
@@ -5820,7 +5820,7 @@ const imgUrl =
       </div>`;
     }).join('');
 
-    return`<div class="strong-ex-card ${exDone?'done-ex':''}" id="exc_${ei}">
+    return`<div class="strong-ex-card ex-drag-row ${exDone?'done-ex':''}" id="exc_${ei}">
      <div class="strong-ex-header">
 
   <div class="drag-handle" draggable="true"
@@ -9976,92 +9976,118 @@ async function renderIaChatPanel() {
     </div>
   `;
 }
-// ── Drag & Drop reordenamiento de ejercicios ─────────────────────────────────
-let _dragSrc = null;
+// ── Drag & Drop reordenamiento de ejercicios (event delegation) ──────────────
+(function(){
+  let _dragSrc = null;
+  let _dragOver = null;
 
-function _initExDrag(container) {
-  const handles = container.querySelectorAll('.drag-handle');
-  handles.forEach(handle => {
-    const row = handle.closest('[id^="exc_"], [style*="border-bottom"]') || handle.parentElement;
+  // Estilo drag-over
+  const s = document.createElement('style');
+  s.textContent = `
+    .ex-drag-row { transition: opacity .15s; }
+    .ex-drag-row.dragging { opacity: 0.35; }
+    .ex-drag-row.drag-over { outline: 2px dashed var(--blg, #3b82f6) !important; border-radius: 8px; background: rgba(59,130,246,.06); }
+    .drag-handle { cursor: grab; user-select: none; }
+    .drag-handle:active { cursor: grabbing; }
+  `;
+  document.head.appendChild(s);
 
-    handle.addEventListener('dragstart', e => {
-      _dragSrc = handle;
-      e.dataTransfer.effectAllowed = 'move';
-      setTimeout(() => row.style.opacity = '0.4', 0);
+  // Añadir clase ex-drag-row a los rows al renderizar (se llama tras cada render)
+  window._initExDrag = function(container) {
+    if (!container) return;
+    container.querySelectorAll('.drag-handle').forEach(handle => {
+      const row = handle.parentElement;
+      if (row) row.classList.add('ex-drag-row');
     });
-    handle.addEventListener('dragend', () => {
-      row.style.opacity = '';
-      container.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-    });
+  };
 
-    row.addEventListener('dragover', e => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      row.classList.add('drag-over');
-    });
-    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-    row.addEventListener('drop', async e => {
-      e.preventDefault();
-      e.stopPropagation();
-      row.classList.remove('drag-over');
-      if (!_dragSrc || _dragSrc === handle) return;
+  // dragstart — delegado en document
+  document.addEventListener('dragstart', e => {
+    const handle = e.target.closest('.drag-handle');
+    if (!handle) return;
+    _dragSrc = handle;
+    const row = handle.parentElement;
+    if (row) { row.classList.add('ex-drag-row'); setTimeout(() => row.classList.add('dragging'), 0); }
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '1');
+  });
 
-      const srcHandle = _dragSrc;
-      const isCoach = srcHandle.dataset.cliente !== undefined;
+  document.addEventListener('dragend', e => {
+    const handle = e.target.closest('.drag-handle');
+    if (!handle) return;
+    document.querySelectorAll('.ex-drag-row.dragging').forEach(el => el.classList.remove('dragging'));
+    document.querySelectorAll('.ex-drag-row.drag-over').forEach(el => el.classList.remove('drag-over'));
+    _dragOver = null;
+  });
 
-      if (isCoach) {
-        // Vista coach: tabMoveEx
-        const clienteId = srcHandle.dataset.cliente;
-        const diaId = srcHandle.dataset.dia;
-        const fromIdx = parseInt(srcHandle.dataset.idx);
-        const toIdx = parseInt(handle.dataset.idx);
-        if (isNaN(fromIdx) || isNaN(toIdx) || fromIdx === toIdx) return;
-        try {
-          const c = await api('/clientes/' + clienteId);
-          const dia = (c.dias || []).find(d => String(d.id) === String(diaId));
-          if (!dia || !dia.ejercicios) return;
-          const arr = dia.ejercicios;
-          const [moved] = arr.splice(fromIdx, 1);
-          arr.splice(toIdx, 0, moved);
-          arr.forEach((ex, i) => ex.orden = i);
-          await Promise.all(arr.map((ex, i) =>
-            api('/ejercicios/' + ex.id, { method: 'PUT', body: JSON.stringify({ orden: i }) })
-          ));
-          window._coachClienteActual = await api('/clientes/' + clienteId);
-          switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
-        } catch(err) {
-          console.error('drag reorder error:', err);
-        }
-      } else {
-        // Vista cliente: moveEx en memoria
-        const diaIdx = parseInt(srcHandle.dataset.diaIdx);
-        const fromIdx = parseInt(srcHandle.dataset.idx);
-        const toIdx = parseInt(handle.dataset.idx);
-        if (!CD || !CD.dias || !CD.dias[diaIdx] || fromIdx === toIdx) return;
-        const arr = CD.dias[diaIdx].ejercicios || [];
+  document.addEventListener('dragover', e => {
+    const row = e.target.closest('.ex-drag-row');
+    if (!row || !_dragSrc) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (_dragOver && _dragOver !== row) _dragOver.classList.remove('drag-over');
+    _dragOver = row;
+    row.classList.add('drag-over');
+  });
+
+  document.addEventListener('dragleave', e => {
+    const row = e.target.closest('.ex-drag-row');
+    if (row) row.classList.remove('drag-over');
+  });
+
+  document.addEventListener('drop', async e => {
+    const targetRow = e.target.closest('.ex-drag-row');
+    if (!targetRow || !_dragSrc) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const targetHandle = targetRow.querySelector('.drag-handle');
+    if (!targetHandle || targetHandle === _dragSrc) { _dragSrc = null; return; }
+
+    const srcHandle = _dragSrc;
+    _dragSrc = null;
+    targetRow.classList.remove('drag-over');
+
+    const isCoach = srcHandle.dataset.cliente !== undefined && srcHandle.dataset.cliente !== '';
+
+    if (isCoach) {
+      const clienteId = srcHandle.dataset.cliente;
+      const diaId = srcHandle.dataset.dia;
+      const fromIdx = parseInt(srcHandle.dataset.idx);
+      const toIdx = parseInt(targetHandle.dataset.idx);
+      if (isNaN(fromIdx) || isNaN(toIdx) || fromIdx === toIdx || srcHandle.dataset.dia !== targetHandle.dataset.dia) return;
+      try {
+        const c = await api('/clientes/' + clienteId);
+        const dia = (c.dias || []).find(d => String(d.id) === String(diaId));
+        if (!dia || !dia.ejercicios) return;
+        const arr = dia.ejercicios;
         const [moved] = arr.splice(fromIdx, 1);
         arr.splice(toIdx, 0, moved);
-        arr.forEach((ex, i) => ex.orden = i);
-        const el = document.getElementById('klContent');
-        if (el && typeof hEntreno === 'function') el.innerHTML = hEntreno();
+        await Promise.all(arr.map((ex, i) =>
+          api('/ejercicios/' + ex.id, { method: 'PUT', body: JSON.stringify({ orden: i }) })
+        ));
+        window._coachClienteActual = await api('/clientes/' + clienteId);
+        switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
+      } catch(err) {
+        console.error('drag reorder error:', err);
+        alert('Error al reordenar');
       }
-      _dragSrc = null;
-    });
+    } else {
+      const diaIdx = parseInt(srcHandle.dataset.diaIdx);
+      const fromIdx = parseInt(srcHandle.dataset.idx);
+      const toIdx = parseInt(targetHandle.dataset.idx);
+      if (!CD || !CD.dias || !CD.dias[diaIdx] || isNaN(fromIdx) || isNaN(toIdx) || fromIdx === toIdx) return;
+      const arr = CD.dias[diaIdx].ejercicios || [];
+      const [moved] = arr.splice(fromIdx, 1);
+      arr.splice(toIdx, 0, moved);
+      arr.forEach((ex, i) => ex.orden = i);
+      const el = document.getElementById('klContent');
+      if (el && typeof hEntreno === 'function') {
+        el.innerHTML = hEntreno();
+        setTimeout(() => _initExDrag(el), 50);
+      }
+    }
   });
-}
-
-// Inicializar drag tras cada render
-const _origHEntreno = typeof hEntreno !== 'undefined' ? hEntreno : null;
-function _afterRender(containerId) {
-  const c = document.getElementById(containerId);
-  if (c) _initExDrag(c);
-}
-
-// Estilo drag-over
-(function(){
-  const s = document.createElement('style');
-  s.textContent = '.drag-over { outline: 2px dashed var(--blg) !important; border-radius: 8px; } .drag-handle:active { cursor: grabbing; }';
-  document.head.appendChild(s);
 })();
 
 // Compatibilidad con render existente — se llama manualmente donde se usa
