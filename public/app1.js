@@ -1706,11 +1706,11 @@ async function doLogin(){
 }
 async function loadCD(id){
   CD = await api('/clientes/'+id);
-  // Load exercise images separately (base64 not in main payload)
-  if(!window.exImages) {
-    try {
-      window.exImages = await api('/ejercicios-imagenes');
-    } catch(e) { window.exImages = {}; }
+
+  try {
+    window.exImages = await api('/ejercicios-imagenes');
+  } catch(e) {
+    window.exImages = window.exImages || {};
   }
 }
 async function verificarSuscripcionCliente(clienteId) {
@@ -5775,8 +5775,7 @@ function hEntreno(){
     const exDone=e._series.every(s=>s.done);
     const ytUrl=e.youtube_url||EX_YT[e.nombre]||'';
     const cfg=(window.exConfig&&window.exConfig[e.nombre])||{};
-    const imgUrl=e.imagen_url||cfg.imagen_url||'';
-
+   const imgUrl=(window.exImages&&window.exImages[e.nombre])||e.imagen_url||cfg.imagen_url||'';
     const seriesRows=e._series.map((s,si)=>{
       const timerKey=`${ei}_${si}`;
       const rt=runningTimers[timerKey];
@@ -5802,7 +5801,7 @@ function hEntreno(){
 
     return`<div class="strong-ex-card ${exDone?'done-ex':''}" id="exc_${ei}">
       <div class="strong-ex-header">
-        ${renderExImg(e.nombre, 52, e.grupo||EX_GROUP_MAP[e.nombre]||'', e.imagen_url||'')}
+       ${renderExImg(e.nombre, 52, e.grupo||EX_GROUP_MAP[e.nombre]||'', imgUrl)}
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${t(e.grupo||'')||''}</div>
