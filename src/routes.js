@@ -258,8 +258,20 @@ router.get('/clientes/:id', (req, res) => {
   });
 });
 
-router.put('/clientes/:id', coachOnly, (req, res) => {
-  const { objetivo, nivel, semanas, kcal_internas, prot, carbs, fat, comida_libre, mensaje_semana, notas_coach, peso_actual, altura, edad, sexo, actividad, cintura_actual, cadera, observaciones, dieta_tipo, alimentos_no, lesiones } = req.body;
+// ── Coach cambia username de un cliente ──────────────────────────────────────
+router.put('/clientes/:id/username', coachOnly, (req, res) => {
+  const { username } = req.body;
+  if (!username || username.length < 3) return res.status(400).json({ error: 'Mínimo 3 caracteres' });
+  const c = dbGet('SELECT * FROM clientes WHERE id=?', [req.params.id]);
+  if (!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+  const existing = dbGet('SELECT id FROM users WHERE username=? AND id!=?', [username, c.user_id]);
+  if (existing) return res.status(409).json({ error: 'Ese usuario ya está en uso' });
+  dbRun('UPDATE users SET username=? WHERE id=?', [username, c.user_id]);
+  saveToDisk();
+  res.json({ ok: true });
+});
+
+router.put('/clientes/:id', coachOnly, (req, res) => { kcal_internas, prot, carbs, fat, comida_libre, mensaje_semana, notas_coach, peso_actual, altura, edad, sexo, actividad, cintura_actual, cadera, observaciones, dieta_tipo, alimentos_no, lesiones } = req.body;
   const c = dbGet('SELECT * FROM clientes WHERE id=?', [req.params.id]);
   if (!c) return res.status(404).json({ error: 'No encontrado' });
   dbRun(`UPDATE clientes SET objetivo=?, nivel=?, semanas=?, kcal_internas=?, prot=?, carbs=?, fat=?, comida_libre=?, mensaje_semana=?, notas_coach=?, peso_actual=?, altura=?, edad=?, sexo=?, actividad=?, cintura_actual=?, cadera=?, observaciones=?, dieta_tipo=?, alimentos_no=?, lesiones=? WHERE id=?`,
