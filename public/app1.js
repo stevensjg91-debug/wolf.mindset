@@ -5383,9 +5383,50 @@ async function sendIA(){
   const inp=document.getElementById('iaIn'),msg=inp.value.trim();if(!msg)return;inp.value='';
   const msgs=document.getElementById('iaMsgs');
   msgs.innerHTML+=`<div class="msg msg-u">${msg}</div>`;msgs.scrollTop=msgs.scrollHeight;
+
+  // Detectar si el mensaje menciona algún cliente y construir contexto
+  const clientes = window._clientesCache || [];
+  let clienteCtx = '';
+  for (const cl of clientes) {
+    const nombre = (cl.nombre||'').toLowerCase();
+    if (nombre && msg.toLowerCase().includes(nombre.split(' ')[0].toLowerCase())) {
+      // Cargar datos completos del cliente
+      try {
+        const full = await api('/clientes/' + cl.id);
+        const alimentos = (full.dieta?.comidas||[]).flatMap(c=>(c.items||[]).map(a=>a.nombre)).filter(Boolean);
+        const ejercicios = (full.dias||[]).flatMap(d=>(d.ejercicios||[]).map(e=>e.nombre)).filter(Boolean);
+        clienteCtx = `
+
+=== DATOS DEL CLIENTE: ${full.nombre} ===
+Objetivo: ${full.objetivo} | Nivel: ${full.nivel} | Semanas: ${full.semanas}
+Peso: ${full.peso_actual||'?'}kg | Altura: ${full.altura||'?'}cm | Edad: ${full.edad||'?'} | Sexo: ${full.sexo||'?'}
+Kcal: ${full.kcal_internas} | Proteína: ${full.prot}g | Carbos: ${full.carbs}g | Grasas: ${full.fat}g
+Lesiones: ${full.lesiones||'Ninguna'}
+Deficiencias/notas médicas: ${full.deficiencias||'Ninguna'}
+Alimentos no permitidos: ${full.alimentos_no||'Ninguno'}
+Tipo de dieta: ${full.dieta_tipo||'Omnívoro'}
+Alimentos en su dieta actual: ${alimentos.length ? alimentos.join(', ') : 'Sin dieta asignada'}
+Ejercicios en su rutina actual: ${ejercicios.length ? ejercicios.join(', ') : 'Sin rutina asignada'}
+Notas del coach: ${full.notas_coach||'Ninguna'}
+===`;
+      } catch(e) {}
+      break;
+    }
+  }
+
+  const systemPrompt = `Eres el asistente IA privado del coach WolfMindset. Ayudas con progresión de carga, periodización, ajustes calóricos, generación de rutinas y dietas completas. Cuando tienes datos de un cliente los usas para dar respuestas personalizadas y precisas. Tienes en cuenta siempre las lesiones, deficiencias y restricciones alimentarias del cliente.${clienteCtx} ${COACH_LANG==='en'?'Always respond in English. Technical and concise.':'Respuestas técnicas y concisas en español.'}`;
+
   iaH.push({role:'user',content:msg});document.getElementById('iaTyping').style.display='block';
-  try{const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:iaH,system:`Eres el asistente IA privado del coach WolfMindset. Ayudas con progresión de carga, periodización, ajustes calóricos, generación de rutinas y dietas completas. ${COACH_LANG==='en'?'Always respond in English. Technical and concise.':'Respuestas técnicas y concisas en español.'}`})});iaH.push({role:'assistant',content:d.reply});document.getElementById('iaTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${d.reply}</div>`;msgs.scrollTop=msgs.scrollHeight;}
-  catch(e){document.getElementById('iaTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>Error. Inténtalo de nuevo.</div>`;}
+  try{
+    const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:iaH,system:systemPrompt})});
+    iaH.push({role:'assistant',content:d.reply});
+    document.getElementById('iaTyping').style.display='none';
+    msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${d.reply}</div>`;
+    msgs.scrollTop=msgs.scrollHeight;
+  }catch(e){
+    document.getElementById('iaTyping').style.display='none';
+    msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>Error. Inténtalo de nuevo.</div>`;
+  }
 }
 
 // ═══ CLIENTE ══════════════════════════════════════════
@@ -6304,6 +6345,37 @@ function selDia(i){
 }
 
 // DIETA CLIENTE
+async function generarRecetaIA() {
+  const btn = document.querySelector('button[onclick="generarRecetaIA()"]');
+  const result = document.getElementById('receta_ia_result');
+  if (!CD || !CD.comidas) return;
+
+  const alimentos = CD.comidas.flatMap(c => (c.items||[]).map(a => `${a.nombre} (${a.gramos}g)`)).filter(Boolean);
+  if (!alimentos.length) { result.style.display='block'; result.textContent = LANG==='en'?'No foods assigned yet.':'No tienes alimentos asignados aún.'; return; }
+
+  if (btn) { btn.disabled=true; btn.textContent = LANG==='en'?'⏳ Generating...':'⏳ Generando...'; }
+  result.style.display = 'none';
+
+  const prompt = LANG==='en'
+    ? `Create a creative and delicious recipe using ONLY these foods from my diet plan: ${alimentos.join(', ')}. Include: name, ingredients with grams, step-by-step instructions, and macros. Keep it practical and tasty.`
+    : `Crea una receta creativa y deliciosa usando SOLO estos alimentos de mi dieta: ${alimentos.join(', ')}. Incluye: nombre de la receta, ingredientes con gramos, pasos de preparación y macros aproximados. Práctica y apetecible.`;
+
+  try {
+    const d = await api('/ia/chat', { method:'POST', body: JSON.stringify({
+      messages: [{ role:'user', content: prompt }],
+      system: LANG==='en'
+        ? 'You are a sports nutritionist and chef. Create practical, tasty recipes using only the exact foods listed. Respect the quantities. Format clearly.'
+        : 'Eres nutricionista deportivo y cocinero. Crea recetas prácticas y apetecibles usando solo los alimentos indicados. Respeta las cantidades. Formato claro y legible.'
+    })});
+    result.style.display = 'block';
+    result.textContent = d.reply;
+  } catch(e) {
+    result.style.display = 'block';
+    result.textContent = LANG==='en'?'Error generating recipe. Try again.':'Error generando receta. Inténtalo de nuevo.';
+  }
+  if (btn) { btn.disabled=false; btn.innerHTML = `🍽️ ${LANG==='en'?'Generate another recipe':'Generar otra receta'}`; }
+}
+
 function hDieta(){
   const esVeg = CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano';
   const acc = esVeg ? '#22c55e' : '#3b82f6';
@@ -6457,6 +6529,14 @@ function hDieta(){
         </div>`:''}
       </div>`;
     })()}
+
+    <!-- GENERADOR DE RECETAS IA -->
+    <div style="margin:10px 14px 0">
+      <button onclick="generarRecetaIA()" style="width:100%;padding:12px;background:rgba(59,130,246,.12);border:0.5px solid rgba(59,130,246,.3);border-radius:12px;color:#93c5fd;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px">
+        🍽️ ${LANG==='en'?'Generate recipe with my foods':'Generar receta con mis alimentos'}
+      </button>
+      <div id="receta_ia_result" style="display:none;margin-top:10px;background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:14px;font-size:13px;color:var(--sv2);line-height:1.7;white-space:pre-wrap"></div>
+    </div>
 
     <!-- NOTA PESOS EN CRUDO -->
     <div style="margin:10px 14px;background:${accBg};border:0.5px solid ${acc}60;border-radius:12px;padding:11px 14px">
