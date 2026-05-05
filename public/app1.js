@@ -2599,6 +2599,17 @@ function switchClienteTab(tab, btn) {
         '</div>';
       }).join('');
 
+      // Botón análisis IA al final del historial
+      const iaWrap = document.createElement('div');
+      iaWrap.style.cssText = 'margin-top:16px;padding-top:14px;border-top:0.5px solid var(--br)';
+      iaWrap.innerHTML = `
+        <button onclick="sugerirProgresionIAHistorial(${id})"
+          style="width:100%;padding:11px;background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.25);border-radius:10px;color:var(--blg);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+          🤖 ${COACH_LANG==='en'?'AI analysis · progression suggestions':'Análisis IA · sugerencias de progresión'}
+        </button>
+        <div id="ia_hist_result" style="margin-top:8px"></div>`;
+      if(wrap) wrap.appendChild(iaWrap);
+
       // Cargar gráficas de progreso
       const c = window._coachClienteActual;
       if(c) {
@@ -9598,6 +9609,132 @@ Solo JSON, sin texto extra.`;
   }
 }
 
+
+// ── ANÁLISIS IA DESDE TAB HISTORIAL (solo lectura, sin inputs de revisión) ──
+async function sugerirProgresionIAHistorial(clienteId) {
+  const res = document.getElementById('ia_hist_result');
+  if(!res) return;
+  res.innerHTML = '<div class="ia-chip" style="padding:10px 12px"><div class="ia-chip-title">🤖 '+(COACH_LANG==='en'?'Analyzing sessions...':'Analizando sesiones...')+'</div></div>';
+
+  try {
+    const [cliente, todasSesiones] = await Promise.all([
+      api('/clientes/' + clienteId),
+      api('/clientes/' + clienteId + '/sesiones')
+    ]);
+
+    const sesiones = todasSesiones.filter(s => s.estado === 'completado');
+
+    if (!sesiones.length) {
+      res.innerHTML = `<div style="font-size:12px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No completed sessions to analyze.':'Sin sesiones completadas para analizar.'}</div>`;
+      return;
+    }
+
+    const nivel   = cliente.nivel || 'Intermedio';
+    const semanas = cliente.semanas || 1;
+    const fase    = semanas % 4 === 0 ? 'DESCARGA (semana 4)' : `CARGA (semana ${semanas%4||4}/4)`;
+    const volRec  = VOL_RECOMENDADO[nivel] || VOL_RECOMENDADO.Intermedio;
+
+    const ultimoRendimiento = {};
+    sesiones.forEach(s => {
+      const porEx = {};
+      s.series.forEach(sr => {
+        if(!porEx[sr.ejercicio_nombre]) porEx[sr.ejercicio_nombre] = [];
+        porEx[sr.ejercicio_nombre].push(sr);
+      });
+      Object.entries(porEx).forEach(([nom, srs]) => {
+        if(!ultimoRendimiento[nom] || new Date(s.fecha) > new Date(ultimoRendimiento[nom].fecha)) {
+          ultimoRendimiento[nom] = { ...calcularRendimientoMedio(srs), fecha: s.fecha };
+        }
+      });
+    });
+
+    const ejerciciosPlan = (cliente.dias||[]).flatMap(d =>
+      d.ejercicios.map(e => {
+        const rend = ultimoRendimiento[e.nombre];
+        const rendStr = rend
+          ? `último: ${rend.pesoMax}kg × ${rend.repsMedio}reps${rend.tieneRIR ? ' RIR '+rend.rirMedio : ' (sin RIR)'}`
+          : 'sin datos';
+        return `${e.nombre}: obj ${e.peso_objetivo||0}kg × ${e.reps}, RIRobj ${e.rir||2}${e.es_principal?' [PRINCIPAL]':''} | ${rendStr}`;
+      })
+    ).join('\n');
+
+    const resumenSesiones = sesiones.slice(0,5).map(s => {
+      const fecha = new Date(s.fecha).toLocaleDateString(COACH_LANG==='en'?'en-GB':'es-ES');
+      return `${s.dia_nombre} (${fecha}): ${s.series.length} series`;
+    }).join(' | ');
+
+    const prompt = `Eres un coach experto en periodización. Analiza estos datos REALES y da sugerencias CONCRETAS de ajuste de carga para la próxima semana.
+
+CLIENTE: ${cliente.nombre} | ${nivel} | ${tc(cliente.objetivo)} | ${fase}
+Volumen recomendado: ${volRec.desc}
+Últimas sesiones completadas: ${resumenSesiones}
+
+EJERCICIOS Y ÚLTIMO RENDIMIENTO:
+${ejerciciosPlan}
+
+INSTRUCCIONES:
+- Usa el RIR medio real vs RIR objetivo para decidir si subir, bajar o mantener carga
+- Si RIR real > RIR objetivo: le sobró margen → subir carga
+- Si RIR real < RIR objetivo: le faltó margen → bajar o mantener
+- Si sin RIR: comenta brevemente
+- Formato de respuesta OBLIGATORIO — devuelve JSON válido con esta estructura exacta:
+{
+  "resumen": "texto breve del análisis general (max 2 frases)",
+  "ajustes": [
+    { "ejercicio": "nombre exacto", "accion": "subir|bajar|mantener|sin_datos", "nuevo_peso": 0, "razon": "breve" }
+  ]
+}
+Solo JSON, sin texto extra.`;
+
+    const d = await api('/ia/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: prompt }],
+        system: 'Eres un coach experto. Responde SOLO con JSON válido, sin markdown, sin texto adicional.'
+      })
+    });
+
+    let iaData;
+    try {
+      const clean = (d.reply||'').replace(/```json|```/g,'').trim();
+      iaData = JSON.parse(clean);
+    } catch(pe) {
+      res.innerHTML = `<div class="ia-chip"><div class="ia-chip-title">🤖 Análisis IA</div><div class="ia-result-body" style="white-space:pre-line">${d.reply}</div></div>`;
+      return;
+    }
+
+    const ajustes = iaData.ajustes || [];
+    const ajustesHtml = ajustes.map(aj => {
+      const color = aj.accion==='subir'?'var(--gnb)':aj.accion==='bajar'?'#fca5a5':'var(--tx3)';
+      const icon  = aj.accion==='subir'?'↑':aj.accion==='bajar'?'↓':aj.accion==='mantener'?'=':'?';
+      return `<div style="display:flex;align-items:baseline;gap:8px;padding:5px 0;border-bottom:0.5px solid rgba(39,39,42,.3)">
+        <span style="color:${color};font-weight:700;font-size:14px;flex-shrink:0">${icon}</span>
+        <div style="flex:1;min-width:0">
+          <span style="font-size:12px;font-weight:700;color:var(--sv)">${aj.ejercicio}</span>
+          ${aj.nuevo_peso>0?`<span style="font-size:11px;color:${color};font-weight:700;margin-left:6px">→ ${aj.nuevo_peso}kg</span>`:''}
+          <div style="font-size:11px;color:var(--tx3)">${aj.razon||''}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    res.innerHTML = `
+      <div class="ia-chip" style="padding:12px">
+        <div class="ia-chip-title" style="margin-bottom:6px">🤖 ${COACH_LANG==='en'?'AI analysis':'Análisis IA'}</div>
+        <div style="font-size:12px;color:var(--sv2);margin-bottom:10px;line-height:1.5">${iaData.resumen||''}</div>
+        <div style="margin-bottom:10px">${ajustesHtml}</div>
+        <div style="font-size:11px;color:var(--tx3);background:rgba(37,99,235,.06);border:0.5px solid rgba(59,130,246,.2);border-radius:8px;padding:7px 10px;margin-bottom:8px">
+          💡 ${COACH_LANG==='en'?'Go to Progreso tab to apply and publish these changes':'Ve al tab Progreso para aplicar y publicar estos cambios'}
+        </div>
+        <button style="width:100%;padding:9px;background:rgba(37,99,235,.15);border:0.5px solid rgba(59,130,246,.3);border-radius:8px;color:var(--blg);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit"
+          onclick="switchClienteTab('progreso', document.querySelector('.ctab[onclick*=progreso]'))">
+          → ${COACH_LANG==='en'?'Go to Progreso to apply':'Ir a Progreso para aplicar'}
+        </button>
+      </div>`;
+
+  } catch(e) {
+    res.innerHTML = `<div style="font-size:12px;color:#f87171;padding:8px 0">Error: ${e.message}</div>`;
+  }
+}
 
 // ═══ DESCRIPCIONES DE EJERCICIOS EN ESPAÑOL ═══════════════════
 const EX_DESCRIPCIONES = {
