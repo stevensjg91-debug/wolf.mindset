@@ -30,19 +30,12 @@ async function initDB() {
   }
 
   db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'cliente', nombre TEXT NOT NULL, email TEXT DEFAULT '', estado TEXT DEFAULT 'activo', telefono TEXT DEFAULT '')`);
-  try { db.run("ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''"); } catch(e) {}
-  try { db.run("ALTER TABLE users ADD COLUMN estado TEXT DEFAULT 'activo'"); } catch(e) {}
-  try { db.run("ALTER TABLE users ADD COLUMN telefono TEXT DEFAULT ''"); } catch(e) {}
+  // Columnas añadidas tras el esquema original — necesarias para BDs existentes
   try { db.run("ALTER TABLE users ADD COLUMN lang TEXT DEFAULT 'es'"); } catch(e) {}
   try { db.run("ALTER TABLE users ADD COLUMN foto_perfil TEXT DEFAULT NULL"); } catch(e) {}
 
   db.run(`CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, objetivo TEXT DEFAULT 'Volumen', nivel TEXT DEFAULT 'Intermedio', semanas INTEGER DEFAULT 1, kcal_internas INTEGER DEFAULT 2500, prot INTEGER DEFAULT 160, carbs INTEGER DEFAULT 280, fat INTEGER DEFAULT 80, comida_libre TEXT DEFAULT 'Elige lo que mas te apetezca.', mensaje_semana TEXT DEFAULT '', notas_coach TEXT DEFAULT '', peso_actual REAL DEFAULT 0, altura INTEGER DEFAULT 0, edad INTEGER DEFAULT 0, sexo TEXT DEFAULT 'Hombre', actividad TEXT DEFAULT 'Moderada', cintura_actual REAL DEFAULT 0, cadera REAL DEFAULT 0, observaciones TEXT DEFAULT '', dieta_tipo TEXT DEFAULT 'Omnivoro', alimentos_no TEXT DEFAULT '', lesiones TEXT DEFAULT '')`);
-
-  const newCols = ['peso_actual REAL','altura INTEGER','edad INTEGER','sexo TEXT','actividad TEXT','cintura_actual REAL','cadera REAL','observaciones TEXT'];
-  newCols.forEach(col => { try { db.run('ALTER TABLE clientes ADD COLUMN ' + col); } catch(e) {} });
-  try { db.run("ALTER TABLE clientes ADD COLUMN dieta_tipo TEXT DEFAULT 'Omnivoro'"); } catch(e) {}
-  try { db.run("ALTER TABLE clientes ADD COLUMN alimentos_no TEXT DEFAULT ''"); } catch(e) {}
-  try { db.run("ALTER TABLE clientes ADD COLUMN lesiones TEXT DEFAULT ''"); } catch(e) {}
+  // Columnas añadidas tras el esquema original — necesarias para BDs existentes
   try { db.run("ALTER TABLE clientes ADD COLUMN deficiencias TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE clientes ADD COLUMN coach_id INTEGER DEFAULT NULL"); } catch(e) {}
 
@@ -66,12 +59,6 @@ async function initDB() {
   db.run(`CREATE TABLE IF NOT EXISTS peso_registros (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, peso REAL, grasa REAL, cintura REAL, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)`);
   db.run(`CREATE TABLE IF NOT EXISTS dias_entreno (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, nombre TEXT, grupo TEXT, orden INTEGER DEFAULT 0)`);
   db.run(`CREATE TABLE IF NOT EXISTS ejercicios_dia (id INTEGER PRIMARY KEY AUTOINCREMENT, dia_id INTEGER, nombre TEXT, musculos TEXT, series INTEGER DEFAULT 3, reps TEXT DEFAULT '10-12', peso_objetivo REAL DEFAULT 0, descanso INTEGER DEFAULT 90, rir INTEGER, es_principal INTEGER DEFAULT 0, orden INTEGER DEFAULT 0, es_pr INTEGER DEFAULT 0, youtube_url TEXT DEFAULT '', imagen_url TEXT DEFAULT '', nota_coach TEXT DEFAULT '')`);
-  try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN rir INTEGER"); } catch(e) {}
-  try { db.run("UPDATE ejercicios_dia SET rir=NULL WHERE rir=2"); } catch(e) {}
-  try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN es_principal INTEGER DEFAULT 0"); } catch(e) {}
-  try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN youtube_url TEXT DEFAULT ''"); } catch(e) {}
-  try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN imagen_url TEXT DEFAULT ''"); } catch(e) {}
-  try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN nota_coach TEXT DEFAULT ''"); } catch(e) {}
 
   db.run(`CREATE TABLE IF NOT EXISTS comidas (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, nombre TEXT, orden INTEGER DEFAULT 0)`);
   db.run(`CREATE TABLE IF NOT EXISTS alimentos (id INTEGER PRIMARY KEY AUTOINCREMENT, comida_id INTEGER, nombre TEXT, gramos INTEGER, orden INTEGER DEFAULT 0)`);
@@ -100,7 +87,7 @@ async function initDB() {
     rir INTEGER,
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
-  try { db.run("ALTER TABLE series_log ADD COLUMN rir INTEGER"); } catch(e) {}
+  // Columnas añadidas tras el esquema original — necesarias para BDs existentes
   try { db.run("ALTER TABLE sesiones_entreno ADD COLUMN estado TEXT DEFAULT 'completado'"); } catch(e) {}
   try { db.run("ALTER TABLE sesiones_entreno ADD COLUMN valoracion TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE series_log ADD COLUMN nota_cliente TEXT DEFAULT ''"); } catch(e) {}
@@ -133,7 +120,7 @@ async function initDB() {
     kcal INTEGER, prot INTEGER, carbs INTEGER, grasas INTEGER,
     variaciones TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
-  try { db.run('ALTER TABLE plan_meta ADD COLUMN variaciones TEXT'); } catch(e) {}
+  // Columnas añadidas tras el esquema original — necesarias para BDs existentes
   try { db.run("ALTER TABLE fotos ADD COLUMN tipo TEXT DEFAULT 'frente'"); } catch(e) {}
   try { db.run('ALTER TABLE fotos ADD COLUMN published_analysis TEXT'); } catch(e) {}
   try { db.run('ALTER TABLE plan_meta ADD COLUMN suplementacion TEXT'); } catch(e) {}
@@ -157,6 +144,7 @@ async function initDB() {
     fecha_inicio TEXT, fecha_fin TEXT,
     estado TEXT DEFAULT 'activa'
   )`);
+  // Columnas añadidas tras el esquema original — necesarias para BDs existentes
   try { db.run("ALTER TABLE suscripciones ADD COLUMN precio REAL DEFAULT 0"); } catch(e) {}
   try { db.run("ALTER TABLE suscripciones ADD COLUMN notas TEXT DEFAULT ''"); } catch(e) {}
   try { db.run("ALTER TABLE suscripciones ADD COLUMN renovado_at TEXT"); } catch(e) {}
@@ -197,7 +185,6 @@ async function initDB() {
   )`);
 
   // ── Checkins semanales ────────────────────────────────────────────
-  // Permite guardar rutinas reutilizables independientes de clientes.
   db.run(`CREATE TABLE IF NOT EXISTS checkins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cliente_id INTEGER,
@@ -207,7 +194,6 @@ async function initDB() {
     peso REAL,
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
-  try { db.run("ALTER TABLE checkins ADD COLUMN peso REAL"); } catch(e) {}
 }
 
 function dbRun(sql, params = []) {
