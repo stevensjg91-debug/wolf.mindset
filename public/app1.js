@@ -1931,24 +1931,49 @@ function hClientes(cl){
       const avatar = c.foto_perfil
         ? `<img src="${c.foto_perfil}" alt="${c.nombre}"/>`
         : `<span>${ini(c.nombre)}</span>`;
-      return`<div class="cc cliente-card ${esMio?'own':'partner'} ${c.archivado?'archived':''}" onclick="${c.archivado?'':'verCliente('+c.id+')'}" style="${c.archivado?'opacity:.72;filter:grayscale(.25);':''}">
-        <div class="cliente-coach-badge" style="background:${c.archivado?'rgba(148,163,184,.16)':cc.bg};color:${c.archivado?'#cbd5e1':cc.color}">${c.archivado?'🗄️ '+tc('Archivados'):(esMio?'🔵':'🟣')+' '+cc.label}</div>
-        <div class="cliente-card-main" style="padding:10px 12px 6px">
-          <div class="cliente-avatar" style="width:38px;height:38px;font-size:14px;background:${a.bg};color:${a.tx};border-color:${esMio?'rgba(59,130,246,.45)':'rgba(168,85,247,.45)'}">${avatar}</div>
-          <div class="cliente-info">
-            <div class="cliente-name" style="font-size:14px">${c.nombre}</div>
-            <div class="cliente-meta" style="font-size:11px">${tc(c.objetivo)} · ${tc(c.nivel)}</div>
+      return`<div class="cc cliente-card ${esMio?'own':'partner'} ${c.archivado?'archived':''}"
+        onclick="${c.archivado?'':'verCliente('+c.id+')'}"
+        style="position:relative;padding:0;overflow:hidden;border-radius:16px;cursor:${c.archivado?'default':'pointer'};${c.archivado?'opacity:.7;filter:grayscale(.3);':''}transition:transform .15s,box-shadow .15s"
+        onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,.35)'"
+        onmouseleave="this.style.transform='';this.style.boxShadow=''">
+
+        <!-- Franja superior de color -->
+        <div style="height:4px;width:100%;background:${esMio?'linear-gradient(90deg,#2563eb,#60a5fa)':'linear-gradient(90deg,#7c3aed,#c084fc)'}"></div>
+
+        <!-- Menú tres puntos -->
+        <div style="position:absolute;top:10px;right:10px;z-index:10" onclick="event.stopPropagation()">
+          <button onclick="toggleCardMenu(${c.id})"
+            style="width:28px;height:28px;border-radius:50%;border:0.5px solid var(--br);background:var(--s2);color:var(--tx3);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;font-family:inherit;line-height:1;padding:0">
+            ···
+          </button>
+          <div id="card_menu_${c.id}" style="display:none;position:absolute;right:0;top:32px;background:var(--s);border:0.5px solid var(--br);border-radius:10px;min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:100;overflow:hidden">
+            ${c.archivado
+              ? `<button onclick="restaurarCliente(${c.id});closeCardMenu(${c.id})" style="width:100%;padding:10px 14px;text-align:left;background:none;border:none;color:var(--sv2);cursor:pointer;font-size:13px;font-family:inherit;display:flex;align-items:center;gap:8px" onmouseenter="this.style.background='var(--s2)'" onmouseleave="this.style.background='none'">↩ ${tc('Restaurar')}</button>`
+              : `<button onclick="archivarCliente(${c.id});closeCardMenu(${c.id})" style="width:100%;padding:10px 14px;text-align:left;background:none;border:none;color:#fcd34d;cursor:pointer;font-size:13px;font-family:inherit;display:flex;align-items:center;gap:8px" onmouseenter="this.style.background='var(--s2)'" onmouseleave="this.style.background='none'">🗄 ${tc('Archivar')}</button>`}
+            <div style="height:0.5px;background:var(--br);margin:0 10px"></div>
+            <button onclick="borrarClientePermanente(${c.id});closeCardMenu(${c.id})" style="width:100%;padding:10px 14px;text-align:left;background:none;border:none;color:#fca5a5;cursor:pointer;font-size:13px;font-family:inherit;display:flex;align-items:center;gap:8px" onmouseenter="this.style.background='rgba(239,68,68,.08)'" onmouseleave="this.style.background='none'">🗑 ${tc('Borrar')}</button>
           </div>
         </div>
-        <div class="cliente-tags" style="padding:0 12px 6px">
-          <span class="badge b-sv">${tc('Sem')} ${c.semanas}</span>
-          ${c.peso_actual?`<span class="badge b-bl">${c.peso_actual}kg</span>`:''}
+
+        <!-- Badge coach -->
+        <div style="position:absolute;top:12px;left:12px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${c.archivado?'rgba(148,163,184,.16)':cc.bg};color:${c.archivado?'#94a3b8':cc.color};letter-spacing:.04em">
+          ${c.archivado?'🗄 '+tc('Archivado'):(esMio?'●':'●')+' '+cc.label}
         </div>
-        <div style="display:flex;gap:5px;padding:0 10px 10px;flex-wrap:wrap" onclick="event.stopPropagation()">
-          ${c.archivado
-            ? `<button class="btn btn-sm" style="font-size:11px;padding:4px 9px" onclick="restaurarCliente(${c.id})">↩ ${tc('Restaurar')}</button>`
-            : `<button class="btn btn-sm" style="font-size:11px;padding:4px 9px;background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.2);color:#fcd34d" onclick="archivarCliente(${c.id})">🗄 ${tc('Archivar')}</button>`}
-          <button class="btn btn-sm" style="font-size:11px;padding:4px 9px;background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.25);color:#fca5a5" onclick="borrarClientePermanente(${c.id})">🗑 ${tc('Borrar')}</button>
+
+        <!-- Cuerpo principal -->
+        <div style="padding:40px 16px 12px;display:flex;flex-direction:column;align-items:center;text-align:center">
+          <!-- Avatar -->
+          <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:3px solid ${esMio?'rgba(59,130,246,.5)':'rgba(168,85,247,.5)'};background:${a.bg};color:${a.tx};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;flex-shrink:0;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,.3)">
+            ${avatar}
+          </div>
+          <!-- Nombre y meta -->
+          <div style="font-size:15px;font-weight:700;color:var(--sv);margin-bottom:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%">${c.nombre}</div>
+          <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">${tc(c.objetivo)} · ${tc(c.nivel)}</div>
+          <!-- Tags -->
+          <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center">
+            <span style="background:var(--s2);border:0.5px solid var(--br);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--sv3)">${tc('Sem')} ${c.semanas}</span>
+            ${c.peso_actual?`<span style="background:rgba(59,130,246,.1);border:0.5px solid rgba(59,130,246,.2);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--blg)">${c.peso_actual}kg</span>`:''}
+          </div>
         </div>
       </div>`;
     }).join('')}
@@ -10439,6 +10464,28 @@ switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'))
     alert('Error moviendo ejercicio');
   }
 }
+
+// ── MENÚ TRES PUNTOS EN TARJETAS DE CLIENTE ───────────────────────────────
+function toggleCardMenu(clienteId) {
+  const menu = document.getElementById('card_menu_' + clienteId);
+  if (!menu) return;
+  const isOpen = menu.style.display !== 'none';
+  // Cerrar todos los demás primero
+  document.querySelectorAll('[id^="card_menu_"]').forEach(m => { m.style.display = 'none'; });
+  if (!isOpen) menu.style.display = 'block';
+}
+
+function closeCardMenu(clienteId) {
+  const menu = document.getElementById('card_menu_' + clienteId);
+  if (menu) menu.style.display = 'none';
+}
+
+// Cerrar menú al hacer clic fuera
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('[id^="card_menu_"]') && !e.target.closest('button[onclick*="toggleCardMenu"]')) {
+    document.querySelectorAll('[id^="card_menu_"]').forEach(m => { m.style.display = 'none'; });
+  }
+});
 
 // ── DRAG & DROP — reordenar ejercicios en tab rutina del coach ─────────────
 let _dragExSrc = null;
