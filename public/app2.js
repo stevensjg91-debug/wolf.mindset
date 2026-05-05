@@ -166,7 +166,101 @@ async function dbGenerarIANuevo(){
   const dist = distKcal[parseInt(numComidas)] || distKcal[5];
   const kcalPorComida = dist.map(p => Math.round(kcalObj * p / 100));
 
-  const prompt = `Eres un nutricionista deportivo experto. Crea un plan de dieta para este cliente y responde SOLO con JSON válido, sin texto adicional.
+  const isEN = LANG === 'en';
+  const prompt = isEN ? `You are an expert sports nutritionist. Create a diet plan for this client and respond ONLY with valid JSON, no extra text.
+
+═══ CLIENT DATA ═══
+- Name: ${c.nombre}
+- Goal: ${c.objetivo} (${kcalLabel})
+- Weight: ${c.peso_actual||'not specified'}kg
+- Diet type: ${c.dieta_tipo||'Omnivore'}
+- FORBIDDEN foods: ${c.alimentos_no||'none'}
+- Intolerances/allergies: ${c.lesiones||'none'}
+- Coach notes: ${c.observaciones||'none'}
+- Extra notes: ${notasExtra||'none'}
+- Labs / deficiencies: ${analiticas||'none'}
+
+═══ NUTRITIONAL TARGETS ═══
+- Total calories: ${kcalObj} kcal/day
+- Protein: ${protObj}g | Carbs: ${carbsObj}g | Fats: ${fatObj}g
+- Number of meals: ${numComidas}
+- Calorie distribution per meal: ${kcalPorComida.join(', ')} kcal
+
+═══ AVAILABLE FOODS ═══
+${alimentos}
+
+USE ONLY these foods. Do not invent or add any food not on this list.
+
+═══ CULINARY RULES (MANDATORY) ═══
+
+Before building each meal, internally classify each available food:
+- SOLID PROTEIN: meats, fish, eggs, legumes, tofu, tempeh, cheese
+- PROTEIN POWDER: whey, casein, vegan protein powder
+- BASE CARB: rice, pasta, potato, oats, bread, pancakes, quinoa
+- FRUIT: banana, apple, orange, berries, dates, etc.
+- LIQUID/CREAMY DAIRY: milk, yogurt, kefir, plant-based drink
+- FAT: oil, avocado, nuts, seeds, butter
+- VEGETABLE: any vegetable
+- DRINK: coffee, tea, water
+
+RULES (apply to all foods, not just examples):
+1. Each meal must be a RECOGNISABLE DISH coherent with the time of day (breakfast, lunch, snack, dinner, pre-workout, post-workout).
+2. PROTEIN POWDER: mix ONLY with liquid (water, milk, plant drink), yogurt, oats or fruit. NEVER with a solid protein main (chicken+whey in same meal = forbidden).
+3. NUTS: fat supplement, max 30-40g. Not a main protein source or standalone dish.
+4. OATS: always with liquid (milk, yogurt, plant drink) or as pancakes with egg. Never alone and dry.
+5. CHEESE: valid with eggs, bread, pasta or salad. Do not combine with protein powder.
+6. COFFEE/TEA: accompanying drink. Add milk only if the rest of the meal allows it.
+7. Max 5 foods per meal. More ingredients does not improve the plan.
+8. VARIATIONS must make culinary sense on their own. If a coherent variation is not possible, omit it.
+9. Repeat foods across meals if needed rather than making nonsensical combinations.
+10. Strictly respect FORBIDDEN foods. If variety is insufficient for a meal, simplify.
+
+═══ MACRO DISTRIBUTION ═══
+- Main meals (lunch/dinner): more solid protein and base carbs.
+- Breakfast/snack: can include protein powder, dairy, fruit, fats.
+- Spread fats throughout the day, do not concentrate all in one meal.
+
+RESPOND EXACTLY in this JSON format — ALL text fields in English:
+{
+  "kcal_total": 2000,
+  "prot_total": 160,
+  "carbs_total": 200,
+  "grasas_total": 65,
+  "comidas": [
+    {
+      "numero": 1,
+      "nombre": "Breakfast",
+      "emoji": "☀️",
+      "alimentos": [
+        {"nombre": "Oats", "cantidad": "80g", "detalle": "raw"},
+        {"nombre": "Whole eggs", "cantidad": "3 units", "detalle": ""},
+        {"nombre": "Banana", "cantidad": "1 medium", "detalle": ""}
+      ],
+      "variaciones": [
+        {"letra":"B","nombre":"Quick option","alimentos":[{"nombre":"Protein yogurt","cantidad":"200g","detalle":""},{"nombre":"Oats","cantidad":"60g","detalle":""}]},
+        {"letra":"C","nombre":"Express option","alimentos":[{"nombre":"Wholegrain bread","cantidad":"80g","detalle":""},{"nombre":"Eggs","cantidad":"3 units","detalle":""}]}
+      ],
+      "nota": "Same macros across all options"
+    }
+  ],
+  "alternativas": {
+    "proteinas": ["chicken", "turkey", "tuna"],
+    "carbos": ["rice", "potato", "wholegrain bread"],
+    "grasas": ["avocado", "walnuts", "olive oil"]
+  },
+  "ajustes": [
+    {"icono": "↑", "titulo": "Need more energy?", "texto": "Add more rice or potato"},
+    {"icono": "↓", "titulo": "Less fat?", "texto": "Choose chicken instead of beef"}
+  ],
+  "suplementacion": [
+    {"nombre": "Vitamin D3", "dosis": "2000 IU/day", "momento": "With main meal", "motivo": "Detected deficiency"},
+    {"nombre": "Omega-3", "dosis": "2g EPA+DHA/day", "momento": "With meals", "motivo": "Inflammation and recovery"}
+  ],
+  "alimentos_therapeuticos": [
+    {"alimento": "Beef liver", "frecuencia": "1-2 times/week", "motivo": "Low ferritin — haem iron source"}
+  ],
+  "frase_motivadora": "Consistency builds results."
+}` : `Eres un nutricionista deportivo experto. Crea un plan de dieta para este cliente y responde SOLO con JSON válido, sin texto adicional.
 
 ═══ DATOS DEL CLIENTE ═══
 - Nombre: ${c.nombre}
@@ -202,24 +296,24 @@ Antes de construir cada comida, clasifica internamente cada alimento disponible:
 - VERDURA/HORTALIZA: cualquier vegetal
 - BEBIDA: café, té, agua
 
-NORMAS (aplican a cualquier alimento, no solo los ejemplos):
-1. Cada comida debe ser UN PLATO RECONOCIBLE y coherente con el momento del día (desayuno, almuerzo, merienda, cena, pre-entreno, post-entreno).
-2. PROTEÍNA EN POLVO: mezclar SOLO con líquido (agua, leche, bebida vegetal), yogur, avena o fruta. NUNCA junto a proteína sólida principal (pollo+whey en la misma comida = prohibido).
-3. FRUTOS SECOS: complemento de grasa, máximo 30-40g. No son fuente de proteína principal ni plato por sí solos.
-4. AVENA: siempre acompañada de líquido (leche, yogur, bebida vegetal) o en forma de tortitas con huevo. Nunca sola y seca.
-5. QUESO: válido con huevos, pan, pasta o ensalada. No combinar con proteína en polvo.
-6. CAFÉ/TÉ: bebida acompañante. Agregar leche solo si el resto de la comida lo permite (no añadir leche si ya hay yogur abundante).
-7. Máximo 5 alimentos por comida. Más ingredientes no mejora el plan.
-8. Las VARIACIONES deben tener sentido culinario propio con los alimentos que las forman. Si no es posible crear una variación coherente, no la pongas.
-9. Repite alimentos entre comidas si es necesario antes de hacer combinaciones sin sentido.
-10. Respeta estrictamente los alimentos PROHIBIDOS. Si no hay suficiente variedad para una comida, simplifica.
+NORMAS:
+1. Cada comida debe ser UN PLATO RECONOCIBLE y coherente con el momento del día.
+2. PROTEÍNA EN POLVO: mezclar SOLO con líquido, yogur, avena o fruta. NUNCA junto a proteína sólida principal.
+3. FRUTOS SECOS: complemento de grasa, máximo 30-40g.
+4. AVENA: siempre acompañada de líquido o en forma de tortitas con huevo.
+5. QUESO: válido con huevos, pan, pasta o ensalada.
+6. CAFÉ/TÉ: bebida acompañante.
+7. Máximo 5 alimentos por comida.
+8. Las VARIACIONES deben tener sentido culinario propio. Si no es posible, no la pongas.
+9. Repite alimentos entre comidas si es necesario.
+10. Respeta estrictamente los alimentos PROHIBIDOS.
 
 ═══ DISTRIBUCIÓN DE MACROS ═══
-- Comidas principales (almuerzo/cena): más proteína sólida y carbohidrato base.
+- Comidas principales: más proteína sólida y carbohidrato base.
 - Desayuno/merienda: pueden incluir proteína en polvo, lácteos, fruta, grasas.
-- Distribuye las grasas a lo largo del día, no concentres todo en una sola comida.
+- Distribuye las grasas a lo largo del día.
 
-RESPONDE EXACTAMENTE en este formato JSON:
+RESPONDE EXACTAMENTE en este formato JSON — TODOS los campos de texto en español:
 {
   "kcal_total": 2000,
   "prot_total": 160,
@@ -236,8 +330,7 @@ RESPONDE EXACTAMENTE en este formato JSON:
         {"nombre": "Plátano", "cantidad": "1 ud mediano", "detalle": ""}
       ],
       "variaciones": [
-        {"letra":"B","nombre":"Opción rápida","alimentos":[{"nombre":"Yogur proteico","cantidad":"200g","detalle":""},{"nombre":"Avena","cantidad":"60g","detalle":""}]},
-        {"letra":"C","nombre":"Opción express","alimentos":[{"nombre":"Pan integral","cantidad":"80g","detalle":""},{"nombre":"Huevos","cantidad":"3 uds","detalle":""}]}
+        {"letra":"B","nombre":"Opción rápida","alimentos":[{"nombre":"Yogur proteico","cantidad":"200g","detalle":""},{"nombre":"Avena","cantidad":"60g","detalle":""}]}
       ],
       "nota": "Mismos macros en todas las opciones"
     }
@@ -264,7 +357,7 @@ RESPONDE EXACTAMENTE en este formato JSON:
   try {
     const d = await api('/ia/chat', {method:'POST', body:JSON.stringify({
       messages:[{role:'user', content:prompt}],
-      system:`You are an expert sports nutritionist. Always respond with valid compact JSON, no extra text, no markdown code blocks. All quantities raw/uncooked. Max 2 variations per meal, max 4 foods each. Apply real culinary sense. Do not include macro summaries in the "nota" field. ${LANG==='en'?'Write ALL text fields (nombre, nota, ajustes, alternativas) in English.':'Escribe todos los campos de texto en español.'}`
+      system:`You are an expert sports nutritionist. Always respond with valid compact JSON, no extra text, no markdown code blocks. All quantities raw/uncooked. Max 2 variations per meal, max 4 foods each. Apply real culinary sense. Do not include macro summaries in the "nota" field. ${LANG==='en'?'CRITICAL: Write EVERY text field (nombre, detalle, nota, titulo, texto, momento, motivo, alimento, frecuencia, frase_motivadora) in English. No Spanish words whatsoever.':'Escribe TODOS los campos de texto en español.'}`
     })});
 
     let plan;
