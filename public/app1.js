@@ -1964,7 +1964,9 @@ function hClientes(cl){
         <div style="padding:40px 16px 12px;display:flex;flex-direction:column;align-items:center;text-align:center">
           <!-- Avatar -->
           <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:3px solid ${esMio?'rgba(59,130,246,.5)':'rgba(168,85,247,.5)'};background:${a.bg};color:${a.tx};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;flex-shrink:0;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,.3)">
-            ${avatar}
+            ${c.foto_perfil
+              ? `<img src="${c.foto_perfil}" alt="${c.nombre}" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;border-radius:50%"/>`
+              : `<span>${ini(c.nombre)}</span>`}
           </div>
           <!-- Nombre y meta -->
           <div style="font-size:15px;font-weight:700;color:var(--sv);margin-bottom:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%">${c.nombre}</div>
