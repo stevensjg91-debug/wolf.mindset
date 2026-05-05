@@ -180,7 +180,24 @@ async function initDB() {
   // ── Push subscriptions ───────────────────────────────────────────
   db.run(`CREATE TABLE IF NOT EXISTS push_subscriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, subscription TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
 
+  // ── Plantillas de rutina ──────────────────────────────────────────
+  // Permite guardar rutinas reutilizables independientes de clientes.
+  // dias_json: JSON con array de días y ejercicios (snapshot completo).
+  db.run(`CREATE TABLE IF NOT EXISTS rutinas_plantillas (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    coach_id    INTEGER NOT NULL,
+    nombre      TEXT    NOT NULL,
+    descripcion TEXT    DEFAULT '',
+    objetivo    TEXT    DEFAULT '',
+    nivel       TEXT    DEFAULT '',
+    dias_json   TEXT    NOT NULL DEFAULT '[]',
+    usos        INTEGER DEFAULT 0,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
   // ── Checkins semanales ────────────────────────────────────────────
+  // Permite guardar rutinas reutilizables independientes de clientes.
   db.run(`CREATE TABLE IF NOT EXISTS checkins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cliente_id INTEGER,
