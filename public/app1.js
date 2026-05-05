@@ -10658,6 +10658,19 @@ async function dragExDrop(e, targetIndex, diaId, clienteId) {
   const to   = parseInt(targetIndex);
   _dragExSrc = null;
   if(from === to) return;
+
+  // Feedback visual inmediato — mover el nodo en el DOM antes de esperar la API
+  const container = e.currentTarget.parentElement;
+  if(container) {
+    const items = Array.from(container.querySelectorAll('[data-ex-index]'));
+    const srcEl = items[from];
+    const tgtEl = items[to];
+    if(srcEl && tgtEl) {
+      if(from < to) container.insertBefore(srcEl, tgtEl.nextSibling);
+      else          container.insertBefore(srcEl, tgtEl);
+    }
+  }
+
   try {
     const c = await api('/clientes/'+clienteId);
     const dia = (c.dias||[]).find(d => String(d.id) === String(diaId));
@@ -10665,12 +10678,18 @@ async function dragExDrop(e, targetIndex, diaId, clienteId) {
     const arr = dia.ejercicios;
     const item = arr.splice(from, 1)[0];
     arr.splice(to, 0, item);
-    // Guardar todos los órdenes de una sola vez (más robusto que paso a paso)
     await Promise.all(arr.map((ex, i) =>
       api('/ejercicios/'+ex.id, { method:'PUT', body: JSON.stringify({ orden: i }) })
     ));
     window._coachClienteActual = await api('/clientes/'+clienteId);
-    switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
+    // Refrescar ficha completa igual que hace tabEntrenoDelEx
+    verCliente(clienteId);
+    // Restaurar tab entreno y mantener el día abierto
+    setTimeout(() => {
+      switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
+      const diaBody = document.getElementById('tab_dia_body_' + diaId);
+      if(diaBody) diaBody.style.display = 'block';
+    }, 50);
   } catch(err) {
     console.error('dragExDrop:', err);
   }
