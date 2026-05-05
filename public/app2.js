@@ -191,9 +191,11 @@ ${alimentos}
 
 USE ONLY these foods. Do not invent or add any food not on this list.
 
-═══ CULINARY RULES (MANDATORY) ═══
+═══ CULINARY RULES (MANDATORY — THINK LIKE A CHEF, NOT A CALCULATOR) ═══
 
-Before building each meal, internally classify each available food:
+Before building each meal ask yourself: "Would a real person eat this together in real life?" If the answer is no, do NOT put those foods in the same meal.
+
+FOOD CATEGORIES:
 - SOLID PROTEIN: meats, fish, eggs, legumes, tofu, tempeh, cheese
 - PROTEIN POWDER: whey, casein, vegan protein powder
 - BASE CARB: rice, pasta, potato, oats, bread, pancakes, quinoa
@@ -203,17 +205,29 @@ Before building each meal, internally classify each available food:
 - VEGETABLE: any vegetable
 - DRINK: coffee, tea, water
 
-RULES (apply to all foods, not just examples):
-1. Each meal must be a RECOGNISABLE DISH coherent with the time of day (breakfast, lunch, snack, dinner, pre-workout, post-workout).
-2. PROTEIN POWDER: mix ONLY with liquid (water, milk, plant drink), yogurt, oats or fruit. NEVER with a solid protein main (chicken+whey in same meal = forbidden).
-3. NUTS: fat supplement, max 30-40g. Not a main protein source or standalone dish.
-4. OATS: always with liquid (milk, yogurt, plant drink) or as pancakes with egg. Never alone and dry.
-5. CHEESE: valid with eggs, bread, pasta or salad. Do not combine with protein powder.
-6. COFFEE/TEA: accompanying drink. Add milk only if the rest of the meal allows it.
-7. Max 5 foods per meal. More ingredients does not improve the plan.
-8. VARIATIONS must make culinary sense on their own. If a coherent variation is not possible, omit it.
-9. Repeat foods across meals if needed rather than making nonsensical combinations.
-10. Strictly respect FORBIDDEN foods. If variety is insufficient for a meal, simplify.
+FORBIDDEN COMBINATIONS — never put these in the same meal:
+- Fish + legumes (salmon + chickpeas, tuna + lentils = NOT a real dish)
+- Fish + dairy (salmon + yogurt, tuna + milk = NOT a real dish)
+- Fish + fruit (salmon + banana = NOT a real dish)
+- Meat + fruit (chicken + banana = NOT a real dish, unless it's a smoothie context)
+- Eggs + fish in the same main dish (omelette with salmon is ok, but chicken + egg + tuna = no)
+- Legumes + dairy as main (chickpeas + yogurt = NOT a real dish)
+- Protein powder + solid protein (whey + chicken = forbidden)
+- Two different solid proteins unless it's a surf & turf or explicitly mixed salad
+- Nuts as a main dish — only as a side fat complement
+- Sweet + savoury without clear context (oats + chicken = no, rice + banana = no)
+
+RULES:
+1. Each meal must be a RECOGNISABLE DISH a real person would order in a restaurant or cook at home.
+2. PROTEIN POWDER: ONLY with liquid, yogurt, oats or fruit. Never with solid protein.
+3. OATS: always with liquid (milk, yogurt) or as pancakes with egg. Never dry and alone.
+4. CHEESE: only with eggs, bread, pasta or salad. Not with protein powder.
+5. COFFEE/TEA: side drink only.
+6. Max 5 foods per meal.
+7. VARIATIONS must be real alternative dishes on their own — not random swaps.
+8. Repeat foods across meals rather than creating bizarre combinations.
+9. Strictly respect FORBIDDEN foods.
+10. If you cannot make a coherent meal with the available foods, simplify to 2-3 foods that work together.
 
 ═══ MACRO DISTRIBUTION ═══
 - Main meals (lunch/dinner): more solid protein and base carbs.
@@ -284,9 +298,11 @@ ${alimentos}
 
 USA ÚNICAMENTE estos alimentos. No inventes ni añadas ninguno que no esté en esta lista.
 
-═══ REGLAS DE SENTIDO CULINARIO (OBLIGATORIAS) ═══
+═══ REGLAS DE SENTIDO CULINARIO (OBLIGATORIAS — PIENSA COMO UN COCINERO, NO COMO UNA CALCULADORA) ═══
 
-Antes de construir cada comida, clasifica internamente cada alimento disponible:
+Antes de construir cada comida pregúntate: "¿Una persona real comería esto junto en la vida real?" Si la respuesta es no, NO pongas esos alimentos en la misma comida.
+
+CATEGORÍAS DE ALIMENTOS:
 - PROTEÍNA SÓLIDA: carnes, pescados, huevos, legumbres, tofu, tempeh, queso
 - PROTEÍNA EN POLVO: whey, caseína, proteína vegetal en polvo
 - CARBOHIDRATO BASE: arroz, pasta, patata, avena, pan, tortitas, quinoa
@@ -296,17 +312,29 @@ Antes de construir cada comida, clasifica internamente cada alimento disponible:
 - VERDURA/HORTALIZA: cualquier vegetal
 - BEBIDA: café, té, agua
 
+COMBINACIONES PROHIBIDAS — nunca en la misma comida:
+- Pescado + legumbres (salmón + garbanzos, atún + lentejas = NO es un plato real)
+- Pescado + lácteos (salmón + yogur, atún + leche = NO es un plato real)
+- Pescado + fruta (salmón + plátano = NO es un plato real)
+- Carne + fruta (pollo + plátano = NO es un plato real salvo en contexto de batido)
+- Huevos + pescado como plato principal (tortilla con salmón OK, pero pollo + huevo + atún = no)
+- Legumbres + lácteos como base (garbanzos + yogur = NO es un plato real)
+- Proteína en polvo + proteína sólida (whey + pollo = prohibido)
+- Dos proteínas sólidas distintas salvo ensalada mixta justificada
+- Frutos secos como plato principal — solo complemento de grasa
+- Dulce + salado sin contexto claro (avena + pollo = no, arroz + plátano = no)
+
 NORMAS:
-1. Cada comida debe ser UN PLATO RECONOCIBLE y coherente con el momento del día.
-2. PROTEÍNA EN POLVO: mezclar SOLO con líquido, yogur, avena o fruta. NUNCA junto a proteína sólida principal.
-3. FRUTOS SECOS: complemento de grasa, máximo 30-40g.
-4. AVENA: siempre acompañada de líquido o en forma de tortitas con huevo.
-5. QUESO: válido con huevos, pan, pasta o ensalada.
-6. CAFÉ/TÉ: bebida acompañante.
-7. Máximo 5 alimentos por comida.
-8. Las VARIACIONES deben tener sentido culinario propio. Si no es posible, no la pongas.
-9. Repite alimentos entre comidas si es necesario.
-10. Respeta estrictamente los alimentos PROHIBIDOS.
+1. Cada comida debe ser UN PLATO RECONOCIBLE que una persona real pediría en un restaurante o cocinaría en casa.
+2. PROTEÍNA EN POLVO: SOLO con líquido, yogur, avena o fruta. Nunca con proteína sólida.
+3. AVENA: siempre con líquido (leche, yogur) o en tortitas con huevo. Nunca sola y seca.
+4. QUESO: solo con huevos, pan, pasta o ensalada. No con proteína en polvo.
+5. CAFÉ/TÉ: bebida acompañante únicamente.
+6. Máximo 5 alimentos por comida.
+7. Las VARIACIONES deben ser platos alternativos reales por sí solos, no intercambios aleatorios.
+8. Repite alimentos entre comidas antes de hacer combinaciones raras.
+9. Respeta estrictamente los alimentos PROHIBIDOS.
+10. Si no puedes hacer una comida coherente con los alimentos disponibles, simplifica a 2-3 que sí encajen.
 
 ═══ DISTRIBUCIÓN DE MACROS ═══
 - Comidas principales: más proteína sólida y carbohidrato base.
@@ -357,7 +385,7 @@ RESPONDE EXACTAMENTE en este formato JSON — TODOS los campos de texto en espa�
   try {
     const d = await api('/ia/chat', {method:'POST', body:JSON.stringify({
       messages:[{role:'user', content:prompt}],
-      system:`You are an expert sports nutritionist. Always respond with valid compact JSON, no extra text, no markdown code blocks. All quantities raw/uncooked. Max 2 variations per meal, max 4 foods each. Apply real culinary sense. Do not include macro summaries in the "nota" field. ${LANG==='en'?'CRITICAL: Write EVERY text field (nombre, detalle, nota, titulo, texto, momento, motivo, alimento, frecuencia, frase_motivadora) in English. No Spanish words whatsoever.':'Escribe TODOS los campos de texto en español.'}`
+      system:`You are an expert sports nutritionist AND experienced chef. Always respond with valid compact JSON, no extra text, no markdown code blocks. All quantities raw/uncooked. Max 2 variations per meal, max 4 foods each. CRITICAL culinary rule: every meal must be something a real person would actually eat together — fish never goes with legumes or dairy, meat never with fruit, no bizarre combinations. When in doubt, simplify. Do not include macro summaries in the "nota" field. ${LANG==='en'?'CRITICAL: Write EVERY text field (nombre, detalle, nota, titulo, texto, momento, motivo, alimento, frecuencia, frase_motivadora) in English. No Spanish words whatsoever.':'Escribe TODOS los campos de texto en español.'}`
     })});
 
     let plan;
