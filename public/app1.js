@@ -1933,22 +1933,22 @@ function hClientes(cl){
         : `<span>${ini(c.nombre)}</span>`;
       return`<div class="cc cliente-card ${esMio?'own':'partner'} ${c.archivado?'archived':''}" onclick="${c.archivado?'':'verCliente('+c.id+')'}" style="${c.archivado?'opacity:.72;filter:grayscale(.25);':''}">
         <div class="cliente-coach-badge" style="background:${c.archivado?'rgba(148,163,184,.16)':cc.bg};color:${c.archivado?'#cbd5e1':cc.color}">${c.archivado?'🗄️ '+tc('Archivados'):(esMio?'🔵':'🟣')+' '+cc.label}</div>
-        <div class="cliente-card-main">
-          <div class="cliente-avatar" style="background:${a.bg};color:${a.tx};border-color:${esMio?'rgba(59,130,246,.45)':'rgba(168,85,247,.45)'}">${avatar}</div>
+        <div class="cliente-card-main" style="padding:10px 12px 6px">
+          <div class="cliente-avatar" style="width:38px;height:38px;font-size:14px;background:${a.bg};color:${a.tx};border-color:${esMio?'rgba(59,130,246,.45)':'rgba(168,85,247,.45)'}">${avatar}</div>
           <div class="cliente-info">
-            <div class="cliente-name">${c.nombre}</div>
-            <div class="cliente-meta">${tc(c.objetivo)} · ${tc(c.nivel)}</div>
+            <div class="cliente-name" style="font-size:14px">${c.nombre}</div>
+            <div class="cliente-meta" style="font-size:11px">${tc(c.objetivo)} · ${tc(c.nivel)}</div>
           </div>
         </div>
-        <div class="cliente-tags">
+        <div class="cliente-tags" style="padding:0 12px 6px">
           <span class="badge b-sv">${tc('Sem')} ${c.semanas}</span>
           ${c.peso_actual?`<span class="badge b-bl">${c.peso_actual}kg</span>`:''}
         </div>
-        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap" onclick="event.stopPropagation()">
+        <div style="display:flex;gap:5px;padding:0 10px 10px;flex-wrap:wrap" onclick="event.stopPropagation()">
           ${c.archivado
-            ? `<button class="btn btn-sm" onclick="restaurarCliente(${c.id})">↩ ${tc('Restaurar')}</button>`
-            : `<button class="btn btn-sm" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.28);color:#fcd34d" onclick="archivarCliente(${c.id})">🗄️ ${tc('Archivar')}</button>`}
-          <button class="btn btn-sm" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#fca5a5" onclick="borrarClientePermanente(${c.id})">🗑️ ${tc('Borrar permanente')}</button>
+            ? `<button class="btn btn-sm" style="font-size:11px;padding:4px 9px" onclick="restaurarCliente(${c.id})">↩ ${tc('Restaurar')}</button>`
+            : `<button class="btn btn-sm" style="font-size:11px;padding:4px 9px;background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.2);color:#fcd34d" onclick="archivarCliente(${c.id})">🗄 ${tc('Archivar')}</button>`}
+          <button class="btn btn-sm" style="font-size:11px;padding:4px 9px;background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.25);color:#fca5a5" onclick="borrarClientePermanente(${c.id})">🗑 ${tc('Borrar')}</button>
         </div>
       </div>`;
     }).join('')}
@@ -2222,11 +2222,15 @@ async function verCliente(id){
             </div>
             <div id="tab_dia_body_${d.id}" style="display:none;padding:0 13px 12px">
              ${d.ejercicios.length ? d.ejercicios.map((e,ei)=>`
-  <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--br)">
-    <div style="display:flex;flex-direction:column;gap:4px">
-      <button onclick="event.stopPropagation();tabMoveEx(${c.id},${d.id},${ei},-1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↑</button>
-      <button onclick="event.stopPropagation();tabMoveEx(${c.id},${d.id},${ei},1)" style="width:26px;height:22px;background:rgba(255,255,255,.06);border:0.5px solid var(--br);border-radius:6px;color:var(--tx);cursor:pointer">↓</button>
-    </div>
+  <div draggable="true"
+       data-ex-index="${ei}" data-dia-id="${d.id}" data-cliente-id="${c.id}"
+       ondragstart="dragExStart(event,${ei},${d.id},${c.id})"
+       ondragover="dragExOver(event)"
+       ondrop="dragExDrop(event,${ei},${d.id},${c.id})"
+       ondragend="dragExEnd(event)"
+       style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--br);transition:opacity .15s">
+    <div title="${COACH_LANG==='en'?'Drag to reorder':'Arrastrar para reordenar'}"
+         style="cursor:grab;color:var(--tx3);font-size:18px;flex-shrink:0;padding:0 3px;user-select:none;line-height:1;opacity:.6">⠿</div>
 
     <div style="flex:1;min-width:0">
       <div style="font-size:13px;font-weight:700;color:var(--sv)">${e.nombre}</div>
@@ -2518,7 +2522,7 @@ function switchClienteTab(tab, btn) {
         if(wrap) wrap.innerHTML = '<div style="font-size:13px;color:var(--tx3);padding:20px;text-align:center">Sin sesiones aún.<br><span style="font-size:11px;opacity:.5">El cliente debe completar al menos un entreno</span></div>';
         return;
       }
-      if(wrap) wrap.innerHTML = sesiones.map(s=>{
+      if(wrap) wrap.innerHTML = sesiones.map((s, si)=>{
         const byEx={};
         s.series.forEach(sr=>{if(!byEx[sr.ejercicio_nombre])byEx[sr.ejercicio_nombre]=[];byEx[sr.ejercicio_nombre].push(sr);});
         const incompleto = s.estado === 'incompleto';
@@ -2528,34 +2532,43 @@ function switchClienteTab(tab, btn) {
         const fecha = new Date(s.fecha).toLocaleDateString(COACH_LANG==='en'?'en-GB':'es-ES',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
         const durStr = s.duracion_min ? ' · '+s.duracion_min+' min' : '';
         const totalSeries = s.series.length;
-        return '<div style="background:var(--s2);border:0.5px solid '+(incompleto?'rgba(245,158,11,.4)':'rgba(34,197,94,.2)')+';border-radius:12px;padding:13px;margin-bottom:10px">'+
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'+
-            '<div style="flex:1">'+
-              '<div style="font-size:15px;font-weight:700;color:var(--sv)">'+s.dia_nombre+'</div>'+
-              '<div style="font-size:11px;color:var(--blg);font-weight:600">'+tc(s.dia_grupo||'')+'</div>'+
-              '<div style="font-size:11px;color:var(--tx3);margin-top:2px">'+fecha+durStr+'</div>'+
+        // Primeras 3 sesiones abiertas, el resto colapsadas
+        const openByDefault = si < 3;
+        const accId = 'ses_acc_'+s.id;
+        return '<div style="background:var(--s2);border:0.5px solid '+(incompleto?'rgba(245,158,11,.4)':'rgba(34,197,94,.2)')+';border-radius:12px;margin-bottom:8px;overflow:hidden">'+
+          // ── Cabecera acordeón ──
+          '<div onclick="toggleAcordeonCoach(\''+accId+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;gap:10px;user-select:none">'+
+            '<div style="flex:1;min-width:0">'+
+              '<div style="font-size:14px;font-weight:700;color:var(--sv)">'+s.dia_nombre+'</div>'+
+              '<div style="font-size:11px;color:var(--tx3);margin-top:1px">'+fecha+durStr+' · '+totalSeries+' series</div>'+
             '</div>'+
-            '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'+
+            '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">'+
               (incompleto
                 ? '<span class="badge" style="background:rgba(245,158,11,.15);color:var(--amb);border:0.5px solid rgba(245,158,11,.3)">⚠ '+tc('Incompleto')+'</span>'
-                : '<span class="badge b-gn">✓ '+(COACH_LANG==='en'?'Completed':'Completado')+'</span>')+
-              (valoracion ? '<span style="font-size:20px" title="'+valoracion+'">'+valoracion.split(' ')[0]+'</span>' : '')+
-              '<span style="font-size:10px;color:var(--tx3)">'+totalSeries+' series</span>'+
+                : '<span class="badge b-gn">✓ '+(COACH_LANG==='en'?'Done':'OK')+'</span>')+
+              (valoracion ? '<span style="font-size:18px">'+valoracion.split(' ')[0]+'</span>' : '')+
+              '<svg id="arr_'+accId+'" width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--tx3);transition:transform .25s;flex-shrink:0;'+(openByDefault?'transform:rotate(180deg)':'')+'"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'+
             '</div>'+
           '</div>'+
-          Object.entries(byEx).map(([nom,srs])=>
-            '<div style="background:var(--s3);border-radius:8px;padding:8px 10px;margin-bottom:6px">'+
-            '<div style="font-size:12px;font-weight:700;color:var(--sv2);margin-bottom:5px">'+nom+'</div>'+
-            '<div style="display:flex;gap:5px;flex-wrap:wrap">'+
-              srs.map(sr=>
-                '<span style="background:var(--b);border:0.5px solid var(--br);border-radius:6px;padding:4px 9px;font-size:11px;color:var(--sv3);font-weight:600">'+
-                sr.peso_real+'kg × '+sr.reps_real+(sr.rir!=null?' · RIR'+sr.rir:'')+
-                '</span>'
+          // ── Cuerpo colapsable ──
+          '<div id="'+accId+'" style="max-height:'+(openByDefault?'3000px':'0px')+';overflow:hidden;transition:max-height .3s ease,opacity .2s;opacity:'+(openByDefault?'1':'0')+'">'+
+            '<div style="padding:0 14px 12px">'+
+              '<div style="font-size:11px;color:var(--blg);font-weight:600;margin-bottom:8px">'+tc(s.dia_grupo||'')+'</div>'+
+              Object.entries(byEx).map(([nom,srs])=>
+                '<div style="background:var(--s3);border-radius:8px;padding:8px 10px;margin-bottom:6px">'+
+                '<div style="font-size:12px;font-weight:700;color:var(--sv2);margin-bottom:5px">'+nom+'</div>'+
+                '<div style="display:flex;gap:5px;flex-wrap:wrap">'+
+                  srs.map(sr=>
+                    '<span style="background:var(--b);border:0.5px solid var(--br);border-radius:6px;padding:4px 9px;font-size:11px;color:var(--sv3);font-weight:600">'+
+                    sr.peso_real+'kg × '+sr.reps_real+(sr.rir!=null?' · RIR'+sr.rir:'')+
+                    '</span>'
+                  ).join('')+
+                '</div>'+
+                (notasCliente[nom] ? '<div style="font-size:11px;color:var(--blg);margin-top:5px;font-style:italic;background:rgba(59,130,246,.06);padding:5px 8px;border-radius:6px;border:0.5px solid rgba(59,130,246,.15)">💬 '+notasCliente[nom]+'</div>' : '')+
+                '</div>'
               ).join('')+
             '</div>'+
-            (notasCliente[nom] ? '<div style="font-size:11px;color:var(--blg);margin-top:5px;font-style:italic;background:rgba(59,130,246,.06);padding:5px 8px;border-radius:6px;border:0.5px solid rgba(59,130,246,.15)">💬 '+notasCliente[nom]+'</div>' : '')+
-            '</div>'
-          ).join('')+
+          '</div>'+
         '</div>';
       }).join('');
 
@@ -4764,7 +4777,6 @@ async function aplicarTodosAjustes(clienteId) {
     const sesiones = await api('/clientes/'+clienteId+'/sesiones');
     const nivel = c.nivel || 'Intermedio';
 
-    // Mapear último rendimiento por ejercicio
     const ultimoRendimiento = {};
     sesiones.forEach(s => {
       s.series.forEach(sr => {
@@ -4777,6 +4789,8 @@ async function aplicarTodosAjustes(clienteId) {
 
     let aplicados = 0;
     const promesas = [];
+    // Mapa exId -> { nuevoPeso, series } para actualizar inputs tras guardar en BD
+    const nuevosPojos = {};
 
     c.dias.forEach(d => {
       d.ejercicios.forEach(e => {
@@ -4785,6 +4799,7 @@ async function aplicarTodosAjustes(clienteId) {
           const prog = calcularProgresion(e.peso_objetivo || 0, ult.reps_real, ult.rir, e.rir || 2, nivel);
           if(prog.subida || prog.bajada) {
             aplicados++;
+            nuevosPojos[e.id] = { nuevoPeso: prog.nuevoPeso, series: e.series };
             promesas.push(
               api('/ejercicios/'+e.id, {
                 method: 'PUT',
@@ -4805,19 +4820,39 @@ async function aplicarTodosAjustes(clienteId) {
 
     await Promise.all(promesas);
 
-    // Recargar cliente
+    // ── Actualizar inputs rev_kg_* en pantalla ─────────────────────────────
+    // CRÍTICO: recogerCambiosRevision() lee estos inputs al publicar.
+    // Sin este paso, "Publicar semana" sobreescribiría con los valores viejos.
+    Object.entries(nuevosPojos).forEach(([exId, { nuevoPeso, series }]) => {
+      for(let si = 0; si < series; si++) {
+        const inp = document.getElementById(`rev_kg_${exId}_${si}`);
+        if(inp) {
+          inp.value = nuevoPeso;
+          inp.style.borderColor = 'var(--amb)';
+          inp.style.background  = 'rgba(245,158,11,.1)';
+          inp.style.color       = 'var(--amb)';
+        }
+      }
+    });
+
     const cActualizado = await api('/clientes/'+clienteId);
     window._coachClienteActual = cActualizado;
 
     if(btn) {
-      btn.textContent = aplicados > 0 ? `✓ ${aplicados} ${COACH_LANG==='en'?'adjustments applied':'ajustes aplicados'}` : '✓ '+(COACH_LANG==='en'?'No changes':'Sin cambios');
-      btn.style.background = 'var(--gn)';
-      setTimeout(() => {
-        btn.textContent = '⚡ '+tc('Aplicar todos los ajustes'); btn.disabled = false;
-        btn.style.background = '';
-        // Recargar revisión semanal
-        cargarRevisionSemanal(clienteId, cActualizado);
-      }, 2500);
+      btn.textContent = aplicados > 0
+        ? `✓ ${aplicados} ${COACH_LANG==='en'?'applied — review & publish':'aplicados — revisa y publica'}`
+        : '✓ '+(COACH_LANG==='en'?'No changes':'Sin cambios');
+      btn.style.background  = 'rgba(245,158,11,.2)';
+      btn.style.color       = 'var(--amb)';
+      btn.style.borderColor = 'rgba(245,158,11,.4)';
+      btn.disabled = false;
+    }
+
+    const estado = document.getElementById('rev_estado');
+    if(estado && aplicados > 0) {
+      estado.textContent = COACH_LANG==='en'
+        ? `· ${aplicados} applied — pending publish`
+        : `· ${aplicados} aplicados — pendiente de publicar`;
     }
 
   } catch(e) {
@@ -10106,5 +10141,52 @@ switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'))
   }catch(e){
     console.error('tabMoveEx error:', e);
     alert('Error moviendo ejercicio');
+  }
+}
+
+// ── DRAG & DROP — reordenar ejercicios en tab rutina del coach ─────────────
+let _dragExSrc = null;
+
+function dragExStart(e, exIndex, diaId, clienteId) {
+  _dragExSrc = { exIndex: parseInt(exIndex), diaId: String(diaId), clienteId: String(clienteId) };
+  e.currentTarget.style.opacity = '0.4';
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function dragExOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.style.borderTop = '2px solid var(--bl2)';
+}
+
+function dragExEnd(e) {
+  e.currentTarget.style.opacity = '1';
+  document.querySelectorAll('[data-ex-index]').forEach(el => { el.style.borderTop = ''; });
+  _dragExSrc = null;
+}
+
+async function dragExDrop(e, targetIndex, diaId, clienteId) {
+  e.preventDefault();
+  e.currentTarget.style.borderTop = '';
+  if(!_dragExSrc) return;
+  const from = _dragExSrc.exIndex;
+  const to   = parseInt(targetIndex);
+  _dragExSrc = null;
+  if(from === to) return;
+  try {
+    const c = await api('/clientes/'+clienteId);
+    const dia = (c.dias||[]).find(d => String(d.id) === String(diaId));
+    if(!dia || !dia.ejercicios) return;
+    const arr = dia.ejercicios;
+    const item = arr.splice(from, 1)[0];
+    arr.splice(to, 0, item);
+    // Guardar todos los órdenes de una sola vez (más robusto que paso a paso)
+    await Promise.all(arr.map((ex, i) =>
+      api('/ejercicios/'+ex.id, { method:'PUT', body: JSON.stringify({ orden: i }) })
+    ));
+    window._coachClienteActual = await api('/clientes/'+clienteId);
+    switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]'));
+  } catch(err) {
+    console.error('dragExDrop:', err);
   }
 }
