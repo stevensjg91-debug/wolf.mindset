@@ -9464,11 +9464,11 @@ async function sugerirProgresionIA(clienteId) {
       api('/clientes/' + clienteId + '/sesiones')
     ]);
 
-    // Solo sesiones completadas — igual que cargarRevisionSemanal
-    const sesiones = todasSesiones.filter(s => s.estado === 'completado');
+    // Incluir todas las sesiones con datos (completas e incompletas)
+    const sesiones = todasSesiones.filter(s => s.series && s.series.length > 0);
 
     if (!sesiones.length) {
-      res.innerHTML = `<div style="font-size:12px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No completed sessions to analyze.':'Sin sesiones completadas para analizar.'}</div>`;
+      res.innerHTML = `<div style="font-size:12px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No sessions with data to analyze.':'Sin sesiones con datos para analizar.'}</div>`;
       return;
     }
 
