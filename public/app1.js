@@ -8312,7 +8312,7 @@ async function resetearContrasena(userId){
   const pass = inp?.value?.trim();
   if(!pass || pass.length < 4){ msg.style.color='#fca5a5'; msg.textContent='Mínimo 4 caracteres'; return; }
   try {
-    const r = await api('/auth/reset-password', { method:'POST', body: JSON.stringify({ userId, newPassword: pass }) });
+    const r = await api('/coach/reset-cliente-password', { method:'POST', body: JSON.stringify({ userId, newPassword: pass }) });
     if(r.ok){ msg.style.color='var(--gnb)'; msg.textContent='✓ Contraseña actualizada'; inp.value=''; }
     else { msg.style.color='#fca5a5'; msg.textContent = r.error || 'Error'; }
   } catch(e){ msg.style.color='#fca5a5'; msg.textContent='Error de conexión'; }
