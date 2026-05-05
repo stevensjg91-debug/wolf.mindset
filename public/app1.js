@@ -3599,6 +3599,80 @@ function hRutinas(){return`
     </div>
   </div>
 
+  <!-- ── BIBLIOTECA DE PLANTILLAS ─────────────────────────────────── -->
+  <div class="sec" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(168,85,247,.07),rgba(24,24,27,.9));border-color:rgba(168,85,247,.22)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <div>
+        <div class="sec-hdr" style="margin-bottom:2px">📋 ${COACH_LANG==='en'?'Routine templates':'Plantillas de rutina'}</div>
+        <div style="font-size:12px;color:var(--tx3)">${COACH_LANG==='en'?'Save and reuse routines across clients.':'Guarda y reutiliza rutinas entre clientes.'}</div>
+      </div>
+      <button class="btn btn-sm" style="background:rgba(168,85,247,.18);border-color:rgba(168,85,247,.35);color:#d8b4fe;white-space:nowrap" onclick="plantillaGuardarActual()">💾 ${COACH_LANG==='en'?'Save as template':'Guardar como plantilla'}</button>
+    </div>
+    <div id="rb_plantillas_list" style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:12px;color:var(--tx3);text-align:center;padding:12px 0">${COACH_LANG==='en'?'Loading templates...':'Cargando plantillas...'}</div>
+    </div>
+  </div>
+
+  <!-- MODAL: guardar como plantilla -->
+  <div id="modal_plantilla_guardar" style="display:none;position:fixed;inset:0;background:rgba(9,9,11,.95);z-index:9999;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--s);border:0.5px solid rgba(168,85,247,.3);border-radius:16px;padding:22px;width:100%;max-width:400px">
+      <div style="font-size:16px;font-weight:700;color:var(--sv);margin-bottom:4px">💾 ${COACH_LANG==='en'?'Save as template':'Guardar como plantilla'}</div>
+      <div style="font-size:12px;color:var(--tx3);margin-bottom:16px">${COACH_LANG==='en'?'Saves a copy of the current routine. Does not affect the client.':'Guarda una copia de la rutina actual. No afecta al cliente.'}</div>
+      <div class="form-lbl">${COACH_LANG==='en'?'Template name':'Nombre de la plantilla'} *</div>
+      <input class="inp" id="plt_nombre" placeholder="${COACH_LANG==='en'?'E.g. 4-day push/pull...':'Ej: Rutina 4 días push/pull...'}"/>
+      <div class="form-lbl">${COACH_LANG==='en'?'Description (optional)':'Descripción (opcional)'}</div>
+      <input class="inp" id="plt_desc" placeholder="${COACH_LANG==='en'?'Notes about this routine...':'Notas sobre esta rutina...'}"/>
+      <div class="g2" style="gap:8px;margin-bottom:14px">
+        <div>
+          <div class="form-lbl">${COACH_LANG==='en'?'Goal':'Objetivo'}</div>
+          <select class="inp" id="plt_objetivo" style="margin-bottom:0">
+            <option value="">—</option>
+            <option>${COACH_LANG==='en'?'Muscle gain':'Volumen'}</option>
+            <option>${COACH_LANG==='en'?'Fat loss':'Definición'}</option>
+            <option>${COACH_LANG==='en'?'Strength':'Fuerza'}</option>
+            <option>${COACH_LANG==='en'?'Maintenance':'Mantenimiento'}</option>
+          </select>
+        </div>
+        <div>
+          <div class="form-lbl">${COACH_LANG==='en'?'Level':'Nivel'}</div>
+          <select class="inp" id="plt_nivel" style="margin-bottom:0">
+            <option value="">—</option>
+            <option>${COACH_LANG==='en'?'Beginner':'Principiante'}</option>
+            <option>${COACH_LANG==='en'?'Intermediate':'Intermedio'}</option>
+            <option>${COACH_LANG==='en'?'Advanced':'Avanzado'}</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn" style="flex:1;padding:12px;background:rgba(168,85,247,.25);border-color:rgba(168,85,247,.4);color:#d8b4fe" onclick="plantillaConfirmarGuardar()">💾 ${COACH_LANG==='en'?'Save':'Guardar'}</button>
+        <button onclick="document.getElementById('modal_plantilla_guardar').style.display='none'" style="padding:12px 16px;border:0.5px solid var(--br);border-radius:10px;background:none;color:var(--tx3);cursor:pointer;font-family:inherit">${COACH_LANG==='en'?'Cancel':'Cancelar'}</button>
+      </div>
+      <div id="plt_msg" style="font-size:12px;text-align:center;margin-top:8px;min-height:16px"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: aplicar plantilla a cliente -->
+  <div id="modal_plantilla_aplicar" style="display:none;position:fixed;inset:0;background:rgba(9,9,11,.95);z-index:9999;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--s);border:0.5px solid rgba(168,85,247,.3);border-radius:16px;padding:22px;width:100%;max-width:400px">
+      <div style="font-size:16px;font-weight:700;color:var(--sv);margin-bottom:4px" id="plt_aplicar_titulo">📋 ${COACH_LANG==='en'?'Apply template':'Aplicar plantilla'}</div>
+      <div style="font-size:12px;color:var(--tx3);margin-bottom:14px" id="plt_aplicar_desc"></div>
+      <div style="background:rgba(245,158,11,.08);border:0.5px solid rgba(245,158,11,.25);border-radius:10px;padding:12px;margin-bottom:14px">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+          <input type="checkbox" id="plt_reemplazar" style="width:17px;height:17px;margin-top:1px;cursor:pointer;accent-color:#f59e0b;flex-shrink:0"/>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--amb)">${COACH_LANG==='en'?'Replace existing routine':'Reemplazar rutina existente'}</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:2px">${COACH_LANG==='en'?'Deletes current days before applying. Uncheck to add on top.':'Borra los días actuales antes de aplicar. Desmarca para añadir encima.'}</div>
+          </div>
+        </label>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn" style="flex:1;padding:12px;background:rgba(168,85,247,.25);border-color:rgba(168,85,247,.4);color:#d8b4fe" onclick="plantillaConfirmarAplicar()">✓ ${COACH_LANG==='en'?'Apply to client':'Aplicar al cliente'}</button>
+        <button onclick="document.getElementById('modal_plantilla_aplicar').style.display='none'" style="padding:12px 16px;border:0.5px solid var(--br);border-radius:10px;background:none;color:var(--tx3);cursor:pointer;font-family:inherit">${COACH_LANG==='en'?'Cancel':'Cancelar'}</button>
+      </div>
+      <div id="plt_aplicar_msg" style="font-size:12px;text-align:center;margin-top:8px;min-height:16px"></div>
+    </div>
+  </div>
+
   <div id="rb_dias_wrap" style="display:none">
     <div class="sec" style="margin-bottom:12px">
       <div class="sec-hdr">2. ${COACH_LANG==='en'?'Training days':'Días de entreno'} <button class="sec-act" onclick="rbAddDia()">+ ${COACH_LANG==='en'?'Add day':'Añadir día'}</button></div>
@@ -3709,6 +3783,156 @@ async function initRutinas(){
   rbRenderTarjetas(cl);
   // Load saved exercise configs
   try{ window.exConfig=await api('/ejercicios-config'); }catch(e){ window.exConfig={}; }
+  // Cargar plantillas de rutina
+  plantillaCargarLista();
+}
+
+// ── PLANTILLAS DE RUTINA ──────────────────────────────────────────────────
+let _plantillaAplicarId = null;
+
+async function plantillaCargarLista() {
+  const wrap = document.getElementById('rb_plantillas_list');
+  if(!wrap) return;
+  try {
+    const plantillas = await api('/rutinas-plantillas');
+    window._plantillas = plantillas;
+    if(!plantillas.length) {
+      wrap.innerHTML = `<div style="font-size:12px;color:var(--tx3);text-align:center;padding:12px 0">${COACH_LANG==='en'?'No templates yet. Save a routine to start.':'Sin plantillas aún. Guarda una rutina para empezar.'}</div>`;
+      return;
+    }
+    wrap.innerHTML = plantillas.map(p => `
+      <div style="background:var(--s2);border:0.5px solid rgba(168,85,247,.2);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nombre}</div>
+          <div style="font-size:11px;color:var(--tx3);margin-top:1px">
+            ${p.dias.length} ${COACH_LANG==='en'?'days':'días'}
+            ${p.objetivo ? ' · '+tc(p.objetivo) : ''}
+            ${p.nivel ? ' · '+tc(p.nivel) : ''}
+            ${p.usos ? ' · '+p.usos+' '+(COACH_LANG==='en'?'uses':'usos') : ''}
+          </div>
+          ${p.descripcion ? `<div style="font-size:11px;color:var(--tx3);margin-top:2px;font-style:italic">${p.descripcion}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          <button onclick="plantillaAplicar(${p.id})"
+            style="padding:5px 10px;border-radius:8px;border:0.5px solid rgba(168,85,247,.35);background:rgba(168,85,247,.15);color:#d8b4fe;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">
+            ${COACH_LANG==='en'?'Apply':'Aplicar'}
+          </button>
+          <button onclick="plantillaBorrar(${p.id},'${p.nombre.replace(/'/g,"\\'")}')"
+            style="padding:5px 8px;border-radius:8px;border:0.5px solid rgba(239,68,68,.25);background:rgba(239,68,68,.08);color:#fca5a5;font-size:12px;cursor:pointer;font-family:inherit">
+            🗑
+          </button>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    if(wrap) wrap.innerHTML = `<div style="font-size:12px;color:#f87171;padding:8px 0">Error cargando plantillas</div>`;
+  }
+}
+
+function plantillaGuardarActual() {
+  const clienteId = document.getElementById('rb_cl')?.value;
+  const modal = document.getElementById('modal_plantilla_guardar');
+  if(!modal) return;
+  // Pre-rellenar nombre con el del cliente si hay uno seleccionado
+  if(clienteId && window._rbClientes) {
+    const c = window._rbClientes.find(x => String(x.id) === String(clienteId));
+    if(c) {
+      const inp = document.getElementById('plt_nombre');
+      if(inp && !inp.value) inp.value = COACH_LANG==='en' ? `${c.nombre}'s routine` : `Rutina ${c.nombre}`;
+      const sel = document.getElementById('plt_objetivo');
+      if(sel && c.objetivo) sel.value = c.objetivo;
+      const sel2 = document.getElementById('plt_nivel');
+      if(sel2 && c.nivel) sel2.value = c.nivel;
+    }
+  }
+  document.getElementById('plt_msg').textContent = '';
+  modal.style.display = 'flex';
+}
+
+async function plantillaConfirmarGuardar() {
+  const nombre = document.getElementById('plt_nombre')?.value.trim();
+  const desc   = document.getElementById('plt_desc')?.value.trim() || '';
+  const obj    = document.getElementById('plt_objetivo')?.value || '';
+  const nivel  = document.getElementById('plt_nivel')?.value || '';
+  const msg    = document.getElementById('plt_msg');
+  const clienteId = document.getElementById('rb_cl')?.value;
+
+  if(!nombre) { if(msg) msg.textContent = COACH_LANG==='en'?'Name is required.':'El nombre es obligatorio.'; return; }
+
+  if(msg) { msg.style.color='var(--tx3)'; msg.textContent = COACH_LANG==='en'?'Saving...':'Guardando...'; }
+  try {
+    await api('/rutinas-plantillas', {
+      method: 'POST',
+      body: JSON.stringify({ nombre, descripcion: desc, objetivo: obj, nivel, cliente_id: clienteId || null })
+    });
+    if(msg) { msg.style.color='var(--gnb)'; msg.textContent = COACH_LANG==='en'?'✓ Saved!':'✓ ¡Guardada!'; }
+    setTimeout(() => {
+      document.getElementById('modal_plantilla_guardar').style.display = 'none';
+      document.getElementById('plt_nombre').value = '';
+      document.getElementById('plt_desc').value = '';
+      plantillaCargarLista();
+    }, 1200);
+  } catch(e) {
+    if(msg) { msg.style.color='#f87171'; msg.textContent = 'Error: '+e.message; }
+  }
+}
+
+function plantillaAplicar(plantillaId) {
+  const p = (window._plantillas||[]).find(x => x.id === plantillaId);
+  if(!p) return;
+  const clienteId = document.getElementById('rb_cl')?.value;
+
+  _plantillaAplicarId = plantillaId;
+  const titulo = document.getElementById('plt_aplicar_titulo');
+  const desc   = document.getElementById('plt_aplicar_desc');
+  const msg    = document.getElementById('plt_aplicar_msg');
+  if(titulo) titulo.textContent = `📋 ${p.nombre}`;
+  if(desc) {
+    const clienteNombre = clienteId && window._rbClientes
+      ? (window._rbClientes.find(x=>String(x.id)===String(clienteId))?.nombre || '')
+      : '';
+    desc.textContent = clienteNombre
+      ? (COACH_LANG==='en' ? `Apply to ${clienteNombre}? ${p.dias.length} days, ${p.dias.reduce((a,d)=>a+(d.ejercicios||[]).length,0)} exercises.` : `¿Aplicar a ${clienteNombre}? ${p.dias.length} días, ${p.dias.reduce((a,d)=>a+(d.ejercicios||[]).length,0)} ejercicios.`)
+      : (COACH_LANG==='en'?'Select a client first.':'Selecciona un cliente primero.');
+  }
+  if(msg) msg.textContent = '';
+  document.getElementById('plt_reemplazar').checked = true;
+  document.getElementById('modal_plantilla_aplicar').style.display = 'flex';
+}
+
+async function plantillaConfirmarAplicar() {
+  const clienteId = document.getElementById('rb_cl')?.value;
+  const msg = document.getElementById('plt_aplicar_msg');
+  if(!clienteId) {
+    if(msg) { msg.style.color='#f87171'; msg.textContent = COACH_LANG==='en'?'Select a client first.':'Selecciona un cliente primero.'; }
+    return;
+  }
+  const reemplazar = document.getElementById('plt_reemplazar')?.checked || false;
+  if(msg) { msg.style.color='var(--tx3)'; msg.textContent = COACH_LANG==='en'?'Applying...':'Aplicando...'; }
+  try {
+    const r = await api(`/rutinas-plantillas/${_plantillaAplicarId}/aplicar`, {
+      method: 'POST',
+      body: JSON.stringify({ cliente_id: clienteId, reemplazar })
+    });
+    if(msg) { msg.style.color='var(--gnb)'; msg.textContent = COACH_LANG==='en'?`✓ Applied! ${r.dias} days, ${r.ejercicios} exercises.`:`✓ Aplicada. ${r.dias} días, ${r.ejercicios} ejercicios.`; }
+    setTimeout(async () => {
+      document.getElementById('modal_plantilla_aplicar').style.display = 'none';
+      plantillaCargarLista();
+      // Si ya estaba el cliente seleccionado, recargar sus días
+      if(rbState.clienteId === parseInt(clienteId) || String(rbState.clienteId) === String(clienteId)) {
+        await rbLoadDias();
+      }
+    }, 1500);
+  } catch(e) {
+    if(msg) { msg.style.color='#f87171'; msg.textContent = 'Error: '+e.message; }
+  }
+}
+
+async function plantillaBorrar(id, nombre) {
+  if(!confirm(COACH_LANG==='en'?`Delete template "${nombre}"?`:`¿Eliminar la plantilla "${nombre}"?`)) return;
+  try {
+    await api('/rutinas-plantillas/'+id, { method: 'DELETE' });
+    plantillaCargarLista();
+  } catch(e) { alert('Error: '+e.message); }
 }
 
 function rbRenderTarjetas(clientes){
@@ -4767,96 +4991,38 @@ function calcular1RM(peso, reps) {
 
 // ── APLICAR TODOS LOS AJUSTES SUGERIDOS DE UNA VEZ ────────────────────
 async function aplicarTodosAjustes(clienteId) {
-  const btn = event?.target;
+  const btn = document.getElementById('btn_aplicar_ajustes') || event?.target;
   if(btn) { btn.textContent = '⏳ '+(COACH_LANG==='en'?'Applying...':'Aplicando...'); btn.disabled = true; }
 
   try {
-    const c = window._coachClienteActual;
-    if(!c) throw new Error('No hay cliente cargado');
+    // Los inputs rev_kg_* ya tienen los pesos sugeridos desde el render de cargarRevisionSemanal.
+    // Simplemente los leemos y guardamos en BD — exactamente igual que "Publicar",
+    // pero sin notificar al cliente todavía.
+    const ejercicios = recogerCambiosRevision();
+    if (!ejercicios.length) throw new Error(COACH_LANG==='en'?'No exercises found in panel':'No hay ejercicios en el panel');
 
-    const sesiones = await api('/clientes/'+clienteId+'/sesiones');
-    const nivel = c.nivel || 'Intermedio';
-
-    const ultimoRendimiento = {};
-    sesiones.forEach(s => {
-      s.series.forEach(sr => {
-        if(!ultimoRendimiento[sr.ejercicio_nombre] ||
-           new Date(s.fecha) > new Date(ultimoRendimiento[sr.ejercicio_nombre].fecha)) {
-          ultimoRendimiento[sr.ejercicio_nombre] = { ...sr, fecha: s.fecha };
-        }
-      });
+    // Guardar como borrador
+    await api('/clientes/'+clienteId+'/borrador', {
+      method: 'POST',
+      body: JSON.stringify({ ejercicios })
     });
 
-    let aplicados = 0;
-    const promesas = [];
-    // Mapa exId -> { nuevoPeso, series } para actualizar inputs tras guardar en BD
-    const nuevosPojos = {};
-
-    c.dias.forEach(d => {
-      d.ejercicios.forEach(e => {
-        const ult = ultimoRendimiento[e.nombre];
-        if(ult && ult.rir != null) {
-          const prog = calcularProgresion(e.peso_objetivo || 0, ult.reps_real, ult.rir, e.rir || 2, nivel);
-          if(prog.subida || prog.bajada) {
-            aplicados++;
-            nuevosPojos[e.id] = { nuevoPeso: prog.nuevoPeso, series: e.series };
-            promesas.push(
-              api('/ejercicios/'+e.id, {
-                method: 'PUT',
-                body: JSON.stringify({
-                  series: e.series, reps: e.reps,
-                  peso_objetivo: prog.nuevoPeso,
-                  descanso: e.descanso, rir: e.rir,
-                  es_principal: e.es_principal,
-                  youtube_url: e.youtube_url || '',
-                  nota_coach: e.nota_coach || ''
-                })
-              })
-            );
-          }
-        }
-      });
-    });
-
-    await Promise.all(promesas);
-
-    // ── Actualizar inputs rev_kg_* en pantalla ─────────────────────────────
-    // CRÍTICO: recogerCambiosRevision() lee estos inputs al publicar.
-    // Sin este paso, "Publicar semana" sobreescribiría con los valores viejos.
-    Object.entries(nuevosPojos).forEach(([exId, { nuevoPeso, series }]) => {
-      for(let si = 0; si < series; si++) {
-        const inp = document.getElementById(`rev_kg_${exId}_${si}`);
-        if(inp) {
-          inp.value = nuevoPeso;
-          inp.style.borderColor = 'var(--amb)';
-          inp.style.background  = 'rgba(245,158,11,.1)';
-          inp.style.color       = 'var(--amb)';
-        }
-      }
-    });
-
-    const cActualizado = await api('/clientes/'+clienteId);
-    window._coachClienteActual = cActualizado;
+    // Contar cuántos tienen sugerencia real
+    const conSugerencia = Object.values(window._revSugerencias||{}).filter(s=>s.haySugerencia).length;
 
     if(btn) {
-      btn.textContent = aplicados > 0
-        ? `✓ ${aplicados} ${COACH_LANG==='en'?'applied — review & publish':'aplicados — revisa y publica'}`
-        : '✓ '+(COACH_LANG==='en'?'No changes':'Sin cambios');
-      btn.style.background  = 'rgba(245,158,11,.2)';
-      btn.style.color       = 'var(--amb)';
-      btn.style.borderColor = 'rgba(245,158,11,.4)';
+      btn.textContent = `✓ ${conSugerencia} ${COACH_LANG==='en'?'applied — publish to notify client':'aplicados — publica para avisar al cliente'}`;
+      btn.style.background  = 'rgba(34,197,94,.15)';
+      btn.style.color       = 'var(--gnb)';
+      btn.style.borderColor = 'rgba(34,197,94,.3)';
       btn.disabled = false;
     }
 
     const estado = document.getElementById('rev_estado');
-    if(estado && aplicados > 0) {
-      estado.textContent = COACH_LANG==='en'
-        ? `· ${aplicados} applied — pending publish`
-        : `· ${aplicados} aplicados — pendiente de publicar`;
-    }
+    if(estado) estado.textContent = COACH_LANG==='en'?'· Draft saved — pending publish':'· Borrador guardado — pendiente de publicar';
 
   } catch(e) {
-    if(btn) { btn.textContent = 'Error: '+e.message; btn.disabled = false; }
+    if(btn) { btn.textContent = '⚡ Error: '+e.message; btn.disabled = false; }
   }
 }
 
@@ -8916,58 +9082,77 @@ function calcularProgresion(pesoActual, repsReales, rirReal, rirObjetivo, nivel)
   return { nuevoPeso, nota, subida: nuevoPeso > pesoActual, bajada: nuevoPeso < pesoActual };
 }
 
+// ── HELPERS DE PROGRESIÓN ────────────────────────────────────────────────────
+// Calcula el rendimiento medio de un ejercicio a partir de TODAS sus series
+// registradas en la sesión más reciente (no solo la última).
+function calcularRendimientoMedio(seriesDelEjercicio) {
+  if (!seriesDelEjercicio || !seriesDelEjercicio.length) return null;
+  const conRIR = seriesDelEjercicio.filter(s => s.rir != null);
+  const rirMedio = conRIR.length
+    ? Math.round(conRIR.reduce((a, s) => a + s.rir, 0) / conRIR.length)
+    : null;
+  const pesoMax  = Math.max(...seriesDelEjercicio.map(s => s.peso_real || 0));
+  const repsMedio = Math.round(
+    seriesDelEjercicio.reduce((a, s) => a + (s.reps_real || 0), 0) / seriesDelEjercicio.length
+  );
+  return { rirMedio, pesoMax, repsMedio, tieneRIR: conRIR.length > 0 };
+}
+
 async function cargarRevisionSemanal(clienteId, clienteData) {
-  const wrap = document.getElementById('revision_semanal_content');
+  const wrap   = document.getElementById('revision_semanal_content');
   const estado = document.getElementById('rev_estado');
   if (!wrap) return;
 
   try {
-    const sesiones = await api('/clientes/' + clienteId + '/sesiones');
-    
+    const todasSesiones = await api('/clientes/' + clienteId + '/sesiones');
+
+    // ── FILTRO CRÍTICO: solo sesiones completadas ────────────────────────────
+    // Las incompletas/en curso tienen datos parciales y confunden el análisis.
+    const sesiones = todasSesiones.filter(s => s.estado === 'completado');
+
     if (!sesiones.length) {
-      wrap.innerHTML = `<div style="font-size:13px;color:var(--tx3);padding:4px 0">${COACH_LANG==='en'?'No sessions yet. Once the client completes workouts, the review will appear here.':'Sin sesiones registradas aún. Cuando el cliente complete entrenamientos aparecerá aquí la revisión.'}</div>`;
+      wrap.innerHTML = `<div style="font-size:13px;color:var(--tx3);padding:4px 0">${COACH_LANG==='en'?'No completed sessions yet. Review will appear once the client finishes a workout.':'Sin sesiones completadas aún. La revisión aparecerá cuando el cliente termine un entreno.'}</div>`;
+      if (estado) estado.textContent = COACH_LANG==='en'?'· No data':'· Sin datos';
       return;
     }
 
-    // Get the most recent session per day
-    const porDia = {};
-    sesiones.forEach(s => {
-      const dia = s.dia_nombre;
-      if (!porDia[dia] || new Date(s.fecha) > new Date(porDia[dia].fecha)) {
-        porDia[dia] = s;
-      }
-    });
-
-    // Build revision data: for each ejercicio in client's plan, find last performance
-    const ejerciciosPlan = {};
-    (clienteData.dias || []).forEach(d => {
-      (d.ejercicios || []).forEach(e => {
-        ejerciciosPlan[e.nombre] = { ...e, dia: d.nombre };
-      });
-    });
-
-    // Map last performance per ejercicio
-    const ultimoRendimiento = {};
+    // ── Último rendimiento por ejercicio (media de series de la sesión más reciente) ──
+    // Agrupamos todas las series por nombre de ejercicio con su fecha de sesión.
+    const porEjercicio = {}; // nombre -> { fecha, series[] }
     sesiones.forEach(s => {
       s.series.forEach(sr => {
-        if (!ultimoRendimiento[sr.ejercicio_nombre] ||
-            new Date(s.fecha) > new Date(ultimoRendimiento[sr.ejercicio_nombre].fecha)) {
-          ultimoRendimiento[sr.ejercicio_nombre] = {
-            ...sr,
-            fecha: s.fecha,
-            dia: s.dia_nombre
-          };
+        const nom = sr.ejercicio_nombre;
+        if (!porEjercicio[nom] || new Date(s.fecha) > new Date(porEjercicio[nom].fecha)) {
+          porEjercicio[nom] = { fecha: s.fecha, series: [] };
+        }
+        if (new Date(s.fecha).getTime() === new Date(porEjercicio[nom].fecha).getTime()) {
+          porEjercicio[nom].series.push(sr);
+        }
+      });
+    });
+    // Segunda pasada: consolidar (la primera pase puede haber sobrescrito con fecha anterior)
+    const ultimoRendimiento = {}; // nombre -> { rirMedio, pesoMax, repsMedio, tieneRIR, fecha }
+    sesiones.forEach(s => {
+      const seriesPorEx = {};
+      s.series.forEach(sr => {
+        if (!seriesPorEx[sr.ejercicio_nombre]) seriesPorEx[sr.ejercicio_nombre] = [];
+        seriesPorEx[sr.ejercicio_nombre].push(sr);
+      });
+      Object.entries(seriesPorEx).forEach(([nom, srs]) => {
+        if (!ultimoRendimiento[nom] || new Date(s.fecha) > new Date(ultimoRendimiento[nom].fecha)) {
+          ultimoRendimiento[nom] = { ...calcularRendimientoMedio(srs), fecha: s.fecha, dia: s.dia_nombre };
         }
       });
     });
 
-    // Volume analysis per muscle group
+    // ── Volumen por grupo muscular (últimos 7 días, solo completadas) ──────────
+    const ejerciciosPlan = {};
+    (clienteData.dias || []).forEach(d => {
+      (d.ejercicios || []).forEach(e => { ejerciciosPlan[e.nombre] = { ...e, dia: d.nombre }; });
+    });
     const volPorGrupo = {};
-    sesiones.filter(s => {
-      const d = new Date(s.fecha);
-      const semAgo = Date.now() - 7*24*60*60*1000;
-      return d.getTime() > semAgo;
-    }).forEach(s => {
+    const hace7dias = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    sesiones.filter(s => new Date(s.fecha).getTime() > hace7dias).forEach(s => {
       s.series.forEach(sr => {
         const ex = ejerciciosPlan[sr.ejercicio_nombre];
         if (!ex) return;
@@ -8977,130 +9162,139 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
       });
     });
 
-    const nivel = clienteData.nivel || 'Intermedio';
+    const nivel  = clienteData.nivel || 'Intermedio';
     const volRec = VOL_RECOMENDADO[nivel] || VOL_RECOMENDADO.Intermedio;
-
-    // Build the UI
-    let cambiosPendientes = {}; // ejercicio -> nuevoPeso
-
     const diasConEjercicios = (clienteData.dias || []).filter(d => d.ejercicios.length > 0);
-    
+
     if (!diasConEjercicios.length) {
       wrap.innerHTML = `<div style="font-size:13px;color:var(--tx3)">${COACH_LANG==='en'?'No routine assigned.':'Sin rutina asignada.'}</div>`;
       return;
     }
 
-    // Count total pending adjustments
+    // ── Precalcular sugerencias para todos los ejercicios ───────────────────
+    // Guardamos en window._revSugerencias para que aplicarTodosAjustes las lea
+    // directamente desde los inputs sin recalcular.
+    window._revSugerencias = {}; // exId -> { nuevoPeso, haysugerencia }
     let totalAjustes = 0;
+
     diasConEjercicios.forEach(d => {
       d.ejercicios.forEach(e => {
-        const ult = ultimoRendimiento[e.nombre];
-        if (ult && ult.rir != null) {
-          const prog = calcularProgresion(e.peso_objetivo || 0, ult.reps_real, ult.rir, e.rir || 2, nivel);
-          if (prog.subida || prog.bajada) totalAjustes++;
+        const rend = ultimoRendimiento[e.nombre];
+        const pesoObj = e.peso_objetivo || 0;
+        let nuevoPeso = pesoObj;
+        let haySugerencia = false;
+
+        if (rend && rend.tieneRIR) {
+          const prog = calcularProgresion(pesoObj, rend.repsMedio, rend.rirMedio, e.rir || 2, nivel);
+          nuevoPeso = prog.nuevoPeso;
+          haySugerencia = prog.subida || prog.bajada;
+          if (haySugerencia) totalAjustes++;
         }
+        window._revSugerencias[e.id] = { nuevoPeso, haySugerencia, pesoOriginal: pesoObj };
       });
     });
 
-    if (estado) estado.textContent = totalAjustes > 0 ? `· ${totalAjustes} ajuste${totalAjustes > 1 ? 's' : ''} ${COACH_LANG==='en'?'adjustment':'ajuste'}${totalAjustes > 1 ? 's' : ''} ${COACH_LANG==='en'?'suggested':'sugerido'}${totalAjustes > 1 ? 's' : ''}` : (COACH_LANG==='en'?'· Up to date':'· Al día');
+    if (estado) {
+      estado.textContent = totalAjustes > 0
+        ? `· ${totalAjustes} ${COACH_LANG==='en'?'adjustments suggested':'ajuste'+( totalAjustes>1?'s':'')+' sugerido'+(totalAjustes>1?'s':'')}`
+        : (COACH_LANG==='en'?'· Up to date':'· Al día');
+    }
 
-    // Volume warning
-    let volWarnings = '';
-    Object.entries(volPorGrupo).forEach(([grupo, series]) => {
-      if (series < volRec.min) {
-        volWarnings += `<span style="background:rgba(245,158,11,.1);border:0.5px solid rgba(245,158,11,.2);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--amb);margin-right:5px;margin-bottom:4px;display:inline-block">${grupo}: ${series} ${COACH_LANG==='en'?'sets':'series'} (min ${volRec.min})</span>`;
-      } else if (series > volRec.max) {
-        volWarnings += `<span style="background:rgba(239,68,68,.08);border:0.5px solid rgba(239,68,68,.2);border-radius:6px;padding:2px 8px;font-size:11px;color:#fca5a5;margin-right:5px;margin-bottom:4px;display:inline-block">${grupo}: ${series} ${COACH_LANG==='en'?'sets':'series'} (max ${volRec.max})</span>`;
-      }
-    });
-
+    // ── RENDER ───────────────────────────────────────────────────────────────
     let html = '';
 
-    // Volume summary
+    // Volumen
     html += `<div style="margin-bottom:14px">
-      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">${COACH_LANG==='en'?'Volume this week':'Volumen esta semana'} · ${tc(nivel)} (${volRec.desc})</div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px">`;
-    
-    Object.entries(volPorGrupo).forEach(([grupo, series]) => {
-      const ok = series >= volRec.min && series <= volRec.max;
-      const low = series < volRec.min;
-      html += `<span style="background:${ok?'rgba(34,197,94,.1)':low?'rgba(245,158,11,.1)':'rgba(239,68,68,.08)'};border:0.5px solid ${ok?'rgba(34,197,94,.2)':low?'rgba(245,158,11,.2)':'rgba(239,68,68,.2)'};border-radius:6px;padding:3px 9px;font-size:11px;color:${ok?'var(--gnb)':low?'var(--amb)':'#fca5a5'};font-weight:600">${grupo} ${series}s</span>`;
-    });
-    
-    if (!Object.keys(volPorGrupo).length) {
+      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
+        ${COACH_LANG==='en'?'Volume this week':'Volumen esta semana'} · ${tc(nivel)} (${volRec.desc})
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">`;
+    if (Object.keys(volPorGrupo).length) {
+      Object.entries(volPorGrupo).forEach(([grupo, series]) => {
+        const ok = series >= volRec.min && series <= volRec.max;
+        const low = series < volRec.min;
+        html += `<span style="background:${ok?'rgba(34,197,94,.1)':low?'rgba(245,158,11,.1)':'rgba(239,68,68,.08)'};border:0.5px solid ${ok?'rgba(34,197,94,.2)':low?'rgba(245,158,11,.2)':'rgba(239,68,68,.2)'};border-radius:6px;padding:3px 9px;font-size:11px;color:${ok?'var(--gnb)':low?'var(--amb)':'#fca5a5'};font-weight:600">${grupo} ${series}s</span>`;
+      });
+    } else {
       html += `<span style="font-size:12px;color:var(--tx3)">${COACH_LANG==='en'?'No data this week':'Sin datos de esta semana'}</span>`;
     }
-    
     html += `</div></div>`;
 
-    // Per-exercise progression
+    // Progresión por ejercicio
     html += `<div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">${COACH_LANG==='en'?'Load progression':'Progresión de carga'}</div>`;
 
     diasConEjercicios.forEach(d => {
-      html += `<div style="margin-bottom:14px">
-        <div style="font-size:12px;font-weight:700;color:var(--sv2);margin-bottom:8px;padding-bottom:4px;border-bottom:0.5px solid var(--br)">${d.nombre} — ${d.grupo}</div>`;
+      html += `<div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--sv2);margin-bottom:8px;padding-bottom:4px;border-bottom:0.5px solid var(--br)">${d.nombre}${d.grupo ? ' — '+d.grupo : ''}</div>`;
 
       d.ejercicios.forEach(e => {
-        const ult = ultimoRendimiento[e.nombre];
-        const pesoObj = e.peso_objetivo || 0;
-        
-        let progRow = '';
-        let nuevoPeso = pesoObj;
-        let notaProg = '';
-        let colorProg = 'var(--tx3)';
-        let iconProg = '—';
+        const rend  = ultimoRendimiento[e.nombre];
+        const sug   = window._revSugerencias[e.id] || { nuevoPeso: e.peso_objetivo||0, haySugerencia: false };
+        const pesoMostrar = sug.nuevoPeso;
 
-        if (ult && ult.rir != null) {
-          const prog = calcularProgresion(pesoObj, ult.reps_real, ult.rir, e.rir || 2, nivel);
-          nuevoPeso = prog.nuevoPeso;
-          notaProg = prog.nota;
-          colorProg = prog.subida ? 'var(--gnb)' : prog.bajada ? '#fca5a5' : 'var(--sv3)';
-          iconProg = prog.subida ? '↑' : prog.bajada ? '↓' : '=';
+        let colorProg = 'var(--tx3)', iconProg = '—', notaProg = '';
+        if (rend) {
+          if (rend.tieneRIR) {
+            const prog = calcularProgresion(e.peso_objetivo||0, rend.repsMedio, rend.rirMedio, e.rir||2, nivel);
+            notaProg   = prog.nota;
+            colorProg  = prog.subida ? 'var(--gnb)' : prog.bajada ? '#fca5a5' : 'var(--sv3)';
+            iconProg   = prog.subida ? '↑' : prog.bajada ? '↓' : '=';
+          } else {
+            // Tiene datos pero sin RIR — mostrar lo que hizo sin sugerencia de carga
+            notaProg  = COACH_LANG==='en'?'No RIR recorded — manual review':'Sin RIR registrado — revisión manual';
+            colorProg = 'var(--tx3)';
+            iconProg  = '?';
+          }
         }
 
-        const exId = e.id;
-        const inputId = `rev_peso_${exId}`;
+        const sugBorder = sug.haySugerencia
+          ? (iconProg==='↑' ? 'rgba(34,197,94,.25)' : 'rgba(239,68,68,.25)')
+          : 'var(--br)';
+        const sugBg = sug.haySugerencia
+          ? (iconProg==='↑' ? 'rgba(34,197,94,.04)' : 'rgba(239,68,68,.04)')
+          : 'transparent';
 
-        html += `<div style="padding:10px 0;border-bottom:0.5px solid rgba(39,39,42,.4)">
-          <!-- Header -->
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
-            <div style="flex:1">
-              <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:2px">${e.nombre}</div>
-              ${ult ? `<div style="font-size:11px;color:var(--sv3)">${COACH_LANG==='en'?'Last':'Último'}: ${ult.peso_real}kg×${ult.reps_real}${ult.rir != null ? ' · RIR '+ult.rir : ''}</div>` : '<div style="font-size:11px;color:var(--tx3)">Sin datos aún</div>'}
-              ${notaProg ? `<div style="font-size:11px;color:${colorProg};font-weight:600;margin-top:1px">${iconProg} ${notaProg}</div>` : ''}
+        html += `<div style="padding:10px 0 10px;border-bottom:0.5px solid rgba(39,39,42,.4);border-left:2px solid ${sugBorder};padding-left:8px;margin-bottom:2px;background:${sugBg};border-radius:0 6px 6px 0">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;gap:8px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:var(--sv)">${e.nombre}${e.es_principal ? ' ⭐' : ''}</div>
+              ${rend
+                ? `<div style="font-size:11px;color:var(--sv3);margin-top:1px">
+                    ${COACH_LANG==='en'?'Last':'Último'}: ${rend.pesoMax}kg · ${rend.repsMedio} reps med.${rend.tieneRIR ? ' · RIR '+rend.rirMedio+' med.' : ''}
+                   </div>`
+                : `<div style="font-size:11px;color:var(--tx3);margin-top:1px">${COACH_LANG==='en'?'No data yet':'Sin datos aún'}</div>`}
+              ${notaProg ? `<div style="font-size:11px;color:${colorProg};font-weight:600;margin-top:2px">${iconProg} ${notaProg}</div>` : ''}
             </div>
+            ${sug.haySugerencia ? `<span style="font-size:18px;flex-shrink:0">${iconProg==='↑'?'📈':'📉'}</span>` : ''}
           </div>
-          <!-- Serie-by-serie table -->
+          <!-- Tabla de series -->
           <div style="margin-bottom:6px">
-            <div style="display:grid;grid-template-columns:28px 1fr 1fr 1fr;gap:4px;padding:4px 0;border-bottom:0.5px solid var(--br);margin-bottom:4px">
+            <div style="display:grid;grid-template-columns:24px 1fr 1fr 80px;gap:4px;padding:3px 0;border-bottom:0.5px solid var(--br);margin-bottom:4px">
               <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;text-align:center">#</div>
               <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;text-align:center">Reps</div>
               <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;text-align:center">Kg obj</div>
-              <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;text-align:center">Anterior</div>
+              <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;text-align:center">${COACH_LANG==='en'?'Last':'Anterior'}</div>
             </div>
-            ${Array.from({length: e.series}, (_,si) => {
-              const ultSerie = ult ? si === e.series-1 ? ult : null : null;
-              const pesoSerie = nuevoPeso;
-              const repsSerie = e.reps;
-              return `<div style="display:grid;grid-template-columns:28px 1fr 1fr 1fr;gap:4px;margin-bottom:4px;align-items:center">
+            ${Array.from({length: e.series}, (_, si) => {
+              return `<div style="display:grid;grid-template-columns:24px 1fr 1fr 80px;gap:4px;margin-bottom:4px;align-items:center">
                 <div style="font-size:12px;font-weight:700;color:var(--sv3);text-align:center">${si+1}</div>
-                <input id="rev_reps_${exId}_${si}" type="number" min="1" max="50" value="${parseFirstNum(repsSerie)||10}"
+                <input id="rev_reps_${e.id}_${si}" type="number" min="1" max="50" value="${parseFirstNum(e.reps)||10}"
                   style="padding:6px 4px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:13px;font-weight:700;text-align:center;font-family:inherit;width:100%"/>
                 <div style="display:flex;align-items:center;gap:2px">
-                  <button onclick="revAjustarPeso('rev_kg_${exId}_${si}', -2.5)" style="width:20px;height:30px;border-radius:5px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;padding:0">−</button>
-                  <input id="rev_kg_${exId}_${si}" type="number" value="${pesoSerie}" step="2.5" min="0"
-                    style="flex:1;min-width:0;padding:6px 2px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:13px;font-weight:700;text-align:center;font-family:inherit"/>
-                  <button onclick="revAjustarPeso('rev_kg_${exId}_${si}', 2.5)" style="width:20px;height:30px;border-radius:5px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;padding:0">+</button>
+                  <button onclick="revAjustarPeso('rev_kg_${e.id}_${si}',-2.5)" style="width:20px;height:30px;border-radius:5px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;padding:0">−</button>
+                  <input id="rev_kg_${e.id}_${si}" type="number" value="${pesoMostrar}" step="2.5" min="0"
+                    style="flex:1;min-width:0;padding:6px 2px;border:0.5px solid ${sug.haySugerencia?(iconProg==='↑'?'rgba(34,197,94,.4)':'rgba(239,68,68,.4)'):'var(--br)'};border-radius:8px;background:${sug.haySugerencia?(iconProg==='↑'?'rgba(34,197,94,.08)':'rgba(239,68,68,.06)'):'var(--s2)'};color:${sug.haySugerencia?(iconProg==='↑'?'var(--gnb)':'#fca5a5'):'var(--sv)'};font-size:13px;font-weight:700;text-align:center;font-family:inherit"/>
+                  <button onclick="revAjustarPeso('rev_kg_${e.id}_${si}',2.5)" style="width:20px;height:30px;border-radius:5px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv2);cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;padding:0">+</button>
                 </div>
-                <div style="font-size:11px;color:var(--tx3);text-align:center">${ult && si===e.series-1 ? fmtPeso(ult.peso_real) : '—'}</div>
+                <div style="font-size:11px;color:var(--tx3);text-align:center;font-weight:600">${rend ? rend.pesoMax+'kg' : '—'}</div>
               </div>`;
             }).join('')}
           </div>
-          <input type="hidden" id="rev_series_${exId}" value="${e.series}"/>
-          <!-- Nota coach -->
+          <input type="hidden" id="rev_series_${e.id}" value="${e.series}"/>
           <div>
-            <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:3px">Nota para el cliente</div>
-            <input id="rev_nota_${exId}" type="text" value="${e.nota_coach||''}" placeholder="Ej: última serie al fallo, controla la bajada..."
+            <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:3px">${COACH_LANG==='en'?'Note for client':'Nota para el cliente'}</div>
+            <input id="rev_nota_${e.id}" type="text" value="${e.nota_coach||''}"
+              placeholder="${COACH_LANG==='en'?'E.g. last set to failure, control the descent...':'Ej: última serie al fallo, controla la bajada...'}"
               style="width:100%;padding:7px 10px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:12px;font-family:inherit"/>
           </div>
         </div>`;
@@ -9109,22 +9303,27 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
       html += `</div>`;
     });
 
-    // Action buttons
-    html += `<div style="display:flex;gap:8px;margin-top:4px">
+    // Botones de acción
+    html += `
+    <div style="display:flex;gap:8px;margin-top:8px;margin-bottom:6px">
       <button class="btn" style="flex:1;padding:11px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2)" onclick="guardarBorrador(${clienteId})">${COACH_LANG==='en'?'💾 Save draft':'💾 Guardar borrador'}</button>
       <button class="btn" style="flex:1;padding:11px;background:var(--gn)" onclick="publicarSemana(${clienteId})">${COACH_LANG==='en'?'✓ Publish week':'✓ Publicar semana'}</button>
     </div>
-    <button style="width:100%;margin-top:8px;padding:11px;background:rgba(245,158,11,.12);border:0.5px solid rgba(245,158,11,.3);border-radius:10px;color:var(--amb);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit" onclick="aplicarTodosAjustes(${clienteId})">⚡ Aplicar todos los ajustes sugeridos</button>
-    <div style="margin-top:6px;font-size:11px;color:var(--tx3);text-align:center">El cliente no verá los cambios hasta que pulses "Publicar semana"</div>
-    <div style="margin-top:10px">
-      <button style="width:100%;padding:9px;background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;color:var(--blg);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" onclick="sugerirProgresionIA(${clienteId})">🤖 Sugerir progresión con IA</button>
-      <div id="ia_progresion_result" style="margin-top:8px"></div>
-    </div>`;
+    ${totalAjustes > 0 ? `
+    <button id="btn_aplicar_ajustes" style="width:100%;padding:11px;background:rgba(245,158,11,.12);border:0.5px solid rgba(245,158,11,.3);border-radius:10px;color:var(--amb);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:4px" onclick="aplicarTodosAjustes(${clienteId})">
+      ⚡ ${COACH_LANG==='en'?`Apply all ${totalAjustes} suggested adjustments`:`Aplicar los ${totalAjustes} ajustes sugeridos`}
+    </button>
+    <div style="font-size:11px;color:var(--tx3);text-align:center;margin-bottom:10px">${COACH_LANG==='en'?'Client won\'t see changes until you publish':'El cliente no verá los cambios hasta que publiques'}</div>
+    ` : ''}
+    <button style="width:100%;padding:9px;background:rgba(37,99,235,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;color:var(--blg);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" onclick="sugerirProgresionIA(${clienteId})">
+      🤖 ${COACH_LANG==='en'?'AI analysis + apply suggestions':'Análisis IA + aplicar sugerencias'}
+    </button>
+    <div id="ia_progresion_result" style="margin-top:8px"></div>`;
 
     wrap.innerHTML = html;
 
   } catch(err) {
-    console.log('Error revision semanal:', err);
+    console.error('Error revision semanal:', err);
     wrap.innerHTML = `<div style="font-size:13px;color:var(--tx3)">${tc('Error cargando revisión.')}</div>`;
   }
 }
@@ -9215,60 +9414,157 @@ async function publicarSemana(clienteId) {
 
 async function sugerirProgresionIA(clienteId) {
   const res = document.getElementById('ia_progresion_result');
-  res.innerHTML = '<div class="ia-chip" style="padding:8px 12px"><div class="ia-chip-title">Analizando progreso...</div></div>';
-  
+  if(!res) return;
+  res.innerHTML = '<div class="ia-chip" style="padding:10px 12px"><div class="ia-chip-title">🤖 '+(COACH_LANG==='en'?'Analyzing completed sessions...':'Analizando sesiones completadas...')+'</div></div>';
+
   try {
-    const [cliente, sesiones] = await Promise.all([
+    const [cliente, todasSesiones] = await Promise.all([
       api('/clientes/' + clienteId),
       api('/clientes/' + clienteId + '/sesiones')
     ]);
-    
-    const nivel = cliente.nivel;
-    const volRec = VOL_RECOMENDADO[nivel] || VOL_RECOMENDADO.Intermedio;
-    
-    // Summarize last 4 sessions
-    const resumenSesiones = sesiones.slice(0, 4).map(s => {
-      const series = s.series.map(sr => `${sr.ejercicio_nombre}: ${sr.peso_real}kg×${sr.reps_real}${sr.rir != null ? ' RIR'+sr.rir : ''}`).join(', ');
-      return `${s.dia_nombre} (${new Date(s.fecha).toLocaleDateString(LANG==='en'?'en-GB':'es-ES')}): ${series}`;
-    }).join('\n');
 
-    const ejerciciosPlan = (cliente.dias || []).flatMap(d =>
-      d.ejercicios.map(e => `${e.nombre}: obj ${e.peso_objetivo}kg × ${e.reps}, RIR obj ${e.rir || 2}${e.es_principal ? ' [PRINCIPAL]' : ''}`)
+    // Solo sesiones completadas — igual que cargarRevisionSemanal
+    const sesiones = todasSesiones.filter(s => s.estado === 'completado');
+
+    if (!sesiones.length) {
+      res.innerHTML = `<div style="font-size:12px;color:var(--tx3);padding:8px 0">${COACH_LANG==='en'?'No completed sessions to analyze.':'Sin sesiones completadas para analizar.'}</div>`;
+      return;
+    }
+
+    const nivel    = cliente.nivel || 'Intermedio';
+    const semanas  = cliente.semanas || 1;
+    const fase     = semanas % 4 === 0 ? 'DESCARGA (semana 4)' : `CARGA (semana ${semanas%4||4}/4)`;
+    const volRec   = VOL_RECOMENDADO[nivel] || VOL_RECOMENDADO.Intermedio;
+
+    // Rendimiento medio por ejercicio (usando la misma lógica que el panel)
+    const ultimoRendimiento = {};
+    sesiones.forEach(s => {
+      const porEx = {};
+      s.series.forEach(sr => {
+        if(!porEx[sr.ejercicio_nombre]) porEx[sr.ejercicio_nombre] = [];
+        porEx[sr.ejercicio_nombre].push(sr);
+      });
+      Object.entries(porEx).forEach(([nom, srs]) => {
+        if(!ultimoRendimiento[nom] || new Date(s.fecha) > new Date(ultimoRendimiento[nom].fecha)) {
+          ultimoRendimiento[nom] = { ...calcularRendimientoMedio(srs), fecha: s.fecha };
+        }
+      });
+    });
+
+    // Construir resumen estructurado para la IA
+    const ejerciciosPlan = (cliente.dias||[]).flatMap(d =>
+      d.ejercicios.map(e => {
+        const rend = ultimoRendimiento[e.nombre];
+        const rendStr = rend
+          ? `último: ${rend.pesoMax}kg × ${rend.repsMedio}reps${rend.tieneRIR ? ' RIR '+rend.rirMedio : ' (sin RIR)'}`
+          : 'sin datos';
+        return `${e.nombre}: obj ${e.peso_objetivo||0}kg × ${e.reps}, RIRobj ${e.rir||2}${e.es_principal?' [PRINCIPAL]':''} | ${rendStr}`;
+      })
     ).join('\n');
 
-    const semanas = cliente.semanas || 1;
-    const fase = semanas % 4 === 0 ? 'DESCARGA (semana 4 del mesociclo)' : `CARGA (semana ${semanas % 4 || 4} de 4)`;
+    const resumenSesiones = sesiones.slice(0,5).map(s => {
+      const fecha = new Date(s.fecha).toLocaleDateString(COACH_LANG==='en'?'en-GB':'es-ES');
+      return `${s.dia_nombre} (${fecha}): ${s.series.length} series`;
+    }).join(' | ');
 
-    const prompt = `Analiza el progreso de este cliente y sugiere ajustes concretos para la próxima semana.
+    const prompt = `Eres un coach experto en periodización. Analiza estos datos REALES y da sugerencias CONCRETAS de ajuste de carga para la próxima semana.
 
-CLIENTE: ${cliente.nombre}
-Nivel: ${nivel} | Objetivo: ${cliente.objetivo} | Semana ${semanas} | Fase: ${fase}
+CLIENTE: ${cliente.nombre} | ${nivel} | ${tc(cliente.objetivo)} | ${fase}
 Volumen recomendado: ${volRec.desc}
+Últimas sesiones completadas: ${resumenSesiones}
 
-RUTINA ACTUAL:
+EJERCICIOS Y ÚLTIMO RENDIMIENTO:
 ${ejerciciosPlan}
 
-ÚLTIMAS SESIONES:
-${resumenSesiones}
-
-${COACH_LANG==='en'?'Respond in English, max 150 words.':'Responde en español, máximo 150 palabras.'} Sé directo y específico. Indica:
-1. Qué ejercicios subir de carga y cuánto
-2. Si hay que ajustar volumen (series/semana)
-3. Si toca descarga o progresión
-4. Alguna observación sobre el RIR del cliente`;
+INSTRUCCIONES:
+- Usa el RIR medio real vs RIR objetivo para decidir si subir, bajar o mantener carga
+- Si RIR real > RIR objetivo: le sobró margen → subir carga
+- Si RIR real < RIR objetivo: le faltó margen → bajar o mantener
+- Si sin RIR: comenta brevemente
+- Formato de respuesta OBLIGATORIO — devuelve JSON válido con esta estructura exacta:
+{
+  "resumen": "texto breve del análisis general (max 2 frases)",
+  "ajustes": [
+    { "ejercicio": "nombre exacto", "accion": "subir|bajar|mantener|sin_datos", "nuevo_peso": 0, "razon": "breve" }
+  ]
+}
+Solo JSON, sin texto extra.`;
 
     const d = await api('/ia/chat', {
       method: 'POST',
       body: JSON.stringify({
         messages: [{ role: 'user', content: prompt }],
-        system: COACH_LANG==='en'?'You are an expert coach in periodization and strength progression. Analyze real training data and give concrete practical recommendations. Always in English.':'Eres un coach experto en periodización y progresión de fuerza. Analizas datos reales de entreno y das recomendaciones concretas y prácticas. Responde en español.'
+        system: 'Eres un coach experto. Responde SOLO con JSON válido, sin markdown, sin texto adicional.'
       })
     });
 
-    res.innerHTML = `<div class="ia-chip"><div class="ia-chip-title">🤖 Sugerencia IA para próxima semana</div><div class="ia-result-body" style="white-space:pre-line">${d.reply}</div></div>`;
+    // Parsear respuesta
+    let iaData;
+    try {
+      const clean = (d.reply||'').replace(/```json|```/g,'').trim();
+      iaData = JSON.parse(clean);
+    } catch(pe) {
+      // Si no parsea, mostrar como texto
+      res.innerHTML = `<div class="ia-chip"><div class="ia-chip-title">🤖 Análisis IA</div><div class="ia-result-body" style="white-space:pre-line">${d.reply}</div></div>`;
+      return;
+    }
+
+    const ajustes = iaData.ajustes || [];
+    let aplicados = 0;
+
+    // Aplicar sugerencias a los inputs del panel
+    ajustes.forEach(aj => {
+      if (aj.accion === 'subir' || aj.accion === 'bajar') {
+        // Buscar el ejercicio en el panel por nombre
+        (cliente.dias||[]).forEach(d => {
+          (d.ejercicios||[]).forEach(e => {
+            if (e.nombre.toLowerCase() === aj.ejercicio.toLowerCase() && aj.nuevo_peso > 0) {
+              for(let si=0; si<e.series; si++) {
+                const inp = document.getElementById(`rev_kg_${e.id}_${si}`);
+                if(inp) {
+                  inp.value = aj.nuevo_peso;
+                  inp.style.borderColor = aj.accion==='subir' ? 'rgba(34,197,94,.5)' : 'rgba(239,68,68,.5)';
+                  inp.style.background  = aj.accion==='subir' ? 'rgba(34,197,94,.1)'  : 'rgba(239,68,68,.08)';
+                  inp.style.color       = aj.accion==='subir' ? 'var(--gnb)'           : '#fca5a5';
+                }
+              }
+              aplicados++;
+            }
+          });
+        });
+      }
+    });
+
+    // Render del resultado
+    const ajustesHtml = ajustes.map(aj => {
+      const color = aj.accion==='subir'?'var(--gnb)':aj.accion==='bajar'?'#fca5a5':'var(--tx3)';
+      const icon  = aj.accion==='subir'?'↑':aj.accion==='bajar'?'↓':aj.accion==='mantener'?'=':'?';
+      return `<div style="display:flex;align-items:baseline;gap:8px;padding:5px 0;border-bottom:0.5px solid rgba(39,39,42,.3)">
+        <span style="color:${color};font-weight:700;font-size:14px;flex-shrink:0">${icon}</span>
+        <div style="flex:1;min-width:0">
+          <span style="font-size:12px;font-weight:700;color:var(--sv)">${aj.ejercicio}</span>
+          ${aj.nuevo_peso>0?`<span style="font-size:11px;color:${color};font-weight:700;margin-left:6px">→ ${aj.nuevo_peso}kg</span>`:''}
+          <div style="font-size:11px;color:var(--tx3)">${aj.razon||''}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    res.innerHTML = `
+      <div class="ia-chip" style="padding:12px">
+        <div class="ia-chip-title" style="margin-bottom:6px">🤖 ${COACH_LANG==='en'?'AI analysis':'Análisis IA'}</div>
+        <div style="font-size:12px;color:var(--sv2);margin-bottom:10px;line-height:1.5">${iaData.resumen||''}</div>
+        <div style="margin-bottom:10px">${ajustesHtml}</div>
+        ${aplicados>0 ? `
+        <div style="font-size:11px;color:var(--gnb);background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:8px;padding:7px 10px;margin-bottom:8px">
+          ✓ ${aplicados} ${COACH_LANG==='en'?'adjustments applied to the panel — review and publish':'ajustes aplicados al panel — revisa y publica'}
+        </div>` : ''}
+        <button style="width:100%;padding:9px;background:var(--gn);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit" onclick="publicarSemana(${clienteId})">
+          ✓ ${COACH_LANG==='en'?'Publish to client':'Publicar al cliente'}
+        </button>
+      </div>`;
 
   } catch(e) {
-    res.innerHTML = '<div style="font-size:12px;color:#f87171">Error. Verifica la API key.</div>';
+    res.innerHTML = `<div style="font-size:12px;color:#f87171;padding:8px 0">Error: ${e.message}</div>`;
   }
 }
 
