@@ -6756,7 +6756,7 @@ function hDieta(){
     <!-- CONSEJOS NUTRICIONALES FIJOS -->
     <div style="margin:10px 14px 0;border:0.5px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden">
       <div style="background:rgba(255,255,255,.04);padding:10px 14px;border-bottom:0.5px solid rgba(255,255,255,.06)">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:#fff;letter-spacing:.1em">📋 GUÍA NUTRICIONAL</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:#fff;letter-spacing:.1em">📋 ${LANG==="en"?"NUTRITION GUIDE":"GUÍA NUTRICIONAL"}</div>
         <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">${LANG==="en"?"Base rules to maximize your results":"Normas base para maximizar tus resultados"}</div>
       </div>
       <div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px">
