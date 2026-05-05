@@ -7,16 +7,6 @@ const router = express.Router();
 router.use(authMiddleware);
 router.use(middlewareMensajeDiario);
 
-// Ensure push_subscriptions table exists
-try {
-  dbRun(`CREATE TABLE IF NOT EXISTS push_subscriptions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    subscription TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-} catch(e) {}
-
 // ── HELPERS ───────────────────────────────────────────────────────────
 function crearNotificacion(userId, tipo, mensaje) {
   try {
@@ -897,10 +887,6 @@ router.post('/ejercicios-db-add', coachOnly, (req, res) => {
 });
 
 // ── SESIONES ENTRENO ───────────────────────────────────────────────
-// Migración defensiva: añadir columnas si no existen
-try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN estado TEXT DEFAULT 'completado'"); } catch(e) {}
-try { dbRun("ALTER TABLE series_log ADD COLUMN nota_cliente TEXT DEFAULT ''"); } catch(e) {}
-
 router.post('/clientes/:id/sesiones', (req, res) => {
   try {
     ensureTrainingTrackingSchema();
