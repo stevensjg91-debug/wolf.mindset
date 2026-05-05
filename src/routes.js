@@ -2316,4 +2316,134 @@ router.get('/push/vapid-key', (req, res) => {
   res.json({ publicKey: key });
 });
 
+// ── PLANTILLAS DE RUTINA ─────────────────────────────────────────────────────
+// GET    /rutinas-plantillas          — listar plantillas del coach
+// POST   /rutinas-plantillas          — crear plantilla desde rutina de un cliente
+// PUT    /rutinas-plantillas/:id      — renombrar / editar descripción
+// DELETE /rutinas-plantillas/:id      — borrar plantilla
+// POST   /rutinas-plantillas/:id/aplicar — copiar plantilla a un cliente
+
+router.get('/rutinas-plantillas', coachOnly, (req, res) => {
+  try {
+    const rows = dbAll(
+      'SELECT * FROM rutinas_plantillas WHERE coach_id=? ORDER BY updated_at DESC',
+      [req.user.id]
+    );
+    res.json(rows.map(r => ({ ...r, dias: JSON.parse(r.dias_json || '[]') })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/rutinas-plantillas', coachOnly, (req, res) => {
+  try {
+    const { nombre, descripcion='', objetivo='', nivel='', cliente_id } = req.body;
+    if(!nombre) return res.status(400).json({ error: 'nombre requerido' });
+
+    let dias = [];
+    if(cliente_id) {
+      // Tomar snapshot de la rutina actual del cliente
+      const clienteDias = dbAll('SELECT * FROM dias_entreno WHERE cliente_id=? ORDER BY orden', [cliente_id]);
+      dias = clienteDias.map(d => {
+        const ejercicios = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=? ORDER BY orden', [d.id]);
+        return {
+          nombre: d.nombre,
+          grupo: d.grupo,
+          orden: d.orden,
+          ejercicios: ejercicios.map(e => ({
+            nombre: e.nombre,
+            musculos: e.musculos,
+            series: e.series,
+            reps: e.reps,
+            peso_objetivo: e.peso_objetivo,
+            descanso: e.descanso,
+            rir: e.rir,
+            es_principal: e.es_principal,
+            orden: e.orden,
+            youtube_url: e.youtube_url || '',
+            nota_coach: e.nota_coach || ''
+          }))
+        };
+      });
+    }
+
+    const { lastInsertRowid } = dbRun(
+      'INSERT INTO rutinas_plantillas (coach_id,nombre,descripcion,objetivo,nivel,dias_json) VALUES (?,?,?,?,?,?)',
+      [req.user.id, nombre, descripcion, objetivo, nivel, JSON.stringify(dias)]
+    );
+    saveToDisk();
+    res.json({ id: lastInsertRowid, ok: true, dias_count: dias.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/rutinas-plantillas/:id', coachOnly, (req, res) => {
+  try {
+    const { nombre, descripcion, objetivo, nivel, dias } = req.body;
+    const p = dbGet('SELECT id FROM rutinas_plantillas WHERE id=? AND coach_id=?', [req.params.id, req.user.id]);
+    if(!p) return res.status(404).json({ error: 'no encontrada' });
+    if(nombre !== undefined) dbRun('UPDATE rutinas_plantillas SET nombre=?,updated_at=CURRENT_TIMESTAMP WHERE id=?', [nombre, req.params.id]);
+    if(descripcion !== undefined) dbRun('UPDATE rutinas_plantillas SET descripcion=?,updated_at=CURRENT_TIMESTAMP WHERE id=?', [descripcion, req.params.id]);
+    if(objetivo !== undefined) dbRun('UPDATE rutinas_plantillas SET objetivo=?,updated_at=CURRENT_TIMESTAMP WHERE id=?', [objetivo, req.params.id]);
+    if(nivel !== undefined) dbRun('UPDATE rutinas_plantillas SET nivel=?,updated_at=CURRENT_TIMESTAMP WHERE id=?', [nivel, req.params.id]);
+    if(dias !== undefined) dbRun('UPDATE rutinas_plantillas SET dias_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?', [JSON.stringify(dias), req.params.id]);
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete('/rutinas-plantillas/:id', coachOnly, (req, res) => {
+  try {
+    const p = dbGet('SELECT id FROM rutinas_plantillas WHERE id=? AND coach_id=?', [req.params.id, req.user.id]);
+    if(!p) return res.status(404).json({ error: 'no encontrada' });
+    dbRun('DELETE FROM rutinas_plantillas WHERE id=?', [req.params.id]);
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Aplica una plantilla a un cliente: crea días y ejercicios nuevos (no borra los existentes)
+router.post('/rutinas-plantillas/:id/aplicar', coachOnly, (req, res) => {
+  try {
+    const { cliente_id, reemplazar = false } = req.body;
+    if(!cliente_id) return res.status(400).json({ error: 'cliente_id requerido' });
+
+    const p = dbGet('SELECT * FROM rutinas_plantillas WHERE id=? AND coach_id=?', [req.params.id, req.user.id]);
+    if(!p) return res.status(404).json({ error: 'plantilla no encontrada' });
+
+    const dias = JSON.parse(p.dias_json || '[]');
+
+    // Si reemplazar=true, borrar días actuales del cliente
+    if(reemplazar) {
+      const diasExistentes = dbAll('SELECT id FROM dias_entreno WHERE cliente_id=?', [cliente_id]);
+      diasExistentes.forEach(d => {
+        dbRun('DELETE FROM ejercicios_dia WHERE dia_id=?', [d.id]);
+        dbRun('DELETE FROM dias_entreno WHERE id=?', [d.id]);
+      });
+    }
+
+    // Insertar días y ejercicios de la plantilla
+    let diasCreados = 0;
+    let ejerciciosCreados = 0;
+    dias.forEach((d, di) => {
+      const { lastInsertRowid: diaId } = dbRun(
+        'INSERT INTO dias_entreno (cliente_id,nombre,grupo,orden) VALUES (?,?,?,?)',
+        [cliente_id, d.nombre, d.grupo || '', d.orden ?? di]
+      );
+      diasCreados++;
+      (d.ejercicios || []).forEach((e, ei) => {
+        dbRun(
+          'INSERT INTO ejercicios_dia (dia_id,nombre,musculos,series,reps,peso_objetivo,descanso,rir,es_principal,orden,youtube_url,nota_coach) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+          [diaId, e.nombre, e.musculos || '', e.series || 3, e.reps || '10-12',
+           e.peso_objetivo || 0, e.descanso || 90, e.rir ?? null, e.es_principal || 0,
+           e.orden ?? ei, e.youtube_url || '', e.nota_coach || '']
+        );
+        ejerciciosCreados++;
+      });
+    });
+
+    // Incrementar contador de usos
+    dbRun('UPDATE rutinas_plantillas SET usos=usos+1,updated_at=CURRENT_TIMESTAMP WHERE id=?', [req.params.id]);
+    saveToDisk();
+    res.json({ ok: true, dias: diasCreados, ejercicios: ejerciciosCreados });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
