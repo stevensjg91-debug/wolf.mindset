@@ -335,23 +335,32 @@ router.delete('/dias/:id', coachOnly, (req, res) => {
 });
 
 router.post('/dias/:id/ejercicios', coachOnly, (req, res) => {
-  const { nombre, musculos, series, reps, peso_objetivo, descanso, orden, youtube_url, imagen_url, nota_coach } = req.body;
+  const { nombre, musculos, series, reps, peso_objetivo, descanso, orden } = req.body;
   const rir = req.body.rir!=null ? req.body.rir : null;
   const es_principal = req.body.es_principal!=null ? req.body.es_principal : 0;
+
+  // Precargar youtube_url, imagen_url y nota_coach desde ejercicios_config si no vienen en la request
+  const cfg = dbGet('SELECT * FROM ejercicios_config WHERE nombre=?', [nombre]);
+  const youtube_url  = req.body.youtube_url  || (cfg?.youtube_url  || '');
+  const imagen_url   = req.body.imagen_url   || (cfg?.imagen_url   || '');
+  const nota_coach   = req.body.nota_coach   || (cfg?.nota_default || '');
+
   const r = dbRun('INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, rir, es_principal, orden, youtube_url, imagen_url, nota_coach) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [req.params.id, nombre, musculos||'', series||3, reps||'10-12', peso_objetivo||0, descanso||90, rir, es_principal, orden||0, youtube_url||'', imagen_url||'', nota_coach||'']);
-  if (youtube_url || imagen_url || nota_coach) {
+    [req.params.id, nombre, musculos||'', series||3, reps||'10-12', peso_objetivo||0, descanso||90, rir, es_principal, orden||0, youtube_url, imagen_url, nota_coach]);
+
+  // Guardar en config si vienen datos nuevos desde la request
+  if (req.body.youtube_url || req.body.imagen_url || req.body.nota_coach) {
     const existing = dbGet('SELECT id FROM ejercicios_config WHERE nombre=?', [nombre]);
     if (existing) {
-      if (youtube_url) dbRun('UPDATE ejercicios_config SET youtube_url=? WHERE nombre=?', [youtube_url, nombre]);
-      if (imagen_url) dbRun('UPDATE ejercicios_config SET imagen_url=? WHERE nombre=?', [imagen_url, nombre]);
-      if (nota_coach) dbRun('UPDATE ejercicios_config SET nota_default=? WHERE nombre=?', [nota_coach, nombre]);
+      if (req.body.youtube_url) dbRun('UPDATE ejercicios_config SET youtube_url=? WHERE nombre=?', [req.body.youtube_url, nombre]);
+      if (req.body.imagen_url)  dbRun('UPDATE ejercicios_config SET imagen_url=? WHERE nombre=?',  [req.body.imagen_url,  nombre]);
+      if (req.body.nota_coach)  dbRun('UPDATE ejercicios_config SET nota_default=? WHERE nombre=?', [req.body.nota_coach, nombre]);
     } else {
       dbRun('INSERT INTO ejercicios_config (nombre, youtube_url, imagen_url, nota_default) VALUES (?,?,?,?)',
-        [nombre, youtube_url||'', imagen_url||'', nota_coach||'']);
+        [nombre, req.body.youtube_url||'', req.body.imagen_url||'', req.body.nota_coach||'']);
     }
   }
-  res.json({ id: r.lastInsertRowid });
+  res.json({ id: r.lastInsertRowid, youtube_url, imagen_url, nota_coach });
 });
 
 router.delete('/ejercicios-db/:id', (req, res) => {
@@ -389,6 +398,21 @@ router.put('/ejercicios/:id', (req, res) => {
   req.params.id
 ]
 );
+
+  // ── Sincronizar youtube_url, imagen_url y nota_coach en ejercicios_config ──
+  // Así el próximo cliente que use este ejercicio ya tendrá el video/nota precargado.
+  if (youtube_url != null || imagen_url != null || nota_coach != null) {
+    const nombre = e.nombre;
+    const existing = dbGet('SELECT id FROM ejercicios_config WHERE nombre=?', [nombre]);
+    if (existing) {
+      if (youtube_url != null && youtube_url !== '') dbRun('UPDATE ejercicios_config SET youtube_url=? WHERE nombre=?', [youtube_url, nombre]);
+      if (imagen_url != null && imagen_url !== '') dbRun('UPDATE ejercicios_config SET imagen_url=? WHERE nombre=?', [imagen_url, nombre]);
+      if (nota_coach != null && nota_coach !== '') dbRun('UPDATE ejercicios_config SET nota_default=? WHERE nombre=?', [nota_coach, nombre]);
+    } else {
+      dbRun('INSERT INTO ejercicios_config (nombre, youtube_url, imagen_url, nota_default) VALUES (?,?,?,?)',
+        [nombre, youtube_url||'', imagen_url||'', nota_coach||'']);
+    }
+  }
 
   saveToDisk();
   res.json({ ok: true });
@@ -2315,124 +2339,6 @@ router.delete('/push/unsubscribe', (req, res) => {
 router.get('/push/vapid-key', (req, res) => {
   const key = process.env.VAPID_PUBLIC_KEY || 'BGXVsTmH4dCRzJk2vPoqMX08DtwH_EBk2fF42nIQGfubO9utSacLfZxCF4wTBQxDrH50S_8aZuUg5oKppHqF51A';
   res.json({ publicKey: key });
-});
-
-// ── PLANTILLAS DE RUTINA ──────────────────────────────────────────────────────
-// GET /rutinas-plantillas — listar plantillas del coach
-router.get('/rutinas-plantillas', coachOnly, (req, res) => {
-  try {
-    const coachId = req.user.id;
-    const rows = dbAll(
-      'SELECT * FROM rutinas_plantillas WHERE coach_id=? ORDER BY created_at DESC',
-      [coachId]
-    );
-    const plantillas = rows.map(p => ({
-      ...p,
-      dias: (() => { try { return JSON.parse(p.dias_json || '[]'); } catch(e) { return []; } })()
-    }));
-    res.json(plantillas);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// POST /rutinas-plantillas — guardar rutina actual de un cliente como plantilla
-router.post('/rutinas-plantillas', coachOnly, (req, res) => {
-  try {
-    const coachId = req.user.id;
-    const { nombre, descripcion, objetivo, nivel, cliente_id } = req.body;
-    if(!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
-
-    let diasJson = '[]';
-    if(cliente_id) {
-      // Tomar snapshot de los días y ejercicios del cliente
-      const dias = dbAll('SELECT * FROM dias_entreno WHERE cliente_id=? ORDER BY orden', [cliente_id]);
-      const snapshot = dias.map(d => {
-        const ejercicios = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=? ORDER BY orden', [d.id]);
-        return {
-          nombre: d.nombre,
-          grupo: d.grupo,
-          orden: d.orden,
-          ejercicios: ejercicios.map(e => ({
-            nombre: e.nombre,
-            musculos: e.musculos,
-            series: e.series,
-            reps: e.reps,
-            peso_objetivo: e.peso_objetivo,
-            descanso: e.descanso,
-            rir: e.rir,
-            es_principal: e.es_principal,
-            orden: e.orden,
-            youtube_url: e.youtube_url,
-            imagen_url: e.imagen_url,
-            nota_coach: e.nota_coach
-          }))
-        };
-      });
-      diasJson = JSON.stringify(snapshot);
-    }
-
-    const r = dbRun(
-      'INSERT INTO rutinas_plantillas (coach_id, nombre, descripcion, objetivo, nivel, dias_json) VALUES (?,?,?,?,?,?)',
-      [coachId, nombre, descripcion || '', objetivo || '', nivel || '', diasJson]
-    );
-    saveToDisk();
-    res.json({ ok: true, id: r.lastInsertRowid });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// POST /rutinas-plantillas/:id/aplicar — aplicar plantilla a un cliente
-router.post('/rutinas-plantillas/:id/aplicar', coachOnly, (req, res) => {
-  try {
-    const plantillaId = req.params.id;
-    const { cliente_id, reemplazar } = req.body;
-    if(!cliente_id) return res.status(400).json({ error: 'cliente_id requerido' });
-
-    const p = dbGet('SELECT * FROM rutinas_plantillas WHERE id=?', [plantillaId]);
-    if(!p) return res.status(404).json({ error: 'Plantilla no encontrada' });
-
-    const dias = (() => { try { return JSON.parse(p.dias_json || '[]'); } catch(e) { return []; } })();
-
-    if(reemplazar) {
-      // Borrar días y ejercicios actuales del cliente
-      const diasExistentes = dbAll('SELECT id FROM dias_entreno WHERE cliente_id=?', [cliente_id]);
-      diasExistentes.forEach(d => {
-        dbRun('DELETE FROM ejercicios_dia WHERE dia_id=?', [d.id]);
-      });
-      dbRun('DELETE FROM dias_entreno WHERE cliente_id=?', [cliente_id]);
-    }
-
-    let totalEjercicios = 0;
-    dias.forEach((d, i) => {
-      const diaR = dbRun(
-        'INSERT INTO dias_entreno (cliente_id, nombre, grupo, orden) VALUES (?,?,?,?)',
-        [cliente_id, d.nombre, d.grupo || '', d.orden ?? i]
-      );
-      const diaId = diaR.lastInsertRowid;
-      (d.ejercicios || []).forEach((e, j) => {
-        dbRun(
-          'INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, rir, es_principal, orden, youtube_url, imagen_url, nota_coach) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-          [diaId, e.nombre, e.musculos || '', e.series || 3, e.reps || '10-12', e.peso_objetivo || 0,
-           e.descanso || 90, e.rir ?? null, e.es_principal || 0, e.orden ?? j,
-           e.youtube_url || '', e.imagen_url || '', e.nota_coach || '']
-        );
-        totalEjercicios++;
-      });
-    });
-
-    // Incrementar contador de usos
-    dbRun('UPDATE rutinas_plantillas SET usos=usos+1, updated_at=CURRENT_TIMESTAMP WHERE id=?', [plantillaId]);
-    saveToDisk();
-    res.json({ ok: true, dias: dias.length, ejercicios: totalEjercicios });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// DELETE /rutinas-plantillas/:id — borrar plantilla
-router.delete('/rutinas-plantillas/:id', coachOnly, (req, res) => {
-  try {
-    const coachId = req.user.id;
-    dbRun('DELETE FROM rutinas_plantillas WHERE id=? AND coach_id=?', [req.params.id, coachId]);
-    saveToDisk();
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;
