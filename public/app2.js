@@ -1393,19 +1393,21 @@ function dbEliminarFav(nombre, btn){
 }
 
 function toggleAcordeonCoach(mesId){
-  var body = document.getElementById("coach_acc_" + mesId);
-  var arrow = document.getElementById("coach_arr_" + mesId);
+  // Soporte para ids directos (historial: body=mesId, arrow=arr_mesId)
+  // y para ids con prefijo legacy (coach_acc_/coach_arr_)
+  var body  = document.getElementById(mesId) || document.getElementById("coach_acc_" + mesId);
+  var arrow = document.getElementById("arr_" + mesId) || document.getElementById("coach_arr_" + mesId);
   if(!body){
     // fallback para bloques con data-acc/data-arr
     var btn = event && event.currentTarget;
     if(btn){
-      body = btn.nextElementSibling;
+      body  = btn.nextElementSibling;
       arrow = btn.querySelector("[data-arr]");
     }
   }
   if(!body) return;
   var open = body.style.maxHeight && body.style.maxHeight !== "0px";
   body.style.maxHeight = open ? "0px" : body.scrollHeight + "px";
-  body.style.opacity = open ? "0" : "1";
+  body.style.opacity   = open ? "0" : "1";
   if(arrow) arrow.style.transform = open ? "rotate(0deg)" : "rotate(180deg)";
 }
