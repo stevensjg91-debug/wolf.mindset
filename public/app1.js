@@ -4026,6 +4026,9 @@ async function rbLoadDias(){
       </button>
       <div style="font-size:11px;color:var(--tx3);text-align:center;margin-top:6px">${c.dias.length} ${COACH_LANG==='en'?'days':'días'} · ${totalEjercicios} ${COACH_LANG==='en'?'exercises':'ejercicios'} ${COACH_LANG==='en'?'configured':'configurados'}</div>
       <div id="rb_enviar_msg" style="font-size:12px;text-align:center;margin-top:6px;min-height:18px"></div>
+      <button onclick="plantillaGuardarActual()" style="width:100%;margin-top:8px;padding:10px;font-size:13px;font-weight:600;background:rgba(168,85,247,.15);border:0.5px solid rgba(168,85,247,.35);border-radius:10px;color:#d8b4fe;cursor:pointer;font-family:inherit;letter-spacing:.01em">
+        💾 ${COACH_LANG==='en'?'Save as template':'Guardar como plantilla'}
+      </button>
     </div>`;
 }
 
