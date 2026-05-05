@@ -44,13 +44,10 @@ function setRegLang(lang) {
 
   // Toggle button styles
   if(enBtn && esBtn) {
-    if(lang === 'en') {
-      enBtn.style.cssText = 'display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1.5px solid var(--bl2);background:rgba(37,99,235,.18);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s';
-      esBtn.style.cssText = 'display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:inherit;transition:.2s';
-    } else {
-      esBtn.style.cssText = 'display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1.5px solid var(--bl2);background:rgba(37,99,235,.18);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s';
-      enBtn.style.cssText = 'display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:inherit;transition:.2s';
-    }
+    const activeStyle  = 'display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1.5px solid var(--bl2);background:rgba(37,99,235,.18);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s';
+    const inactiveStyle = 'display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:none;color:var(--tx3);font-size:13px;cursor:pointer;font-family:inherit;transition:.2s';
+    enBtn.style.cssText = lang === 'en' ? activeStyle : inactiveStyle;
+    esBtn.style.cssText = lang === 'es' ? activeStyle : inactiveStyle;
   }
 
   // Update text labels
@@ -155,9 +152,9 @@ function alturaLabel(lang){ return isImperial(lang)?'ft / in':'cm'; }
 function alturaPlaceholder(lang){ return isImperial(lang)?'5\'9"':'175'; }
 function fromAltura(val, lang){ if(isImperial(lang)){const s=String(val).trim();const m=s.match(/^(\d+)['''′](\d+)["""″]?$/);if(m)return Math.round((parseInt(m[1])*12+parseInt(m[2]))*2.54);const n=parseFloat(s);if(isNaN(n))return null;return n>100?Math.round(n):Math.round(n*2.54);}return parseFloat(val)||null; }
 function fmtCintura(cm, lang){ if(!cm)return'—'; return isImperial(lang)?(cm/2.54).toFixed(1)+' in':cm+' cm'; }
-function cinturaLabel(){ return isImperial()?'in':'cm'; }
-function cinturaPlaceholder(){ return isImperial()?'32':'82'; }
-function fromCintura(val){ const n=parseFloat(val); if(isNaN(n))return null; return isImperial()?parseFloat((n*2.54).toFixed(1)):n; }
+function cinturaLabel(lang){ return isImperial(lang)?'in':'cm'; }
+function cinturaPlaceholder(lang){ return isImperial(lang)?'32':'82'; }
+function fromCintura(val, lang){ const n=parseFloat(val); if(isNaN(n))return null; return isImperial(lang)?parseFloat((n*2.54).toFixed(1)):n; }
 
 const TRANSLATIONS = {
   // ── Navegación ──
