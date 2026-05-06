@@ -2247,6 +2247,7 @@ async function verCliente(id){
               </div>
               <div style="display:flex;gap:6px;align-items:center">
                 <button onclick="event.stopPropagation();tabEntrenoAddEx(${d.id},'${d.nombre.replace((/'/g,String.fromCharCode(39)))}')" class="btn btn-sm" style="font-size:11px">${tc('+ Ejercicio')}</button>
+                <button onclick="event.stopPropagation();abrirModalGuardarDia(${d.id},'${d.nombre.replace(/'/g,String.fromCharCode(39))}')" title="${COACH_LANG==='en'?'Save as template':'Guardar como plantilla'}" style="background:none;border:none;color:#a78bfa;cursor:pointer;font-size:14px;padding:4px">💾</button>
                 <button onclick="event.stopPropagation();tabEntrenoDelDia(${d.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:14px;padding:4px">🗑</button>
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--tx3);flex-shrink:0"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
               </div>
@@ -3783,10 +3784,107 @@ function hRutinas(){return`
         <div id="rb_ex_lista" style="width:100%"></div>
       </div>
     </div>
-    <div class="sec" style="margin-bottom:12px;background:rgba(37,99,235,.05);border-color:rgba(59,130,246,.2)">
-      <div class="sec-hdr">🤖 ${COACH_LANG==='en'?'Generate full routine with AI':'Generar rutina completa con IA'}</div>
-      <div style="font-size:13px;color:var(--tx3);margin-bottom:10px">${COACH_LANG==='en'?'AI generates the full week automatically for the selected client.':'La IA genera toda la semana automáticamente para el cliente seleccionado.'}</div>
-      <button class="btn" style="width:100%;padding:12px" onclick="rbGenerarIA()">${COACH_LANG==='en'?'Generate routine with AI':'Generar rutina con IA'}</button>
+    <div class="sec" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(37,99,235,.06),rgba(124,58,237,.06));border-color:rgba(124,58,237,.25)">
+      <div class="sec-hdr" style="margin-bottom:12px">🤖 ${COACH_LANG==='en'?'Generate routine with AI':'Generar rutina con IA'}</div>
+
+      <!-- Fila 1: días + tipo rutina -->
+      <div class="g2" style="gap:8px;margin-bottom:10px">
+        <div>
+          <div class="form-lbl">${COACH_LANG==='en'?'Days/week':'Días/semana'}</div>
+          <select class="inp" id="rb_ia_dias" style="margin-bottom:0">
+            <option value="2">2</option><option value="3" selected>3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+          </select>
+        </div>
+        <div>
+          <div class="form-lbl">${COACH_LANG==='en'?'Routine type':'Tipo de rutina'}</div>
+          <select class="inp" id="rb_ia_tipo_rutina" style="margin-bottom:0">
+            <option value="">${COACH_LANG==='en'?'— Auto —':'— Auto —'}</option>
+            <option>Full Body</option><option>Upper Lower</option>
+            <option>Push Pull Legs</option><option>Torso Pierna</option>
+            <option>Arnold Split</option><option>Bro Split</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Fila 2: objetivo + nivel -->
+      <div class="g2" style="gap:8px;margin-bottom:10px">
+        <div>
+          <div class="form-lbl">${COACH_LANG==='en'?'Goal':'Objetivo'}</div>
+          <select class="inp" id="rb_ia_objetivo" style="margin-bottom:0">
+            <option value="">${COACH_LANG==='en'?'— From profile —':'— Del perfil —'}</option>
+            <option>${COACH_LANG==='en'?'Muscle gain':'Volumen'}</option>
+            <option>${COACH_LANG==='en'?'Fat loss':'Definición'}</option>
+            <option>${COACH_LANG==='en'?'Strength':'Fuerza'}</option>
+            <option>Hipertrofia</option>
+            <option>${COACH_LANG==='en'?'Body recomposition':'Recomposición'}</option>
+            <option>${COACH_LANG==='en'?'Health':'Salud'}</option>
+          </select>
+        </div>
+        <div>
+          <div class="form-lbl">${COACH_LANG==='en'?'Level':'Nivel'}</div>
+          <select class="inp" id="rb_ia_nivel" style="margin-bottom:0">
+            <option value="">${COACH_LANG==='en'?'— From profile —':'— Del perfil —'}</option>
+            <option>${COACH_LANG==='en'?'Beginner':'Principiante'}</option>
+            <option>${COACH_LANG==='en'?'Intermediate':'Intermedio'}</option>
+            <option>${COACH_LANG==='en'?'Advanced':'Avanzado'}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Fila 3: lugar + tiempo sesión -->
+      <div class="g2" style="gap:8px;margin-bottom:10px">
+        <div>
+          <div class="form-lbl">${COACH_LANG==='en'?'Location':'Lugar'}</div>
+          <select class="inp" id="rb_ia_lugar" style="margin-bottom:0">
+            <option>${COACH_LANG==='en'?'Gym':'Gimnasio'}</option>
+            <option>${COACH_LANG==='en'?'Home':'Casa'}</option>
+          </select>
+        </div>
+        <div>
+          <div class="form-lbl">${COACH_LANG==='en'?'Session time (min)':'Tiempo sesión (min)'}</div>
+          <select class="inp" id="rb_ia_tiempo" style="margin-bottom:0">
+            <option value="45">45 min</option><option value="60" selected>60 min</option>
+            <option value="75">75 min</option><option value="90">90 min</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Lesiones + rezagados -->
+      <div class="form-lbl">${COACH_LANG==='en'?'Injuries / areas to avoid':'Lesiones / zonas a evitar'}</div>
+      <input class="inp" id="rb_ia_lesiones" placeholder="${COACH_LANG==='en'?'E.g. right shoulder, lower back...':'Ej: hombro derecho, lumbar...'}" style="margin-bottom:8px"/>
+
+      <div class="form-lbl">${COACH_LANG==='en'?'Lagging muscles / priority':'Músculos rezagados / prioridad'}</div>
+      <input class="inp" id="rb_ia_rezagados" placeholder="${COACH_LANG==='en'?'E.g. glutes, back, shoulders...':'Ej: glúteos, espalda, hombros...'}" style="margin-bottom:8px"/>
+
+      <!-- Ejercicios prohibidos + favoritos -->
+      <div class="form-lbl">${COACH_LANG==='en'?'Forbidden exercises':'Ejercicios prohibidos'}</div>
+      <input class="inp" id="rb_ia_prohibidos" placeholder="${COACH_LANG==='en'?'E.g. squats, military press...':'Ej: sentadilla, press militar...'}" style="margin-bottom:8px"/>
+
+      <div class="form-lbl">${COACH_LANG==='en'?'Favorite exercises':'Ejercicios favoritos'}</div>
+      <input class="inp" id="rb_ia_favoritos" placeholder="${COACH_LANG==='en'?'E.g. deadlift, pull-ups...':'Ej: peso muerto, dominadas...'}" style="margin-bottom:12px"/>
+
+      <!-- Destino -->
+      <div class="form-lbl">${COACH_LANG==='en'?'Save as':'Guardar como'}</div>
+      <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
+        ${[
+          ['ambos',     COACH_LANG==='en'?'✅ Apply + save as template':'✅ Aplicar al cliente + guardar plantilla'],
+          ['cliente',   COACH_LANG==='en'?'👤 Apply to client only':'👤 Solo aplicar al cliente'],
+          ['plantilla', COACH_LANG==='en'?'💾 Save as template only':'💾 Solo guardar como plantilla'],
+        ].map(([val,lbl])=>`
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sv2);cursor:pointer;padding:7px 10px;border-radius:8px;border:0.5px solid rgba(255,255,255,.08)">
+            <input type="radio" name="rb_ia_destino" value="${val}" ${val==='ambos'?'checked':''} style="accent-color:var(--bl2)"> ${lbl}
+          </label>`).join('')}
+      </div>
+
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx3);cursor:pointer;margin-bottom:12px">
+        <input type="checkbox" id="rb_ia_reemplazar" style="accent-color:var(--bl2)">
+        ${COACH_LANG==='en'?'Replace existing days':'Reemplazar días existentes del cliente'}
+      </label>
+
+      <button class="btn" style="width:100%;padding:13px;background:linear-gradient(135deg,#2563eb,#7c3aed);font-size:15px;font-weight:700" onclick="rbGenerarIAv2()">
+        🤖 ${COACH_LANG==='en'?'Generate routine with AI':'Generar rutina con IA'}
+      </button>
       <div id="rb_ia_result" style="margin-top:10px"></div>
     </div>
   </div>`;}
@@ -10919,5 +11017,218 @@ async function ejecutarGenerarRutina(clienteId) {
     btn.style.opacity = '1';
     btn.innerHTML = '🔄 ' + (isEn?'Retry':'Reintentar');
     btn.onclick = () => ejecutarGenerarRutina(clienteId);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SISTEMA DE PLANTILLAS v2
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── MODAL: Guardar día individual como plantilla ──────────────────────────────
+function abrirModalGuardarDia(diaId, diaNombre) {
+  const isEn = COACH_LANG === 'en';
+  let modal = document.getElementById('modal_guardar_dia');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal_guardar_dia';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;align-items:center;justify-content:center;padding:16px';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div style="background:var(--s);border:0.5px solid rgba(168,85,247,.3);border-radius:16px;
+                padding:22px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto">
+      <div style="font-size:16px;font-weight:700;color:var(--sv);margin-bottom:4px">
+        💾 ${isEn?'Save day as template':'Guardar día como plantilla'}
+      </div>
+      <div style="font-size:12px;color:var(--tx3);margin-bottom:16px">${diaNombre}</div>
+
+      <div class="form-lbl">${isEn?'Template name':'Nombre de la plantilla'} *</div>
+      <input class="inp" id="gd_nombre" value="${diaNombre}" style="margin-bottom:10px"/>
+
+      <div class="form-lbl">${isEn?'Description':'Descripción'}</div>
+      <input class="inp" id="gd_desc" placeholder="${isEn?'Optional notes...':'Notas opcionales...'}" style="margin-bottom:10px"/>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <div class="form-lbl">${isEn?'Level':'Nivel'}</div>
+          <select class="inp" id="gd_nivel" style="margin-bottom:0">
+            <option value="">—</option>
+            <option>${isEn?'Beginner':'Principiante'}</option>
+            <option selected>${isEn?'Intermediate':'Intermedio'}</option>
+            <option>${isEn?'Advanced':'Avanzado'}</option>
+          </select>
+        </div>
+        <div>
+          <div class="form-lbl">${isEn?'Goal':'Objetivo'}</div>
+          <select class="inp" id="gd_objetivo" style="margin-bottom:0">
+            <option value="">—</option>
+            <option>${isEn?'Muscle gain':'Volumen'}</option>
+            <option>${isEn?'Fat loss':'Definición'}</option>
+            <option>${isEn?'Strength':'Fuerza'}</option>
+            <option>Hipertrofia</option>
+            <option>${isEn?'Recomposition':'Recomposición'}</option>
+            <option>${isEn?'Health':'Salud'}</option>
+          </select>
+        </div>
+        <div>
+          <div class="form-lbl">${isEn?'Routine type':'Tipo de rutina'}</div>
+          <select class="inp" id="gd_tipo_rutina" style="margin-bottom:0">
+            <option value="">—</option>
+            <option>Full Body</option><option>Upper Lower</option>
+            <option>Push Pull Legs</option><option>Torso Pierna</option>
+            <option>Arnold Split</option><option>Bro Split</option>
+          </select>
+        </div>
+        <div>
+          <div class="form-lbl">${isEn?'Location':'Lugar'}</div>
+          <select class="inp" id="gd_lugar" style="margin-bottom:0">
+            <option>${isEn?'Gym':'Gimnasio'}</option>
+            <option>${isEn?'Home':'Casa'}</option>
+          </select>
+        </div>
+        <div>
+          <div class="form-lbl">${isEn?'Est. duration (min)':'Duración est. (min)'}</div>
+          <input class="inp" id="gd_duracion" type="number" value="60" min="15" max="180" step="5" style="margin-bottom:0"/>
+        </div>
+        <div>
+          <div class="form-lbl">${isEn?'Fatigue level':'Nivel de fatiga'}</div>
+          <select class="inp" id="gd_fatiga" style="margin-bottom:0">
+            <option>${isEn?'Low':'Baja'}</option>
+            <option selected>${isEn?'Medium':'Media'}</option>
+            <option>${isEn?'High':'Alta'}</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button onclick="confirmarGuardarDia(${diaId})"
+          style="flex:2;padding:12px;border-radius:10px;border:none;
+                 background:linear-gradient(135deg,rgba(168,85,247,.8),rgba(124,58,237,.8));
+                 color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+          💾 ${isEn?'Save template':'Guardar plantilla'}
+        </button>
+        <button onclick="document.getElementById('modal_guardar_dia').style.display='none'"
+          style="flex:1;padding:12px;border-radius:10px;border:0.5px solid rgba(255,255,255,.12);
+                 background:none;color:var(--tx2);font-size:14px;cursor:pointer;font-family:inherit">
+          ${isEn?'Cancel':'Cancelar'}
+        </button>
+      </div>
+      <div id="gd_msg" style="font-size:12px;text-align:center;margin-top:8px;min-height:16px"></div>
+    </div>`;
+  modal.style.display = 'flex';
+}
+
+async function confirmarGuardarDia(diaId) {
+  const isEn = COACH_LANG === 'en';
+  const nombre   = document.getElementById('gd_nombre')?.value?.trim();
+  const msg      = document.getElementById('gd_msg');
+  if (!nombre) { if(msg) msg.textContent = isEn?'Name is required.':'El nombre es obligatorio.'; return; }
+  if (msg) { msg.style.color='var(--tx3)'; msg.textContent = isEn?'Saving...':'Guardando...'; }
+  try {
+    await api('/plantillas/desde-dia', {
+      method: 'POST',
+      body: JSON.stringify({
+        diaId,
+        nombre,
+        descripcion:        document.getElementById('gd_desc')?.value?.trim()||'',
+        nivel:              document.getElementById('gd_nivel')?.value||'',
+        objetivo:           document.getElementById('gd_objetivo')?.value||'',
+        tipo_rutina:        document.getElementById('gd_tipo_rutina')?.value||'',
+        lugar:              document.getElementById('gd_lugar')?.value||'Gimnasio',
+        duracion_estimada:  parseInt(document.getElementById('gd_duracion')?.value)||60,
+        fatiga_estimada:    document.getElementById('gd_fatiga')?.value||'Media',
+      })
+    });
+    if (msg) { msg.style.color='#4ade80'; msg.textContent = isEn?'✅ Saved!':'✅ ¡Guardada!'; }
+    setTimeout(() => {
+      document.getElementById('modal_guardar_dia').style.display = 'none';
+      // Refrescar panel de plantillas si está visible
+      if (typeof plantillaCargarLista === 'function') plantillaCargarLista();
+    }, 900);
+  } catch(e) {
+    if (msg) { msg.style.color='#f87171'; msg.textContent = '❌ ' + (e.message||'Error'); }
+  }
+}
+
+// ── rbGenerarIAv2 — nueva función para el formulario avanzado ─────────────────
+async function rbGenerarIAv2() {
+  const isEn = COACH_LANG === 'en';
+  const res  = document.getElementById('rb_ia_result');
+
+  if (!rbState?.clienteId) {
+    res.innerHTML = `<div style="color:#f87171;font-size:13px;padding:10px">${isEn?'Select a client first.':'Selecciona un cliente primero.'}</div>`;
+    return;
+  }
+
+  const diasSemana         = parseInt(document.getElementById('rb_ia_dias')?.value) || 3;
+  const tipoRutina         = document.getElementById('rb_ia_tipo_rutina')?.value || '';
+  const objetivo           = document.getElementById('rb_ia_objetivo')?.value || '';
+  const nivel              = document.getElementById('rb_ia_nivel')?.value || '';
+  const lugar              = document.getElementById('rb_ia_lugar')?.value || 'Gimnasio';
+  const tiempoSesion       = document.getElementById('rb_ia_tiempo')?.value || '60';
+  const lesiones           = document.getElementById('rb_ia_lesiones')?.value?.trim() || '';
+  const rezagados          = document.getElementById('rb_ia_rezagados')?.value?.trim() || '';
+  const ejerciciosProhibidos = document.getElementById('rb_ia_prohibidos')?.value?.trim() || '';
+  const ejerciciosFavoritos  = document.getElementById('rb_ia_favoritos')?.value?.trim() || '';
+  const guardarComo        = document.querySelector('input[name="rb_ia_destino"]:checked')?.value || 'ambos';
+  const reemplazar         = document.getElementById('rb_ia_reemplazar')?.checked || false;
+
+  // UI: loading
+  const btn = document.querySelector('[onclick="rbGenerarIAv2()"]');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; btn.textContent = '⏳ ' + (isEn?'Generating...':'Generando...'); }
+  res.innerHTML = `
+    <div style="background:rgba(37,99,235,.1);border:0.5px solid rgba(37,99,235,.3);border-radius:10px;
+                padding:12px;font-size:13px;color:var(--bl2);display:flex;align-items:center;gap:8px">
+      <span style="animation:mgrSpin 1s linear infinite;display:inline-block">⏳</span>
+      🧠 ${isEn?'Claude is designing the routine...':'Claude está diseñando la rutina adaptada...'}
+    </div>`;
+
+  try {
+    const result = await api('/ia/generar-rutina', {
+      method: 'POST',
+      body: JSON.stringify({
+        clienteId: rbState.clienteId,
+        diasSemana, guardarComo, reemplazar,
+        objetivo, nivel, lesiones, rezagados, lugar, tiempoSesion,
+        ejerciciosProhibidos, ejerciciosFavoritos, tipoRutina
+      })
+    });
+
+    const rutina   = result.rutina;
+    const totalEj  = rutina.dias.reduce((a, d) => a + (d.ejercicios||[]).length, 0);
+
+    res.innerHTML = `
+      <div style="background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.25);border-radius:10px;padding:12px;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:#4ade80;margin-bottom:4px">
+          ✅ ${rutina.nombre}
+        </div>
+        <div style="font-size:11px;color:var(--tx3)">${rutina.dias.length} ${isEn?'days':'días'} · ${totalEj} ${isEn?'exercises':'ejercicios'}${result.plantillaId?' · '+(isEn?'Template saved':'Plantilla guardada'):''}</div>
+        <div style="font-size:11px;color:var(--tx3);margin-top:4px;font-style:italic">${rutina.descripcion||''}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${rutina.dias.map(d => `
+          <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:8px;padding:9px 11px">
+            <div style="font-size:12px;font-weight:700;color:var(--sv);margin-bottom:4px">${d.nombre}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:3px">
+              ${(d.ejercicios||[]).map(ex=>`
+                <span style="font-size:10px;padding:2px 6px;border-radius:20px;background:rgba(37,99,235,.15);color:var(--bl2)">
+                  ${ex.nombre.length>25?ex.nombre.slice(0,23)+'…':ex.nombre}
+                </span>`).join('')}
+            </div>
+          </div>`).join('')}
+      </div>
+      ${(guardarComo==='cliente'||guardarComo==='ambos')?`
+      <button onclick="verCliente(${rbState.clienteId});setTimeout(()=>switchClienteTab('entreno',document.querySelector('.ctab[onclick*=entreno]')),400)"
+        style="width:100%;margin-top:10px;padding:10px;border-radius:10px;border:0.5px solid rgba(34,197,94,.3);
+               background:rgba(34,197,94,.08);color:#4ade80;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+        👤 ${isEn?'View client routine':'Ver rutina del cliente'}
+      </button>`:''}`;
+
+    if (typeof plantillaCargarLista === 'function') plantillaCargarLista();
+
+  } catch(e) {
+    res.innerHTML = `<div style="color:#f87171;font-size:13px;padding:10px">❌ ${e.message||'Error generando rutina'}</div>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '🤖 ' + (isEn?'Generate routine with AI':'Generar rutina con IA'); }
   }
 }
