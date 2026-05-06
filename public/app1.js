@@ -2579,6 +2579,8 @@ function switchClienteTab(tab, btn) {
                 ? '<span class="badge" style="background:rgba(245,158,11,.15);color:var(--amb);border:0.5px solid rgba(245,158,11,.3)">⚠ '+tc('Incompleto')+'</span>'
                 : '<span class="badge b-gn">✓ '+(COACH_LANG==='en'?'Done':'OK')+'</span>')+
               (valoracion ? '<span style="font-size:18px">'+valoracion.split(' ')[0]+'</span>' : '')+
+              (!incompleto ? '<button id="btn_analizar_'+s.id+'" onclick="event.stopPropagation();analizarSesionManual('+s.id+',\''+s.dia_nombre.replace(/\'/g,\'\\\'\')+'\')"
+                style="padding:4px 8px;border-radius:7px;border:0.5px solid rgba(124,58,237,.3);background:rgba(124,58,237,.1);color:#a78bfa;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">🤖</button>' : '')+
               '<svg id="arr_'+accId+'" width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--tx3);transition:transform .25s;flex-shrink:0;'+(openByDefault?'transform:rotate(180deg)':'')+'"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'+
             '</div>'+
           '</div>'+
@@ -6204,6 +6206,8 @@ function abrirDescripcion(nombre){
 function hEntreno(){
   if(!CD.dias.length)return`<div style="padding:60px 20px;text-align:center;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">🏋️</div><div style="font-size:16px;font-weight:600;color:var(--sv2)">${t('Tu coach está preparando tu plan')}</div></div>`;
   const d=CD.dias[activeDia]||CD.dias[0];
+  // Cargar banners de análisis aprobados en background
+  setTimeout(() => cargarBannersAnalisisCliente(), 300);
   const pills=CD.dias.map((day,i)=>`<button class="day-pill ${i===activeDia?'on':''}" onclick="selDia(${i})">${day.nombre}</button>`).join('');
   const doneSeries=d.ejercicios.reduce((a,e)=>a+(e._series?e._series.filter(s=>s.done).length:0),0);
   const totalSeries=d.ejercicios.reduce((a,e)=>a+e.series,0);
@@ -11231,4 +11235,330 @@ async function rbGenerarIAv2() {
   } finally {
     if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '🤖 ' + (isEn?'Generate routine with AI':'Generar rutina con IA'); }
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SISTEMA DE ANÁLISIS IA POR SESIÓN — COACH
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Bandeja de análisis pendientes (se añade a cargarTareasPendientes) ────────
+async function cargarAnalisisPendientes() {
+  const isEn = COACH_LANG === 'en';
+  let wrap = document.getElementById('analisis_pendientes_wrap');
+  if (!wrap) {
+    // Crear contenedor justo encima de tareas_pendientes_wrap
+    const tareasWrap = document.getElementById('tareas_pendientes_wrap');
+    if (!tareasWrap) return;
+    wrap = document.createElement('div');
+    wrap.id = 'analisis_pendientes_wrap';
+    tareasWrap.parentNode.insertBefore(wrap, tareasWrap);
+  }
+  try {
+    const pendientes = await api('/coach/analisis-pendientes');
+    if (!pendientes.length) { wrap.innerHTML = ''; return; }
+
+    const items = pendientes.map(a => {
+      const hace = tiempoRelativo(a.created_at);
+      return `
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;
+                    background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(37,99,235,.05));
+                    border:0.5px solid rgba(124,58,237,.25);border-radius:10px;margin-bottom:6px">
+          <div style="font-size:22px;flex-shrink:0">🤖</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;color:var(--sv)">${a.cliente_nombre}</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:1px">
+              🏋️ ${a.dia_nombre} · ${a.ajustes.length} ${isEn?'adjustments':'ajustes'} · ${hace}
+            </div>
+            <div style="font-size:11px;color:var(--sv3);margin-top:3px;font-style:italic;
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              ${a.resumen_ia || ''}
+            </div>
+          </div>
+          <button onclick="abrirRevisionAnalisis(${a.id},'${(a.cliente_nombre||'').replace(/'/g,'\\'')}')"
+            style="flex-shrink:0;padding:6px 10px;background:rgba(124,58,237,.2);
+                   border:0.5px solid rgba(124,58,237,.4);border-radius:8px;color:#a78bfa;
+                   font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">
+            ${isEn?'Review':'Revisar'}
+          </button>
+        </div>`;
+    }).join('');
+
+    wrap.innerHTML = `
+      <div style="background:var(--s);border:0.5px solid rgba(124,58,237,.25);border-radius:14px;padding:14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.07em">
+            🤖 ${isEn?`AI analyses pending (${pendientes.length})`:`Análisis IA pendientes (${pendientes.length})`}
+          </div>
+          <button onclick="cargarAnalisisPendientes()" style="background:none;border:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">↺</button>
+        </div>
+        ${items}
+      </div>`;
+  } catch(e) { if(wrap) wrap.innerHTML = ''; }
+}
+
+function tiempoRelativo(fechaStr) {
+  const isEn = COACH_LANG === 'en';
+  const mins = Math.floor((Date.now() - new Date(fechaStr).getTime()) / 60000);
+  if (mins < 60)   return isEn ? `${mins}m ago`                    : `hace ${mins}m`;
+  if (mins < 1440) return isEn ? `${Math.floor(mins/60)}h ago`     : `hace ${Math.floor(mins/60)}h`;
+  return isEn ? `${Math.floor(mins/1440)}d ago` : `hace ${Math.floor(mins/1440)}d`;
+}
+
+// ── Modal de revisión de un análisis ─────────────────────────────────────────
+async function abrirRevisionAnalisis(analisisId, clienteNombre) {
+  const isEn = COACH_LANG === 'en';
+  let modal = document.getElementById('modal_revision_analisis');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal_revision_analisis';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:flex-end;justify-content:center;padding:0';
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+  modal.innerHTML = `
+    <div style="background:var(--s);border-radius:18px 18px 0 0;border-top:0.5px solid rgba(124,58,237,.3);
+                padding:20px 20px 32px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto">
+      <div style="font-size:13px;color:var(--tx3);text-align:center;padding:20px">
+        ${isEn?'Loading analysis...':'Cargando análisis...'}
+      </div>
+    </div>`;
+
+  try {
+    // Cargar todos los pendientes y encontrar el que corresponde
+    const pendientes = await api('/coach/analisis-pendientes');
+    const analisis = pendientes.find(a => a.id === analisisId);
+    if (!analisis) { modal.style.display = 'none'; return; }
+
+    const ajustes = analisis.ajustes || [];
+    const colores = { subir: { bg:'rgba(34,197,94,.1)', bdr:'rgba(34,197,94,.3)', tx:'#4ade80', icon:'↑ 📈' },
+                      bajar: { bg:'rgba(239,68,68,.08)', bdr:'rgba(239,68,68,.25)', tx:'#f87171', icon:'↓ 📉' },
+                      mantener: { bg:'rgba(59,130,246,.08)', bdr:'rgba(59,130,246,.2)', tx:'var(--blg)', icon:'= ➡️' },
+                      sin_datos: { bg:'rgba(100,100,100,.08)', bdr:'rgba(100,100,100,.2)', tx:'var(--tx3)', icon:'? ❓' } };
+
+    const ajustesHtml = ajustes.map((aj, i) => {
+      const c = colores[aj.accion] || colores.sin_datos;
+      return `
+        <div style="background:${c.bg};border:0.5px solid ${c.bdr};border-radius:10px;padding:10px 12px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div>
+              <span style="font-size:13px;font-weight:700;color:var(--sv)">${aj.ejercicio}</span>
+              <span style="font-size:11px;color:${c.tx};font-weight:700;margin-left:8px">${c.icon}</span>
+            </div>
+            ${aj.nuevo_peso > 0 ? `
+              <div style="display:flex;align-items:center;gap:4px">
+                <span style="font-size:11px;color:var(--tx3)">${aj.peso_actual||0}kg →</span>
+                <input id="rev_nuevo_peso_${i}" type="number" value="${aj.nuevo_peso}" step="1.25" min="0"
+                  style="width:70px;padding:4px 6px;border:0.5px solid ${c.bdr};border-radius:8px;
+                         background:var(--s2);color:${c.tx};font-size:14px;font-weight:700;text-align:center;font-family:inherit"/>
+                <span style="font-size:11px;color:var(--tx3)">kg</span>
+              </div>` : ''}
+          </div>
+          <div style="font-size:11px;color:var(--tx3)">${aj.razon||''}</div>
+        </div>`;
+    }).join('');
+
+    modal.querySelector('div').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--sv)">🤖 ${isEn?'AI Analysis Review':'Revisión análisis IA'}</div>
+          <div style="font-size:12px;color:var(--tx3);margin-top:2px">${clienteNombre} · ${analisis.dia_nombre}</div>
+        </div>
+        <button onclick="document.getElementById('modal_revision_analisis').style.display='none'"
+          style="background:none;border:none;color:var(--tx3);font-size:20px;cursor:pointer">✕</button>
+      </div>
+
+      <!-- Resumen IA -->
+      <div style="background:rgba(124,58,237,.08);border:0.5px solid rgba(124,58,237,.2);border-radius:10px;
+                  padding:12px;margin-bottom:16px;font-size:12px;color:var(--sv2);line-height:1.6">
+        <div style="font-size:10px;color:#a78bfa;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px">
+          ${isEn?'AI Summary (for coach)':'Resumen IA (para el coach)'}
+        </div>
+        ${analisis.resumen_ia}
+      </div>
+
+      <!-- Ajustes editables -->
+      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">
+        ${isEn?'Adjustments':'Ajustes'} (${ajustes.length})
+      </div>
+      ${ajustesHtml}
+
+      <!-- Mensaje al cliente editable -->
+      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;margin-top:16px">
+        ${isEn?'Message to client (editable before sending)':'Mensaje al cliente (editable antes de enviar)'}
+      </div>
+      <textarea id="rev_mensaje_cliente" style="width:100%;min-height:100px;padding:10px 12px;
+        border:0.5px solid rgba(59,130,246,.3);border-radius:10px;background:rgba(37,99,235,.05);
+        color:var(--sv);font-size:13px;font-family:inherit;line-height:1.6;resize:vertical;box-sizing:border-box"
+      >${analisis.mensaje_cliente}</textarea>
+
+      <!-- Acciones -->
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="descartarAnalisis(${analisisId})"
+          style="flex:1;padding:11px;border-radius:10px;border:0.5px solid rgba(239,68,68,.25);
+                 background:none;color:#fca5a5;font-size:13px;cursor:pointer;font-family:inherit">
+          🗑 ${isEn?'Discard':'Descartar'}
+        </button>
+        <button onclick="aprobarAnalisis(${analisisId}, ${JSON.stringify(ajustes).replace(/"/g,'&quot;')})"
+          style="flex:2;padding:11px;border-radius:10px;border:none;
+                 background:linear-gradient(135deg,#7c3aed,#2563eb);
+                 color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+          ✅ ${isEn?'Approve & send to client':'Aprobar y enviar al cliente'}
+        </button>
+      </div>
+      <div id="rev_analisis_msg" style="font-size:12px;text-align:center;margin-top:8px;min-height:16px"></div>`;
+
+    // Guardar referencia a los ajustes originales con IDs
+    modal._ajustes = ajustes;
+    modal._analisisId = analisisId;
+
+  } catch(e) {
+    modal.querySelector('div').innerHTML = `<div style="color:#f87171;padding:20px">Error: ${e.message}</div>`;
+  }
+}
+
+async function aprobarAnalisis(analisisId, ajustesOriginales) {
+  const isEn = COACH_LANG === 'en';
+  const msg  = document.getElementById('rev_analisis_msg');
+  const modal = document.getElementById('modal_revision_analisis');
+  if (msg) { msg.style.color = 'var(--tx3)'; msg.textContent = isEn?'Applying...':'Aplicando...'; }
+
+  // Recoger pesos editados por el coach desde los inputs
+  const ajustesFinales = (modal?._ajustes || ajustesOriginales).map((aj, i) => {
+    const inp = document.getElementById(`rev_nuevo_peso_${i}`);
+    return { ...aj, nuevo_peso: inp ? parseFloat(inp.value)||aj.nuevo_peso : aj.nuevo_peso };
+  });
+
+  const mensajeFinal = document.getElementById('rev_mensaje_cliente')?.value || '';
+
+  try {
+    const r = await api(`/ia/aprobar-analisis/${analisisId}`, {
+      method: 'POST',
+      body: JSON.stringify({ ajustes: ajustesFinales, mensaje: mensajeFinal })
+    });
+    if (msg) { msg.style.color = '#4ade80'; msg.textContent = `✅ ${r.pesosActualizados} ${isEn?'weights updated · message sent':'pesos actualizados · mensaje enviado'}`; }
+    setTimeout(() => {
+      document.getElementById('modal_revision_analisis').style.display = 'none';
+      cargarAnalisisPendientes();
+      cargarTareasPendientes();
+      // Si estamos en la ficha de un cliente, refrescar
+      if (window._coachClienteId) verCliente(window._coachClienteId);
+    }, 1200);
+  } catch(e) {
+    if (msg) { msg.style.color = '#f87171'; msg.textContent = '❌ ' + e.message; }
+  }
+}
+
+async function descartarAnalisis(analisisId) {
+  const isEn = COACH_LANG === 'en';
+  if (!confirm(isEn?'Discard this analysis? Weights will not be updated.':'¿Descartar este análisis? Los pesos no se actualizarán.')) return;
+  await api(`/ia/descartar-analisis/${analisisId}`, { method:'POST' });
+  document.getElementById('modal_revision_analisis').style.display = 'none';
+  cargarAnalisisPendientes();
+}
+
+// ── Botón de análisis manual en tab Historial del cliente ────────────────────
+async function analizarSesionManual(sesionId, diaNombre) {
+  const isEn = COACH_LANG === 'en';
+  const btn  = document.getElementById(`btn_analizar_${sesionId}`);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  try {
+    await api(`/ia/analizar-sesion/${sesionId}`, { method: 'POST' });
+    if (btn) { btn.textContent = '✓'; btn.style.color = '#4ade80'; }
+    // Cargar bandeja de pendientes para que aparezca
+    await cargarAnalisisPendientes();
+    // Abrir directamente el modal del análisis recién creado
+    const pendientes = await api('/coach/analisis-pendientes');
+    const nuevo = pendientes.find(a => a.dia_nombre === diaNombre);
+    if (nuevo) abrirRevisionAnalisis(nuevo.id, window._coachClienteActual?.nombre || '');
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '🤖'; }
+    alert('Error: ' + e.message);
+  }
+}
+
+// ── Llamar a cargarAnalisisPendientes junto con cargarTareasPendientes ────────
+// Patch de la función existente para que cargue también los análisis
+const _cargarTareasPendientesOrig = cargarTareasPendientes;
+cargarTareasPendientes = async function() {
+  await Promise.all([_cargarTareasPendientesOrig(), cargarAnalisisPendientes()]);
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BANNERS DE ANÁLISIS APROBADOS — VISTA CLIENTE
+// ══════════════════════════════════════════════════════════════════════════════
+async function cargarBannersAnalisisCliente() {
+  if (!CD) return;
+  try {
+    const analisis = await api('/clientes/' + CD.id + '/analisis-aprobados');
+    if (!analisis.length) return;
+
+    // Agrupar por día
+    const porDia = {};
+    analisis.forEach(a => {
+      if (!porDia[a.dia_nombre]) porDia[a.dia_nombre] = a;
+    });
+
+    // Añadir banner debajo de cada day-pill correspondiente
+    CD.dias.forEach((dia, i) => {
+      const analisisDia = porDia[dia.nombre];
+      if (!analisisDia) return;
+
+      const bannerId = `banner_analisis_dia_${i}`;
+      // Evitar duplicados
+      if (document.getElementById(bannerId)) return;
+
+      // Buscar el contenedor del día
+      const pill = document.querySelector(`.day-pill:nth-child(${i+1})`);
+      if (!pill) return;
+
+      const ajustes = analisisDia.ajustes || [];
+      const subidas = ajustes.filter(a => a.accion === 'subir').length;
+      const bajadas = ajustes.filter(a => a.accion === 'bajar').length;
+      const isEn = LANG === 'en';
+
+      const banner = document.createElement('div');
+      banner.id = bannerId;
+      banner.style.cssText = 'margin:8px 0 4px;animation:mgrSlideUp .3s ease';
+      banner.innerHTML = `
+        <div style="background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(37,99,235,.08));
+                    border:0.5px solid rgba(124,58,237,.3);border-radius:12px;padding:12px 14px;
+                    display:flex;align-items:flex-start;gap:10px">
+          <div style="font-size:22px;flex-shrink:0">🔔</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:3px">
+              ${isEn?'Your next':'Tu próxima'} <strong>${dia.nombre}</strong> ${isEn?'has updates':'tiene ajustes'}
+            </div>
+            <div style="font-size:11px;color:var(--tx3);margin-bottom:6px">
+              ${subidas > 0 ? `↑ ${subidas} ${isEn?'exercises increased':'ejercicios suben de peso'} ` : ''}
+              ${bajadas > 0 ? `↓ ${bajadas} ${isEn?'exercises adjusted':'ejercicios ajustados'} ` : ''}
+              ${isEn?'· Your coach reviewed your last session':'· Tu coach revisó tu última sesión'}
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              ${ajustes.filter(a=>a.accion==='subir'||a.accion==='bajar').slice(0,4).map(a => `
+                <span style="font-size:10px;padding:2px 8px;border-radius:20px;
+                             background:${a.accion==='subir'?'rgba(34,197,94,.12)':'rgba(239,68,68,.08)'};
+                             border:0.5px solid ${a.accion==='subir'?'rgba(34,197,94,.25)':'rgba(239,68,68,.2)'};
+                             color:${a.accion==='subir'?'#4ade80':'#f87171'}">
+                  ${a.accion==='subir'?'↑':'↓'} ${a.ejercicio.length>20?a.ejercicio.slice(0,18)+'…':a.ejercicio} → ${a.nuevo_peso}kg
+                </span>`).join('')}
+            </div>
+          </div>
+          <button onclick="this.closest('[id^=banner_analisis]').style.display='none'"
+            style="background:none;border:none;color:var(--tx3);font-size:16px;cursor:pointer;flex-shrink:0;padding:0">✕</button>
+        </div>`;
+
+      // Insertar después de las pills de días
+      const pillsContainer = document.querySelector('.day-pills') || pill.parentNode;
+      if (pillsContainer && pillsContainer.parentNode) {
+        // Buscar si ya hay un banner container
+        let bannerContainer = document.getElementById('analisis_banners_container');
+        if (!bannerContainer) {
+          bannerContainer = document.createElement('div');
+          bannerContainer.id = 'analisis_banners_container';
+          pillsContainer.parentNode.insertBefore(bannerContainer, pillsContainer.nextSibling);
+        }
+        bannerContainer.appendChild(banner);
+      }
+    });
+  } catch(e) { /* silencioso */ }
 }
