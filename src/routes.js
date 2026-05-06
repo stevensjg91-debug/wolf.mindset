@@ -12,7 +12,9 @@ function crearNotificacion(userId, tipo, mensaje) {
   try {
     dbRun('INSERT INTO notificaciones (user_id, tipo, mensaje) VALUES (?,?,?)',
       [userId, tipo, mensaje]);
+    // Push SSE en tiempo real — si el usuario está conectado lo recibe al instante
     ssePush(userId, 'notificacion', { tipo, mensaje, ts: Date.now() });
+    // Web Push — llega aunque la pantalla esté apagada o el PC bloqueado
     if(global.sendPushToUser) {
       global.sendPushToUser(userId, 'WolfMindset 🐺', mensaje, '/');
     }
@@ -33,65 +35,2269 @@ function getNombreCliente(clienteId) {
   } catch(e) { return 'Un cliente'; }
 }
 
-function middlewareMensajeDiario(req, res, next) { next(); }
+function ensureClientArchiveSchema() {
+  // Usamos users.estado='archivado' para no tocar la estructura principal de clientes.
+  // Así archivar es reversible y el cliente queda oculto/bloqueado sin borrar historial.
+  try { dbRun("UPDATE users SET estado='activo' WHERE role='cliente' AND (estado IS NULL OR estado='')"); } catch(e) {}
+}
 
-// ── SISTEMA DE PLANTILLAS (IA REUSABLE) ──────────────────────────────
+function getClienteConUsuario(clienteId) {
+  return dbGet(`SELECT c.id, c.user_id, u.nombre, u.estado, u.role
+    FROM clientes c JOIN users u ON u.id = c.user_id
+    WHERE c.id=?`, [clienteId]);
+}
 
-// Guarda la rutina de un cliente como una plantilla nueva
-router.post('/plantillas/guardar', coachOnly, async (req, res) => {
+function borrarClientePermanentemente(clienteId) {
+  const c = getClienteConUsuario(clienteId);
+  if (!c) return null;
+  if (c.role && c.role !== 'cliente') throw new Error('Este usuario no es cliente');
+
+  // Hijos directos de estructuras anidadas
+  const dias = dbAll('SELECT id FROM dias_entreno WHERE cliente_id=?', [clienteId]);
+  dias.forEach(d => { try { dbRun('DELETE FROM ejercicios_dia WHERE dia_id=?', [d.id]); } catch(e) {} });
+
+  const comidas = dbAll('SELECT id FROM comidas WHERE cliente_id=?', [clienteId]);
+  comidas.forEach(m => { try { dbRun('DELETE FROM alimentos WHERE comida_id=?', [m.id]); } catch(e) {} });
+
+  const recetas = dbAll('SELECT id FROM recetas WHERE cliente_id=?', [clienteId]);
+  recetas.forEach(r => { try { dbRun('DELETE FROM receta_ingredientes WHERE receta_id=?', [r.id]); } catch(e) {} });
+
+  const sesiones = dbAll('SELECT id FROM sesiones_entreno WHERE cliente_id=?', [clienteId]);
+  sesiones.forEach(se => { try { dbRun('DELETE FROM series_log WHERE sesion_id=?', [se.id]); } catch(e) {} });
+
+  // Tablas que dependen directamente del cliente
+  [
+    'peso_registros','fotos','dias_entreno','comidas','recetas','plan_meta',
+    'semana_borrador','semana_estado','sesiones_entreno','suscripciones',
+    'checkins','mensajes'
+  ].forEach(t => { try { dbRun(`DELETE FROM ${t} WHERE cliente_id=?`, [clienteId]); } catch(e) {} });
+
+  // Cuenta y datos asociados al usuario del cliente
+  try { dbRun('DELETE FROM notificaciones WHERE user_id=?', [c.user_id]); } catch(e) {}
+  try { dbRun('DELETE FROM push_subscriptions WHERE user_id=?', [c.user_id]); } catch(e) {}
+  try { dbRun('DELETE FROM clientes WHERE id=?', [clienteId]); } catch(e) {}
+  try { dbRun('DELETE FROM users WHERE id=?', [c.user_id]); } catch(e) {}
+  saveToDisk();
+  return c;
+}
+
+function ensureTrainingTrackingSchema() {
+  try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN estado TEXT DEFAULT 'completado'"); } catch(e) {}
+  try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN valoracion TEXT DEFAULT ''"); } catch(e) {}
+  try { dbRun("ALTER TABLE series_log ADD COLUMN nota_cliente TEXT DEFAULT ''"); } catch(e) {}
+  try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN coach_revisada INTEGER DEFAULT 0"); } catch(e) {}
+  try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN coach_revisada_at DATETIME"); } catch(e) {}
+}
+
+// Mensajes de suscripción bilingues
+function msgSub(lang, tipo, dias) {
+  const en = lang === 'en';
+  if(tipo === 'activada') return en
+    ? `✅ Your subscription is active! You have full access. Let's go! 💪🔥`
+    : `✅ ¡Tu suscripción está activa! Tienes acceso completo. ¡A por ello! 💪🔥`;
+  if(tipo === 'activada_fecha') return (d) => en
+    ? `✅ Your subscription is active until ${d}! Full access granted. Let's go! 💪🔥`
+    : `✅ ¡Tu suscripción está activa hasta el ${d}! Tienes acceso completo. ¡A por ello! 💪🔥`;
+  if(tipo === 'cancelada') return en
+    ? `❌ Your subscription has been cancelled. Contact your coach to renew it. We’ll be here when you’re ready! 💪`
+    : `❌ Tu suscripción ha sido cancelada. Si quieres renovar, contacta con tu coach. ¡Aquí seguimos cuando quieras! 💪`;
+  if(tipo === 'vencida') return en
+    ? `🔴 Your subscription has expired. Don’t stop training! Contact your coach to renew and get back on track. 💪`
+    : `🔴 Tu suscripción ha vencido. ¡No te quedes sin entrenar! Habla con tu coach para renovarla. 💪`;
+  if(tipo === 'pronto') {
+    if(dias === 1) return en
+      ? `⏳ Your subscription expires tomorrow! Talk to your coach today to renew and keep your momentum going. 💪`
+      : `⏳ ¡Mañana vence tu suscripción! Habla hoy con tu coach para renovarla y seguir sin pausas. 💪`;
+    return en
+      ? `⏳ Your subscription expires in ${dias} day${dias>1?'s':''}. Renew with your coach to keep progressing! 💪`
+      : `⏳ Tu suscripción vence en ${dias} día${dias>1?'s':''}. ¡Renueva con tu coach para seguir avanzando! 💪`;
+  }
+  return '';
+}
+
+// Chequeo automático de vencimientos (una vez al día)
+let _ultimoChequeoVencimientos = null;
+
+function chequearVencimientosAuto() {
+  const hoy = new Date().toISOString().split('T')[0];
+  if(_ultimoChequeoVencimientos === hoy) return;
+  _ultimoChequeoVencimientos = hoy;
   try {
-    const { clienteId, nombre, nivel, objetivo } = req.body;
-    
-    const dias = dbAll('SELECT * FROM dias WHERE cliente_id = ? ORDER BY orden', [clienteId]);
-    const ejercicios = dbAll('SELECT * FROM ejercicios WHERE cliente_id = ?', [clienteId]);
-
-    // La IA estructura el snapshot para que sea independiente del cliente original
-    const snapshot = dias.map(d => ({
-      nombre: d.nombre,
-      ejercicios: ejercicios.filter(e => e.dia_id === d.id).map(e => ({
-        nombre: e.nombre,
-        series: e.series,
-        reps: e.reps,
-        descanso: e.descanso,
-        notas: e.notas,
-        musculo: e.musculo_principal
-      }))
-    }));
-
-    dbRun(`INSERT INTO rutinas_plantillas (coach_id, nombre, nivel, objetivo, dias_json) VALUES (?,?,?,?,?)`,
-      [req.user.id, nombre, nivel, objetivo, JSON.stringify(snapshot)]);
-    
+    const subs = dbAll(`
+      SELECT s.*, c.id as cliente_id, u.id as user_id, u.lang
+      FROM suscripciones s
+      JOIN clientes c ON s.cliente_id = c.id
+      JOIN users u ON c.user_id = u.id
+      WHERE s.estado = 'activa'
+    `);
+    const hoyStr = new Date().toISOString().split('T')[0];
+    subs.forEach(s => {
+      const dias = diasRestantes(s.fecha_fin);
+      if([7, 5, 3, 1].includes(dias)) {
+        const yaAviso = dbGet(`SELECT id FROM notificaciones WHERE user_id=? AND tipo='vencimiento_proximo' AND DATE(created_at)=DATE('now')`, [s.user_id]);
+        if(!yaAviso) {
+          crearNotificacion(s.user_id, 'vencimiento_proximo', msgSub(s.lang||'es', 'pronto', dias));
+        }
+      }
+      if(s.fecha_fin < hoyStr && s.estado === 'activa') {
+        dbRun("UPDATE suscripciones SET estado='vencida' WHERE cliente_id=?", [s.cliente_id]);
+        dbRun("UPDATE users SET estado='bloqueado' WHERE id=?", [s.user_id]);
+        crearNotificacion(s.user_id, 'suscripcion_vencida', msgSub(s.lang||'es', 'vencida', 0));
+      }
+    });
     saveToDisk();
-    res.json({ ok: true });
-  } catch (e) { 
-    res.status(500).json({ error: "Error al guardar plantilla: " + e.message }); 
+  } catch(e) { console.error('chequearVencimientosAuto error:', e.message); }
+}
+
+router.get('/clientes', coachOnly, (req, res) => {
+  ensureClientArchiveSchema();
+  chequearVencimientosAuto();
+  const incluirArchivados = req.query.incluir_archivados === '1' || req.query.estado === 'archivados';
+  const soloArchivados = req.query.estado === 'archivados';
+  let where = "WHERE COALESCE(u.estado,'activo') != 'archivado'";
+  if (incluirArchivados) where = "WHERE 1=1";
+  if (soloArchivados) where = "WHERE COALESCE(u.estado,'activo') = 'archivado'";
+
+  const clientes = dbAll(`SELECT c.*, u.nombre, u.username, u.foto_perfil, u.estado as user_estado,
+    CASE WHEN COALESCE(u.estado,'activo') = 'archivado' THEN 1 ELSE 0 END as archivado,
+    (SELECT peso FROM peso_registros WHERE cliente_id=c.id ORDER BY rowid DESC LIMIT 1) as peso_actual,
+    (SELECT grasa FROM peso_registros WHERE cliente_id=c.id ORDER BY rowid DESC LIMIT 1) as grasa_actual,
+    (SELECT COUNT(*) FROM fotos WHERE cliente_id=c.id) as fotos_count
+    FROM clientes c JOIN users u ON c.user_id=u.id
+    ${where}`);
+  res.json(clientes);
+});
+
+
+// ── ARCHIVAR / RESTAURAR / BORRAR CLIENTE ─────────────────────────
+router.put('/clientes/:id/archivar', coachOnly, (req, res) => {
+  try {
+    ensureClientArchiveSchema();
+    const c = getClienteConUsuario(req.params.id);
+    if (!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+    dbRun("UPDATE users SET estado='archivado' WHERE id=? AND role='cliente'", [c.user_id]);
+    try { dbRun("UPDATE suscripciones SET estado='cancelada' WHERE cliente_id=? AND estado='activa'", [req.params.id]); } catch(e) {}
+    saveToDisk();
+    res.json({ ok: true, archivado: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/clientes/:id/restaurar', coachOnly, (req, res) => {
+  try {
+    ensureClientArchiveSchema();
+    const c = getClienteConUsuario(req.params.id);
+    if (!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+    dbRun("UPDATE users SET estado='activo' WHERE id=? AND role='cliente'", [c.user_id]);
+    saveToDisk();
+    res.json({ ok: true, archivado: false });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete('/clientes/:id/permanente', coachOnly, (req, res) => {
+  try {
+    const confirmacion = String(req.query.confirm || req.body?.confirm || '').toUpperCase();
+    if (confirmacion !== 'BORRAR') return res.status(400).json({ error: 'Confirmación requerida' });
+    const c = borrarClientePermanentemente(req.params.id);
+    if (!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+    res.json({ ok: true, deleted: true, nombre: c.nombre });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/clientes/:id', (req, res) => {
+  const id = req.params.id;
+  if (req.user.role === 'cliente') {
+    const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
+    if (!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
+  }
+  const c = dbGet('SELECT c.*, u.nombre, u.username, u.foto_perfil FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [id]);
+  if (!c) return res.status(404).json({ error: 'No encontrado' });
+  const pesos = dbAll('SELECT * FROM peso_registros WHERE cliente_id=? ORDER BY rowid ASC', [id]);
+  const dias = dbAll('SELECT * FROM dias_entreno WHERE cliente_id=? ORDER BY orden', [id]);
+  dias.forEach(d => {
+    d.ejercicios = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=? ORDER BY orden', [d.id]);
+    // Attach imagen_url from ejercicios_config if not set — but strip base64 from main payload
+    // (base64 images are served via /ejercicios-imagenes to keep loadCD response small)
+    d.ejercicios.forEach(e => {
+      if (!e.imagen_url) {
+        const cfg = dbGet('SELECT imagen_url FROM ejercicios_config WHERE nombre=?', [e.nombre]);
+        if (cfg && cfg.imagen_url) e.imagen_url = cfg.imagen_url.startsWith('data:') ? '__HAS_IMAGE__' : cfg.imagen_url;
+      } else if (e.imagen_url.startsWith('data:')) {
+        e.imagen_url = '__HAS_IMAGE__';
+      }
+    });
+  });
+  const comidas = dbAll('SELECT * FROM comidas WHERE cliente_id=? ORDER BY orden', [id]);
+  const planMeta = dbGet('SELECT * FROM plan_meta WHERE cliente_id=?', [id]);
+  comidas.forEach(m => { m.items = dbAll('SELECT * FROM alimentos WHERE comida_id=? ORDER BY orden', [m.id]); });
+  const recetas = dbAll('SELECT * FROM recetas WHERE cliente_id=? ORDER BY orden', [id]);
+  recetas.forEach(r => { r.ingredientes = dbAll('SELECT * FROM receta_ingredientes WHERE receta_id=?', [r.id]); });
+  const fotos = dbAll('SELECT id, url, analysis, published_analysis, fecha, tipo FROM fotos WHERE cliente_id=? ORDER BY fecha ASC', [id]);
+  res.json({
+    ...c,
+    pesos, dias, comidas, recetas, fotos,
+    _planAlternativas: planMeta?.alternativas ? JSON.parse(planMeta.alternativas) : null,
+    _planAjustes: planMeta?.ajustes ? JSON.parse(planMeta.ajustes) : null,
+    _planFrase: planMeta?.frase || null,
+    _planVariaciones: planMeta?.variaciones ? JSON.parse(planMeta.variaciones) : null,
+    _planSuplementacion: planMeta?.suplementacion ? JSON.parse(planMeta.suplementacion) : null,
+    _planAlimentosTerapeuticos: planMeta?.alimentos_therapeuticos ? JSON.parse(planMeta.alimentos_therapeuticos) : null,
+    kcal_internas: planMeta?.kcal || c.kcal_internas || null,
+    prot: planMeta?.prot || c.prot || null,
+    carbs: planMeta?.carbs || c.carbs || null,
+    fat: planMeta?.fat || c.fat || null,
+  });
+});
+
+// ── Coach cambia username de un cliente ──────────────────────────────────────
+router.put('/clientes/:id/username', coachOnly, (req, res) => {
+  const { username } = req.body;
+  if (!username || username.length < 3) return res.status(400).json({ error: 'Mínimo 3 caracteres' });
+  const c = dbGet('SELECT * FROM clientes WHERE id=?', [req.params.id]);
+  if (!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+  const existing = dbGet('SELECT id FROM users WHERE username=? AND id!=?', [username, c.user_id]);
+  if (existing) return res.status(409).json({ error: 'Ese usuario ya está en uso' });
+  dbRun('UPDATE users SET username=? WHERE id=?', [username, c.user_id]);
+  saveToDisk();
+  res.json({ ok: true });
+});
+
+router.put('/clientes/:id', coachOnly, (req, res) => {
+  const { objetivo, nivel, semanas, kcal_internas, prot, carbs, fat, comida_libre, mensaje_semana, notas_coach, peso_actual, altura, edad, sexo, actividad, cintura_actual, cadera, observaciones, dieta_tipo, alimentos_no, lesiones } = req.body;
+  const c = dbGet('SELECT * FROM clientes WHERE id=?', [req.params.id]);
+  if (!c) return res.status(404).json({ error: 'No encontrado' });
+  dbRun(`UPDATE clientes SET objetivo=?, nivel=?, semanas=?, kcal_internas=?, prot=?, carbs=?, fat=?, comida_libre=?, mensaje_semana=?, notas_coach=?, peso_actual=?, altura=?, edad=?, sexo=?, actividad=?, cintura_actual=?, cadera=?, observaciones=?, dieta_tipo=?, alimentos_no=?, lesiones=? WHERE id=?`,
+    [objetivo||c.objetivo, nivel||c.nivel, semanas||c.semanas, kcal_internas||c.kcal_internas, prot||c.prot, carbs||c.carbs, fat||c.fat, comida_libre||c.comida_libre, mensaje_semana||c.mensaje_semana, notas_coach||c.notas_coach, peso_actual!=null?peso_actual:c.peso_actual, altura||c.altura, edad||c.edad, sexo||c.sexo, actividad||c.actividad, cintura_actual!=null?cintura_actual:c.cintura_actual, cadera!=null?cadera:c.cadera, observaciones||c.observaciones, dieta_tipo||c.dieta_tipo, alimentos_no!=null?alimentos_no:c.alimentos_no, lesiones!=null?lesiones:c.lesiones, req.params.id]);
+  res.json({ ok: true });
+});
+
+router.put('/clientes/:id/perfil', (req, res) => {
+  const id = req.params.id;
+  if (req.user.role === 'cliente') {
+    const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
+    if (!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
+  }
+  const { peso_actual, altura, edad, sexo, actividad, cintura_actual, cadera, observaciones, dieta_tipo, alimentos_no, lesiones, deficiencias } = req.body;
+  const c = dbGet('SELECT * FROM clientes WHERE id=?', [id]);
+  if (!c) return res.status(404).json({ error: 'No encontrado' });
+  dbRun('UPDATE clientes SET peso_actual=?, altura=?, edad=?, sexo=?, actividad=?, cintura_actual=?, cadera=?, observaciones=?, dieta_tipo=?, alimentos_no=?, lesiones=?, deficiencias=? WHERE id=?',
+    [
+      peso_actual!=null ? peso_actual : c.peso_actual,
+      altura || c.altura,
+      edad || c.edad,
+      sexo || c.sexo,
+      actividad || c.actividad,
+      cintura_actual!=null ? cintura_actual : c.cintura_actual,
+      cadera!=null ? cadera : c.cadera,
+      observaciones!=null ? observaciones : c.observaciones||'',
+      dieta_tipo || c.dieta_tipo || 'Omnívoro',
+      alimentos_no!=null ? alimentos_no : c.alimentos_no||'',
+      lesiones!=null ? lesiones : c.lesiones||'',
+      deficiencias!=null ? deficiencias : c.deficiencias||'',
+      id
+    ]);
+  res.json({ ok: true });
+});
+
+router.post('/clientes/:id/peso', (req, res) => {
+  const { peso, grasa, cintura } = req.body;
+  dbRun('INSERT INTO peso_registros (cliente_id, peso, grasa, cintura) VALUES (?, ?, ?, ?)', [req.params.id, peso, grasa||null, cintura||null]);
+  // Notificar al coach
+  const coachId = getCoachId();
+  if(coachId) {
+    const nombre = getNombreCliente(req.params.id);
+    const detalle = grasa ? ` · ${grasa}% grasa` : '';
+    crearNotificacion(coachId, 'peso_registrado', `⚖️ ${nombre} ha registrado su peso: ${peso}kg${detalle}`);
+  }
+  saveToDisk();
+  res.json({ ok: true });
+});
+
+router.post('/clientes/:id/dias', coachOnly, (req, res) => {
+  const { nombre, grupo, orden } = req.body;
+  const r = dbRun('INSERT INTO dias_entreno (cliente_id, nombre, grupo, orden) VALUES (?, ?, ?, ?)', [req.params.id, nombre, grupo, orden||0]);
+  res.json({ id: r.lastInsertRowid });
+});
+
+router.delete('/dias/:id', coachOnly, (req, res) => {
+  dbRun('DELETE FROM ejercicios_dia WHERE dia_id=?', [req.params.id]);
+  dbRun('DELETE FROM dias_entreno WHERE id=?', [req.params.id]);
+  res.json({ ok: true });
+});
+
+router.post('/dias/:id/ejercicios', coachOnly, (req, res) => {
+  const { nombre, musculos, series, reps, peso_objetivo, descanso, orden } = req.body;
+  const rir = req.body.rir!=null ? req.body.rir : null;
+  const es_principal = req.body.es_principal!=null ? req.body.es_principal : 0;
+
+  // Precargar youtube_url, imagen_url y nota_coach desde ejercicios_config si no vienen en la request
+  const cfg = dbGet('SELECT * FROM ejercicios_config WHERE nombre=?', [nombre]);
+  const youtube_url  = req.body.youtube_url  || (cfg?.youtube_url  || '');
+  const imagen_url   = req.body.imagen_url   || (cfg?.imagen_url   || '');
+  const nota_coach   = req.body.nota_coach   || (cfg?.nota_default || '');
+
+  const r = dbRun('INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, rir, es_principal, orden, youtube_url, imagen_url, nota_coach) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.params.id, nombre, musculos||'', series||3, reps||'10-12', peso_objetivo||0, descanso||90, rir, es_principal, orden||0, youtube_url, imagen_url, nota_coach]);
+
+  // Guardar en config si vienen datos nuevos desde la request
+  if (req.body.youtube_url || req.body.imagen_url || req.body.nota_coach) {
+    const existing = dbGet('SELECT id FROM ejercicios_config WHERE nombre=?', [nombre]);
+    if (existing) {
+      if (req.body.youtube_url) dbRun('UPDATE ejercicios_config SET youtube_url=? WHERE nombre=?', [req.body.youtube_url, nombre]);
+      if (req.body.imagen_url)  dbRun('UPDATE ejercicios_config SET imagen_url=? WHERE nombre=?',  [req.body.imagen_url,  nombre]);
+      if (req.body.nota_coach)  dbRun('UPDATE ejercicios_config SET nota_default=? WHERE nombre=?', [req.body.nota_coach, nombre]);
+    } else {
+      dbRun('INSERT INTO ejercicios_config (nombre, youtube_url, imagen_url, nota_default) VALUES (?,?,?,?)',
+        [nombre, req.body.youtube_url||'', req.body.imagen_url||'', req.body.nota_coach||'']);
+    }
+  }
+  res.json({ id: r.lastInsertRowid, youtube_url, imagen_url, nota_coach });
+});
+
+router.delete('/ejercicios-db/:id', (req, res) => {
+  const e = dbGet('SELECT * FROM ejercicios_db WHERE id=?', [req.params.id]);
+  if (!e) return res.status(404).json({ error: 'No encontrado' });
+  dbRun('DELETE FROM ejercicios_db WHERE id=?', [req.params.id]);
+  res.json({ ok: true });
+});
+
+router.get('/ejercicios/:id', (req, res) => {
+  const e = dbGet('SELECT * FROM ejercicios_dia WHERE id=?', [req.params.id]);
+  if (!e) return res.status(404).json({ error: 'No encontrado' });
+  res.json(e);
+});
+
+router.put('/ejercicios/:id', (req, res) => {
+  const e = dbGet('SELECT * FROM ejercicios_dia WHERE id=?', [req.params.id]);
+  if (!e) return res.status(404).json({ error: 'No encontrado' });
+ const { series, reps, peso_objetivo, descanso, es_pr, youtube_url, imagen_url, nota_coach, orden } = req.body;
+  const rir_val = 'rir' in req.body ? req.body.rir : e.rir;
+  const esp_val = req.body.es_principal!=null ? req.body.es_principal : (e.es_principal||0);
+ dbRun('UPDATE ejercicios_dia SET series=?, reps=?, peso_objetivo=?, descanso=?, rir=?, es_principal=?, es_pr=?, youtube_url=?, imagen_url=?, nota_coach=?, orden=? WHERE id=?',
+   [
+  series||e.series,
+  reps||e.reps,
+  peso_objetivo!=null?peso_objetivo:e.peso_objetivo,
+  descanso||e.descanso,
+  rir_val,
+  esp_val,
+  es_pr!=null?es_pr:e.es_pr,
+  youtube_url!=null?youtube_url:e.youtube_url||'',
+  imagen_url!=null?imagen_url:e.imagen_url||'',
+  nota_coach!=null?nota_coach:e.nota_coach||'',
+ (orden!=null ? orden : e.orden),
+  req.params.id
+]
+);
+
+  // ── Sincronizar youtube_url, imagen_url y nota_coach en ejercicios_config ──
+  // Así el próximo cliente que use este ejercicio ya tendrá el video/nota precargado.
+  if (youtube_url != null || imagen_url != null || nota_coach != null) {
+    const nombre = e.nombre;
+    const existing = dbGet('SELECT id FROM ejercicios_config WHERE nombre=?', [nombre]);
+    if (existing) {
+      if (youtube_url != null && youtube_url !== '') dbRun('UPDATE ejercicios_config SET youtube_url=? WHERE nombre=?', [youtube_url, nombre]);
+      if (imagen_url != null && imagen_url !== '') dbRun('UPDATE ejercicios_config SET imagen_url=? WHERE nombre=?', [imagen_url, nombre]);
+      if (nota_coach != null && nota_coach !== '') dbRun('UPDATE ejercicios_config SET nota_default=? WHERE nombre=?', [nota_coach, nombre]);
+    } else {
+      dbRun('INSERT INTO ejercicios_config (nombre, youtube_url, imagen_url, nota_default) VALUES (?,?,?,?)',
+        [nombre, youtube_url||'', imagen_url||'', nota_coach||'']);
+    }
+  }
+
+  saveToDisk();
+  res.json({ ok: true });
+});
+
+router.delete('/ejercicios/:id', coachOnly, (req, res) => {
+  dbRun('DELETE FROM ejercicios_dia WHERE id=?', [req.params.id]);
+  res.json({ ok: true });
+});
+
+router.post('/clientes/:id/comidas', coachOnly, (req, res) => {
+  const { nombre, orden } = req.body;
+  const r = dbRun('INSERT INTO comidas (cliente_id, nombre, orden) VALUES (?, ?, ?)', [req.params.id, nombre, orden||0]);
+  res.json({ id: r.lastInsertRowid });
+});
+
+router.post('/comidas/:id/alimentos', coachOnly, (req, res) => {
+  const { nombre, gramos, orden } = req.body;
+  const r = dbRun('INSERT INTO alimentos (comida_id, nombre, gramos, orden) VALUES (?, ?, ?, ?)', [req.params.id, nombre, gramos, orden||0]);
+  res.json({ id: r.lastInsertRowid });
+});
+
+router.put('/alimentos/:id', coachOnly, (req, res) => {
+  const a = dbGet('SELECT * FROM alimentos WHERE id=?', [req.params.id]);
+  if (!a) return res.status(404).json({ error: 'No encontrado' });
+  dbRun('UPDATE alimentos SET nombre=?, gramos=? WHERE id=?', [req.body.nombre||a.nombre, req.body.gramos||a.gramos, req.params.id]);
+  res.json({ ok: true });
+});
+
+router.delete('/alimentos/:id', coachOnly, (req, res) => {
+  dbRun('DELETE FROM alimentos WHERE id=?', [req.params.id]);
+  res.json({ ok: true });
+});
+
+router.post('/clientes/:id/recetas', coachOnly, (req, res) => {
+  const { nombre, pasos, ingredientes } = req.body;
+  const r = dbRun('INSERT INTO recetas (cliente_id, nombre, pasos) VALUES (?, ?, ?)', [req.params.id, nombre, pasos||'']);
+  if (ingredientes) ingredientes.forEach(ing => dbRun('INSERT INTO receta_ingredientes (receta_id, nombre, gramos) VALUES (?, ?, ?)', [r.lastInsertRowid, ing.nombre, ing.gramos]));
+  res.json({ id: r.lastInsertRowid });
+});
+
+router.post('/clientes/:id/fotos', (req, res) => {
+  const { url, analysis, tipo } = req.body;
+  const r = dbRun('INSERT INTO fotos (cliente_id, url, analysis, tipo) VALUES (?, ?, ?, ?)',
+    [req.params.id, url||'', analysis||'', tipo||'frente']);
+
+  // Notificar al coach
+  const coachId = getCoachId();
+  if(coachId) {
+    const nombre = getNombreCliente(req.params.id);
+    const tipoLabel = tipo === 'posterior' ? (coachId ? 'posterior' : 'back') : tipo === 'costado' ? 'lateral' : 'frontal';
+
+    // Detectar si es la primera foto del mes — si hay fotos del mes anterior, notificar comparativa
+    const ahora = new Date();
+    const mesActual = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}`;
+    const fotosDelMes = dbAll(
+      "SELECT id FROM fotos WHERE cliente_id=? AND strftime('%Y-%m', fecha)=?",
+      [req.params.id, mesActual]
+    );
+    const mesAnterior = new Date(ahora.getFullYear(), ahora.getMonth()-1, 1);
+    const mesAnteriorStr = `${mesAnterior.getFullYear()}-${String(mesAnterior.getMonth()+1).padStart(2,'0')}`;
+    const fotosDelMesAnterior = dbAll(
+      "SELECT id FROM fotos WHERE cliente_id=? AND strftime('%Y-%m', fecha)=?",
+      [req.params.id, mesAnteriorStr]
+    );
+
+    const coach = dbGet('SELECT lang FROM users WHERE id=?', [coachId]);
+    const isEn = coach && coach.lang === 'en';
+
+    if(fotosDelMes.length <= 1 && fotosDelMesAnterior.length > 0) {
+      // Primera foto del mes con historial del mes anterior — comparativa disponible
+      const msgComparativa = isEn
+        ? `📸 ${nombre} uploaded their monthly photo. Comparison with last month available — go to their profile to analyze progress!`
+        : `📸 ${nombre} subió su foto mensual. Comparativa con el mes anterior disponible — ¡entra a su perfil para analizar el progreso!`;
+      crearNotificacion(coachId, 'foto_comparativa', msgComparativa);
+    } else {
+      const msgFoto = isEn
+        ? `📸 ${nombre} uploaded a progress photo (${tipoLabel})`
+        : `📸 ${nombre} ha subido una foto de progreso (${tipoLabel})`;
+      crearNotificacion(coachId, 'foto_subida', msgFoto);
+    }
+  }
+  saveToDisk();
+  res.json({ id: r.lastInsertRowid });
+});
+
+// DELETE foto
+router.delete('/fotos/:id', (req, res) => {
+  dbRun('DELETE FROM fotos WHERE id=?', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// Update foto analysis
+router.put('/fotos/:id/analysis', (req, res) => {
+  dbRun('UPDATE fotos SET analysis=? WHERE id=?', [req.body.analysis, req.params.id]);
+  res.json({ ok: true });
+});
+
+// Publish analysis to client (saves as coach message, no IA mention)
+router.post('/fotos/:id/publicar', coachOnly, (req, res) => {
+  const { texto } = req.body;
+  dbRun('UPDATE fotos SET published_analysis=? WHERE id=?', [texto, req.params.id]);
+  res.json({ ok: true });
+});
+
+router.post('/ia/chat', async (req, res) => {
+  const { messages, system } = req.body;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'API key no configurada en Railway Variables' });
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 4000, system, messages })
+    });
+    const data = await response.json();
+    if (data.error) return res.status(500).json({ error: data.error.message });
+    res.json({ reply: data.content[0].text });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/ia/foto', async (req, res) => {
+  const { imageBase64, mediaType, extraImages, system, clientInfo } = req.body;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
+  if (!imageBase64 || !mediaType) return res.status(400).json({ error: 'imageBase64 y mediaType requeridos' });
+
+  try {
+    const isEn = system?.includes('English');
+    const content = [];
+
+    // Images first (no text label needed)
+    content.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } });
+    if (extraImages && extraImages.length) {
+      for (const img of extraImages) {
+        if (img.b64 && img.mt) {
+          content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } });
+        }
+      }
+    }
+
+    const prompt = isEn
+      ? `Analyze the physique of this client (${clientInfo || 'fitness client'}).
+Write a personal coach message (4-5 sentences) that:
+1. Highlights 2-3 genuine strong points visible in the photo (specific muscle groups, posture, body composition)
+2. Points out 1-2 areas to focus on to reach their goal
+3. Gives 1 concrete actionable tip for this week
+4. Ends with a motivating push
+Tone: direct, warm, personal. No markdown, no asterisks, no lists. Natural flowing sentences.`
+      : `Analiza el físico de este cliente (${clientInfo || 'cliente fitness'}).
+Escribe un mensaje personal del coach (4-5 frases) que:
+1. Destaque 2-3 puntos fuertes reales visibles en la foto (grupos musculares específicos, postura, composición corporal)
+2. Señale 1-2 áreas en las que enfocarse para alcanzar su objetivo
+3. Dé 1 consejo concreto y accionable para esta semana
+4. Termine con una motivación real
+Tono: directo, cercano, personal. Sin markdown, sin asteriscos, sin listas. Frases naturales.`;
+
+    content.push({ type: 'text', text: prompt });
+
+    const reqBody = JSON.stringify({
+      model: 'claude-opus-4-5',
+      max_tokens: 600,
+      system: system || 'Eres un coach de fitness experto. Responde en español.',
+      messages: [{ role: 'user', content }]
+    });
+
+    console.log('[IA foto] images:', content.filter(c=>c.type==='image').length, 'size:', reqBody.length);
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: reqBody
+    });
+
+    const rawText = await response.text();
+    console.log('[IA foto] status:', response.status, 'len:', rawText.length);
+
+    if (!response.ok) {
+      console.log('[IA foto] error:', rawText.slice(0, 300));
+      return res.status(500).json({ error: `API ${response.status}: ${rawText.slice(0, 200)}` });
+    }
+
+    let data;
+    try { data = JSON.parse(rawText); } catch(pe) {
+      return res.status(500).json({ error: 'Respuesta malformada: ' + rawText.slice(0, 100) });
+    }
+
+    if (data.error) return res.status(500).json({ error: data.error.message || 'Error API' });
+    if (!data.content?.[0]?.text) return res.status(500).json({ error: 'Respuesta vacía' });
+    res.json({ reply: data.content[0].text });
+  } catch(e) {
+    console.log('[IA foto] exception:', e.message);
+    res.status(500).json({ error: e.message || 'Error IA foto' });
   }
 });
 
-// Lista todas las plantillas del coach
-router.get('/plantillas/lista', coachOnly, (req, res) => {
+// ── COMPARAR DOS SEMANAS DE FOTOS (Coach → IA → Mensaje editable) ──────────
+router.post('/ia/comparar-fotos', coachOnly, async (req, res) => {
+  const { fotosAntes, fotosDespues, clienteNombre, objetivo, nivel, semanaAntes, semanaDespues, lang, pedirGrasa, peso, altura, edad, sexo } = req.body;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
+
   try {
-    const lista = dbAll('SELECT id, nombre, nivel, objetivo, dias_json, created_at FROM rutinas_plantillas WHERE coach_id = ? ORDER BY created_at DESC', [req.user.id]);
-    res.json(lista);
+    const isEn = lang === 'en';
+    const content = [];
+
+    // Fotos "antes" (solo si hay)
+    if (fotosAntes && fotosAntes.length) {
+      content.push({ type: 'text', text: isEn ? `Week ${semanaAntes} (BEFORE):` : `Semana ${semanaAntes} (ANTES):` });
+      for (const f of fotosAntes) {
+        if (f.b64 && f.mt) content.push({ type: 'image', source: { type: 'base64', media_type: f.mt, data: f.b64 } });
+      }
+    }
+
+    // Fotos "después"
+    content.push({ type: 'text', text: isEn ? `Week ${semanaDespues} (NOW):` : `Semana ${semanaDespues} (AHORA):` });
+    for (const f of (fotosDespues || [])) {
+      if (f.b64 && f.mt) content.push({ type: 'image', source: { type: 'base64', media_type: f.mt, data: f.b64 } });
+    }
+
+    const clienteInfo = [
+      peso   ? (isEn ? `Weight: ${peso}kg`   : `Peso: ${peso}kg`)   : '',
+      altura ? (isEn ? `Height: ${altura}cm` : `Altura: ${altura}cm`) : '',
+      edad   ? (isEn ? `Age: ${edad}`         : `Edad: ${edad}`)     : '',
+      sexo   ? (isEn ? `Sex: ${sexo}`         : `Sexo: ${sexo}`)     : ''
+    ].filter(Boolean).join(' · ');
+
+    const hayComparativa = fotosAntes && fotosAntes.length > 0;
+
+    const instruccion = isEn
+      ? `${hayComparativa ? 'Compare the BEFORE and NOW photos' : 'Analyze the physique'} of ${clienteNombre} (Goal: ${objetivo}, Level: ${nivel}${clienteInfo ? ', ' + clienteInfo : ''}).
+Write a direct coach message (4-6 sentences) that:
+1. Estimates body fat % visually — write it as "Estimated body fat: X%" somewhere in the message
+${hayComparativa ? '2. Estimates overall improvement as a percentage — write it as "Improvement: X%"\n3. Highlights 2-3 specific visible improvements\n4. Celebrates a clear strong point\n5. Points out 1-2 areas to keep working on\n6. Ends with a motivating push' : '2. Notes 2-3 positive aspects of the physique\n3. Points out 2 specific areas to focus on\n4. Ends with a concrete actionable tip'}
+Tone: direct, warm, like a real coach who knows them personally. No markdown, no asterisks, no mention of AI or technology.`
+      : `${hayComparativa ? 'Compara las fotos ANTES y AHORA' : 'Analiza el físico'} de ${clienteNombre} (Objetivo: ${objetivo}, Nivel: ${nivel}${clienteInfo ? ', ' + clienteInfo : ''}).
+Escribe un mensaje directo del coach (4-6 frases) que:
+1. Estime el porcentaje de grasa corporal visualmente — escríbelo como "Grasa estimada: X%" en algún punto del mensaje
+${hayComparativa ? '2. Estime el porcentaje de mejora global — escríbelo como "Mejora: X%"\n3. Destaque 2-3 mejoras visibles y concretas\n4. Celebre un punto fuerte claro\n5. Señale 1-2 áreas a seguir trabajando\n6. Termine con un empuje motivador' : '2. Señale 2-3 aspectos positivos del físico\n3. Indique 2 áreas concretas en las que enfocarse\n4. Termine con un consejo accionable concreto'}
+Tono: directo, cercano, como un coach real que lo conoce personalmente. Sin markdown, sin asteriscos, sin mencionar IA ni tecnología.`;
+
+    content.push({ type: 'text', text: instruccion });
+
+    const system = isEn
+      ? 'You are an expert WolfMindset fitness coach. You analyze client progress photos with a trained, motivating eye. You estimate body fat percentage visually based on muscle definition, fat distribution and overall physique — always provide a specific number. You write personalized messages that make clients feel seen and motivated. Never mention AI or technology.'
+      : 'Eres un coach de fitness experto de WolfMindset. Analizas fotos de progreso con ojo entrenado y motivador. Estimas el porcentaje de grasa corporal visualmente basándote en la definición muscular, distribución de grasa y físico general — siempre da un número específico. Escribes mensajes personalizados que hacen que el cliente se sienta visto y motivado. Nunca menciones IA ni tecnología.';
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 700, system, messages: [{ role: 'user', content }] })
+    });
+
+    const data = await response.json();
+    if (data.error) return res.status(500).json({ error: data.error.message });
+    res.json({ reply: data.content[0].text });
+  } catch(e) {
+    res.status(500).json({ error: e.message || 'Error comparando fotos' });
+  }
+});
+
+// ── ANALIZAR FOTOS COACH (descarga URLs server-side, sin CORS) ────
+router.post('/ia/analizar-fotos-coach', coachOnly, async (req, res) => {
+  const { urlsActuales, urlsAnteriores, clienteNombre, objetivo, nivel, semanaActual, semanaAnterior, lang, peso, altura, edad, sexo, cintura, cadera } = req.body;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
+  if (!urlsActuales || !urlsActuales.length) return res.status(400).json({ error: 'urlsActuales requerido' });
+
+  async function fetchImageB64(url) {
+    try {
+      const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'image/*,*/*' } });
+      if (!resp.ok) return null;
+      const buffer = await resp.arrayBuffer();
+      const ct = resp.headers.get('content-type') || 'image/jpeg';
+      return { b64: Buffer.from(buffer).toString('base64'), mt: ct.split(';')[0].trim() };
+    } catch(e) { return null; }
+  }
+
+  try {
+    const isEn = lang === 'en';
+    const hayComparativa = !!(urlsAnteriores && urlsAnteriores.length);
+    const [imgActuales, imgAnteriores] = await Promise.all([
+      Promise.all(urlsActuales.map(fetchImageB64)),
+      hayComparativa ? Promise.all(urlsAnteriores.map(fetchImageB64)) : Promise.resolve([])
+    ]);
+    const fotosOk = imgActuales.filter(Boolean);
+    const antesOk = imgAnteriores.filter(Boolean);
+    if (!fotosOk.length) return res.status(400).json({ error: 'No se pudieron cargar las imágenes' });
+
+    const clienteInfo = [
+      peso    ? (isEn ? `Weight: ${peso}kg`    : `Peso: ${peso}kg`)    : '',
+      altura  ? (isEn ? `Height: ${altura}cm`  : `Altura: ${altura}cm`) : '',
+      edad    ? (isEn ? `Age: ${edad}`          : `Edad: ${edad}`)      : '',
+      sexo    ? (isEn ? `Sex: ${sexo}`          : `Sexo: ${sexo}`)      : '',
+      cintura ? (isEn ? `Waist: ${cintura}cm`  : `Cintura: ${cintura}cm`) : '',
+      cadera  ? (isEn ? `Hips: ${cadera}cm`    : `Cadera: ${cadera}cm`) : ''
+    ].filter(Boolean).join(' · ');
+
+    const content = [];
+    if (hayComparativa && antesOk.length) {
+      content.push({ type: 'text', text: isEn ? `${semanaAnterior} (BEFORE):` : `${semanaAnterior} (ANTES):` });
+      antesOk.forEach(img => content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } }));
+      content.push({ type: 'text', text: isEn ? `${semanaActual} (NOW):` : `${semanaActual} (AHORA):` });
+      fotosOk.forEach(img => content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } }));
+      const instruccion = isEn
+        ? `Compare BEFORE and NOW photos of ${clienteNombre} (Goal: ${objetivo}, Level: ${nivel}${clienteInfo ? ', '+clienteInfo : ''}).
+Write a direct coach message (4-6 sentences): estimate body fat % as "Estimated body fat: X%", improvement % as "Improvement: X%", highlight 2-3 visible improvements, note 1-2 areas to keep working, end motivating. No markdown, no asterisks, no AI mention.`
+        : `Compara ANTES y AHORA de ${clienteNombre} (Objetivo: ${objetivo}, Nivel: ${nivel}${clienteInfo ? ', '+clienteInfo : ''}).
+Escribe un mensaje del coach (4-6 frases): estima grasa como "Grasa estimada: X%", mejora como "Mejora: X%", destaca 2-3 mejoras visibles, señala 1-2 áreas a trabajar, termina motivando. Sin markdown, sin asteriscos, sin mencionar IA.`;
+      content.push({ type: 'text', text: instruccion });
+    } else {
+      fotosOk.forEach(img => content.push({ type: 'image', source: { type: 'base64', media_type: img.mt, data: img.b64 } }));
+      const instruccion = isEn
+        ? `Analyze the physique of ${clienteNombre} (Goal: ${objetivo}, Level: ${nivel}${clienteInfo ? ', '+clienteInfo : ''}). First session — no previous photos.
+Write a personal coach message (4-5 sentences): estimate body fat % as "Estimated body fat: X%", highlight 2-3 genuine strong points, point out 1-2 areas to focus on, give 1 concrete tip, end motivating. No markdown, no asterisks, no AI mention.`
+        : `Analiza el físico de ${clienteNombre} (Objetivo: ${objetivo}, Nivel: ${nivel}${clienteInfo ? ', '+clienteInfo : ''}). Primera sesión — sin fotos anteriores.
+Escribe un mensaje del coach (4-5 frases): estima grasa como "Grasa estimada: X%", destaca 2-3 puntos fuertes reales, señala 1-2 áreas de mejora, da 1 consejo concreto, termina motivando. Sin markdown, sin asteriscos, sin mencionar IA.`;
+      content.push({ type: 'text', text: instruccion });
+    }
+
+    const system = isEn
+      ? 'You are an expert WolfMindset fitness coach. Analyze progress photos with a trained eye. Always estimate body fat % visually with a specific number. Write personalized, motivating messages. Never mention AI or technology.'
+      : 'Eres un coach de fitness experto de WolfMindset. Analiza fotos con ojo entrenado. Siempre estima el % de grasa con un número concreto. Escribe mensajes personalizados y motivadores. Nunca menciones IA ni tecnología.';
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-opus-4-6', max_tokens: 600, system, messages: [{ role: 'user', content }] })
+    });
+    const data = await response.json();
+    if (data.error) return res.status(500).json({ error: data.error.message || 'Error API' });
+    if (!data.content?.[0]?.text) return res.status(500).json({ error: 'Respuesta vacía' });
+    res.json({ reply: data.content[0].text });
+  } catch(e) {
+    console.log('[analizar-fotos-coach]', e.message);
+    res.status(500).json({ error: e.message || 'Error analizando fotos' });
+  }
+});
+
+// ── EJERCICIOS CONFIG ──────────────────────────────────────────────
+router.get('/ejercicios-config', coachOnly, (req, res) => {
+  const configs = dbAll('SELECT * FROM ejercicios_config', []);
+  const map = {};
+  configs.forEach(c => { map[c.nombre] = { youtube_url: c.youtube_url, imagen_url: c.imagen_url, nota_default: c.nota_default }; });
+  res.json(map);
+});
+
+router.put('/ejercicios-config/:nombre', coachOnly, (req, res) => {
+  const nombre = decodeURIComponent(req.params.nombre);
+  const { youtube_url, imagen_url, nota_default } = req.body;
+  const existing = dbGet('SELECT id FROM ejercicios_config WHERE nombre=?', [nombre]);
+  if (existing) {
+    dbRun('UPDATE ejercicios_config SET youtube_url=?, imagen_url=?, nota_default=? WHERE nombre=?',
+      [youtube_url||'', imagen_url||'', nota_default||'', nombre]);
+  } else {
+    dbRun('INSERT INTO ejercicios_config (nombre, youtube_url, imagen_url, nota_default) VALUES (?,?,?,?)',
+      [nombre, youtube_url||'', imagen_url||'', nota_default||'']);
+  }
+  res.json({ ok: true });
+});
+
+// ── BASE DE DATOS EJERCICIOS Y ALIMENTOS ──────────────────────────
+// Caché en memoria para datos estáticos. Expira cada 24h y se limpia al recargar la BD.
+const DB_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const dbListCache = {
+  ejercicios: new Map(),
+  alimentos: new Map()
+};
+
+function makeDbCacheKey(query) {
+  return JSON.stringify(Object.keys(query || {}).sort().reduce((acc, key) => {
+    acc[key] = query[key];
+    return acc;
+  }, {}));
+}
+
+function getDbCache(bucket, key) {
+  const item = dbListCache[bucket].get(key);
+  if (!item) return null;
+  if (Date.now() - item.ts > DB_CACHE_TTL_MS) {
+    dbListCache[bucket].delete(key);
+    return null;
+  }
+  return item.data;
+}
+
+function setDbCache(bucket, key, data) {
+  dbListCache[bucket].set(key, { ts: Date.now(), data });
+}
+
+function resetDbListCache() {
+  dbListCache.ejercicios.clear();
+  dbListCache.alimentos.clear();
+}
+
+router.get('/ejercicios-db', (req, res) => {
+  const cacheKey = makeDbCacheKey(req.query);
+  const cached = getDbCache('ejercicios', cacheKey);
+  if (cached) return res.json(cached);
+
+  const { grupo, buscar } = req.query;
+  let sql = 'SELECT * FROM ejercicios_db WHERE 1=1';
+  const params = [];
+  if (grupo && grupo !== 'Todos' && grupo !== 'All') { sql += ' AND grupo=?'; params.push(grupo); }
+  if (buscar) { sql += ' AND (nombre LIKE ? OR musculos LIKE ?)'; params.push('%'+buscar+'%','%'+buscar+'%'); }
+  sql += ' ORDER BY nombre';
+  const data = dbAll(sql, params);
+  setDbCache('ejercicios', cacheKey, data);
+  res.json(data);
+});
+
+router.get('/alimentos-db', (req, res) => {
+  const cacheKey = makeDbCacheKey(req.query);
+  const cached = getDbCache('alimentos', cacheKey);
+  if (cached) return res.json(cached);
+
+  const { categoria, buscar } = req.query;
+  let sql = 'SELECT * FROM alimentos_db WHERE 1=1';
+  const params = [];
+  if (categoria && categoria !== 'Todos') { sql += ' AND categoria=?'; params.push(categoria); }
+  if (buscar) { sql += ' AND nombre LIKE ?'; params.push('%'+buscar+'%'); }
+  sql += ' ORDER BY categoria, nombre';
+  const data = dbAll(sql, params);
+  setDbCache('alimentos', cacheKey, data);
+  res.json(data);
+});
+
+// ── CLIENTES PENDIENTES ────────────────────────────────────────────
+router.get('/clientes-pendientes', coachOnly, (req, res) => {
+  const pendientes = dbAll(`SELECT u.id, u.nombre, u.email, u.username, u.estado, u.telefono,
+    c.id as cliente_id, c.objetivo, c.nivel, c.peso_actual, c.altura, c.edad, c.sexo, c.actividad, c.observaciones, c.dieta_tipo, c.alimentos_no, c.lesiones
+    FROM users u JOIN clientes c ON c.user_id = u.id
+    WHERE u.estado = 'pendiente' ORDER BY u.rowid DESC`);
+  res.json(pendientes);
+});
+
+router.put('/usuarios/:id/aprobar', coachOnly, (req, res) => {
+  dbRun("UPDATE users SET estado = 'activo' WHERE id = ?", [req.params.id]);
+  // Marcar bienvenida pendiente — se enviará cuando el cliente abra la app por primera vez
+  try { dbRun("UPDATE clientes SET bienvenida_pendiente=1 WHERE user_id=?", [req.params.id]); } catch(e) {}
+  res.json({ ok: true });
+});
+
+router.put('/usuarios/:id/rechazar', coachOnly, (req, res) => {
+  const user = dbGet('SELECT id FROM users WHERE id = ?', [req.params.id]);
+  if (!user) return res.status(404).json({ error: 'No encontrado' });
+  dbRun('DELETE FROM clientes WHERE user_id = ?', [req.params.id]);
+  dbRun('DELETE FROM users WHERE id = ?', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// ── RELOAD EXERCISE DATABASE ───────────────────────────────────────
+router.post('/reload-ejercicios', (req, res) => {
+  try {
+    dbRun('DELETE FROM ejercicios_db', []);
+    dbRun('DELETE FROM alimentos_db', []);
+    const { EJERCICIOS, ALIMENTOS } = require('./seed');
+    EJERCICIOS.forEach(e => dbRun('INSERT INTO ejercicios_db (grupo,nombre,musculos,tipo,dificultad,equipo) VALUES (?,?,?,?,?,?)',
+      [e.grupo,e.nombre,e.musculos,e.tipo,e.dificultad,e.equipo]));
+    ALIMENTOS.forEach(a => dbRun('INSERT INTO alimentos_db (categoria,nombre,calorias,proteinas,carbos,grasas) VALUES (?,?,?,?,?,?)',
+      [a.categoria,a.nombre,a.calorias,a.proteinas,a.carbos,a.grasas]));
+    const { saveToDisk } = require('./database');
+    saveToDisk();
+    resetDbListCache();
+    res.json({ ok: true, ejercicios: EJERCICIOS.length, alimentos: ALIMENTOS.length });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── CREAR EJERCICIO MANUAL ─────────────────────────────────────────
+router.post('/ejercicios-db-add', coachOnly, (req, res) => {
+  const { nombre, grupo, musculos, tipo, dificultad, equipo } = req.body;
+  if(!nombre || !grupo) return res.status(400).json({ error: 'Nombre y grupo obligatorios' });
+  const existing = dbGet('SELECT id FROM ejercicios_db WHERE nombre=?', [nombre]);
+  if(existing) return res.status(400).json({ error: 'Ya existe' });
+  const r = dbRun('INSERT INTO ejercicios_db (grupo,nombre,musculos,tipo,dificultad,equipo) VALUES (?,?,?,?,?,?)',
+    [grupo, nombre, musculos||'', tipo||'Fuerza', dificultad||'Intermedio', equipo||'']);
+  const { saveToDisk } = require('./database');
+  saveToDisk();
+  res.json({ ok: true, id: r.lastInsertRowid });
+});
+
+// ── SESIONES ENTRENO ───────────────────────────────────────────────
+router.post('/clientes/:id/sesiones', (req, res) => {
+  try {
+    ensureTrainingTrackingSchema();
+    const { dia_nombre, dia_grupo, duracion_min, series, estado } = req.body;
+    const estadoFinal = estado || 'completado';
+    const r = dbRun(
+      'INSERT INTO sesiones_entreno (cliente_id, dia_nombre, dia_grupo, duracion_min, estado) VALUES (?,?,?,?,?)',
+      [req.params.id, dia_nombre, dia_grupo, duracion_min||0, estadoFinal]
+    );
+    const sesionId = r.lastInsertRowid;
+    if(series && series.length) {
+      series.forEach(s => {
+        try {
+          dbRun(
+            'INSERT INTO series_log (sesion_id, ejercicio_nombre, serie_num, peso_real, reps_real, rir, nota_cliente) VALUES (?,?,?,?,?,?,?)',
+            [sesionId, s.ejercicio, s.serie_num, s.peso, s.reps, s.rir!=null?s.rir:null, s.nota_cliente||'']
+          );
+        } catch(e2) {
+          // Fallback sin nota_cliente por si la columna no existe aún
+          dbRun(
+            'INSERT INTO series_log (sesion_id, ejercicio_nombre, serie_num, peso_real, reps_real, rir) VALUES (?,?,?,?,?,?)',
+            [sesionId, s.ejercicio, s.serie_num, s.peso, s.reps, s.rir!=null?s.rir:null]
+          );
+        }
+      });
+    }
+
+    // ── Notificar al coach ──────────────────────────────────────────
+    const coachId = getCoachId();
+    if(coachId) {
+      const nombre = getNombreCliente(req.params.id);
+      const durStr = duracion_min ? ` (${duracion_min} min)` : '';
+      const diaStr = dia_nombre || 'entreno';
+
+      // Notificación de sesión completada
+      crearNotificacion(coachId, 'sesion_completada',
+        `💪 ${nombre} ha terminado: ${diaStr}${durStr}`);
+
+      // Notificaciones adicionales por notas/sensaciones con texto
+      if(series && series.length) {
+        const notasConTexto = series.filter(s => s.nota_cliente && s.nota_cliente.trim() !== '');
+        notasConTexto.forEach(s => {
+          crearNotificacion(coachId, 'nota_cliente',
+            `💬 ${nombre} — ${s.ejercicio}: "${s.nota_cliente.trim()}"`);
+        });
+      }
+    }
+
+    saveToDisk();
+    res.json({ ok: true, sesion_id: sesionId });
+  } catch(e) {
+    console.error('Error guardando sesión:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+router.get('/clientes/:id/sesiones', (req, res) => {
+  ensureTrainingTrackingSchema();
+  const id = req.params.id;
+  if (req.user.role === 'cliente') {
+    const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
+    if (!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
+  }
+  try {
+    const sesiones = dbAll(
+      'SELECT * FROM sesiones_entreno WHERE cliente_id=? ORDER BY fecha DESC LIMIT 30',
+      [id]
+    );
+    sesiones.forEach(s => {
+      if(!s.estado) s.estado = 'completado'; // fallback si columna no existe
+      try {
+        s.series = dbAll('SELECT * FROM series_log WHERE sesion_id=? ORDER BY ejercicio_nombre, serie_num', [s.id]);
+        s.series.forEach(sr => { if(!sr.nota_cliente) sr.nota_cliente = ''; });
+      } catch(e) { s.series = []; }
+    });
+    res.json(sesiones);
+  } catch(e) {
+    res.json([]);
+  }
+});
+
+// ── MARCAR SESIÓN COMO REVISADA ───────────────────────────────────
+router.put('/sesiones/:id/revisar', coachOnly, (req, res) => {
+  ensureTrainingTrackingSchema();
+  dbRun(
+    "UPDATE sesiones_entreno SET coach_revisada=1, coach_revisada_at=datetime('now') WHERE id=?",
+    [req.params.id]
+  );
+  res.json({ ok: true });
+});
+
+// ── SESIONES PENDIENTES DE REVISAR (dashboard coach) ─────────────
+// Devuelve las sesiones completadas en los últimos 14 días no revisadas por el coach
+router.get('/coach/sesiones-pendientes', coachOnly, (req, res) => {
+  ensureTrainingTrackingSchema();
+  const coachId = req.user.id;
+  try {
+    const pendientes = dbAll(`
+      SELECT
+        se.id, se.cliente_id, se.dia_nombre, se.dia_grupo,
+        se.fecha, se.estado, se.duracion_min, se.coach_revisada,
+        u.nombre as cliente_nombre, u.foto_perfil,
+        c.objetivo, c.semanas,
+        COUNT(sl.id) as num_series
+      FROM sesiones_entreno se
+      JOIN clientes c ON c.id = se.cliente_id
+      JOIN users u ON u.id = c.user_id
+      LEFT JOIN series_log sl ON sl.sesion_id = se.id
+      WHERE c.coach_id = ?
+        AND se.estado = 'completado'
+        AND (se.coach_revisada = 0 OR se.coach_revisada IS NULL)
+        AND se.fecha >= datetime('now', '-14 days')
+      GROUP BY se.id
+      ORDER BY se.fecha DESC
+    `, [coachId]);
+    res.json(pendientes);
+  } catch(e) {
+    console.log('[sesiones-pendientes]', e.message);
+    res.json([]);
+  }
+});
+
+// ── ÚLTIMA SESIÓN (ligero, solo para semáforo del dashboard) ──────────────────
+// Devuelve solo fecha, estado y dias_sin_entreno — sin cargar series ni logs.
+// Usar en cargarDashboard() en lugar de /sesiones para cada cliente.
+router.get('/clientes/:id/ultima-sesion', (req, res) => {
+  const id = req.params.id;
+  if (req.user.role === 'cliente') {
+    const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
+    if (!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
+  }
+  try {
+    ensureTrainingTrackingSchema();
+    const ultima = dbGet(
+      "SELECT fecha, estado, dia_nombre, dia_grupo, duracion_min FROM sesiones_entreno WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1",
+      [id]
+    );
+    if (!ultima) return res.json({ tiene_sesiones: false, dias_sin_entreno: 999, estado: null });
+    const diasSinEntreno = Math.floor((Date.now() - new Date(ultima.fecha).getTime()) / 86400000);
+    res.json({
+      tiene_sesiones: true,
+      fecha: ultima.fecha,
+      estado: ultima.estado || 'completado',
+      dia_nombre: ultima.dia_nombre,
+      dias_sin_entreno: diasSinEntreno
+    });
+  } catch(e) {
+    res.json({ tiene_sesiones: false, dias_sin_entreno: 999, estado: null });
+  }
+});
+
+router.get('/clientes/:id/progreso-ejercicio', (req, res) => {
+  ensureTrainingTrackingSchema();
+  const id = req.params.id;
+  if (req.user.role === 'cliente') {
+    const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
+    if (!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
+  }
+  const { ejercicio } = req.query;
+  if(!ejercicio) return res.json([]);
+  const data = dbAll(`
+    SELECT sl.ejercicio_nombre, sl.peso_real, sl.reps_real, sl.serie_num, se.fecha, se.dia_nombre
+    FROM series_log sl
+    JOIN sesiones_entreno se ON sl.sesion_id = se.id
+    WHERE se.cliente_id=? AND sl.ejercicio_nombre=?
+    ORDER BY se.fecha ASC
+  `, [id, ejercicio]);
+  res.json(data);
+});
+
+// ── REGISTRO PÚBLICO ───────────────────────────────────────────────
+router.post('/auth/registro', async (req, res) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const { username, password, nombre, email, telefono, objetivo, nivel, peso_actual, altura, edad, sexo, actividad, dieta_tipo, alimentos_no, lesiones, observaciones, deficiencias } = req.body;
+    if(!username || !password || !nombre) return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    const existing = dbGet('SELECT id FROM users WHERE username=?', [username]);
+    if(existing) return res.status(400).json({ error: 'Usuario ya existe' });
+    const hash = bcrypt.hashSync(password, 10);
+    const userR = dbRun("INSERT INTO users (username, password, role, nombre, email, estado, telefono) VALUES (?,?,?,?,?,?,?)",
+      [username, hash, 'cliente', nombre, email||'', 'pendiente', telefono||'']);
+    const userId = userR.lastInsertRowid;
+    dbRun(`INSERT INTO clientes (user_id, objetivo, nivel, peso_actual, altura, edad, sexo, actividad, dieta_tipo, alimentos_no, lesiones, observaciones, deficiencias) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [userId, objetivo||'Volumen', nivel||'Intermedio', peso_actual||0, altura||0, edad||0, sexo||'Hombre', actividad||'Moderada', dieta_tipo||'Omnivoro', alimentos_no||'', lesiones||'', observaciones||'', deficiencias||'']);
+    const { saveToDisk } = require('./database');
+    saveToDisk();
+
+    // Notificar al coach de la nueva solicitud en tiempo real
+    const coachId = getCoachId();
+    if(coachId) {
+      const coach = dbGet('SELECT lang FROM users WHERE id=?', [coachId]);
+      const isEn = coach?.lang === 'en';
+      const msg = isEn
+        ? `🙋 New access request from ${nombre}${objetivo ? ' · Goal: '+objetivo : ''}`
+        : `🙋 Nueva solicitud de acceso de ${nombre}${objetivo ? ' · Objetivo: '+objetivo : ''}`;
+      crearNotificacion(coachId, 'nuevo_registro', msg);
+      ssePushCoaches('notificacion', { tipo: 'nuevo_registro', mensaje: msg });
+    }
+
+    res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Borrar una plantilla
-router.delete('/plantillas/:id', coachOnly, (req, res) => {
+
+// ═══ BORRADORES DE SEMANA ═══════════════════════════════
+
+// GET borrador de un cliente
+router.get('/clientes/:id/borrador', (req, res) => {
+  const borradores = dbAll(
+    'SELECT b.*, e.nombre, e.musculos, e.grupo FROM semana_borrador b JOIN ejercicios_dia e ON b.ejercicio_id=e.id WHERE b.cliente_id=?',
+    [req.params.id]
+  );
+  const estado = dbGet('SELECT * FROM semana_estado WHERE cliente_id=?', [req.params.id]);
+  res.json({ borradores, tiene_borrador: estado?.tiene_borrador || 0 });
+});
+
+// POST guardar borrador (coach guarda sin publicar)
+router.post('/clientes/:id/borrador', (req, res) => {
+  const { ejercicios } = req.body; // array de {ejercicio_id, series, reps, peso_objetivo, descanso, nota_coach, rir}
+  ejercicios.forEach(e => {
+    dbRun(`INSERT OR REPLACE INTO semana_borrador 
+      (cliente_id, ejercicio_id, series, reps, peso_objetivo, descanso, nota_coach, rir)
+      VALUES (?,?,?,?,?,?,?,?)`,
+      [req.params.id, e.ejercicio_id, e.series, e.reps, e.peso_objetivo, e.descanso, e.nota_coach||'', e.rir!=null?e.rir:null]
+    );
+  });
+  dbRun('INSERT OR REPLACE INTO semana_estado (cliente_id, tiene_borrador) VALUES (?,1)', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// POST publicar borrador → aplica cambios a ejercicios reales
+router.post('/clientes/:id/borrador/publicar', (req, res) => {
+  const borradores = dbAll('SELECT * FROM semana_borrador WHERE cliente_id=?', [req.params.id]);
+  borradores.forEach(b => {
+    dbRun(`UPDATE ejercicios_dia SET series=?, reps=?, peso_objetivo=?, descanso=?, nota_coach=?, rir=? WHERE id=?`,
+      [b.series, b.reps, b.peso_objetivo, b.descanso, b.nota_coach||'', b.rir, b.ejercicio_id]
+    );
+  });
+  dbRun('DELETE FROM semana_borrador WHERE cliente_id=?', [req.params.id]);
+  dbRun('INSERT OR REPLACE INTO semana_estado (cliente_id, tiene_borrador, publicado_at) VALUES (?,0,CURRENT_TIMESTAMP)', [req.params.id]);
+  res.json({ ok: true, publicados: borradores.length });
+});
+
+// DELETE borrador (descartar cambios)
+router.delete('/clientes/:id/borrador', (req, res) => {
+  dbRun('DELETE FROM semana_borrador WHERE cliente_id=?', [req.params.id]);
+  dbRun('INSERT OR REPLACE INTO semana_estado (cliente_id, tiene_borrador) VALUES (?,0)', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// GET check if client has pending borrador (for client view)
+router.get('/clientes/:id/semana-estado', (req, res) => {
+  const estado = dbGet('SELECT * FROM semana_estado WHERE cliente_id=?', [req.params.id]);
+  res.json({ tiene_borrador: estado?.tiene_borrador || 0 });
+});
+
+
+
+// ── BORRAR COMIDA COMPLETA ─────────────────────────────────────────
+router.delete('/comidas/:id', coachOnly, (req, res) => {
   try {
-    dbRun('DELETE FROM rutinas_plantillas WHERE id = ? AND coach_id = ?', [req.params.id, req.user.id]);
+    dbRun('DELETE FROM alimentos WHERE comida_id=?', [req.params.id]);
+    dbRun('DELETE FROM comidas WHERE id=?', [req.params.id]);
+    const { saveToDisk } = require('./database');
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── PUBLICAR DIETA COMPLETA AL PERFIL DEL CLIENTE ──────────────────
+router.post('/clientes/:id/dieta/publicar', coachOnly, (req, res) => {
+  try {
+    const clienteId = req.params.id;
+    const { plan } = req.body;
+    if (!plan || !Array.isArray(plan.comidas)) {
+      return res.status(400).json({ error: 'Plan de dieta inválido' });
+    }
+
+    const comidasAntiguas = dbAll('SELECT id FROM comidas WHERE cliente_id=?', [clienteId]);
+    comidasAntiguas.forEach(c => {
+      dbRun('DELETE FROM alimentos WHERE comida_id=?', [c.id]);
+    });
+    dbRun('DELETE FROM comidas WHERE cliente_id=?', [clienteId]);
+
+    plan.comidas.forEach((comida, index) => {
+      const nombreComida = comida.nombre || `Comida ${index + 1}`;
+      const orden = comida.numero || index + 1;
+      const r = dbRun(
+        'INSERT INTO comidas (cliente_id, nombre, orden) VALUES (?, ?, ?)',
+        [clienteId, `${orden}. ${nombreComida}`, orden]
+      );
+
+      const comidaId = r.lastInsertRowid;
+      const alimentos = Array.isArray(comida.alimentos) ? comida.alimentos : [];
+
+      alimentos.forEach((alim, ai) => {
+        const nombre = alim.nombre || 'Alimento';
+        const cantidad = String(alim.cantidad || alim.gramos || '100');
+        const gramos = parseInt(cantidad.replace(',', '.')) || Number(alim.gramos) || 100;
+        const detalle = alim.detalle ? ` (${alim.detalle})` : '';
+
+        dbRun(
+          'INSERT INTO alimentos (comida_id, nombre, gramos, orden) VALUES (?, ?, ?, ?)',
+          [comidaId, `${nombre}${detalle}`, gramos, ai]
+        );
+      });
+    });
+
+    const variacionesPorComida = {};
+    plan.comidas.forEach((comida, i) => {
+      if (Array.isArray(comida.variaciones) && comida.variaciones.length) {
+        variacionesPorComida[i] = comida.variaciones;
+      }
+    });
+
+    dbRun(`INSERT OR REPLACE INTO plan_meta 
+      (cliente_id, alternativas, ajustes, frase, kcal, prot, carbs, grasas, variaciones, suplementacion, alimentos_therapeuticos)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        clienteId,
+        JSON.stringify(plan.alternativas || null),
+        JSON.stringify(plan.ajustes || null),
+        plan.frase_motivadora || null,
+        plan.kcal_total || null,
+        plan.prot_total || null,
+        plan.carbs_total || null,
+        plan.grasas_total || null,
+        JSON.stringify(Object.keys(variacionesPorComida).length ? variacionesPorComida : null),
+        JSON.stringify(plan.suplementacion || null),
+        JSON.stringify(plan.alimentos_therapeuticos || null)
+      ]
+    );
+
+    const { saveToDisk } = require('./database');
+    saveToDisk();
+
+    res.json({ ok: true, comidas: plan.comidas.length });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/clientes/:id/plan-meta', coachOnly, (req, res) => {
+  const { alternativas, ajustes, frase, kcal, prot, carbs, grasas, variaciones, suplementacion, alimentos_therapeuticos } = req.body;
+  dbRun(`INSERT OR REPLACE INTO plan_meta (cliente_id, alternativas, ajustes, frase, kcal, prot, carbs, grasas, variaciones, suplementacion, alimentos_therapeuticos)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    [req.params.id, JSON.stringify(alternativas), JSON.stringify(ajustes), frase, kcal, prot, carbs, grasas, JSON.stringify(variaciones), JSON.stringify(suplementacion), JSON.stringify(alimentos_therapeuticos)]
+  );
+  res.json({ ok: true });
+});
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ═══ SUSCRIPCIONES ═════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+
+// Helper: calcular días restantes
+function diasRestantes(fecha_fin) {
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  const fin = new Date(fecha_fin);
+  fin.setHours(0,0,0,0);
+  return Math.ceil((fin - hoy) / (1000 * 60 * 60 * 24));
+}
+
+// GET todas las suscripciones (coach)
+router.get('/suscripciones', coachOnly, (req, res) => {
+  const subs = dbAll(`
+    SELECT s.*, c.id as cliente_id, u.nombre, u.email, u.id as user_id
+    FROM suscripciones s
+    JOIN clientes c ON s.cliente_id = c.id
+    JOIN users u ON c.user_id = u.id
+    ORDER BY s.fecha_fin ASC
+  `);
+  const hoy = new Date().toISOString().split('T')[0];
+  const resultado = subs.map(s => ({
+    ...s,
+    dias_restantes: diasRestantes(s.fecha_fin),
+    vencida: s.fecha_fin < hoy,
+    proxima_a_vencer: diasRestantes(s.fecha_fin) <= 5 && diasRestantes(s.fecha_fin) > 0
+  }));
+  res.json(resultado);
+});
+
+// GET suscripción de un cliente específico
+router.get('/clientes/:id/suscripcion', (req, res) => {
+  const id = req.params.id;
+  if(req.user.role === 'cliente') {
+    const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
+    if(!mine || String(mine.id) !== String(id)) return res.status(403).json({ error: 'Sin acceso' });
+  }
+  try {
+    // Crear tabla si no existe (por si el server no se reinició con el nuevo database.js)
+    dbRun(`CREATE TABLE IF NOT EXISTS suscripciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      cliente_id INTEGER UNIQUE NOT NULL,
+      estado TEXT DEFAULT 'activa',
+      fecha_inicio TEXT NOT NULL,
+      fecha_fin TEXT NOT NULL,
+      precio REAL DEFAULT 0,
+      notas TEXT DEFAULT '',
+      renovado_at TEXT
+    )`);
+    dbRun(`CREATE TABLE IF NOT EXISTS notificaciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      tipo TEXT NOT NULL,
+      mensaje TEXT NOT NULL,
+      leida INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`);
+    const s = dbGet('SELECT * FROM suscripciones WHERE cliente_id=?', [id]);
+    if(!s) return res.json({ activa: false, dias_restantes: 0 });
+    const dias = diasRestantes(s.fecha_fin);
+    const hoy = new Date().toISOString().split('T')[0];
+    res.json({
+      ...s,
+      dias_restantes: dias,
+      activa: s.estado === 'activa' && s.fecha_fin >= hoy,
+      proxima_a_vencer: dias <= 5 && dias > 0,
+      vencida: s.fecha_fin < hoy
+    });
+  } catch(e) {
+    console.error('Error suscripcion GET:', e.message);
+    res.json({ activa: false, dias_restantes: 0 });
+  }
+});
+
+// POST crear/renovar suscripción (coach)
+router.post('/clientes/:id/suscripcion', coachOnly, (req, res) => {
+  try {
+    const clienteId = req.params.id;
+    const { meses = 1, precio = 0, notas = '' } = req.body;
+
+    // Garantizar tabla existe
+    dbRun(`CREATE TABLE IF NOT EXISTS suscripciones (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER UNIQUE NOT NULL, estado TEXT DEFAULT 'activa', fecha_inicio TEXT NOT NULL, fecha_fin TEXT NOT NULL, precio REAL DEFAULT 0, notas TEXT DEFAULT '', renovado_at TEXT)`);
+    dbRun(`CREATE TABLE IF NOT EXISTS notificaciones (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, tipo TEXT NOT NULL, mensaje TEXT NOT NULL, leida INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP)`);
+
+    const c = dbGet('SELECT c.id, u.id as user_id, u.nombre, u.lang FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [clienteId]);
+    if(!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+
+    // Calcular fechas
+    const hoy = new Date();
+    const fechaInicio = hoy.toISOString().split('T')[0];
+    const fechaFin = new Date(hoy);
+    fechaFin.setMonth(fechaFin.getMonth() + parseInt(meses));
+    const fechaFinStr = fechaFin.toISOString().split('T')[0];
+
+    // Crear o renovar
+    const existing = dbGet('SELECT id FROM suscripciones WHERE cliente_id=?', [clienteId]);
+    if(existing) {
+      dbRun(`UPDATE suscripciones SET estado='activa', fecha_inicio=?, fecha_fin=?, precio=?, notas=?, renovado_at=CURRENT_TIMESTAMP WHERE cliente_id=?`,
+        [fechaInicio, fechaFinStr, precio, notas, clienteId]);
+    } else {
+      dbRun(`INSERT INTO suscripciones (cliente_id, estado, fecha_inicio, fecha_fin, precio, notas) VALUES (?,?,?,?,?,?)`,
+        [clienteId, 'activa', fechaInicio, fechaFinStr, precio, notas]);
+    }
+
+    // Activar usuario si estaba bloqueado
+    dbRun("UPDATE users SET estado='activo' WHERE id=?", [c.user_id]);
+
+    // Notificar al cliente
+    crearNotificacion(c.user_id, 'suscripcion_renovada',
+      msgSub(c.lang||'es', 'activada_fecha', 0)(fechaFinStr.split('-').reverse().join('/')));
+
+    saveToDisk();
+    res.json({ ok: true, fecha_fin: fechaFinStr });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT cancelar/suspender suscripción (coach)
+router.put('/clientes/:id/suscripcion/cancelar', coachOnly, (req, res) => {
+  try {
+    const clienteId = req.params.id;
+    const c = dbGet('SELECT c.id, u.id as user_id, u.nombre, u.lang FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [clienteId]);
+    if(!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+
+    dbRun("UPDATE suscripciones SET estado='cancelada' WHERE cliente_id=?", [clienteId]);
+    dbRun("UPDATE users SET estado='bloqueado' WHERE id=?", [c.user_id]);
+
+    crearNotificacion(c.user_id, 'suscripcion_cancelada',
+      msgSub(c.lang||'es', 'cancelada', 0));
+
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST enviar avisos de vencimiento próximo (coach lanza manualmente o cron)
+router.post('/suscripciones/avisar-vencimientos', coachOnly, (req, res) => {
+  try {
+    const subs = dbAll(`
+      SELECT s.*, c.id as cliente_id, u.id as user_id, u.nombre, u.lang
+      FROM suscripciones s
+      JOIN clientes c ON s.cliente_id = c.id
+      JOIN users u ON c.user_id = u.id
+      WHERE s.estado = 'activa'
+    `);
+
+    let avisados = 0;
+    const hoy = new Date().toISOString().split('T')[0];
+
+    subs.forEach(s => {
+      const dias = diasRestantes(s.fecha_fin);
+
+      // Avisar si quedan 5, 3 o 1 días
+      if([5, 3, 1].includes(dias)) {
+        // Al cliente
+        const yaAviso = dbGet(`SELECT id FROM notificaciones WHERE user_id=? AND tipo='vencimiento_proximo' AND DATE(created_at)=DATE('now')`, [s.user_id]);
+        if(!yaAviso) {
+          crearNotificacion(s.user_id, 'vencimiento_proximo',
+            msgSub(s.lang||'es', 'pronto', dias));
+          avisados++;
+        }
+      }
+
+      // Bloquear si ya venció
+      if(s.fecha_fin < hoy && s.estado === 'activa') {
+        dbRun("UPDATE suscripciones SET estado='vencida' WHERE cliente_id=?", [s.cliente_id]);
+        dbRun("UPDATE users SET estado='bloqueado' WHERE id=?", [s.user_id]);
+        crearNotificacion(s.user_id, 'suscripcion_vencida',
+          msgSub(s.lang||'es', 'vencida', 0));
+      }
+    });
+
+    saveToDisk();
+    res.json({ ok: true, avisados });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET notificaciones del usuario logueado
+router.get('/notificaciones', (req, res) => {
+  const notifs = dbAll(`SELECT * FROM notificaciones WHERE user_id=? ORDER BY created_at DESC LIMIT 20`, [req.user.id]);
+  res.json(notifs);
+});
+
+// PUT marcar notificación como leída
+router.put('/notificaciones/:id/leer', (req, res) => {
+  dbRun('UPDATE notificaciones SET leida=1 WHERE id=? AND user_id=?', [req.params.id, req.user.id]);
+  res.json({ ok: true });
+});
+
+// PUT marcar todas como leídas
+router.put('/notificaciones/leer-todas', (req, res) => {
+  dbRun('UPDATE notificaciones SET leida=1 WHERE user_id=?', [req.user.id]);
+  res.json({ ok: true });
+});
+
+// GET resumen para el coach — quién vence pronto o ya venció
+router.get('/suscripciones/alertas', coachOnly, (req, res) => {
+  const hoy = new Date().toISOString().split('T')[0];
+  const en5dias = new Date();
+  en5dias.setDate(en5dias.getDate() + 5);
+  const en5diasStr = en5dias.toISOString().split('T')[0];
+
+  const proximas = dbAll(`
+    SELECT s.*, u.nombre, u.email, c.id as cliente_id
+    FROM suscripciones s
+    JOIN clientes c ON s.cliente_id=c.id
+    JOIN users u ON c.user_id=u.id
+    WHERE s.estado='activa' AND s.fecha_fin <= ? AND s.fecha_fin >= ?
+    ORDER BY s.fecha_fin ASC
+  `, [en5diasStr, hoy]);
+
+  const vencidas = dbAll(`
+    SELECT s.*, u.nombre, u.email, c.id as cliente_id
+    FROM suscripciones s
+    JOIN clientes c ON s.cliente_id=c.id
+    JOIN users u ON c.user_id=u.id
+    WHERE s.fecha_fin < ? OR s.estado IN ('vencida','cancelada')
+    ORDER BY s.fecha_fin DESC
+  `, [hoy]);
+
+  res.json({
+    proximas_a_vencer: proximas.map(s => ({...s, dias_restantes: diasRestantes(s.fecha_fin)})),
+    vencidas
+  });
+});
+
+// POST valoración de sesión del cliente
+// ── CHECK-IN SEMANAL ──────────────────────────────────────────────
+router.post('/clientes/:id/checkin', (req, res) => {
+  try {
+    const { sueno, energia, peso, semana } = req.body;
+    try { dbRun(`CREATE TABLE IF NOT EXISTS checkins (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, semana TEXT, sueno INTEGER, energia INTEGER, peso REAL, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)`); } catch(e){}
+    try { dbRun("ALTER TABLE checkins ADD COLUMN peso REAL"); } catch(e){}
+    // Upsert por semana
+    const existing = dbGet('SELECT id FROM checkins WHERE cliente_id=? AND semana=?', [req.params.id, semana]);
+    if(existing) {
+      dbRun('UPDATE checkins SET sueno=?, energia=?, peso=? WHERE id=?', [sueno, energia, peso||0, existing.id]);
+    } else {
+      dbRun('INSERT INTO checkins (cliente_id, semana, sueno, energia, peso) VALUES (?,?,?,?,?)', [req.params.id, semana, sueno, energia, peso||0]);
+    }
+
+    // Notificar al coach sobre estado de ánimo / energía / sueño
+    const coachId = getCoachId();
+    if(coachId) {
+      const nombre = getNombreCliente(req.params.id);
+      const detalles = [];
+      if(sueno != null && sueno !== '') detalles.push(`sueño ${sueno}/10`);
+      if(energia != null && energia !== '') detalles.push(`energía ${energia}/10`);
+      if(peso != null && peso !== '') detalles.push(`peso ${peso}kg`);
+      const semanaTxt = semana ? ` (${semana})` : '';
+      const resumen = detalles.length ? detalles.join(' · ') : 'ha enviado su check-in';
+      crearNotificacion(coachId, 'checkin_cliente', `🧠 ${nombre} ha enviado check-in${semanaTxt}: ${resumen}`);
+    }
+
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.json({ ok: false }); }
+});
+
+router.get('/clientes/:id/checkins', (req, res) => {
+  try {
+    try { dbRun(`CREATE TABLE IF NOT EXISTS checkins (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, semana TEXT, sueno INTEGER, energia INTEGER, peso REAL, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)`); } catch(e){}
+    const checkins = dbAll('SELECT * FROM checkins WHERE cliente_id=? ORDER BY fecha DESC LIMIT 8', [req.params.id]);
+    res.json(checkins);
+  } catch(e) { res.json([]); }
+});
+
+router.post('/clientes/:id/valoracion-sesion', (req, res) => {
+  try {
+    ensureTrainingTrackingSchema();
+    const { valoracion } = req.body;
+    // Actualizar la sesión más reciente del cliente con la valoración
+    const ultima = dbGet(
+      'SELECT id FROM sesiones_entreno WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1',
+      [req.params.id]
+    );
+    if(ultima) {
+      try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN valoracion TEXT DEFAULT ''"); } catch(e) {}
+      dbRun('UPDATE sesiones_entreno SET valoracion=? WHERE id=?', [valoracion||'', ultima.id]);
+
+      // Notificar al coach sobre cómo le pareció el entreno
+      if(valoracion && String(valoracion).trim() !== '') {
+        const coachId = getCoachId();
+        if(coachId) {
+          const nombre = getNombreCliente(req.params.id);
+          crearNotificacion(coachId, 'valoracion_entreno', `⭐ ${nombre} valoró su entreno: "${String(valoracion).trim()}"`);
+        }
+      }
+
+      saveToDisk();
+    }
+    res.json({ ok: true });
+  } catch(e) { res.json({ ok: false }); }
+});
+
+// POST notificación al coach (desde el cliente)
+router.post('/notificaciones/coach', (req, res) => {
+  try {
+    const { tipo, mensaje } = req.body;
+    // Buscar al coach (role='coach')
+    const coach = dbGet("SELECT id FROM users WHERE role='coach' LIMIT 1");
+    if(!coach) return res.json({ ok: false });
+    crearNotificacion(coach.id, tipo || 'sistema', mensaje || '');
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) {
+    res.json({ ok: false });
+  }
+});
+
+// ── ACCOUNT SETTINGS ─────────────────────────────────────────────────
+router.get('/me', (req, res) => {
+  try {
+    const user = dbGet('SELECT id, username, nombre, email, telefono, role, foto_perfil FROM users WHERE id=?', [req.user.id]);
+    if(!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/me', (req, res) => {
+  try {
+    const { nombre, email, telefono, username, password_actual, password_nueva } = req.body;
+    const bcrypt = require('bcryptjs');
+    const user = dbGet('SELECT * FROM users WHERE id=?', [req.user.id]);
+    if(!user) return res.status(404).json({ error: 'User not found' });
+
+    // Verify current password before changing
+    if(password_nueva) {
+      if(!password_actual) return res.status(400).json({ error: 'Current password required' });
+      const valid = bcrypt.compareSync(password_actual, user.password);
+      if(!valid) return res.status(400).json({ error: 'Current password is incorrect' });
+      if(password_nueva.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+
+    // Check username not already taken by another user
+    if(username && username !== user.username) {
+      const existing = dbGet('SELECT id FROM users WHERE username=? AND id!=?', [username, req.user.id]);
+      if(existing) return res.status(400).json({ error: 'Username already taken' });
+    }
+
+    const newHash     = password_nueva ? bcrypt.hashSync(password_nueva, 10) : user.password;
+    const newNombre   = nombre   || user.nombre;
+    const newEmail    = email    || user.email;
+    const newTelefono = telefono || user.telefono;
+    const newUsername = username || user.username;
+
+    dbRun('UPDATE users SET nombre=?, email=?, telefono=?, username=?, password=? WHERE id=?',
+      [newNombre, newEmail, newTelefono, newUsername, newHash, req.user.id]);
+
     saveToDisk();
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── RUTAS EXISTENTES (MANTENIDAS) ─────────────────────────────────────
+// ── COACHES LIST ─────────────────────────────────────────────────────
+router.get('/coaches', coachOnly, (req, res) => {
+  try {
+    const coaches = dbAll("SELECT id, username, nombre, email, lang, foto_perfil FROM users WHERE role='coach' ORDER BY id ASC");
+    res.json(coaches);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
-// Suscripción Push
+router.post('/coaches', coachOnly, (req, res) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const { nombre, username, password, email, lang } = req.body;
+    if(!nombre || !username || !password) return res.status(400).json({ error: 'nombre, username y password son obligatorios' });
+    if(password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    const existing = dbGet('SELECT id FROM users WHERE username=?', [username]);
+    if(existing) return res.status(400).json({ error: 'Ese usuario ya existe' });
+    const hash = bcrypt.hashSync(password, 10);
+    const r = dbRun('INSERT INTO users (username, password, role, nombre, email, lang) VALUES (?,?,?,?,?,?)',
+      [username, hash, 'coach', nombre, email||'', lang||'es']);
+    saveToDisk();
+    res.json({ ok: true, id: r.lastInsertRowid });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete('/coaches/:id', coachOnly, (req, res) => {
+  try {
+    const id = req.params.id;
+    if(String(id) === String(req.user.id)) return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' });
+    dbRun('DELETE FROM users WHERE id=? AND role=\'coach\'', [id]);
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── FOTO DE PERFIL ───────────────────────────────────────────────────
+// Subir/actualizar foto de perfil (cualquier usuario autenticado)
+router.post('/me/foto', (req, res) => {
+  try {
+    const { foto } = req.body; // base64 data URL: "data:image/jpeg;base64,..."
+    if(!foto) return res.status(400).json({ error: 'No foto provided' });
+    // Limit size: ~800KB base64 ≈ ~600KB image — enough for a profile pic
+    if(foto.length > 1200000) return res.status(400).json({ error: 'Image too large. Max ~800KB' });
+    dbRun('UPDATE users SET foto_perfil=? WHERE id=?', [foto, req.user.id]);
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Obtener foto de perfil de cualquier usuario (para que el cliente vea a su coach)
+router.get('/usuarios/:id/foto', (req, res) => {
+  try {
+    const user = dbGet('SELECT foto_perfil FROM users WHERE id=?', [req.params.id]);
+    if(!user) return res.status(404).json({ error: 'Not found' });
+    res.json({ foto: user.foto_perfil || null });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Obtener foto del coach asignado al cliente (para mostrarse en el asistente)
+router.get('/mi-coach/foto', (req, res) => {
+  try {
+    if(req.user.role !== 'cliente') return res.status(403).json({ error: 'Solo clientes' });
+    const cliente = dbGet('SELECT coach_id FROM clientes WHERE user_id=?', [req.user.id]);
+    let coachId = cliente?.coach_id;
+    // Si no tiene coach asignado, devolver el primer coach
+    if(!coachId) {
+      const coach = dbGet("SELECT id FROM users WHERE role='coach' LIMIT 1");
+      coachId = coach?.id;
+    }
+    if(!coachId) return res.json({ foto: null, nombre: null });
+    const coach = dbGet('SELECT foto_perfil, nombre FROM users WHERE id=?', [coachId]);
+    res.json({ foto: coach?.foto_perfil || null, nombre: coach?.nombre || 'Coach' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/me también devuelve foto_perfil
+// (ya existe el endpoint, lo extendemos devolviendo la foto)
+router.get('/mi-foto', (req, res) => {
+  try {
+    const user = dbGet('SELECT foto_perfil FROM users WHERE id=?', [req.user.id]);
+    res.json({ foto: user?.foto_perfil || null });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ═══ MENSAJES (chat cliente ↔ coach) ══════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Rastrea cuándo fue el último request del coach para presencia general.
+// Además, el hilo abierto marca presencia por cliente en BD (last_coach_activity).
+const _coachLastSeen = {};
+const COACH_ACTIVE_MS = 5 * 60 * 1000;
+router.use((req, res, next) => {
+  if (req.user && req.user.role === 'coach') _coachLastSeen[req.user.id] = Date.now();
+  next();
+});
+
+function marcarCoachActivo(clienteId) {
+  try {
+    dbRun("UPDATE clientes SET coach_online=1, last_coach_activity=datetime('now') WHERE id=?", [clienteId]);
+  } catch(e) {}
+}
+
+function desactivarCoachesInactivos() {
+  try {
+    dbRun("UPDATE clientes SET coach_online=0 WHERE coach_online=1 AND (last_coach_activity IS NULL OR last_coach_activity < datetime('now','-5 minutes'))");
+  } catch(e) {}
+}
+
+function coachEstaActivoEnCliente(clienteId) {
+  try {
+    desactivarCoachesInactivos();
+    const cl = dbGet("SELECT coach_online, last_coach_activity FROM clientes WHERE id=?", [clienteId]);
+    if (!cl || !cl.coach_online || !cl.last_coach_activity) return false;
+    const last = new Date(String(cl.last_coach_activity).replace(' ', 'T') + 'Z').getTime();
+    return Number.isFinite(last) && (Date.now() - last) < COACH_ACTIVE_MS;
+  } catch(e) { return false; }
+}
+
+// Helper: cliente_id del usuario autenticado
+function getClienteIdPropio(userId) {
+  const c = dbGet('SELECT id FROM clientes WHERE user_id=?', [userId]);
+  return c ? c.id : null;
+}
+
+// Helper: coach asignado al cliente (o primer coach si no tiene)
+function getCoachIdDeCliente(clienteId) {
+  const c = dbGet('SELECT coach_id FROM clientes WHERE id=?', [clienteId]);
+  if (c && c.coach_id) return c.coach_id;
+  const coach = dbGet("SELECT id FROM users WHERE role='coach' LIMIT 1");
+  return coach ? coach.id : null;
+}
+
+// ── GET /mensajes/no-leidos ───────────────────────────────────────────────────
+// Badge del coach: cuántos mensajes de clientes no ha leído.
+router.get('/mensajes/no-leidos', coachOnly, (req, res) => {
+  try {
+    const row = dbGet(`
+      SELECT COUNT(*) as c FROM mensajes m
+      JOIN clientes cl ON cl.id = m.cliente_id
+      WHERE m.de_coach = 0 AND m.leido = 0
+        AND (cl.coach_id = ? OR cl.coach_id IS NULL)
+    `, [req.user.id]);
+    res.json({ count: row ? row.c : 0 });
+  } catch(e) { res.json({ count: 0 }); }
+});
+
+// ── GET /mensajes/estado ──────────────────────────────────────────────────────
+// El cliente pregunta si su coach estuvo activo en los últimos 3 minutos.
+router.get('/mensajes/estado', (req, res) => {
+  try {
+    if (req.user.role !== 'cliente') return res.json({ online: true });
+    const clienteId = getClienteIdPropio(req.user.id);
+    const coachId   = clienteId ? getCoachIdDeCliente(clienteId) : null;
+    if (!coachId) return res.json({ online: false });
+    const onlineGeneral = (Date.now() - (_coachLastSeen[coachId] || 0)) < COACH_ACTIVE_MS;
+    const onlineHilo = coachEstaActivoEnCliente(clienteId);
+    res.json({ online: !!(onlineGeneral || onlineHilo) });
+  } catch(e) { res.json({ online: false }); }
+});
+
+// ── GET /mensajes/conversaciones ──────────────────────────────────────────────
+// Lista de conversaciones del coach: un item por cliente con último mensaje y no leídos.
+router.get('/mensajes/conversaciones', coachOnly, (req, res) => {
+  try {
+    const convs = dbAll(`
+      SELECT
+        cl.id            AS cliente_id,
+        u.nombre         AS cliente_nombre,
+        u.foto_perfil    AS cliente_foto,
+        u.username       AS cliente_username,
+        (SELECT contenido  FROM mensajes WHERE cliente_id=cl.id ORDER BY created_at DESC LIMIT 1) AS ultimo_msg,
+        (SELECT created_at FROM mensajes WHERE cliente_id=cl.id ORDER BY created_at DESC LIMIT 1) AS ultimo_ts,
+        (SELECT COUNT(*)   FROM mensajes WHERE cliente_id=cl.id AND de_coach=0 AND leido=0)       AS no_leidos
+      FROM clientes cl
+      JOIN users u ON u.id = cl.user_id
+      WHERE (cl.coach_id = ? OR cl.coach_id IS NULL)
+        AND EXISTS (SELECT 1 FROM mensajes WHERE cliente_id = cl.id)
+      ORDER BY ultimo_ts DESC
+    `, [req.user.id]);
+    res.json(convs);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /mensajes/:clienteId ──────────────────────────────────────────────────
+// Hilo completo. El cliente solo puede ver el suyo.
+router.get('/mensajes/:clienteId', (req, res) => {
+  try {
+    const clienteId = parseInt(req.params.clienteId, 10);
+    if (req.user.role === 'cliente') {
+      const propio = getClienteIdPropio(req.user.id);
+      if (propio !== clienteId) return res.status(403).json({ error: 'Sin acceso' });
+    } else {
+      marcarCoachActivo(clienteId);
+    }
+    const msgs = dbAll(`
+      SELECT m.id, m.contenido, m.de_coach, m.via_ia, m.leido, m.created_at,
+             u.nombre AS cliente_nombre
+      FROM mensajes m
+      JOIN clientes cl ON cl.id = m.cliente_id
+      JOIN users    u  ON u.id  = cl.user_id
+      WHERE m.cliente_id = ?
+      ORDER BY m.created_at ASC
+    `, [clienteId]);
+    res.json(msgs);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── MENSAJES DIARIOS Y BIENVENIDA ─────────────────────────────────────────────
+
+// Genera y envía un mensaje motivador personalizado al cliente via chat
+async function enviarMensajeMotivador(clienteId, tipo) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return;
+  try {
+    const cl = dbGet(`SELECT c.*, u.nombre, u.lang FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?`, [clienteId]);
+    if (!cl) return;
+    const isEn = cl.lang === 'en';
+
+    // Contexto del cliente
+    const ultimaSesion = dbGet(`SELECT fecha, dia_nombre, estado FROM sesiones_entreno WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1`, [clienteId]);
+    const ultimoPeso = dbGet(`SELECT peso, grasa FROM peso_registros WHERE cliente_id=? ORDER BY rowid DESC LIMIT 1`, [clienteId]);
+    const checkin = dbGet(`SELECT sueno, energia FROM checkins WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1`, [clienteId]);
+    const totalSesiones = dbGet(`SELECT COUNT(*) as c FROM sesiones_entreno WHERE cliente_id=?`, [clienteId]);
+
+    const diasSinEntreno = ultimaSesion
+      ? Math.floor((Date.now() - new Date(ultimaSesion.fecha).getTime()) / 86400000)
+      : 999;
+
+    const contexto = [
+      `Nombre: ${cl.nombre}`,
+      `Objetivo: ${cl.objetivo || '—'}`,
+      `Nivel: ${cl.nivel || '—'}`,
+      cl.peso_actual ? `Peso: ${cl.peso_actual}kg` : '',
+      ultimoPeso?.grasa ? `Grasa corporal: ${ultimoPeso.grasa}%` : '',
+      `Total sesiones completadas: ${totalSesiones?.c || 0}`,
+      diasSinEntreno < 999 ? `Días desde último entreno: ${diasSinEntreno}` : 'Sin sesiones registradas aún',
+      checkin ? `Último check-in — sueño: ${checkin.sueno}/10, energía: ${checkin.energia}/10` : '',
+      cl.lesiones ? `Lesiones/limitaciones: ${cl.lesiones}` : '',
+    ].filter(Boolean).join('\n');
+
+    let prompt;
+    if (tipo === 'bienvenida') {
+      prompt = isEn
+        ? `Write a warm, personal welcome message (3-4 sentences) for a new client joining WolfMindset. Make them feel part of the team, excited about their goal, and confident in the process. End with a concrete first action they can take today. Client context:\n${contexto}`
+        : `Escribe un mensaje de bienvenida cálido y personal (3-4 frases) para un nuevo cliente que se une a WolfMindset. Hazle sentir parte del equipo, emocionado por su objetivo y confiado en el proceso. Termina con una primera acción concreta que puede hacer hoy. Contexto del cliente:\n${contexto}`;
+    } else {
+      // Mensaje diario — varía según estado del cliente
+      const tono = diasSinEntreno === 0 ? 'celebratorio' :
+                   diasSinEntreno > 5  ? 'reconectando, empujando a volver' :
+                   diasSinEntreno > 2  ? 'recordatorio amable' : 'motivador del día';
+      prompt = isEn
+        ? `Write a short daily motivational message (2-3 sentences, ${tono} tone) for this client. Make it personal, specific to their goal and current state. No generic phrases. Client context:\n${contexto}`
+        : `Escribe un mensaje motivacional diario corto (2-3 frases, tono ${tono}) para este cliente. Hazlo personal, específico a su objetivo y estado actual. Sin frases genéricas. Contexto del cliente:\n${contexto}`;
+    }
+
+    const system = isEn
+      ? 'You are the WolfMindset coach. Write directly to the client in first person (as the coach). Warm, direct, no mention of AI or technology. No markdown, no asterisks.'
+      : 'Eres el coach de WolfMindset. Escribe directamente al cliente en primera persona (como el coach). Cercano, directo, sin mencionar IA ni tecnología. Sin markdown, sin asteriscos.';
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 200, system, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await response.json();
+    if (!data.content?.[0]?.text) return;
+
+    const texto = data.content[0].text.trim();
+
+    // Insertar en chat como mensaje del coach (via_ia=1)
+    const rMsg = dbRun(
+      'INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido) VALUES (?,?,?,?,?)',
+      [clienteId, 1, 1, texto, 0]
+    );
+
+    // Push SSE al cliente para que lo reciba al instante
+    try {
+      ssePush(cl.user_id, 'mensaje_nuevo', {
+        id: rMsg.lastInsertRowid,
+        contenido: texto,
+        de_coach: 1,
+        via_ia: 1,
+        created_at: new Date().toISOString()
+      });
+    } catch(e) {}
+
+    // Notificar al coach
+    const coachId = getCoachId();
+    if (coachId) {
+      const msgNotif = cl.lang === 'en'
+        ? `🤖 Daily message sent to ${cl.nombre}`
+        : `🤖 Mensaje diario enviado a ${cl.nombre}`;
+      crearNotificacion(coachId, 'mensaje_diario', msgNotif);
+      ssePush(coachId, 'badge_msgs', { cliente_id: clienteId });
+    }
+
+    saveToDisk();
+  } catch(e) { console.error('[MensajeDiario]', e.message); }
+}
+
+// Middleware: detecta primer acceso del día de un cliente y dispara mensaje motivador
+// Se añade como middleware en el router después de authMiddleware
+function middlewareMensajeDiario(req, res, next) {
+  // Solo para clientes, solo en GETs (no en cada POST)
+  if (!req.user || req.user.role !== 'cliente') return next();
+  if (req.method !== 'GET') return next();
+
+  try {
+    const hoy = new Date().toISOString().split('T')[0];
+    const cl = dbGet('SELECT id, ultimo_acceso_dia, bienvenida_enviada, bienvenida_pendiente FROM clientes WHERE user_id=?', [req.user.id]);
+    if (!cl) return next();
+
+    // Enviar bienvenida si está pendiente (coach aprobó al cliente)
+    if (cl.bienvenida_pendiente && !cl.bienvenida_enviada) {
+      dbRun('UPDATE clientes SET bienvenida_enviada=1, bienvenida_pendiente=0, ultimo_acceso_dia=? WHERE id=?', [hoy, cl.id]);
+      enviarMensajeMotivador(cl.id, 'bienvenida').catch(() => {});
+
+      // Notificar al coach que el cliente ha accedido por primera vez
+      try {
+        const coachId = getCoachId();
+        if (coachId) {
+          const u = dbGet('SELECT nombre FROM users WHERE id=?', [req.user.id]);
+          const nombre = u?.nombre || req.user.username;
+          const coach = dbGet('SELECT lang FROM users WHERE id=?', [coachId]);
+          const isEn = coach?.lang === 'en';
+          const msg = isEn
+            ? `🎉 ${nombre} has logged into the app for the first time!`
+            : `🎉 ${nombre} ha accedido a la app por primera vez`;
+          crearNotificacion(coachId, 'primer_acceso', msg);
+          ssePushCoaches('notificacion', { tipo: 'primer_acceso', mensaje: msg });
+        }
+      } catch(e) {}
+
+      return next();
+    }
+
+    // Enviar mensaje diario si es el primer acceso de hoy
+    if (cl.ultimo_acceso_dia !== hoy) {
+      dbRun('UPDATE clientes SET ultimo_acceso_dia=? WHERE id=?', [hoy, cl.id]);
+      // Solo si ya pasó la bienvenida
+      if (cl.bienvenida_enviada) {
+        enviarMensajeMotivador(cl.id, 'diario').catch(() => {});
+      }
+    }
+  } catch(e) {}
+
+  next();
+}
+
+
+
+// Comprueba si el bot debe responder a este cliente:
+// bot_global ON  → responde a todos los clientes con ia_chat_activa=1 (o si ia_chat_activa es NULL/0 pero global está ON)
+// bot_global OFF → solo responde a clientes con ia_chat_activa=1 explícitamente
+function botDebeResponder(clienteId) {
+  try {
+    // Si el coach tiene abierto/activo ese hilo, la IA no interviene.
+    if (coachEstaActivoEnCliente(clienteId)) return false;
+
+    const cfg = dbGet('SELECT bot_global FROM ia_config WHERE id=1');
+    const botGlobal = cfg ? cfg.bot_global : 0;
+    const cl = dbGet('SELECT ia_chat_activa FROM clientes WHERE id=?', [clienteId]);
+    const iaCliente = cl ? cl.ia_chat_activa : 0;
+    // Si global ON → responde salvo que cliente tenga ia_chat_activa=0 explícitamente
+    if (botGlobal) return iaCliente !== 0; // NULL o 1 → responde; 0 → no
+    // Si global OFF → solo responde si cliente tiene ia_chat_activa=1
+    return iaCliente === 1;
+  } catch(e) { return false; }
+}
+
+// Genera respuesta IA para el chat usando contexto del cliente
+async function responderConIA(clienteId, mensajeUsuario) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+  try {
+    // Contexto del cliente
+    const cl = dbGet(`SELECT c.*, u.nombre, u.lang FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?`, [clienteId]);
+    if (!cl) return null;
+    const isEn = cl.lang === 'en';
+
+    // Últimos 10 mensajes para contexto de conversación
+    const historial = dbAll(
+      'SELECT contenido, de_coach FROM mensajes WHERE cliente_id=? ORDER BY created_at DESC LIMIT 10',
+      [clienteId]
+    ).reverse();
+
+    // Peso actual y último checkin
+    const ultimoPeso = dbGet('SELECT peso, grasa FROM peso_registros WHERE cliente_id=? ORDER BY rowid DESC LIMIT 1', [clienteId]);
+    const ultimoCheckin = dbGet('SELECT sueno, energia FROM checkins WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1', [clienteId]);
+
+    const contexto = [
+      `Cliente: ${cl.nombre}`,
+      `Objetivo: ${cl.objetivo || '—'}`,
+      `Nivel: ${cl.nivel || '—'}`,
+      cl.peso_actual ? `Peso: ${cl.peso_actual}kg` : '',
+      ultimoPeso?.grasa ? `Grasa: ${ultimoPeso.grasa}%` : '',
+      ultimoCheckin ? `Último check-in — sueño: ${ultimoCheckin.sueno}/10, energía: ${ultimoCheckin.energia}/10` : '',
+      cl.lesiones ? `Lesiones/limitaciones: ${cl.lesiones}` : '',
+      cl.observaciones ? `Notas: ${cl.observaciones}` : '',
+    ].filter(Boolean).join('\n');
+
+    const system = isEn
+      ? `You are a WolfMindset fitness coach assistant. You respond to clients in a warm, direct, motivating tone — like a real coach who knows them personally. Keep responses concise (2-4 sentences max). Never mention AI or technology. If you don't know something specific about their plan, be honest and say the coach will follow up. NO markdown, NO asterisks, NO bullet points — plain conversational text only. Client context:\n${contexto}`
+      : `Eres el asistente del coach de WolfMindset. Respondes a los clientes con un tono cercano, directo y motivador — como un coach real que los conoce. Respuestas concisas (2-4 frases máximo). Nunca menciones IA ni tecnología. Si no sabes algo concreto de su plan, sé honesto y di que el coach lo confirmará. SIN markdown, SIN asteriscos, SIN listas — solo texto conversacional natural. Contexto del cliente:\n${contexto}`;
+
+    const messages = [
+      ...historial.map(m => ({ role: m.de_coach ? 'assistant' : 'user', content: m.contenido })),
+      { role: 'user', content: mensajeUsuario }
+    ];
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 300, system, messages })
+    });
+    const data = await response.json();
+    if (data.error || !data.content?.[0]?.text) return null;
+    return data.content[0].text.trim();
+  } catch(e) { console.error('[IA Chat]', e.message); return null; }
+}
+
+// ── POST /mensajes ────────────────────────────────────────────────────────────
+// Enviar mensaje. Coach: de_coach=1. Cliente: de_coach=0 → notifica al coach.
+// via_ia=1 cuando la IA responde en nombre del coach (solo interno, cliente no lo ve).
+router.post('/mensajes', async (req, res) => {
+  try {
+    const { contenido, via_ia } = req.body;
+    let { cliente_id, de_coach } = req.body;
+
+    if (!contenido || !contenido.trim()) {
+      const msg = req.user.lang === 'en' ? 'Message cannot be empty' : 'El mensaje no puede estar vacío';
+      return res.status(400).json({ error: msg });
+    }
+
+    if (req.user.role === 'cliente') {
+      cliente_id = getClienteIdPropio(req.user.id);
+      de_coach   = 0;
+      if (!cliente_id) {
+        const msg = req.user.lang === 'en' ? 'Client profile not found' : 'Perfil de cliente no encontrado';
+        return res.status(404).json({ error: msg });
+      }
+    } else {
+      cliente_id = parseInt(cliente_id, 10);
+      de_coach   = 1;
+      if (!cliente_id) {
+        const msg = req.user.lang === 'en' ? 'cliente_id required' : 'cliente_id requerido';
+        return res.status(400).json({ error: msg });
+      }
+    }
+
+    if (de_coach) marcarCoachActivo(cliente_id);
+
+    const r = dbRun(
+      'INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido) VALUES (?,?,?,?,?)',
+      [cliente_id, de_coach ? 1 : 0, via_ia ? 1 : 0, contenido.trim(), 0]
+    );
+
+    // Notificar al coach cuando el cliente escribe
+    if (!de_coach) {
+      const coachId = getCoachIdDeCliente(cliente_id);
+      if (coachId) {
+        try {
+          const coach = dbGet('SELECT lang FROM users WHERE id=?', [coachId]);
+          const isEn  = (coach && coach.lang === 'en');
+          const nombreCliente = getNombreCliente(cliente_id);
+          const msgNotif = isEn
+            ? `💬 ${nombreCliente} has sent you a message`
+            : `💬 ${nombreCliente} te ha enviado un mensaje`;
+          crearNotificacion(coachId, 'mensaje_cliente', msgNotif);
+          ssePush(coachId, 'badge_msgs', { cliente_id });
+          ssePush(coachId, 'mensaje_nuevo', {
+            id: r.lastInsertRowid,
+            cliente_id,
+            contenido: contenido.trim(),
+            de_coach: 0,
+            via_ia: 0,
+            created_at: new Date().toISOString()
+          });
+        } catch(e) {}
+      }
+
+      // ── Respuesta automática IA si el bot está activo para este cliente ──
+      if (botDebeResponder(cliente_id)) {
+        // No bloqueamos la respuesta al cliente — la IA responde en background
+        responderConIA(cliente_id, contenido.trim()).then(replyIA => {
+          if (!replyIA) return;
+          // Verificar de nuevo si el bot sigue activo — puede haberse desactivado mientras procesaba
+          if (!botDebeResponder(cliente_id)) return;
+          try {
+            const rIA = dbRun(
+              'INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido) VALUES (?,?,?,?,?)',
+              [cliente_id, 1, 1, replyIA, 0]
+            );
+            // Push SSE al cliente y al coach para que ambos vean el hilo sincronizado.
+            const clienteUser = dbGet('SELECT user_id, coach_id FROM clientes WHERE id=?', [cliente_id]);
+            const msgIA = {
+              id: rIA.lastInsertRowid,
+              cliente_id,
+              contenido: replyIA,
+              de_coach: 1,
+              via_ia: 1,
+              created_at: new Date().toISOString()
+            };
+            if (clienteUser) {
+              ssePush(clienteUser.user_id, 'mensaje_nuevo', msgIA);
+              const coachId = clienteUser.coach_id || getCoachIdDeCliente(cliente_id);
+              if (coachId) {
+                ssePush(coachId, 'mensaje_nuevo', msgIA);
+                ssePush(coachId, 'badge_msgs', { cliente_id });
+              }
+            }
+            saveToDisk();
+          } catch(e) { console.error('[IA Chat reply]', e.message); }
+        }).catch(() => {});
+      }
+
+    } else {
+      // Coach responde → push SSE al cliente para que reciba el mensaje al instante
+      try {
+        const clienteUser = dbGet('SELECT user_id FROM clientes WHERE id=?', [cliente_id]);
+        if (clienteUser) {
+          ssePush(clienteUser.user_id, 'mensaje_nuevo', {
+            id: r.lastInsertRowid,
+            cliente_id,
+            contenido: contenido.trim(),
+            de_coach: 1,
+            via_ia: via_ia ? 1 : 0,
+            created_at: new Date().toISOString()
+          });
+        }
+      } catch(e) {}
+    }
+
+    saveToDisk();
+    res.json({ ok: true, id: r.lastInsertRowid });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CONTROL DEL BOT IA EN CHAT ────────────────────────────────────────────────
+
+// GET estado global del bot + estado por cliente
+router.get('/ia-chat/config', coachOnly, (req, res) => {
+  try {
+    const cfg = dbGet('SELECT bot_global FROM ia_config WHERE id=1');
+    const clientes = dbAll(`
+      SELECT c.id, u.nombre, c.ia_chat_activa
+      FROM clientes c JOIN users u ON c.user_id=u.id
+      ORDER BY u.nombre ASC
+    `);
+    res.json({
+      bot_global: cfg ? cfg.bot_global : 0,
+      clientes: clientes.map(c => ({
+        id: c.id,
+        nombre: c.nombre,
+        ia_activa: c.ia_chat_activa || 0
+      }))
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT toggle global del bot (ON/OFF para todos)
+router.put('/ia-chat/global', coachOnly, (req, res) => {
+  try {
+    const { activo } = req.body;
+    dbRun('UPDATE ia_config SET bot_global=?, updated_at=CURRENT_TIMESTAMP WHERE id=1', [activo ? 1 : 0]);
+    saveToDisk();
+    res.json({ ok: true, bot_global: activo ? 1 : 0 });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT toggle bot para un cliente concreto
+router.put('/ia-chat/cliente/:id', coachOnly, (req, res) => {
+  try {
+    const { activo } = req.body;
+    dbRun('UPDATE clientes SET ia_chat_activa=? WHERE id=?', [activo ? 1 : 0, req.params.id]);
+    saveToDisk();
+    res.json({ ok: true, ia_activa: activo ? 1 : 0 });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PUT /mensajes/:clienteId/leer ─────────────────────────────────────────────
+// El coach abre el hilo → marca todos los mensajes del cliente como leídos.
+router.put('/mensajes/:clienteId/leer', coachOnly, (req, res) => {
+  try {
+    marcarCoachActivo(parseInt(req.params.clienteId, 10));
+    dbRun(
+      'UPDATE mensajes SET leido=1 WHERE cliente_id=? AND de_coach=0 AND leido=0',
+      [parseInt(req.params.clienteId, 10)]
+    );
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── IMÁGENES DE EJERCICIOS (ruta ligera para clientes) ──────────────────────
+// Devuelve solo {nombre -> imagen_url} para ejercicios con imagen personalizada
+// Separado de loadCD para no meter base64 en el JSON principal
+router.get('/ejercicios-imagenes', (req, res) => {
+  try {
+    const rows = dbAll("SELECT nombre, imagen_url FROM ejercicios_config WHERE imagen_url IS NOT NULL AND imagen_url != ''", []);
+    const map = {};
+    rows.forEach(r => { map[r.nombre] = r.imagen_url; });
+    // Also check ejercicios_dia for direct overrides
+    const diasRows = dbAll("SELECT DISTINCT nombre, imagen_url FROM ejercicios_dia WHERE imagen_url IS NOT NULL AND imagen_url != '' AND imagen_url != '__HAS_IMAGE__'", []);
+    diasRows.forEach(r => { if(!map[r.nombre]) map[r.nombre] = r.imagen_url; });
+    res.json(map);
+  } catch(e) { res.json({}); }
+});
+
+// ── RESET PASSWORD (coach resetea la de un cliente) ─────────────────────────
+// Nota: esta ruta usa prefijo /coach/ en vez de /auth/ para evitar conflicto
+// con el authRouter montado en /api/auth en server.js (que intercepta primero).
+router.post('/coach/reset-cliente-password', coachOnly, (req, res) => {
+  const { userId, newPassword } = req.body;
+  if(!userId || !newPassword) return res.status(400).json({ error: 'Faltan campos' });
+  if(newPassword.length < 4) return res.status(400).json({ error: 'Mínimo 4 caracteres' });
+  try {
+    const bcrypt = require('bcryptjs');
+    const user = dbGet('SELECT id, role FROM users WHERE id=?', [userId]);
+    if(!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if(user.role === 'coach' && req.user.id !== user.id) {
+      return res.status(403).json({ error: 'No puedes resetear la contraseña de otro coach' });
+    }
+    const hash = bcrypt.hashSync(newPassword, 10);
+    dbRun('UPDATE users SET password=? WHERE id=?', [hash, userId]);
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── COACH CAMBIA SU PROPIA CONTRASEÑA ────────────────────────────────────────
+router.post('/auth/change-my-password', (req, res) => {
+  const { password_actual, password_nueva } = req.body;
+  if(!password_actual || !password_nueva) return res.status(400).json({ error: 'Faltan campos' });
+  if(password_nueva.length < 6) return res.status(400).json({ error: 'Mínimo 6 caracteres' });
+  try {
+    const bcrypt = require('bcryptjs');
+    const user = dbGet('SELECT id, password FROM users WHERE id=?', [req.user.id]);
+    if(!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if(!bcrypt.compareSync(password_actual, user.password)) {
+      return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    }
+    const hash = bcrypt.hashSync(password_nueva, 10);
+    dbRun('UPDATE users SET password=? WHERE id=?', [hash, req.user.id]);
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PUSH TIMER (para iOS — el servidor manda el push cuando termina el descanso) ──
+// iOS mata el SW al bloquear pantalla, así que el timer vive en el servidor
+const _pushTimers = {}; // userId+timerId -> setTimeout handle
+
+router.post('/push/timer', (req, res) => {
+  const { timerId, segundos, title, body } = req.body;
+  if(!timerId || !segundos) return res.status(400).json({ error: 'timerId y segundos requeridos' });
+  const userId = String(req.user.id);
+  const key = userId + '_' + timerId;
+
+  // Cancel existing timer for this key
+  if(_pushTimers[key]) { clearTimeout(_pushTimers[key]); delete _pushTimers[key]; }
+
+  const delay = Math.min(Math.max(parseInt(segundos), 1), 600) * 1000; // max 10 min
+  _pushTimers[key] = setTimeout(async () => {
+    delete _pushTimers[key];
+    if(global.sendPushToUser) {
+      await global.sendPushToUser(userId, title || '💪 ¡A por ello!', body || 'Descanso terminado', '/');
+    }
+  }, delay);
+
+  res.json({ ok: true, delay });
+});
+
+router.post('/push/timer/cancel', (req, res) => {
+  const { timerId } = req.body;
+  const userId = String(req.user.id);
+  const key = timerId ? userId + '_' + timerId : null;
+  if(key && _pushTimers[key]) {
+    clearTimeout(_pushTimers[key]);
+    delete _pushTimers[key];
+  } else if(!timerId) {
+    // Cancel all timers for this user
+    Object.keys(_pushTimers).filter(k => k.startsWith(userId + '_')).forEach(k => {
+      clearTimeout(_pushTimers[k]); delete _pushTimers[k];
+    });
+  }
+  res.json({ ok: true });
+});
+
+// ── PUSH SUBSCRIPTIONS ───────────────────────────────────────────────────────
+// El cliente registra su dispositivo para recibir push
 router.post('/push/subscribe', (req, res) => {
   const { subscription } = req.body;
   if(!subscription || !subscription.endpoint) return res.status(400).json({ error: 'Invalid subscription' });
   try {
+    // Delete old subscription for same endpoint (re-registration)
     dbRun('DELETE FROM push_subscriptions WHERE user_id=? AND subscription LIKE ?',
       [req.user.id, '%' + subscription.endpoint.slice(-40) + '%']);
     dbRun('INSERT INTO push_subscriptions (user_id, subscription) VALUES (?,?)',
@@ -115,8 +2321,10 @@ router.delete('/push/unsubscribe', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-router.get('/push/vapid-public-key', (req, res) => {
-  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || 'BGXVsTmH4dCRzJk2vPoqMX08DtwH_EBk2fF42nIQGfubO9utSacLfZxCF4wTBQxDrH50S_8aZuUg5oKppHqF51A' });
+// Devolver la clave pública VAPID al cliente para que pueda suscribirse
+router.get('/push/vapid-key', (req, res) => {
+  const key = process.env.VAPID_PUBLIC_KEY || 'BGXVsTmH4dCRzJk2vPoqMX08DtwH_EBk2fF42nIQGfubO9utSacLfZxCF4wTBQxDrH50S_8aZuUg5oKppHqF51A';
+  res.json({ publicKey: key });
 });
 
 module.exports = router;
