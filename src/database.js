@@ -193,6 +193,27 @@ async function initDB() {
   try { db.run("ALTER TABLE rutinas_plantillas ADD COLUMN num_ejercicios INTEGER DEFAULT 0"); } catch(e) {}
   try { db.run("ALTER TABLE rutinas_plantillas ADD COLUMN lugar TEXT DEFAULT 'Gimnasio'"); } catch(e) {}
 
+  // ── Análisis IA por sesión/día ───────────────────────────────────────
+  // Guarda el análisis automático de cada sesión completada.
+  // estado: 'pendiente' | 'aprobado' | 'descartado'
+  // ajustes_json: array de { ejercicio_id, nombre, nuevo_peso, accion, razon }
+  // mensaje_cliente: texto generado por IA para enviar al cliente
+  db.run(`CREATE TABLE IF NOT EXISTS analisis_sesion (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    sesion_id        INTEGER NOT NULL UNIQUE,
+    cliente_id       INTEGER NOT NULL,
+    dia_nombre       TEXT    DEFAULT '',
+    resumen_ia       TEXT    DEFAULT '',
+    ajustes_json     TEXT    DEFAULT '[]',
+    mensaje_cliente  TEXT    DEFAULT '',
+    estado           TEXT    DEFAULT 'pendiente',
+    coach_id         INTEGER,
+    created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    aprobado_at      DATETIME
+  )`);
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_analisis_cliente ON analisis_sesion(cliente_id, estado)'); } catch(e) {}
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_analisis_sesion  ON analisis_sesion(sesion_id)'); } catch(e) {}
+
   // ── Checkins semanales ────────────────────────────────────────────
   db.run(`CREATE TABLE IF NOT EXISTS checkins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
