@@ -2246,7 +2246,7 @@ async function verCliente(id){
                 <div style="font-size:11px;color:var(--tx3);margin-top:1px">${tc(d.grupo)||d.grupo} · ${d.ejercicios.length} ${COACH_LANG==='en'?'exercises':'ejercicios'}</div>
               </div>
               <div style="display:flex;gap:6px;align-items:center">
-                <button onclick="event.stopPropagation();tabEntrenoAddEx(${d.id},'${d.nombre.replace((/'/g,String.fromCharCode(39)))}')" class="btn btn-sm" style="font-size:11px">${tc('+ Ejercicio')}</button>
+                <button onclick="event.stopPropagation();tabEntrenoAddEx(${d.id},'${d.nombre.replace(/'/g,String.fromCharCode(39))}')" class="btn btn-sm" style="font-size:11px">${tc('+ Ejercicio')}</button>
                 <button onclick="event.stopPropagation();abrirModalGuardarDia(${d.id},'${d.nombre.replace(/'/g,String.fromCharCode(39))}')" title="${COACH_LANG==='en'?'Save as template':'Guardar como plantilla'}" style="background:none;border:none;color:#a78bfa;cursor:pointer;font-size:14px;padding:4px">💾</button>
                 <button onclick="event.stopPropagation();tabEntrenoDelDia(${d.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:14px;padding:4px">🗑</button>
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--tx3);flex-shrink:0"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
