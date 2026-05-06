@@ -937,6 +937,14 @@ router.post('/clientes/:id/sesiones', (req, res) => {
 
     saveToDisk();
     res.json({ ok: true, sesion_id: sesionId });
+
+    // ── Trigger automático: análisis IA en background si sesión completada ──
+    // Se lanza DESPUÉS de responder al cliente para no bloquear la respuesta.
+    if (estadoFinal === 'completado' && series && series.length >= 3) {
+      setImmediate(() => lanzarAnalisisAutomatico(sesionId, req.params.id, coachId).catch(e =>
+        console.error('[AnalisisAuto] Error:', e.message)
+      ));
+    }
   } catch(e) {
     console.error('Error guardando sesión:', e.message);
     res.status(500).json({ ok: false, error: e.message });
@@ -2326,5 +2334,792 @@ router.get('/push/vapid-key', (req, res) => {
   const key = process.env.VAPID_PUBLIC_KEY || 'BGXVsTmH4dCRzJk2vPoqMX08DtwH_EBk2fF42nIQGfubO9utSacLfZxCF4wTBQxDrH50S_8aZuUg5oKppHqF51A';
   res.json({ publicKey: key });
 });
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SISTEMA DE PLANTILLAS v2 — días individuales + semanas completas
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Helper: calcula series totales por músculo ────────────────────────────────
+function calcularResumenMusculos(dias) {
+  const mapa = {};
+  (dias || []).forEach(dia => {
+    (dia.ejercicios || []).forEach(ex => {
+      (ex.musculos || '').split(',').map(m => m.trim()).filter(Boolean).forEach(m => {
+        mapa[m] = (mapa[m] || 0) + (parseInt(ex.series) || 0);
+      });
+    });
+  });
+  return mapa;
+}
+
+// ── Helper: construye objeto plantilla completo desde row BD ─────────────────
+function buildPlantilla(p) {
+  let dias = [];
+  try { dias = JSON.parse(p.dias_json || '[]'); } catch(e) {}
+  const numEj = dias.reduce((a, d) => a + (d.ejercicios || []).length, 0);
+  return { ...p, dias, resumen: calcularResumenMusculos(dias), num_ejercicios: p.num_ejercicios || numEj };
+}
+
+// ── GET /api/plantillas — listar plantillas ───────────────────────────────────
+// Query params opcionales: ?tipo=dia | ?tipo=semana | ?objetivo=X | ?nivel=X
+router.get('/plantillas', coachOnly, (req, res) => {
+  try {
+    let sql = `SELECT * FROM rutinas_plantillas WHERE coach_id = ?`;
+    const params = [req.user.id];
+    if (req.query.tipo)     { sql += ` AND tipo = ?`;     params.push(req.query.tipo); }
+    if (req.query.objetivo) { sql += ` AND objetivo = ?`; params.push(req.query.objetivo); }
+    if (req.query.nivel)    { sql += ` AND nivel = ?`;    params.push(req.query.nivel); }
+    sql += ` ORDER BY updated_at DESC`;
+    const plantillas = dbAll(sql, params);
+    res.json(plantillas.map(buildPlantilla));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/plantillas — crear plantilla (semana o día) ────────────────────
+router.post('/plantillas', coachOnly, (req, res) => {
+  try {
+    const { nombre, descripcion, objetivo, nivel, dias,
+            tipo, tipo_rutina, grupo_dominante, duracion_estimada,
+            fatiga_estimada, lugar } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    const diasArr = dias || [];
+    const numEj = diasArr.reduce((a, d) => a + (d.ejercicios || []).length, 0);
+    const r = dbRun(
+      `INSERT INTO rutinas_plantillas
+        (coach_id, nombre, descripcion, objetivo, nivel, dias_json, usos,
+         tipo, tipo_rutina, grupo_dominante, duracion_estimada, fatiga_estimada, num_ejercicios, lugar)
+       VALUES (?,?,?,?,?,?,0,?,?,?,?,?,?,?)`,
+      [req.user.id, nombre.trim(), descripcion||'', objetivo||'', nivel||'Intermedio',
+       JSON.stringify(diasArr), tipo||'semana', tipo_rutina||'', grupo_dominante||'',
+       duracion_estimada||0, fatiga_estimada||'Media', numEj, lugar||'Gimnasio']
+    );
+    saveToDisk();
+    res.json(buildPlantilla(dbGet('SELECT * FROM rutinas_plantillas WHERE id=?', [r.lastInsertRowid])));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PUT /api/plantillas/:id — editar metadatos ────────────────────────────────
+router.put('/plantillas/:id', coachOnly, (req, res) => {
+  try {
+    const p = dbGet('SELECT * FROM rutinas_plantillas WHERE id=? AND coach_id=?', [req.params.id, req.user.id]);
+    if (!p) return res.status(404).json({ error: 'Plantilla no encontrada' });
+    const { nombre, descripcion, objetivo, nivel, dias,
+            tipo, tipo_rutina, grupo_dominante, duracion_estimada,
+            fatiga_estimada, lugar } = req.body;
+    const diasArr = dias !== undefined ? dias : JSON.parse(p.dias_json || '[]');
+    const numEj = diasArr.reduce((a, d) => a + (d.ejercicios || []).length, 0);
+    dbRun(
+      `UPDATE rutinas_plantillas SET
+        nombre=?, descripcion=?, objetivo=?, nivel=?, dias_json=?,
+        tipo=?, tipo_rutina=?, grupo_dominante=?, duracion_estimada=?,
+        fatiga_estimada=?, num_ejercicios=?, lugar=?, updated_at=CURRENT_TIMESTAMP
+       WHERE id=? AND coach_id=?`,
+      [nombre||p.nombre, descripcion!==undefined?descripcion:p.descripcion,
+       objetivo||p.objetivo, nivel||p.nivel, JSON.stringify(diasArr),
+       tipo||p.tipo||'semana', tipo_rutina!==undefined?tipo_rutina:p.tipo_rutina||'',
+       grupo_dominante!==undefined?grupo_dominante:p.grupo_dominante||'',
+       duracion_estimada!==undefined?duracion_estimada:p.duracion_estimada||0,
+       fatiga_estimada||p.fatiga_estimada||'Media', numEj,
+       lugar||p.lugar||'Gimnasio', req.params.id, req.user.id]
+    );
+    saveToDisk();
+    res.json(buildPlantilla(dbGet('SELECT * FROM rutinas_plantillas WHERE id=?', [req.params.id])));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── DELETE /api/plantillas/:id ────────────────────────────────────────────────
+router.delete('/plantillas/:id', coachOnly, (req, res) => {
+  try {
+    const p = dbGet('SELECT id FROM rutinas_plantillas WHERE id=? AND coach_id=?', [req.params.id, req.user.id]);
+    if (!p) return res.status(404).json({ error: 'Plantilla no encontrada' });
+    dbRun('DELETE FROM rutinas_plantillas WHERE id=?', [req.params.id]);
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/plantillas/:id/aplicar — copiar días al cliente ────────────────
+router.post('/plantillas/:id/aplicar', coachOnly, async (req, res) => {
+  try {
+    const { clienteId, reemplazar } = req.body;
+    if (!clienteId) return res.status(400).json({ error: 'clienteId requerido' });
+    const p = dbGet('SELECT * FROM rutinas_plantillas WHERE id=? AND coach_id=?', [req.params.id, req.user.id]);
+    if (!p) return res.status(404).json({ error: 'Plantilla no encontrada' });
+    let dias = []; try { dias = JSON.parse(p.dias_json || '[]'); } catch(e) {}
+    if (!dias.length) return res.status(400).json({ error: 'La plantilla no tiene días' });
+    if (reemplazar) {
+      const viejos = dbAll('SELECT id FROM dias_entreno WHERE cliente_id=?', [clienteId]);
+      viejos.forEach(d => {
+        dbRun('DELETE FROM ejercicios_dia WHERE dia_id=?', [d.id]);
+        dbRun('DELETE FROM dias_entreno WHERE id=?', [d.id]);
+      });
+    }
+    // Calcular el siguiente orden disponible
+    const ordenBase = reemplazar ? 0 : (dbGet('SELECT MAX(orden) as m FROM dias_entreno WHERE cliente_id=?', [clienteId])?.m ?? -1) + 1;
+    for (let i = 0; i < dias.length; i++) {
+      const dia = dias[i];
+      const diaResult = dbRun('INSERT INTO dias_entreno (cliente_id, nombre, grupo, orden) VALUES (?,?,?,?)',
+        [clienteId, dia.nombre||`Día ${i+1}`, dia.grupo||'', ordenBase + i]);
+      const diaId = diaResult.lastInsertRowid;
+      (dia.ejercicios || []).forEach((ex, j) => {
+        const cfg = dbGet('SELECT youtube_url, imagen_url FROM ejercicios_config WHERE nombre=?', [ex.nombre]);
+        dbRun(
+          `INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, rir, es_principal, orden, youtube_url, imagen_url, nota_coach)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [diaId, ex.nombre||'', ex.musculos||'', ex.series||3, ex.reps||'10-12',
+           ex.peso_objetivo||0, ex.descanso||90, ex.rir??null, ex.es_principal||0, j,
+           cfg?.youtube_url||ex.youtube_url||'', cfg?.imagen_url||ex.imagen_url||'', ex.nota_coach||'']
+        );
+      });
+    }
+    dbRun('UPDATE rutinas_plantillas SET usos=usos+1, updated_at=CURRENT_TIMESTAMP WHERE id=?', [req.params.id]);
+    saveToDisk();
+    res.json({ ok: true, diasCreados: dias.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/plantillas/desde-dia — snapshot de un día → nueva plantilla ────
+router.post('/plantillas/desde-dia', coachOnly, (req, res) => {
+  try {
+    const { diaId, nombre, descripcion, nivel, objetivo,
+            tipo_rutina, grupo_dominante, duracion_estimada, fatiga_estimada, lugar } = req.body;
+    if (!diaId || !nombre) return res.status(400).json({ error: 'diaId y nombre requeridos' });
+    const dia = dbGet('SELECT * FROM dias_entreno WHERE id=?', [diaId]);
+    if (!dia) return res.status(404).json({ error: 'Día no encontrado' });
+    const ejercicios = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=? ORDER BY orden ASC', [diaId]);
+    const snapshot = [{
+      nombre: dia.nombre, grupo: dia.grupo || '',
+      ejercicios: ejercicios.map(ex => ({
+        nombre: ex.nombre, musculos: ex.musculos, series: ex.series, reps: ex.reps,
+        peso_objetivo: ex.peso_objetivo, descanso: ex.descanso, rir: ex.rir,
+        es_principal: ex.es_principal, youtube_url: ex.youtube_url||'',
+        imagen_url: ex.imagen_url||'', nota_coach: ex.nota_coach||''
+      }))
+    }];
+    // Calcular grupo dominante automáticamente si no se pasa
+    const grupoAuto = grupo_dominante || dia.grupo || '';
+    const r = dbRun(
+      `INSERT INTO rutinas_plantillas
+        (coach_id, nombre, descripcion, objetivo, nivel, dias_json, usos,
+         tipo, tipo_rutina, grupo_dominante, duracion_estimada, fatiga_estimada, num_ejercicios, lugar)
+       VALUES (?,?,?,?,?,?,0,'dia',?,?,?,?,?,?)`,
+      [req.user.id, nombre.trim(), descripcion||'', objetivo||'', nivel||'Intermedio',
+       JSON.stringify(snapshot), tipo_rutina||'', grupoAuto,
+       duracion_estimada||0, fatiga_estimada||'Media', ejercicios.length, lugar||'Gimnasio']
+    );
+    saveToDisk();
+    res.json(buildPlantilla(dbGet('SELECT * FROM rutinas_plantillas WHERE id=?', [r.lastInsertRowid])));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// IA: GENERAR RUTINA COMPLETA — usa plantillas de la librería + datos del cliente
+// POST /api/ia/generar-rutina
+// Body: { clienteId, diasSemana, guardarComo, nombrePlantilla, reemplazar,
+//         objetivo, nivel, lesiones, rezagados, lugar, tiempoSesion,
+//         ejerciciosProhibidos, ejerciciosFavoritos, tipoRutina }
+// ══════════════════════════════════════════════════════════════════════════════
+router.post('/ia/generar-rutina', coachOnly, async (req, res) => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
+
+  const { clienteId, diasSemana, guardarComo, nombrePlantilla, reemplazar,
+          // Parámetros extra del formulario avanzado
+          objetivo: objOverride, nivel: nivelOverride, lesiones: lesionesOverride,
+          rezagados, lugar, tiempoSesion, ejerciciosProhibidos, ejerciciosFavoritos,
+          tipoRutina } = req.body;
+
+  if (!clienteId || !diasSemana) return res.status(400).json({ error: 'clienteId y diasSemana requeridos' });
+
+  // 1. Datos del cliente
+  const cliente = dbGet(`SELECT c.*, u.nombre FROM clientes c JOIN users u ON u.id=c.user_id WHERE c.id=?`, [clienteId]);
+  if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
+
+  // Usar overrides del formulario si los hay, si no los del perfil del cliente
+  const nivelFinal    = nivelOverride    || cliente.nivel    || 'Intermedio';
+  const objetivoFinal = objOverride      || cliente.objetivo || 'Volumen';
+  const lesionesF     = lesionesOverride || cliente.lesiones || '';
+
+  // 2. Ejercicios disponibles en BD
+  const ejerciciosDB = dbAll('SELECT nombre, musculos, grupo, dificultad, equipo FROM ejercicios_db ORDER BY grupo', []);
+  const ejerciciosPorGrupo = {};
+  ejerciciosDB.forEach(e => {
+    if (!ejerciciosPorGrupo[e.grupo]) ejerciciosPorGrupo[e.grupo] = [];
+    ejerciciosPorGrupo[e.grupo].push(`${e.nombre} (${e.musculos})`);
+  });
+  const listaEjercicios = Object.entries(ejerciciosPorGrupo)
+    .map(([g, exs]) => `${g}: ${exs.slice(0, 12).join(', ')}`).join('\n');
+
+  // 3. Historial de pesos reales (últimas 8 semanas)
+  let historialPesos = '';
+  try {
+    const rows = dbAll(
+      `SELECT sl.ejercicio_nombre, MAX(sl.peso_real) as max_peso, MAX(sl.reps_real) as max_reps
+       FROM sesiones_entreno se JOIN series_log sl ON sl.sesion_id=se.id
+       WHERE se.cliente_id=? AND se.fecha>=date('now','-56 days') AND sl.peso_real>0
+       GROUP BY sl.ejercicio_nombre ORDER BY sl.ejercicio_nombre`,
+      [clienteId]
+    );
+    if (rows.length) historialPesos = rows.map(s => `  ${s.ejercicio_nombre}: ${s.max_peso}kg × ${s.max_reps} reps`).join('\n');
+  } catch(e) {}
+
+  // 4. Frecuencia real de asistencia
+  let frecuenciaReal = '';
+  try {
+    const a = dbGet(
+      `SELECT COUNT(*) as total, COUNT(DISTINCT strftime('%W-%Y',fecha)) as semanas
+       FROM sesiones_entreno WHERE cliente_id=? AND fecha>=date('now','-56 days') AND estado!='incompleto'`,
+      [clienteId]
+    );
+    if (a?.total > 0) {
+      const media = (a.total / Math.max(a.semanas, 1)).toFixed(1);
+      frecuenciaReal = `${a.total} sesiones en 8 semanas (media real: ${media} días/semana)`;
+    }
+  } catch(e) {}
+
+  // 5. Último análisis corporal
+  let ultimoAnalisis = '';
+  try {
+    const f = dbGet(
+      `SELECT published_analysis, analysis FROM fotos
+       WHERE cliente_id=? AND published_analysis IS NOT NULL AND published_analysis!=''
+       ORDER BY fecha DESC LIMIT 1`, [clienteId]
+    ) || dbGet(
+      `SELECT analysis FROM fotos WHERE cliente_id=? AND analysis IS NOT NULL AND analysis!=''
+       ORDER BY fecha DESC LIMIT 1`, [clienteId]
+    );
+    if (f) {
+      ultimoAnalisis = (f.published_analysis || f.analysis || '').replace(/\n{3,}/g, '\n\n').trim();
+      if (ultimoAnalisis.length > 800) ultimoAnalisis = ultimoAnalisis.slice(0, 800) + '…';
+    }
+  } catch(e) {}
+
+  // 6. Plantillas compatibles de la librería del coach
+  let plantillasCompatibles = '';
+  try {
+    const dias_candidatos = dbAll(
+      `SELECT nombre, grupo_dominante, num_ejercicios, duracion_estimada, fatiga_estimada, tipo_rutina, dias_json
+       FROM rutinas_plantillas
+       WHERE coach_id=? AND tipo='dia'
+         AND (nivel='' OR nivel=? OR nivel IS NULL)
+         AND (objetivo='' OR objetivo=? OR objetivo IS NULL)
+       ORDER BY usos DESC LIMIT 12`,
+      [req.user.id, nivelFinal, objetivoFinal]
+    );
+    if (dias_candidatos.length) {
+      plantillasCompatibles = dias_candidatos.map(p => {
+        let primDia = {};
+        try { primDia = JSON.parse(p.dias_json||'[]')[0] || {}; } catch(e) {}
+        const exs = (primDia.ejercicios||[]).slice(0,4).map(e=>e.nombre).join(', ');
+        return `  • "${p.nombre}" [${p.grupo_dominante||'—'}] ${p.num_ejercicios||0} ejerc. ~${p.duracion_estimada||'?'}min fatiga:${p.fatiga_estimada||'?'} → ${exs}`;
+      }).join('\n');
+    }
+  } catch(e) {}
+
+  // 7. IMC
+  let imc = '';
+  if (cliente.peso_actual && cliente.altura) {
+    const h = cliente.altura / 100;
+    imc = (cliente.peso_actual / (h * h)).toFixed(1);
+  }
+
+  // 8. Construir prompt
+  const volumenPorNivel = {
+    Principiante: '2-3 series/ejercicio, 4-5 ejercicios/día, volumen total bajo',
+    Intermedio:   '3-4 series/ejercicio, 5-7 ejercicios/día, volumen moderado',
+    Avanzado:     '4-5 series/ejercicio, 6-8 ejercicios/día, volumen alto con especialización'
+  };
+
+  const clienteInfo = `
+PERFIL DEL CLIENTE:
+- Nombre: ${cliente.nombre}
+- Nivel: ${nivelFinal}
+- Objetivo: ${objetivoFinal}
+- Edad: ${cliente.edad||'no indicada'} | Sexo: ${cliente.sexo||'no indicado'}
+- Peso: ${cliente.peso_actual||'?'}kg | Altura: ${cliente.altura||'?'}cm${imc?` | IMC: ${imc}`:''}
+- Actividad habitual: ${cliente.actividad||'Moderada'}
+- Kcal/día: ${cliente.kcal_internas||'no indicadas'} | Proteína: ${cliente.prot||'?'}g
+- Lesiones / zonas a evitar: ${lesionesF||'ninguna'}
+- Músculos rezagados / prioridad: ${rezagados||cliente.deficiencias||'ninguno'}
+- Lugar de entrenamiento: ${lugar||'Gimnasio'}
+- Tiempo disponible por sesión: ${tiempoSesion||'60'} minutos
+- Ejercicios prohibidos: ${ejerciciosProhibidos||'ninguno'}
+- Ejercicios favoritos: ${ejerciciosFavoritos||'ninguno'}
+- Tipo de rutina deseado: ${tipoRutina||'libre'}
+- Días de entrenamiento por semana: ${diasSemana}
+- Frecuencia real de asistencia: ${frecuenciaReal||'sin datos'}
+- Observaciones del coach: ${cliente.observaciones||'ninguna'}
+- Notas del coach: ${cliente.notas_coach||'ninguna'}`.trim();
+
+  const histSection  = historialPesos   ? `\nRENDIMIENTO REAL (últimas 8 semanas — usa para peso_objetivo con +2.5-5% progresión):\n${historialPesos}` : '';
+  const analSection  = ultimoAnalisis   ? `\nANÁLISIS CORPORAL (foto progreso más reciente):\n${ultimoAnalisis}` : '';
+  const plantSection = plantillasCompatibles ? `\nPLANTILLAS DE MI LIBRERÍA COMPATIBLES (considera usarlas como base):\n${plantillasCompatibles}` : '';
+
+  const prompt = `Eres un coach de fitness experto en programación de entrenamiento para pérdida de grasa y recomposición corporal.
+
+${clienteInfo}
+${histSection}
+${analSection}
+${plantSection}
+
+CONTROL DE VOLUMEN OBLIGATORIO según nivel "${nivelFinal}":
+${volumenPorNivel[nivelFinal] || volumenPorNivel['Intermedio']}
+
+EJERCICIOS DISPONIBLES EN LA APP (usa los nombres EXACTOS):
+${listaEjercicios}
+
+REGLAS OBLIGATORIAS:
+1. Adapta el volumen ESTRICTAMENTE al nivel — un principiante NO necesita 5 series de 8 ejercicios
+2. Si tiene lesiones, EVITA completamente esos ejercicios y añade nota_coach con la alternativa segura
+3. Si hay músculos rezagados, dales mayor volumen y frecuencia semanal
+4. No entrenes el mismo músculo dos días seguidos — respeta recuperación
+5. Cada día: entre ${nivelFinal==='Principiante'?'4-5':nivelFinal==='Avanzado'?'6-8':'5-7'} ejercicios
+6. Descansos: ejercicios compuestos principales 90-120s, accesorios 45-60s
+7. Reps según objetivo: Fuerza 3-6, Volumen/Hipertrofia 8-12, Definición/Recomposición 10-15, Resistencia 15-20
+8. Marca siempre 1 ejercicio como principal por día (es_principal:1) — debe ser compuesto
+9. Si hay historial de pesos reales, úsalo para peso_objetivo con progresión +2.5-5%
+10. Si el objetivo incluye pérdida de grasa: prioriza multiarticulares, añade al menos 1 ejercicio de alta activación metabólica por día
+11. Si hay análisis corporal de fotos, úsalo para detectar zonas con más trabajo necesario
+12. Respeta el tiempo disponible por sesión: ajusta número de ejercicios y series
+13. Ejercicios prohibidos: NUNCA los incluyas bajo ningún concepto
+14. nota_coach debe ser específica y útil — menciona técnica, respiración o contexto del cliente
+
+Responde ÚNICAMENTE con JSON válido, sin texto, sin markdown.
+
+Formato exacto:
+{
+  "nombre": "nombre descriptivo de la rutina",
+  "descripcion": "descripción del enfoque adaptada a este cliente específico",
+  "dias": [
+    {
+      "nombre": "Día 1 – Nombre",
+      "grupo": "grupo muscular principal",
+      "ejercicios": [
+        {
+          "nombre": "nombre exacto del ejercicio",
+          "musculos": "músculo1, músculo2",
+          "series": 3,
+          "reps": "10-12",
+          "peso_objetivo": 0,
+          "descanso": 90,
+          "rir": 2,
+          "es_principal": 1,
+          "nota_coach": "nota específica para este cliente"
+        }
+      ]
+    }
+  ]
+}`;
+
+  // 9. Llamar a Claude
+  let rutina;
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 6000,
+        system: 'Eres un experto en programación de entrenamiento. Responde SOLO con JSON válido, sin texto adicional.',
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await response.json();
+    if (data.error) return res.status(500).json({ error: data.error.message });
+    let raw = data.content[0].text.trim().replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```\s*$/i,'').trim();
+    rutina = JSON.parse(raw);
+  } catch(e) {
+    return res.status(500).json({ error: 'Error generando rutina con IA: ' + e.message });
+  }
+
+  if (!rutina?.dias?.length) return res.status(500).json({ error: 'La IA no generó días válidos' });
+
+  const resultado = { rutina, plantillaId: null, diasCreados: 0 };
+
+  // 10a. Guardar como plantilla de semana completa
+  if (guardarComo === 'plantilla' || guardarComo === 'ambos') {
+    const nombre = nombrePlantilla || rutina.nombre || `Rutina ${diasSemana}d – ${cliente.nombre}`;
+    const numEjTotal = rutina.dias.reduce((a,d) => a+(d.ejercicios||[]).length, 0);
+    const r = dbRun(
+      `INSERT INTO rutinas_plantillas
+        (coach_id, nombre, descripcion, objetivo, nivel, dias_json, usos,
+         tipo, tipo_rutina, duracion_estimada, num_ejercicios, lugar)
+       VALUES (?,?,?,?,?,?,0,'semana',?,?,?,?)`,
+      [req.user.id, nombre, rutina.descripcion||'', objetivoFinal, nivelFinal,
+       JSON.stringify(rutina.dias), tipoRutina||'', (tiempoSesion||60)*diasSemana,
+       numEjTotal, lugar||'Gimnasio']
+    );
+    resultado.plantillaId = r.lastInsertRowid;
+  }
+
+  // 10b. Aplicar directamente al cliente
+  if (guardarComo === 'cliente' || guardarComo === 'ambos') {
+    if (reemplazar) {
+      const viejos = dbAll('SELECT id FROM dias_entreno WHERE cliente_id=?', [clienteId]);
+      viejos.forEach(d => {
+        dbRun('DELETE FROM ejercicios_dia WHERE dia_id=?', [d.id]);
+        dbRun('DELETE FROM dias_entreno WHERE id=?', [d.id]);
+      });
+    }
+    for (let i = 0; i < rutina.dias.length; i++) {
+      const dia = rutina.dias[i];
+      const diaResult = dbRun('INSERT INTO dias_entreno (cliente_id, nombre, grupo, orden) VALUES (?,?,?,?)',
+        [clienteId, dia.nombre||`Día ${i+1}`, dia.grupo||'', i]);
+      const diaId = diaResult.lastInsertRowid;
+      (dia.ejercicios || []).forEach((ex, j) => {
+        const cfg = dbGet('SELECT youtube_url, imagen_url FROM ejercicios_config WHERE nombre=?', [ex.nombre]);
+        dbRun(
+          `INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, rir, es_principal, orden, youtube_url, imagen_url, nota_coach)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [diaId, ex.nombre, ex.musculos||'', ex.series||3, ex.reps||'10-12',
+           ex.peso_objetivo||0, ex.descanso||90, ex.rir??2, ex.es_principal||0, j,
+           cfg?.youtube_url||'', cfg?.imagen_url||'', ex.nota_coach||'']
+        );
+      });
+      resultado.diasCreados++;
+    }
+    saveToDisk();
+  }
+
+  res.json(resultado);
+});
+
+// ── Aliases /rutinas-plantillas → /plantillas (compatibilidad frontend existente) ──
+router.get('/rutinas-plantillas', coachOnly, (req, res) => {
+  try {
+    const plantillas = dbAll(`SELECT * FROM rutinas_plantillas WHERE coach_id=? ORDER BY updated_at DESC`, [req.user.id]);
+    res.json(plantillas.map(buildPlantilla));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/rutinas-plantillas', coachOnly, (req, res) => {
+  try {
+    const { nombre, descripcion, objetivo, nivel, dias } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    const diasArr = dias || [];
+    const numEj = diasArr.reduce((a,d) => a+(d.ejercicios||[]).length, 0);
+    const r = dbRun(
+      `INSERT INTO rutinas_plantillas (coach_id,nombre,descripcion,objetivo,nivel,dias_json,usos,tipo,num_ejercicios) VALUES (?,?,?,?,?,?,0,'semana',?)`,
+      [req.user.id, nombre.trim(), descripcion||'', objetivo||'', nivel||'Intermedio', JSON.stringify(diasArr), numEj]
+    );
+    saveToDisk();
+    res.json(buildPlantilla(dbGet('SELECT * FROM rutinas_plantillas WHERE id=?', [r.lastInsertRowid])));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+router.delete('/rutinas-plantillas/:id', coachOnly, (req, res) => {
+  try {
+    const p = dbGet('SELECT id FROM rutinas_plantillas WHERE id=? AND coach_id=?', [req.params.id, req.user.id]);
+    if (!p) return res.status(404).json({ error: 'No encontrada' });
+    dbRun('DELETE FROM rutinas_plantillas WHERE id=?', [req.params.id]);
+    saveToDisk(); res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/rutinas-plantillas/:id/aplicar', coachOnly, async (req, res) => {
+  // Redirige al handler principal
+  req.params.id = req.params.id;
+  try {
+    const { clienteId, reemplazar } = req.body;
+    if (!clienteId) return res.status(400).json({ error: 'clienteId requerido' });
+    const p = dbGet('SELECT * FROM rutinas_plantillas WHERE id=? AND coach_id=?', [req.params.id, req.user.id]);
+    if (!p) return res.status(404).json({ error: 'No encontrada' });
+    let dias = []; try { dias = JSON.parse(p.dias_json||'[]'); } catch(e) {}
+    if (!dias.length) return res.status(400).json({ error: 'Sin días' });
+    if (reemplazar) {
+      const viejos = dbAll('SELECT id FROM dias_entreno WHERE cliente_id=?', [clienteId]);
+      viejos.forEach(d => { dbRun('DELETE FROM ejercicios_dia WHERE dia_id=?',[d.id]); dbRun('DELETE FROM dias_entreno WHERE id=?',[d.id]); });
+    }
+    const ordenBase = reemplazar ? 0 : (dbGet('SELECT MAX(orden) as m FROM dias_entreno WHERE cliente_id=?',[clienteId])?.m??-1)+1;
+    for (let i=0; i<dias.length; i++) {
+      const dia=dias[i];
+      const dr=dbRun('INSERT INTO dias_entreno (cliente_id,nombre,grupo,orden) VALUES (?,?,?,?)',[clienteId,dia.nombre||`Día ${i+1}`,dia.grupo||'',ordenBase+i]);
+      (dia.ejercicios||[]).forEach((ex,j)=>{
+        const cfg=dbGet('SELECT youtube_url,imagen_url FROM ejercicios_config WHERE nombre=?',[ex.nombre]);
+        dbRun(`INSERT INTO ejercicios_dia (dia_id,nombre,musculos,series,reps,peso_objetivo,descanso,rir,es_principal,orden,youtube_url,imagen_url,nota_coach) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [dr.lastInsertRowid,ex.nombre||'',ex.musculos||'',ex.series||3,ex.reps||'10-12',ex.peso_objetivo||0,ex.descanso||90,ex.rir??null,ex.es_principal||0,j,cfg?.youtube_url||'',cfg?.imagen_url||'',ex.nota_coach||'']);
+      });
+    }
+    dbRun('UPDATE rutinas_plantillas SET usos=usos+1,updated_at=CURRENT_TIMESTAMP WHERE id=?',[req.params.id]);
+    saveToDisk(); res.json({ ok:true, diasCreados:dias.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SISTEMA DE ANÁLISIS IA POR SESIÓN — análisis diario + semanal mejorado
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Helper: construir prompt de análisis para una sesión ─────────────────────
+function buildAnalisisPrompt(sesion, seriesLog, ejerciciosPlan, cliente) {
+  const nivel   = cliente.nivel   || 'Intermedio';
+  const obj     = cliente.objetivo|| 'Volumen';
+  const semanas = cliente.semanas || 1;
+  const fase    = semanas % 4 === 0 ? 'Semana de descarga' : `Semana ${semanas%4||4} de mesociclo`;
+
+  // Agrupar series por ejercicio
+  const porEj = {};
+  seriesLog.forEach(s => {
+    if (!porEj[s.ejercicio_nombre]) porEj[s.ejercicio_nombre] = [];
+    porEj[s.ejercicio_nombre].push(s);
+  });
+
+  const lineas = Object.entries(porEj).map(([nombre, srs]) => {
+    const plan = ejerciciosPlan[nombre] || {};
+    const pesoObj  = plan.peso_objetivo || 0;
+    const rirObj   = plan.rir != null ? plan.rir : 2;
+    const pesosReales = srs.map(s => s.peso_real||0);
+    const repsReales  = srs.map(s => s.reps_real||0);
+    const rirsReales  = srs.filter(s => s.rir != null).map(s => s.rir);
+    const pesoMax  = Math.max(...pesosReales);
+    const repsMed  = Math.round(repsReales.reduce((a,b)=>a+b,0)/repsReales.length);
+    const rirMed   = rirsReales.length ? (rirsReales.reduce((a,b)=>a+b,0)/rirsReales.length).toFixed(1) : null;
+    const rm1      = pesoMax * (1 + repsMed/30);
+    return `- ${nombre}${plan.es_principal?' [PRINCIPAL]':''}: obj ${pesoObj}kg×${plan.reps||'?'} RIRobj:${rirObj} | real: ${pesoMax}kg×${repsMed}reps${rirMed!==null?' RIRreal:'+rirMed:' (sin RIR)'} | 1RM≈${rm1.toFixed(1)}kg`;
+  }).join('\n');
+
+  return `Eres un coach experto en periodización. Analiza esta sesión REAL y proporciona ajustes concretos para la PRÓXIMA vez que el cliente haga este día.
+
+CLIENTE: ${cliente.nombre} | Nivel: ${nivel} | Objetivo: ${obj} | ${fase}
+DÍA ANALIZADO: ${sesion.dia_nombre} | Duración: ${sesion.duracion_min||'?'}min | Series totales: ${seriesLog.length}
+
+EJERCICIOS (objetivo vs real):
+${lineas}
+
+REGLAS DE PROGRESIÓN según nivel "${nivel}":
+- Principiante: sube solo si RIR real ≥ 3 y completó todas las series. Incremento: +2.5kg
+- Intermedio: sube si RIR real > RIR objetivo. Incremento: +2.5kg compuestos, +1.25kg accesorios
+- Avanzado: sube si RIR real > objetivo por 2+ sesiones seguidas. Incremento: +2.5kg o +5kg
+
+INSTRUCCIONES:
+1. Analiza cada ejercicio con RIR real vs objetivo
+2. Si no hay RIR registrado, usa solo peso y reps para sugerir
+3. Genera un mensaje motivador y claro para el cliente explicando los cambios
+4. El mensaje debe sonar como el coach (cercano, directo, motivador) — no menciones la IA
+5. Responde SOLO con JSON válido:
+
+{
+  "resumen": "análisis general en 2-3 frases (para el coach)",
+  "ajustes": [
+    {
+      "ejercicio": "nombre exacto",
+      "ejercicio_id": 0,
+      "accion": "subir|bajar|mantener|sin_datos",
+      "peso_actual": 0,
+      "nuevo_peso": 0,
+      "razon": "explicación breve para el coach"
+    }
+  ],
+  "mensaje_cliente": "mensaje completo para enviar al cliente explicando qué cambia en su próxima sesión y por qué. Usa su nombre. Menciona ejercicios específicos. Máximo 5 líneas. Sin markdown."
+}`;
+}
+
+// ── Función core: lanzar análisis IA de una sesión ───────────────────────────
+async function ejecutarAnalisisIA(sesionId, clienteId, coachId) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('API key no configurada');
+
+  const sesion = dbGet('SELECT * FROM sesiones_entreno WHERE id=?', [sesionId]);
+  if (!sesion) throw new Error('Sesión no encontrada');
+
+  const seriesLog = dbAll('SELECT * FROM series_log WHERE sesion_id=? ORDER BY ejercicio_nombre, serie_num', [sesionId]);
+  if (!seriesLog.length) throw new Error('Sin series registradas');
+
+  const cliente = dbGet('SELECT c.*, u.nombre FROM clientes c JOIN users u ON u.id=c.user_id WHERE c.id=?', [clienteId]);
+  if (!cliente) throw new Error('Cliente no encontrado');
+
+  // Mapa ejercicios del plan para cruzar con series reales
+  const ejerciciosPlan = {};
+  const dias = dbAll('SELECT * FROM dias_entreno WHERE cliente_id=?', [clienteId]);
+  dias.forEach(d => {
+    const exs = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=?', [d.id]);
+    exs.forEach(e => { ejerciciosPlan[e.nombre] = e; });
+  });
+
+  const prompt = buildAnalisisPrompt(sesion, seriesLog, ejerciciosPlan, cliente);
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01' },
+    body: JSON.stringify({
+      model: 'claude-opus-4-5',
+      max_tokens: 2000,
+      system: 'Eres un coach experto en periodización. Responde SOLO con JSON válido.',
+      messages: [{ role:'user', content: prompt }]
+    })
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+
+  let raw = data.content[0].text.trim().replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```\s*$/i,'').trim();
+  const iaData = JSON.parse(raw);
+
+  // Rellenar ejercicio_id en ajustes desde el plan
+  (iaData.ajustes||[]).forEach(aj => {
+    const ex = ejerciciosPlan[aj.ejercicio];
+    if (ex) aj.ejercicio_id = ex.id;
+  });
+
+  return { sesion, cliente, iaData, ejerciciosPlan, coachId };
+}
+
+// ── Trigger automático (background) ─────────────────────────────────────────
+async function lanzarAnalisisAutomatico(sesionId, clienteId, coachId) {
+  try {
+    // Evitar duplicados
+    const existe = dbGet('SELECT id FROM analisis_sesion WHERE sesion_id=?', [sesionId]);
+    if (existe) return;
+
+    const { sesion, cliente, iaData } = await ejecutarAnalisisIA(sesionId, clienteId, coachId);
+
+    dbRun(
+      `INSERT INTO analisis_sesion (sesion_id, cliente_id, dia_nombre, resumen_ia, ajustes_json, mensaje_cliente, estado, coach_id)
+       VALUES (?,?,?,?,?,?,'pendiente',?)`,
+      [sesionId, clienteId, sesion.dia_nombre, iaData.resumen||'',
+       JSON.stringify(iaData.ajustes||[]), iaData.mensaje_cliente||'', coachId||getCoachId()]
+    );
+    saveToDisk();
+
+    // Notificar al coach que hay un análisis pendiente
+    const coachNotifId = coachId || getCoachId();
+    if (coachNotifId) {
+      crearNotificacion(coachNotifId, 'analisis_pendiente',
+        `🤖 Análisis listo: ${cliente.nombre} — ${sesion.dia_nombre}. Revisa y aprueba.`);
+    }
+    console.log(`[AnalisisAuto] OK sesión ${sesionId} cliente ${clienteId}`);
+  } catch(e) {
+    console.error('[AnalisisAuto] Error:', e.message);
+  }
+}
+
+// ── GET /api/coach/analisis-pendientes ───────────────────────────────────────
+router.get('/coach/analisis-pendientes', coachOnly, (req, res) => {
+  try {
+    const pendientes = dbAll(
+      `SELECT a.*, u.nombre as cliente_nombre
+       FROM analisis_sesion a
+       JOIN users u ON u.id = (SELECT user_id FROM clientes WHERE id=a.cliente_id)
+       WHERE a.estado='pendiente'
+       ORDER BY a.created_at DESC`,
+      []
+    );
+    res.json(pendientes.map(p => ({
+      ...p,
+      ajustes: JSON.parse(p.ajustes_json||'[]')
+    })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/coach/analisis-pendientes/count ─────────────────────────────────
+router.get('/coach/analisis-pendientes/count', coachOnly, (req, res) => {
+  try {
+    const r = dbGet('SELECT COUNT(*) as n FROM analisis_sesion WHERE estado=?', ['pendiente']);
+    res.json({ count: r?.n || 0 });
+  } catch(e) { res.json({ count: 0 }); }
+});
+
+// ── POST /api/ia/analizar-sesion/:sesionId — lanzar análisis manual ───────────
+router.post('/ia/analizar-sesion/:sesionId', coachOnly, async (req, res) => {
+  try {
+    const sesionId  = req.params.sesionId;
+    const sesion    = dbGet('SELECT * FROM sesiones_entreno WHERE id=?', [sesionId]);
+    if (!sesion) return res.status(404).json({ error: 'Sesión no encontrada' });
+
+    // Si ya existe, devolver el existente
+    const existente = dbGet('SELECT * FROM analisis_sesion WHERE sesion_id=?', [sesionId]);
+    if (existente && existente.estado === 'pendiente') {
+      return res.json({ ...existente, ajustes: JSON.parse(existente.ajustes_json||'[]'), cached: true });
+    }
+
+    const { iaData } = await ejecutarAnalisisIA(sesionId, sesion.cliente_id, req.user.id);
+
+    // Upsert
+    const prev = dbGet('SELECT id FROM analisis_sesion WHERE sesion_id=?', [sesionId]);
+    if (prev) {
+      dbRun(`UPDATE analisis_sesion SET resumen_ia=?, ajustes_json=?, mensaje_cliente=?, estado='pendiente', created_at=CURRENT_TIMESTAMP WHERE sesion_id=?`,
+        [iaData.resumen||'', JSON.stringify(iaData.ajustes||[]), iaData.mensaje_cliente||'', sesionId]);
+    } else {
+      dbRun(`INSERT INTO analisis_sesion (sesion_id, cliente_id, dia_nombre, resumen_ia, ajustes_json, mensaje_cliente, estado, coach_id)
+             VALUES (?,?,?,?,?,?,'pendiente',?)`,
+        [sesionId, sesion.cliente_id, sesion.dia_nombre, iaData.resumen||'',
+         JSON.stringify(iaData.ajustes||[]), iaData.mensaje_cliente||'', req.user.id]);
+    }
+    saveToDisk();
+    res.json({ resumen: iaData.resumen, ajustes: iaData.ajustes, mensaje_cliente: iaData.mensaje_cliente });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/ia/aprobar-analisis/:analisisId ────────────────────────────────
+// Coach aprueba: aplica nuevos pesos + envía mensaje al cliente
+router.post('/ia/aprobar-analisis/:analisisId', coachOnly, async (req, res) => {
+  try {
+    const analisis = dbGet('SELECT * FROM analisis_sesion WHERE id=?', [req.params.analisisId]);
+    if (!analisis) return res.status(404).json({ error: 'Análisis no encontrado' });
+
+    const ajustes = JSON.parse(analisis.ajustes_json||'[]');
+    // El coach puede haber editado pesos y mensaje antes de aprobar
+    const ajustesFinales = req.body.ajustes || ajustes;
+    const mensajeFinal   = req.body.mensaje  || analisis.mensaje_cliente;
+
+    let pesosActualizados = 0;
+
+    // 1. Aplicar nuevos pesos a ejercicios_dia
+    ajustesFinales.forEach(aj => {
+      if ((aj.accion === 'subir' || aj.accion === 'bajar') && aj.nuevo_peso > 0 && aj.ejercicio_id) {
+        dbRun('UPDATE ejercicios_dia SET peso_objetivo=? WHERE id=?', [aj.nuevo_peso, aj.ejercicio_id]);
+        pesosActualizados++;
+      }
+    });
+
+    // 2. Enviar mensaje al cliente via chat
+    if (mensajeFinal) {
+      dbRun(
+        `INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido)
+         VALUES (?,1,0,?,0)`,
+        [analisis.cliente_id, mensajeFinal]
+      );
+      // Notificar al cliente por SSE
+      const clienteUser = dbGet('SELECT user_id FROM clientes WHERE id=?', [analisis.cliente_id]);
+      if (clienteUser) {
+        ssePush(String(clienteUser.user_id), 'mensaje_nuevo', {
+          contenido: mensajeFinal, de_coach: 1, ts: Date.now()
+        });
+        // Push notification
+        if (global.sendPushToUser) {
+          global.sendPushToUser(clienteUser.user_id, '💪 Tu coach ha revisado tu entreno', mensajeFinal.slice(0,80)+'…', '/');
+        }
+      }
+    }
+
+    // 3. Marcar análisis como aprobado
+    dbRun(`UPDATE analisis_sesion SET estado='aprobado', ajustes_json=?, mensaje_cliente=?, aprobado_at=CURRENT_TIMESTAMP WHERE id=?`,
+      [JSON.stringify(ajustesFinales), mensajeFinal, req.params.analisisId]);
+
+    saveToDisk();
+    res.json({ ok: true, pesosActualizados, mensajeEnviado: !!mensajeFinal });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/ia/descartar-analisis/:analisisId ──────────────────────────────
+router.post('/ia/descartar-analisis/:analisisId', coachOnly, (req, res) => {
+  try {
+    dbRun("UPDATE analisis_sesion SET estado='descartado' WHERE id=?", [req.params.analisisId]);
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/clientes/:id/analisis-aprobados ─────────────────────────────────
+// El cliente consulta qué ajustes tiene para sus próximas sesiones
+router.get('/clientes/:id/analisis-aprobados', (req, res) => {
+  try {
+    const rows = dbAll(
+      `SELECT dia_nombre, ajustes_json, mensaje_cliente, aprobado_at
+       FROM analisis_sesion
+       WHERE cliente_id=? AND estado='aprobado'
+       ORDER BY aprobado_at DESC LIMIT 10`,
+      [req.params.id]
+    );
+    res.json(rows.map(r => ({ ...r, ajustes: JSON.parse(r.ajustes_json||'[]') })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 
 module.exports = router;
