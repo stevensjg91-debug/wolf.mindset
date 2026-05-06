@@ -937,6 +937,14 @@ router.post('/clientes/:id/sesiones', (req, res) => {
 
     saveToDisk();
     res.json({ ok: true, sesion_id: sesionId });
+
+    // ── Trigger automático: análisis IA en background si sesión completada ──
+    // Se lanza DESPUÉS de responder al cliente para no bloquear la respuesta.
+    if (estadoFinal === 'completado' && series && series.length >= 3) {
+      setImmediate(() => lanzarAnalisisAutomatico(sesionId, req.params.id, coachId).catch(e =>
+        console.error('[AnalisisAuto] Error:', e.message)
+      ));
+    }
   } catch(e) {
     console.error('Error guardando sesión:', e.message);
     res.status(500).json({ ok: false, error: e.message });
@@ -2834,5 +2842,284 @@ router.post('/rutinas-plantillas/:id/aplicar', coachOnly, async (req, res) => {
     saveToDisk(); res.json({ ok:true, diasCreados:dias.length });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SISTEMA DE ANÁLISIS IA POR SESIÓN — análisis diario + semanal mejorado
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Helper: construir prompt de análisis para una sesión ─────────────────────
+function buildAnalisisPrompt(sesion, seriesLog, ejerciciosPlan, cliente) {
+  const nivel   = cliente.nivel   || 'Intermedio';
+  const obj     = cliente.objetivo|| 'Volumen';
+  const semanas = cliente.semanas || 1;
+  const fase    = semanas % 4 === 0 ? 'Semana de descarga' : `Semana ${semanas%4||4} de mesociclo`;
+
+  // Agrupar series por ejercicio
+  const porEj = {};
+  seriesLog.forEach(s => {
+    if (!porEj[s.ejercicio_nombre]) porEj[s.ejercicio_nombre] = [];
+    porEj[s.ejercicio_nombre].push(s);
+  });
+
+  const lineas = Object.entries(porEj).map(([nombre, srs]) => {
+    const plan = ejerciciosPlan[nombre] || {};
+    const pesoObj  = plan.peso_objetivo || 0;
+    const rirObj   = plan.rir != null ? plan.rir : 2;
+    const pesosReales = srs.map(s => s.peso_real||0);
+    const repsReales  = srs.map(s => s.reps_real||0);
+    const rirsReales  = srs.filter(s => s.rir != null).map(s => s.rir);
+    const pesoMax  = Math.max(...pesosReales);
+    const repsMed  = Math.round(repsReales.reduce((a,b)=>a+b,0)/repsReales.length);
+    const rirMed   = rirsReales.length ? (rirsReales.reduce((a,b)=>a+b,0)/rirsReales.length).toFixed(1) : null;
+    const rm1      = pesoMax * (1 + repsMed/30);
+    return `- ${nombre}${plan.es_principal?' [PRINCIPAL]':''}: obj ${pesoObj}kg×${plan.reps||'?'} RIRobj:${rirObj} | real: ${pesoMax}kg×${repsMed}reps${rirMed!==null?' RIRreal:'+rirMed:' (sin RIR)'} | 1RM≈${rm1.toFixed(1)}kg`;
+  }).join('\n');
+
+  return `Eres un coach experto en periodización. Analiza esta sesión REAL y proporciona ajustes concretos para la PRÓXIMA vez que el cliente haga este día.
+
+CLIENTE: ${cliente.nombre} | Nivel: ${nivel} | Objetivo: ${obj} | ${fase}
+DÍA ANALIZADO: ${sesion.dia_nombre} | Duración: ${sesion.duracion_min||'?'}min | Series totales: ${seriesLog.length}
+
+EJERCICIOS (objetivo vs real):
+${lineas}
+
+REGLAS DE PROGRESIÓN según nivel "${nivel}":
+- Principiante: sube solo si RIR real ≥ 3 y completó todas las series. Incremento: +2.5kg
+- Intermedio: sube si RIR real > RIR objetivo. Incremento: +2.5kg compuestos, +1.25kg accesorios
+- Avanzado: sube si RIR real > objetivo por 2+ sesiones seguidas. Incremento: +2.5kg o +5kg
+
+INSTRUCCIONES:
+1. Analiza cada ejercicio con RIR real vs objetivo
+2. Si no hay RIR registrado, usa solo peso y reps para sugerir
+3. Genera un mensaje motivador y claro para el cliente explicando los cambios
+4. El mensaje debe sonar como el coach (cercano, directo, motivador) — no menciones la IA
+5. Responde SOLO con JSON válido:
+
+{
+  "resumen": "análisis general en 2-3 frases (para el coach)",
+  "ajustes": [
+    {
+      "ejercicio": "nombre exacto",
+      "ejercicio_id": 0,
+      "accion": "subir|bajar|mantener|sin_datos",
+      "peso_actual": 0,
+      "nuevo_peso": 0,
+      "razon": "explicación breve para el coach"
+    }
+  ],
+  "mensaje_cliente": "mensaje completo para enviar al cliente explicando qué cambia en su próxima sesión y por qué. Usa su nombre. Menciona ejercicios específicos. Máximo 5 líneas. Sin markdown."
+}`;
+}
+
+// ── Función core: lanzar análisis IA de una sesión ───────────────────────────
+async function ejecutarAnalisisIA(sesionId, clienteId, coachId) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('API key no configurada');
+
+  const sesion = dbGet('SELECT * FROM sesiones_entreno WHERE id=?', [sesionId]);
+  if (!sesion) throw new Error('Sesión no encontrada');
+
+  const seriesLog = dbAll('SELECT * FROM series_log WHERE sesion_id=? ORDER BY ejercicio_nombre, serie_num', [sesionId]);
+  if (!seriesLog.length) throw new Error('Sin series registradas');
+
+  const cliente = dbGet('SELECT c.*, u.nombre FROM clientes c JOIN users u ON u.id=c.user_id WHERE c.id=?', [clienteId]);
+  if (!cliente) throw new Error('Cliente no encontrado');
+
+  // Mapa ejercicios del plan para cruzar con series reales
+  const ejerciciosPlan = {};
+  const dias = dbAll('SELECT * FROM dias_entreno WHERE cliente_id=?', [clienteId]);
+  dias.forEach(d => {
+    const exs = dbAll('SELECT * FROM ejercicios_dia WHERE dia_id=?', [d.id]);
+    exs.forEach(e => { ejerciciosPlan[e.nombre] = e; });
+  });
+
+  const prompt = buildAnalisisPrompt(sesion, seriesLog, ejerciciosPlan, cliente);
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01' },
+    body: JSON.stringify({
+      model: 'claude-opus-4-5',
+      max_tokens: 2000,
+      system: 'Eres un coach experto en periodización. Responde SOLO con JSON válido.',
+      messages: [{ role:'user', content: prompt }]
+    })
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+
+  let raw = data.content[0].text.trim().replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```\s*$/i,'').trim();
+  const iaData = JSON.parse(raw);
+
+  // Rellenar ejercicio_id en ajustes desde el plan
+  (iaData.ajustes||[]).forEach(aj => {
+    const ex = ejerciciosPlan[aj.ejercicio];
+    if (ex) aj.ejercicio_id = ex.id;
+  });
+
+  return { sesion, cliente, iaData, ejerciciosPlan, coachId };
+}
+
+// ── Trigger automático (background) ─────────────────────────────────────────
+async function lanzarAnalisisAutomatico(sesionId, clienteId, coachId) {
+  try {
+    // Evitar duplicados
+    const existe = dbGet('SELECT id FROM analisis_sesion WHERE sesion_id=?', [sesionId]);
+    if (existe) return;
+
+    const { sesion, cliente, iaData } = await ejecutarAnalisisIA(sesionId, clienteId, coachId);
+
+    dbRun(
+      `INSERT INTO analisis_sesion (sesion_id, cliente_id, dia_nombre, resumen_ia, ajustes_json, mensaje_cliente, estado, coach_id)
+       VALUES (?,?,?,?,?,?,'pendiente',?)`,
+      [sesionId, clienteId, sesion.dia_nombre, iaData.resumen||'',
+       JSON.stringify(iaData.ajustes||[]), iaData.mensaje_cliente||'', coachId||getCoachId()]
+    );
+    saveToDisk();
+
+    // Notificar al coach que hay un análisis pendiente
+    const coachNotifId = coachId || getCoachId();
+    if (coachNotifId) {
+      crearNotificacion(coachNotifId, 'analisis_pendiente',
+        `🤖 Análisis listo: ${cliente.nombre} — ${sesion.dia_nombre}. Revisa y aprueba.`);
+    }
+    console.log(`[AnalisisAuto] OK sesión ${sesionId} cliente ${clienteId}`);
+  } catch(e) {
+    console.error('[AnalisisAuto] Error:', e.message);
+  }
+}
+
+// ── GET /api/coach/analisis-pendientes ───────────────────────────────────────
+router.get('/coach/analisis-pendientes', coachOnly, (req, res) => {
+  try {
+    const pendientes = dbAll(
+      `SELECT a.*, u.nombre as cliente_nombre
+       FROM analisis_sesion a
+       JOIN users u ON u.id = (SELECT user_id FROM clientes WHERE id=a.cliente_id)
+       WHERE a.estado='pendiente'
+       ORDER BY a.created_at DESC`,
+      []
+    );
+    res.json(pendientes.map(p => ({
+      ...p,
+      ajustes: JSON.parse(p.ajustes_json||'[]')
+    })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/coach/analisis-pendientes/count ─────────────────────────────────
+router.get('/coach/analisis-pendientes/count', coachOnly, (req, res) => {
+  try {
+    const r = dbGet('SELECT COUNT(*) as n FROM analisis_sesion WHERE estado=?', ['pendiente']);
+    res.json({ count: r?.n || 0 });
+  } catch(e) { res.json({ count: 0 }); }
+});
+
+// ── POST /api/ia/analizar-sesion/:sesionId — lanzar análisis manual ───────────
+router.post('/ia/analizar-sesion/:sesionId', coachOnly, async (req, res) => {
+  try {
+    const sesionId  = req.params.sesionId;
+    const sesion    = dbGet('SELECT * FROM sesiones_entreno WHERE id=?', [sesionId]);
+    if (!sesion) return res.status(404).json({ error: 'Sesión no encontrada' });
+
+    // Si ya existe, devolver el existente
+    const existente = dbGet('SELECT * FROM analisis_sesion WHERE sesion_id=?', [sesionId]);
+    if (existente && existente.estado === 'pendiente') {
+      return res.json({ ...existente, ajustes: JSON.parse(existente.ajustes_json||'[]'), cached: true });
+    }
+
+    const { iaData } = await ejecutarAnalisisIA(sesionId, sesion.cliente_id, req.user.id);
+
+    // Upsert
+    const prev = dbGet('SELECT id FROM analisis_sesion WHERE sesion_id=?', [sesionId]);
+    if (prev) {
+      dbRun(`UPDATE analisis_sesion SET resumen_ia=?, ajustes_json=?, mensaje_cliente=?, estado='pendiente', created_at=CURRENT_TIMESTAMP WHERE sesion_id=?`,
+        [iaData.resumen||'', JSON.stringify(iaData.ajustes||[]), iaData.mensaje_cliente||'', sesionId]);
+    } else {
+      dbRun(`INSERT INTO analisis_sesion (sesion_id, cliente_id, dia_nombre, resumen_ia, ajustes_json, mensaje_cliente, estado, coach_id)
+             VALUES (?,?,?,?,?,?,'pendiente',?)`,
+        [sesionId, sesion.cliente_id, sesion.dia_nombre, iaData.resumen||'',
+         JSON.stringify(iaData.ajustes||[]), iaData.mensaje_cliente||'', req.user.id]);
+    }
+    saveToDisk();
+    res.json({ resumen: iaData.resumen, ajustes: iaData.ajustes, mensaje_cliente: iaData.mensaje_cliente });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/ia/aprobar-analisis/:analisisId ────────────────────────────────
+// Coach aprueba: aplica nuevos pesos + envía mensaje al cliente
+router.post('/ia/aprobar-analisis/:analisisId', coachOnly, async (req, res) => {
+  try {
+    const analisis = dbGet('SELECT * FROM analisis_sesion WHERE id=?', [req.params.analisisId]);
+    if (!analisis) return res.status(404).json({ error: 'Análisis no encontrado' });
+
+    const ajustes = JSON.parse(analisis.ajustes_json||'[]');
+    // El coach puede haber editado pesos y mensaje antes de aprobar
+    const ajustesFinales = req.body.ajustes || ajustes;
+    const mensajeFinal   = req.body.mensaje  || analisis.mensaje_cliente;
+
+    let pesosActualizados = 0;
+
+    // 1. Aplicar nuevos pesos a ejercicios_dia
+    ajustesFinales.forEach(aj => {
+      if ((aj.accion === 'subir' || aj.accion === 'bajar') && aj.nuevo_peso > 0 && aj.ejercicio_id) {
+        dbRun('UPDATE ejercicios_dia SET peso_objetivo=? WHERE id=?', [aj.nuevo_peso, aj.ejercicio_id]);
+        pesosActualizados++;
+      }
+    });
+
+    // 2. Enviar mensaje al cliente via chat
+    if (mensajeFinal) {
+      dbRun(
+        `INSERT INTO mensajes (cliente_id, de_coach, via_ia, contenido, leido)
+         VALUES (?,1,0,?,0)`,
+        [analisis.cliente_id, mensajeFinal]
+      );
+      // Notificar al cliente por SSE
+      const clienteUser = dbGet('SELECT user_id FROM clientes WHERE id=?', [analisis.cliente_id]);
+      if (clienteUser) {
+        ssePush(String(clienteUser.user_id), 'mensaje_nuevo', {
+          contenido: mensajeFinal, de_coach: 1, ts: Date.now()
+        });
+        // Push notification
+        if (global.sendPushToUser) {
+          global.sendPushToUser(clienteUser.user_id, '💪 Tu coach ha revisado tu entreno', mensajeFinal.slice(0,80)+'…', '/');
+        }
+      }
+    }
+
+    // 3. Marcar análisis como aprobado
+    dbRun(`UPDATE analisis_sesion SET estado='aprobado', ajustes_json=?, mensaje_cliente=?, aprobado_at=CURRENT_TIMESTAMP WHERE id=?`,
+      [JSON.stringify(ajustesFinales), mensajeFinal, req.params.analisisId]);
+
+    saveToDisk();
+    res.json({ ok: true, pesosActualizados, mensajeEnviado: !!mensajeFinal });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/ia/descartar-analisis/:analisisId ──────────────────────────────
+router.post('/ia/descartar-analisis/:analisisId', coachOnly, (req, res) => {
+  try {
+    dbRun("UPDATE analisis_sesion SET estado='descartado' WHERE id=?", [req.params.analisisId]);
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/clientes/:id/analisis-aprobados ─────────────────────────────────
+// El cliente consulta qué ajustes tiene para sus próximas sesiones
+router.get('/clientes/:id/analisis-aprobados', (req, res) => {
+  try {
+    const rows = dbAll(
+      `SELECT dia_nombre, ajustes_json, mensaje_cliente, aprobado_at
+       FROM analisis_sesion
+       WHERE cliente_id=? AND estado='aprobado'
+       ORDER BY aprobado_at DESC LIMIT 10`,
+      [req.params.id]
+    );
+    res.json(rows.map(r => ({ ...r, ajustes: JSON.parse(r.ajustes_json||'[]') })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 
 module.exports = router;
