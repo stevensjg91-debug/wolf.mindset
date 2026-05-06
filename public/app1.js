@@ -2226,8 +2226,15 @@ async function verCliente(id){
     <!-- EDITOR INLINE DE RUTINA -->
     <div class="sec" style="margin-bottom:12px">
       <div class="sec-hdr">🏋️ ${COACH_LANG==='en'?'Assigned routine':'Rutina asignada'}
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-sm" onclick="tabEntrenoNuevoDia(${c.id})" style="font-size:11px">${tc('+ Día')}</button>
+          <button onclick="abrirModalGenerarRutina(${c.id},'${(c.nombre||'').replace(/'/g,"\\'")}','${c.nivel||'Intermedio'}')"
+            style="display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;
+                   background:linear-gradient(135deg,rgba(37,99,235,.2),rgba(124,58,237,.2));
+                   border:0.5px solid rgba(124,58,237,.4);color:#a78bfa;font-size:11px;
+                   cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap">
+            🤖 ${COACH_LANG==='en'?'AI Routine':'IA Rutina'}
+          </button>
         </div>
       </div>
       <div id="tab_entreno_dias">
@@ -10689,5 +10696,228 @@ async function dragExDrop(e, targetIndex, diaId, clienteId) {
     }, 50);
   } catch(err) {
     console.error('dragExDrop:', err);
+  }
+}
+
+// ── IA: MODAL GENERAR RUTINA COMPLETA ────────────────────────────────────────
+function abrirModalGenerarRutina(clienteId, nombreCliente, nivelCliente) {
+  let modal = document.getElementById('modal_gen_rutina');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal_gen_rutina';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:flex-end;justify-content:center;padding:0';
+    document.body.appendChild(modal);
+  }
+
+  const isEn = COACH_LANG === 'en';
+
+  modal.innerHTML = `
+    <div id="mgr_sheet" style="background:var(--bg2,#1a1a2e);border-radius:18px 18px 0 0;
+         border-top:0.5px solid rgba(255,255,255,.15);padding:20px 20px 32px;
+         width:100%;max-width:520px;max-height:92vh;overflow-y:auto;
+         animation:mgrSlideUp .25s ease">
+      <style>
+        @keyframes mgrSlideUp { from{transform:translateY(60px);opacity:0} to{transform:translateY(0);opacity:1} }
+        #mgr_dias_btns button { padding:10px 0;border-radius:10px;border:0.5px solid rgba(255,255,255,.15);
+          background:none;color:var(--tx2);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s }
+        #mgr_dias_btns button.sel { background:rgba(37,99,235,.25);border-color:var(--bl2);color:var(--bl2) }
+        @keyframes mgrSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+      </style>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--sv)">🤖 ${isEn?'Generate routine with AI':'Generar rutina con IA'}</div>
+          <div style="font-size:12px;color:var(--tx3);margin-top:2px">${isEn?'For':'Para'}: ${nombreCliente} · ${nivelCliente || 'Intermedio'}</div>
+        </div>
+        <button onclick="cerrarModalGenRutina()"
+          style="background:none;border:none;color:var(--tx3);font-size:20px;cursor:pointer;padding:4px">✕</button>
+      </div>
+
+      <!-- Días por semana -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">
+          ${isEn?'Days per week':'¿Cuántos días por semana entrena?'}
+        </div>
+        <div id="mgr_dias_btns" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+          ${[2,3,4,5,6].map(d => `
+            <button onclick="mgrSelDia(${d},this)" ${d===3?'class="sel"':''} data-dias="${d}">${d} ${isEn?'days':'días'}</button>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Destino -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">
+          ${isEn?'What to do with the routine':'¿Qué hago con la rutina generada?'}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${[
+            ['cliente',   isEn?'👤 Apply directly to client':'👤 Aplicar directamente al cliente',         isEn?'Days are added to their current routine':'Se añaden los días a su rutina actual'],
+            ['plantilla', isEn?'💾 Save as template (no apply)':'💾 Guardar como plantilla (sin aplicar)',  isEn?'Available in Templates to reuse':'Disponible en Plantillas para reutilizar'],
+            ['ambos',     isEn?'✅ Apply AND save as template':'✅ Aplicar al cliente Y guardar plantilla', isEn?'Best of both worlds':'Lo mejor de los dos mundos'],
+          ].map(([val, label, sub]) => `
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:10px;
+                          border:0.5px solid rgba(255,255,255,.1);cursor:pointer;transition:.15s"
+                   onmouseover="this.style.background='rgba(37,99,235,.08)'" onmouseout="this.style.background='none'">
+              <input type="radio" name="mgr_destino" value="${val}" ${val==='ambos'?'checked':''} style="margin-top:2px;accent-color:var(--bl2)">
+              <div>
+                <div style="font-size:13px;color:var(--sv);font-weight:500">${label}</div>
+                <div style="font-size:11px;color:var(--tx3);margin-top:1px">${sub}</div>
+              </div>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Reemplazar -->
+      <div style="margin-bottom:18px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx2);cursor:pointer">
+          <input type="checkbox" id="mgr_reemplazar" style="accent-color:var(--bl2)">
+          ${isEn?'Replace existing client days (if any)':'Reemplazar días existentes del cliente (si los tiene)'}
+        </label>
+      </div>
+
+      <!-- Nombre plantilla -->
+      <div id="mgr_nombre_wrap" style="margin-bottom:18px">
+        <div style="font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
+          ${isEn?'Template name (optional)':'Nombre de la plantilla (opcional)'}
+        </div>
+        <input id="mgr_nombre_plantilla" type="text"
+          placeholder="${isEn?'E.g. Push Pull Legs – Intermediate':'Ej: Push Pull Legs – Intermedio'}"
+          style="width:100%;padding:10px 12px;border-radius:10px;border:0.5px solid rgba(255,255,255,.15);
+                 background:rgba(255,255,255,.05);color:var(--sv);font-size:13px;font-family:inherit;box-sizing:border-box">
+      </div>
+
+      <!-- Status -->
+      <div id="mgr_status" style="display:none;padding:12px;border-radius:10px;background:rgba(37,99,235,.12);
+           border:0.5px solid rgba(37,99,235,.3);font-size:13px;color:var(--bl2);margin-bottom:16px;
+           align-items:center;gap:8px"></div>
+
+      <!-- Preview -->
+      <div id="mgr_preview" style="display:none;margin-bottom:16px"></div>
+
+      <!-- Acciones -->
+      <div style="display:flex;gap:8px">
+        <button onclick="cerrarModalGenRutina()"
+          style="flex:1;padding:12px;border-radius:10px;border:0.5px solid rgba(255,255,255,.12);
+                 background:none;color:var(--tx2);font-size:14px;cursor:pointer;font-family:inherit">
+          ${isEn?'Cancel':'Cancelar'}
+        </button>
+        <button id="mgr_btn_generar" onclick="ejecutarGenerarRutina(${clienteId})"
+          style="flex:2;padding:12px;border-radius:10px;border:none;
+                 background:linear-gradient(135deg,#2563eb,#7c3aed);
+                 color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;
+                 display:flex;align-items:center;justify-content:center;gap:6px">
+          🤖 ${isEn?'Generate routine':'Generar rutina'}
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Mostrar/ocultar nombre plantilla según destino
+  modal.querySelectorAll('input[name="mgr_destino"]').forEach(r => {
+    r.addEventListener('change', () => {
+      const wrap = document.getElementById('mgr_nombre_wrap');
+      if (wrap) wrap.style.display = (r.value === 'cliente') ? 'none' : 'block';
+    });
+  });
+
+  modal.style.display = 'flex';
+  modal._clienteId = clienteId;
+}
+
+function mgrSelDia(n, btn) {
+  document.querySelectorAll('#mgr_dias_btns button').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+}
+
+function cerrarModalGenRutina() {
+  const m = document.getElementById('modal_gen_rutina');
+  if (m) m.style.display = 'none';
+}
+
+async function ejecutarGenerarRutina(clienteId) {
+  const isEn = COACH_LANG === 'en';
+  const diasBtn = document.querySelector('#mgr_dias_btns button.sel');
+  const diasSemana = diasBtn ? parseInt(diasBtn.dataset.dias) : 3;
+  const destino = document.querySelector('input[name="mgr_destino"]:checked')?.value || 'ambos';
+  const reemplazar = document.getElementById('mgr_reemplazar')?.checked || false;
+  const nombrePlantilla = document.getElementById('mgr_nombre_plantilla')?.value?.trim() || '';
+
+  const btn = document.getElementById('mgr_btn_generar');
+  const status = document.getElementById('mgr_status');
+  const preview = document.getElementById('mgr_preview');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span style="animation:mgrSpin 1s linear infinite;display:inline-block">⏳</span> ' + (isEn?'Generating...':'Generando...');
+  btn.style.opacity = '0.7';
+  status.style.display = 'flex';
+  status.style.background = 'rgba(37,99,235,.12)';
+  status.style.borderColor = 'rgba(37,99,235,.3)';
+  status.style.color = 'var(--bl2)';
+  status.textContent = '🧠 ' + (isEn?'Claude is designing the routine...':'Claude está diseñando la rutina adaptada al cliente...');
+  preview.style.display = 'none';
+
+  try {
+    const result = await api('/ia/generar-rutina', {
+      method: 'POST',
+      body: JSON.stringify({ clienteId, diasSemana, guardarComo: destino, reemplazar, nombrePlantilla })
+    });
+
+    const rutina = result.rutina;
+    const totalEj = rutina.dias.reduce((a, d) => a + (d.ejercicios || []).length, 0);
+
+    status.style.background = 'rgba(34,197,94,.1)';
+    status.style.borderColor = 'rgba(34,197,94,.3)';
+    status.style.color = '#4ade80';
+    status.innerHTML = `✅ ${isEn?'Routine generated':'Rutina generada'}: ${rutina.dias.length} ${isEn?'days':'días'} · ${totalEj} ${isEn?'exercises':'ejercicios'}${result.plantillaId ? (isEn?' · Template saved':' · Plantilla guardada') : ''}`;
+
+    // Preview compacto
+    preview.style.display = 'block';
+    preview.innerHTML = `
+      <div style="font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">
+        ${isEn?'Preview':'Vista previa'} — ${rutina.nombre}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${rutina.dias.map(d => `
+          <div style="background:rgba(255,255,255,.03);border:0.5px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+              <span style="font-size:13px;font-weight:600;color:var(--sv)">${d.nombre}</span>
+              <span style="font-size:11px;color:var(--tx3)">${(d.ejercicios||[]).length} ${isEn?'exercises':'ejerc.'}</span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              ${(d.ejercicios||[]).slice(0,5).map(ex => `
+                <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(37,99,235,.15);color:var(--bl2)">
+                  ${ex.nombre.length > 25 ? ex.nombre.slice(0,23)+'…' : ex.nombre}
+                </span>`).join('')}
+              ${(d.ejercicios||[]).length > 5 ? `<span style="font-size:10px;color:var(--tx3)">+${(d.ejercicios||[]).length-5} más</span>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>`;
+
+    // Botón cerrar y refrescar
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.innerHTML = '✅ ' + (isEn?'Close':'Cerrar');
+    btn.onclick = async () => {
+      cerrarModalGenRutina();
+      if ((destino === 'cliente' || destino === 'ambos') && clienteId) {
+        await verCliente(clienteId);
+        setTimeout(() => switchClienteTab('entreno', document.querySelector('.ctab[onclick*="entreno"]')), 300);
+      }
+      if ((destino === 'plantilla' || destino === 'ambos') && typeof plantillaCargarLista === 'function') {
+        plantillaCargarLista();
+      }
+    };
+
+  } catch(e) {
+    status.style.background = 'rgba(239,68,68,.1)';
+    status.style.borderColor = 'rgba(239,68,68,.3)';
+    status.style.color = '#f87171';
+    status.innerHTML = '❌ Error: ' + (e.message || (isEn?'Could not generate routine':'No se pudo generar la rutina'));
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.innerHTML = '🔄 ' + (isEn?'Retry':'Reintentar');
+    btn.onclick = () => ejecutarGenerarRutina(clienteId);
   }
 }
