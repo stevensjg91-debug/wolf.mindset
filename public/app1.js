@@ -2579,8 +2579,7 @@ function switchClienteTab(tab, btn) {
                 ? '<span class="badge" style="background:rgba(245,158,11,.15);color:var(--amb);border:0.5px solid rgba(245,158,11,.3)">⚠ '+tc('Incompleto')+'</span>'
                 : '<span class="badge b-gn">✓ '+(COACH_LANG==='en'?'Done':'OK')+'</span>')+
               (valoracion ? '<span style="font-size:18px">'+valoracion.split(' ')[0]+'</span>' : '')+
-              (!incompleto ? '<button id="btn_analizar_'+s.id+'" onclick="event.stopPropagation();analizarSesionManual('+s.id+',\''+s.dia_nombre.replace(/\'/g,\'\\\'\')+'\')"
-                style="padding:4px 8px;border-radius:7px;border:0.5px solid rgba(124,58,237,.3);background:rgba(124,58,237,.1);color:#a78bfa;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">🤖</button>' : '')+
+              (!incompleto ? '<button id="btn_analizar_'+s.id+'" onclick="event.stopPropagation();analizarSesionManual('+s.id+',decodeURIComponent(\''+encodeURIComponent(s.dia_nombre)+'\'  ))" style="padding:4px 8px;border-radius:7px;border:0.5px solid rgba(124,58,237,.3);background:rgba(124,58,237,.1);color:#a78bfa;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">🤖</button>' : '')+
               '<svg id="arr_'+accId+'" width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--tx3);transition:transform .25s;flex-shrink:0;'+(openByDefault?'transform:rotate(180deg)':'')+'"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'+
             '</div>'+
           '</div>'+
@@ -11274,7 +11273,7 @@ async function cargarAnalisisPendientes() {
               ${a.resumen_ia || ''}
             </div>
           </div>
-          <button onclick="abrirRevisionAnalisis(${a.id},'${(a.cliente_nombre||'').replace(/'/g,'\\'')}')"
+          <button onclick="abrirRevisionAnalisis(${a.id},decodeURIComponent('${encodeURIComponent(a.cliente_nombre||'')}'))"
             style="flex-shrink:0;padding:6px 10px;background:rgba(124,58,237,.2);
                    border:0.5px solid rgba(124,58,237,.4);border-radius:8px;color:#a78bfa;
                    font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">
