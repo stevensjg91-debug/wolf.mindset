@@ -166,7 +166,9 @@ async function dbGenerarIANuevo(){
   const dist = distKcal[parseInt(numComidas)] || distKcal[5];
   const kcalPorComida = dist.map(p => Math.round(kcalObj * p / 100));
 
-  const isEN = LANG === 'en';
+  const clienteLang = c.lang || 'es';
+  const isEN = clienteLang === 'en'; // CORRECTO: idioma del CLIENTE, no del coach
+  console.log('[DietaIA] Cliente:', c.nombre, '| Idioma cliente:', clienteLang, '| Idioma coach:', LANG);
   const prompt = isEN ? `You are an expert sports nutritionist. Create a diet plan for this client and respond ONLY with valid JSON, no extra text.
 
 ═══ CLIENT DATA ═══
@@ -274,7 +276,9 @@ RESPOND EXACTLY in this JSON format — ALL text fields in English:
     {"alimento": "Beef liver", "frecuencia": "1-2 times/week", "motivo": "Low ferritin — haem iron source"}
   ],
   "frase_motivadora": "Consistency builds results."
-}` : `Eres un nutricionista deportivo experto. Crea un plan de dieta para este cliente y responde SOLO con JSON válido, sin texto adicional.
+}` : `IDIOMA OBLIGATORIO: Todo el JSON debe estar en ESPAÑOL. Nombres de comidas, alimentos, notas, ajustes, suplementos — TODO EN ESPAÑOL. Si escribes algo en inglés el plan es inválido.
+
+Eres un nutricionista deportivo experto. Crea un plan de dieta para este cliente y responde SOLO con JSON válido, sin texto adicional.
 
 ═══ DATOS DEL CLIENTE ═══
 - Nombre: ${c.nombre}
@@ -380,12 +384,14 @@ RESPONDE EXACTAMENTE en este formato JSON — TODOS los campos de texto en espa�
     {"alimento": "Hígado de ternera", "frecuencia": "1-2 veces/semana", "motivo": "Ferritina baja — fuente de hierro hemo"}
   ],
   "frase_motivadora": "La constancia construye resultados."
-}`;
+}
+
+RECUERDA: TODA la respuesta debe estar en ESPAÑOL. Ninguna palabra en inglés.`;
 
   try {
     const d = await api('/ia/chat', {method:'POST', body:JSON.stringify({
       messages:[{role:'user', content:prompt}],
-      system:`You are an expert sports nutritionist AND experienced chef. Always respond with valid compact JSON, no extra text, no markdown code blocks. All quantities raw/uncooked. Max 2 variations per meal, max 4 foods each. CRITICAL culinary rule: every meal must be something a real person would actually eat together — fish never goes with legumes or dairy, meat never with fruit, no bizarre combinations. When in doubt, simplify. Do not include macro summaries in the "nota" field. ${LANG==='en'?'CRITICAL: Write EVERY text field (nombre, detalle, nota, titulo, texto, momento, motivo, alimento, frecuencia, frase_motivadora) in English. No Spanish words whatsoever.':'Escribe TODOS los campos de texto en español.'}`
+      system:`You are an expert sports nutritionist AND experienced chef. Always respond with valid compact JSON, no extra text, no markdown code blocks. All quantities raw/uncooked. Max 2 variations per meal, max 4 foods each. CRITICAL culinary rule: every meal must be something a real person would actually eat together — fish never goes with legumes or dairy, meat never with fruit, no bizarre combinations. When in doubt, simplify. Do not include macro summaries in the "nota" field. ${isEN?'CRITICAL: Write EVERY text field (nombre, detalle, nota, titulo, texto, momento, motivo, alimento, frecuencia, frase_motivadora) in English. No Spanish words whatsoever.':'CRÍTICO: Escribe TODOS los campos de texto EN ESPAÑOL. Nombres de comidas, alimentos, notas, ajustes, suplementación — TODO en español. Prohibido usar inglés.'}`
     })});
 
     let plan;
