@@ -170,19 +170,28 @@ async function initDB() {
 
   // ── Plantillas de rutina ──────────────────────────────────────────
   // Permite guardar rutinas reutilizables independientes de clientes.
-  // dias_json: JSON con array de días y ejercicios (snapshot completo).
+  // dias_json: array de días+ejercicios (snapshot completo).
+  // tipo: 'semana' = rutina completa | 'dia' = día individual reutilizable
   db.run(`CREATE TABLE IF NOT EXISTS rutinas_plantillas (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    coach_id    INTEGER NOT NULL,
-    nombre      TEXT    NOT NULL,
-    descripcion TEXT    DEFAULT '',
-    objetivo    TEXT    DEFAULT '',
-    nivel       TEXT    DEFAULT '',
-    dias_json   TEXT    NOT NULL DEFAULT '[]',
-    usos        INTEGER DEFAULT 0,
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    coach_id          INTEGER NOT NULL,
+    nombre            TEXT    NOT NULL,
+    descripcion       TEXT    DEFAULT '',
+    objetivo          TEXT    DEFAULT '',
+    nivel             TEXT    DEFAULT '',
+    dias_json         TEXT    NOT NULL DEFAULT '[]',
+    usos              INTEGER DEFAULT 0,
+    created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at        DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  // Metadatos v2 — para filtrado inteligente por IA (ALTER TABLE seguros, no rompen BD existente)
+  try { db.run("ALTER TABLE rutinas_plantillas ADD COLUMN tipo TEXT DEFAULT 'semana'"); } catch(e) {}
+  try { db.run("ALTER TABLE rutinas_plantillas ADD COLUMN tipo_rutina TEXT DEFAULT ''"); } catch(e) {}
+  try { db.run("ALTER TABLE rutinas_plantillas ADD COLUMN grupo_dominante TEXT DEFAULT ''"); } catch(e) {}
+  try { db.run("ALTER TABLE rutinas_plantillas ADD COLUMN duracion_estimada INTEGER DEFAULT 0"); } catch(e) {}
+  try { db.run("ALTER TABLE rutinas_plantillas ADD COLUMN fatiga_estimada TEXT DEFAULT 'Media'"); } catch(e) {}
+  try { db.run("ALTER TABLE rutinas_plantillas ADD COLUMN num_ejercicios INTEGER DEFAULT 0"); } catch(e) {}
+  try { db.run("ALTER TABLE rutinas_plantillas ADD COLUMN lugar TEXT DEFAULT 'Gimnasio'"); } catch(e) {}
 
   // ── Checkins semanales ────────────────────────────────────────────
   db.run(`CREATE TABLE IF NOT EXISTS checkins (
