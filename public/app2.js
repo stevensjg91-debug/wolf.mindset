@@ -507,8 +507,12 @@ ${formatoJSON}`;
         }
       }
       if(!plan.comidas || !Array.isArray(plan.comidas)) throw new Error(isEN?'No meals generated':'Sin comidas generadas');
-      // Asegurar que cada comida tenga al menos alimentos o opciones
-      plan.comidas.forEach(m => { if(!m.alimentos) m.alimentos = m.opciones?.[0]?.alimentos || []; });
+      // Sobreescribir nombres de comidas con los del idioma real del cliente
+      plan.comidas.forEach((m, i) => {
+        if(nombresComidas[i]) m.nombre = nombresComidas[i];
+        if(emojisComidas[i])  m.emoji  = emojisComidas[i];
+        if(!m.alimentos) m.alimentos = m.opciones?.[0]?.alimentos || [];
+      });
     } catch(e) {
       console.error('Parse error:', e, 'Reply:', d.reply?.substring(0,200));
       res.innerHTML=`<div style="color:#f87171;font-size:13px">Error: ${e.message}. ${isEN?'Try again.':'Inténtalo de nuevo.'}</div>`;
@@ -617,7 +621,7 @@ function renderPlanDietaCoach(plan, cliente){
     'Pre-entreno':'Pre-workout','PRE-ENTRENO':'PRE-WORKOUT',
     'Post-entreno':'Post-workout','POST-ENTRENO':'POST-WORKOUT',
   };
-  const translateMealName = (n) => COACH_LANG==='en' ? (mealNamesCoachEN[n] || mealNamesCoachEN[n.toUpperCase()] || n) : n;
+  const translateMealName = (n) => n; // nombres ya vienen en el idioma correcto del cliente
 
   const accent = esVeg ? '#22c55e' : '#3b82f6';
   const accentDark = esVeg ? '#166534' : '#1e3a5f';
