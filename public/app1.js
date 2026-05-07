@@ -4163,7 +4163,7 @@ async function plantillaConfirmarAplicar() {
   try {
     const r = await api(`/rutinas-plantillas/${_plantillaAplicarId}/aplicar`, {
       method: 'POST',
-      body: JSON.stringify({ cliente_id: clienteId, reemplazar })
+      body: JSON.stringify({ clienteId, reemplazar })
     });
     if(msg) { msg.style.color='var(--gnb)'; msg.textContent = COACH_LANG==='en'?`✓ Applied! ${r.dias} days, ${r.ejercicios} exercises.`:`✓ Aplicada. ${r.dias} días, ${r.ejercicios} ejercicios.`; }
     setTimeout(async () => {
