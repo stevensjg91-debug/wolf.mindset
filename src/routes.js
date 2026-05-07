@@ -335,7 +335,7 @@ router.post('/dias/:id/ejercicios', coachOnly, (req, res) => {
   const imagen_url   = req.body.imagen_url   || (cfg?.imagen_url   || '');
   const nota_coach   = req.body.nota_coach   || (cfg?.nota_default || '');
 
-  const r = dbRun('INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, rir, es_principal, orden, youtube_url, imagen_url, nota_coach) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  const r = dbRun('INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, rir, es_principal, orden, youtube_url, imagen_url, nota_coach, superset_grupo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [req.params.id, nombre, musculos||'', series||3, reps||'10-12', peso_objetivo||0, descanso||90, rir, es_principal, orden||0, youtube_url, imagen_url, nota_coach]);
 
   // Guardar en config si vienen datos nuevos desde la request
@@ -369,10 +369,11 @@ router.get('/ejercicios/:id', (req, res) => {
 router.put('/ejercicios/:id', (req, res) => {
   const e = dbGet('SELECT * FROM ejercicios_dia WHERE id=?', [req.params.id]);
   if (!e) return res.status(404).json({ error: 'No encontrado' });
- const { series, reps, peso_objetivo, descanso, es_pr, youtube_url, imagen_url, nota_coach, orden } = req.body;
+ const { series, reps, peso_objetivo, descanso, es_pr, youtube_url, imagen_url, nota_coach, orden, superset_grupo } = req.body;
   const rir_val = 'rir' in req.body ? req.body.rir : e.rir;
   const esp_val = req.body.es_principal!=null ? req.body.es_principal : (e.es_principal||0);
- dbRun('UPDATE ejercicios_dia SET series=?, reps=?, peso_objetivo=?, descanso=?, rir=?, es_principal=?, es_pr=?, youtube_url=?, imagen_url=?, nota_coach=?, orden=? WHERE id=?',
+  const ss_val  = superset_grupo!=null ? superset_grupo : (e.superset_grupo||0);
+ dbRun('UPDATE ejercicios_dia SET series=?, reps=?, peso_objetivo=?, descanso=?, rir=?, es_principal=?, es_pr=?, youtube_url=?, imagen_url=?, nota_coach=?, orden=?, superset_grupo=? WHERE id=?',
    [
   series||e.series,
   reps||e.reps,
@@ -385,6 +386,7 @@ router.put('/ejercicios/:id', (req, res) => {
   imagen_url!=null?imagen_url:e.imagen_url||'',
   nota_coach!=null?nota_coach:e.nota_coach||'',
  (orden!=null ? orden : e.orden),
+  ss_val,
   req.params.id
 ]
 );
@@ -2465,11 +2467,11 @@ router.post('/plantillas/:id/aplicar', coachOnly, async (req, res) => {
       (dia.ejercicios || []).forEach((ex, j) => {
         const cfg = dbGet('SELECT youtube_url, imagen_url FROM ejercicios_config WHERE nombre=?', [ex.nombre]);
         dbRun(
-          `INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, rir, es_principal, orden, youtube_url, imagen_url, nota_coach)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          `INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, rir, es_principal, orden, youtube_url, imagen_url, nota_coach, superset_grupo)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [diaId, ex.nombre||'', ex.musculos||'', ex.series||3, ex.reps||'10-12',
            ex.peso_objetivo||0, ex.descanso||90, ex.rir??null, ex.es_principal||0, j,
-           cfg?.youtube_url||ex.youtube_url||'', cfg?.imagen_url||ex.imagen_url||'', ex.nota_coach||'']
+           cfg?.youtube_url||ex.youtube_url||'', cfg?.imagen_url||ex.imagen_url||'', ex.nota_coach||'', ex.superset_grupo||0]
         );
       });
     }
@@ -2687,6 +2689,17 @@ REGLAS OBLIGATORIAS:
 
 Responde ÚNICAMENTE con JSON válido, sin texto, sin markdown.
 
+SUPERSERIES — cómo usarlas:
+- Si agrupas dos ejercicios como superserie, dales el mismo valor en "superset_grupo" (ej: 1, 2, 3...)
+- Úsalas en ejercicios ANTAGÓNICOS (bíceps+tríceps, pecho+espalda, cuádriceps+femoral)
+- El descanso del ejercicio A en superserie debe ser 0 (pasa directo al B)
+- El descanso del ejercicio B es el descanso real (60-90s)
+- Máximo 2 superseries por día para Principiante, 3 para Intermedio, 4 para Avanzado
+
+RIR (Reps In Reserve) — guía:
+- Fuerza: RIR 1-2 | Volumen/Hipertrofia: RIR 2-3 | Definición: RIR 2-3 | Principiante: siempre RIR 3+
+- Si el objetivo es recomposición o pérdida de grasa: RIR 2 en compuestos, RIR 1-2 en accesorios
+
 Formato exacto:
 {
   "nombre": "nombre descriptivo de la rutina",
@@ -2705,6 +2718,7 @@ Formato exacto:
           "descanso": 90,
           "rir": 2,
           "es_principal": 1,
+          "superset_grupo": 0,
           "nota_coach": "nota específica para este cliente"
         }
       ]
@@ -2770,11 +2784,11 @@ Formato exacto:
       (dia.ejercicios || []).forEach((ex, j) => {
         const cfg = dbGet('SELECT youtube_url, imagen_url FROM ejercicios_config WHERE nombre=?', [ex.nombre]);
         dbRun(
-          `INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, rir, es_principal, orden, youtube_url, imagen_url, nota_coach)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          `INSERT INTO ejercicios_dia (dia_id, nombre, musculos, series, reps, peso_objetivo, descanso, rir, es_principal, orden, youtube_url, imagen_url, nota_coach, superset_grupo)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [diaId, ex.nombre, ex.musculos||'', ex.series||3, ex.reps||'10-12',
            ex.peso_objetivo||0, ex.descanso||90, ex.rir??2, ex.es_principal||0, j,
-           cfg?.youtube_url||'', cfg?.imagen_url||'', ex.nota_coach||'']
+           cfg?.youtube_url||'', cfg?.imagen_url||'', ex.nota_coach||'', ex.superset_grupo||0]
         );
       });
       resultado.diasCreados++;
@@ -2834,8 +2848,8 @@ router.post('/rutinas-plantillas/:id/aplicar', coachOnly, async (req, res) => {
       const dr=dbRun('INSERT INTO dias_entreno (cliente_id,nombre,grupo,orden) VALUES (?,?,?,?)',[clienteId,dia.nombre||`Día ${i+1}`,dia.grupo||'',ordenBase+i]);
       (dia.ejercicios||[]).forEach((ex,j)=>{
         const cfg=dbGet('SELECT youtube_url,imagen_url FROM ejercicios_config WHERE nombre=?',[ex.nombre]);
-        dbRun(`INSERT INTO ejercicios_dia (dia_id,nombre,musculos,series,reps,peso_objetivo,descanso,rir,es_principal,orden,youtube_url,imagen_url,nota_coach) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [dr.lastInsertRowid,ex.nombre||'',ex.musculos||'',ex.series||3,ex.reps||'10-12',ex.peso_objetivo||0,ex.descanso||90,ex.rir??null,ex.es_principal||0,j,cfg?.youtube_url||'',cfg?.imagen_url||'',ex.nota_coach||'']);
+        dbRun(`INSERT INTO ejercicios_dia (dia_id,nombre,musculos,series,reps,peso_objetivo,descanso,rir,es_principal,orden,youtube_url,imagen_url,nota_coach,superset_grupo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [dr.lastInsertRowid,ex.nombre||'',ex.musculos||'',ex.series||3,ex.reps||'10-12',ex.peso_objetivo||0,ex.descanso||90,ex.rir??null,ex.es_principal||0,j,cfg?.youtube_url||'',cfg?.imagen_url||'',ex.nota_coach||'',ex.superset_grupo||0]);
       });
     }
     dbRun('UPDATE rutinas_plantillas SET usos=usos+1,updated_at=CURRENT_TIMESTAMP WHERE id=?',[req.params.id]);
