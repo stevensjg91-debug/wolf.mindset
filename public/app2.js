@@ -403,7 +403,10 @@ ${reglasEN}
 - Main meals (lunch/dinner): solid protein + base carbs + vegetables.
 - Breakfast/snack: can include protein powder, dairy, fruit, fats.
 - Spread fats across the day. Do not concentrate all fats in one meal.
-- Each option within a meal must have similar macros (±10%).
+- CRITICAL: Each option (A, B, C) within a meal is a COMPLETE INDEPENDENT MEAL with its OWN FULL portions — NOT a fraction of the meal. If the meal target is 600 kcal, EACH option must provide ~600 kcal on its own. Never split portions across options.
+- Each option must have similar macros (±15% tolerance).
+- Minimum realistic portions: protein source ≥150g cooked or ≥100g raw, carb source ≥60g raw, realistic quantities a real person would eat.
+- NEVER use quantities like 8g protein powder, 15g chicken, 0.3 eggs — these are not real portions.
 
 ═══ OPTIONS STRUCTURE — CRITICAL ═══
 Each meal MUST have EXACTLY 3 options (A, B, C):
@@ -445,7 +448,10 @@ ${reglasES}
 - Comidas principales: proteína sólida + carbohidrato base + verduras.
 - Desayuno/merienda: pueden incluir proteína en polvo, lácteos, fruta, grasas.
 - Distribuye las grasas a lo largo del día. No concentres todas las grasas en una sola comida.
-- Cada opción dentro de una comida debe tener macros similares (±10%).
+- CRÍTICO: Cada opción (A, B, C) dentro de una comida es UNA COMIDA COMPLETA E INDEPENDIENTE con sus PROPIAS PORCIONES COMPLETAS — NO una fracción de la comida. Si el objetivo de esa comida es 600 kcal, CADA opción debe aportar ~600 kcal por sí sola. Nunca dividas las porciones entre opciones.
+- Cada opción debe tener macros similares (tolerancia ±15%).
+- Porciones mínimas realistas: fuente de proteína ≥150g cocinada o ≥100g en crudo, carbohidrato ≥60g en crudo, cantidades que una persona real comería.
+- NUNCA uses cantidades como 8g de proteína en polvo, 15g de pollo, 0.3 huevos — no son porciones reales.
 
 ═══ ESTRUCTURA DE OPCIONES — CRÍTICO ═══
 Cada comida DEBE tener EXACTAMENTE 3 opciones (A, B, C):
