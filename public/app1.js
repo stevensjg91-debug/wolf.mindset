@@ -6908,7 +6908,7 @@ function hDieta(){
             <div style="font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.05em">${m.alimentos.length} ${t('alimentos')}</div>
           </div>
           ${m.alimentos.some(a=>a.nombre.toLowerCase().match(/pollo|salmón|salmon|huevo|whey|pavo|carne|proteína/))
-            ? `<div style="font-size:9px;font-weight:700;color:${accLight};border:0.5px solid ${acc};padding:2px 7px;border-radius:4px;letter-spacing:.08em;background:${accBg}">HIGH PROTEIN</div>`
+            ? `<div style="font-size:9px;font-weight:700;color:${accLight};border:0.5px solid ${acc};padding:2px 7px;border-radius:4px;letter-spacing:.08em;background:${accBg}">${LANG==='en'?'HIGH PROTEIN':'ALTO EN PROTEÍNA'}</div>`
             : ''}
         </div>
         <div id="cl_meal_${mi}" style="display:contents">
@@ -6945,7 +6945,7 @@ function hDieta(){
       <!-- Logo izquierda -->
       <div style="position:relative;z-index:2;padding:16px 16px 0 16px;width:56%;display:flex;flex-direction:column;justify-content:center">
         <img src="/logo.png" style="width:100%;max-width:180px;display:block;mix-blend-mode:screen;filter:brightness(1.1)"/>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;color:${accLight};letter-spacing:.15em;margin-top:6px;opacity:.8">NUTRITION PLAN</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;color:${accLight};letter-spacing:.15em;margin-top:6px;opacity:.8">${LANG==='en'?'NUTRITION PLAN':'PLAN DE NUTRICIÓN'}</div>
       </div>
     </div>
     <!-- MEALS LIST -->
