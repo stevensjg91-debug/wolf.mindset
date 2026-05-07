@@ -531,7 +531,12 @@ ${formatoJSON}`;
     res.innerHTML='<div style="background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--gnb)">✓ Plan generado. Revisa la vista previa abajo y publica cuando estés listo.</div>';
 
   } catch(e) {
-    res.innerHTML='<div style="color:#f87171;font-size:13px">Error generando. Verifica la API key.</div>';
+    console.error('[DietaIA] Error completo:', e);
+    const errMsg = e?.error || e?.message || JSON.stringify(e) || 'Error desconocido';
+    res.innerHTML=`<div style="color:#f87171;font-size:13px;line-height:1.5">
+      ❌ ${errMsg}
+      <div style="font-size:11px;color:var(--tx3);margin-top:4px">${isEN?'Check the browser console for details.':'Revisa la consola del navegador para más detalles.'}</div>
+    </div>`;
   }
 }
 
