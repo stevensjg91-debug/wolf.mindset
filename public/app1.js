@@ -2264,9 +2264,18 @@ async function verCliente(id){
     <div title="${COACH_LANG==='en'?'Drag to reorder':'Arrastrar para reordenar'}"
          style="cursor:grab;color:var(--tx3);font-size:18px;flex-shrink:0;padding:0 3px;user-select:none;line-height:1;opacity:.6">⠿</div>
 
+    ${e.superset_grupo>0?`<div style="width:3px;height:36px;background:linear-gradient(to bottom,#a78bfa,#7c3aed);border-radius:2px;flex-shrink:0" title="Superserie grupo ${e.superset_grupo}"></div>`:''}
     <div style="flex:1;min-width:0">
-      <div style="font-size:13px;font-weight:700;color:var(--sv)">${e.nombre}</div>
-      <div style="font-size:11px;color:var(--tx3);margin-top:1px">${e.series}×${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''} · ${e.descanso}s${e.rir!=null?' · RIR'+e.rir:''}${e.es_principal?' ⭐':''}</div>
+      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--sv)">${e.nombre}</span>
+        ${e.superset_grupo>0?`<span style="font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(168,85,247,.2);border:0.5px solid rgba(168,85,247,.4);color:#c084fc;font-weight:700">🔗 SS${e.superset_grupo}</span>`:''}
+        ${e.es_principal?`<span style="font-size:9px;padding:1px 5px;border-radius:10px;background:rgba(245,158,11,.15);color:var(--amb);font-weight:700">⭐</span>`:''}
+      </div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:2px">
+        ${e.series}×${e.reps}${e.peso_objetivo>0?' · '+e.peso_objetivo+'kg':''}
+        ${e.superset_grupo>0?'· <span style="color:#c084fc">0s→B</span>':' · '+e.descanso+'s'}
+        ${e.rir!=null?`· <span style="color:var(--blg);font-weight:600">RIR ${e.rir}</span>`:''}
+      </div>
       ${e.nota_coach?`<div style="font-size:10px;color:var(--amb);margin-top:2px">📝 ${e.nota_coach}</div>`:''}
     </div>
 
@@ -2303,6 +2312,21 @@ async function verCliente(id){
             <input type="checkbox" id="tab_ex_principal"/>
             ⭐ ${tc('Principal')}
           </label>
+        </div>
+        <!-- Superserie -->
+        <div style="margin-bottom:10px;padding:10px 12px;background:rgba(168,85,247,.06);border:0.5px solid rgba(168,85,247,.2);border-radius:10px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c084fc;cursor:pointer;margin-bottom:0" id="tab_ex_ss_label">
+            <input type="checkbox" id="tab_ex_ss_on" onchange="document.getElementById('tab_ex_ss_wrap').style.display=this.checked?'flex':'none';if(!this.checked)document.getElementById('tab_ex_ss_grupo').value='1'" style="accent-color:#a78bfa"/>
+            🔗 ${COACH_LANG==='en'?'Superset (link with another exercise)':'Superserie (enlazar con otro ejercicio)'}
+          </label>
+          <div id="tab_ex_ss_wrap" style="display:none;align-items:center;gap:8px;margin-top:8px">
+            <div style="font-size:11px;color:var(--tx3)">${COACH_LANG==='en'?'Group:':'Grupo:'}</div>
+            <select id="tab_ex_ss_grupo" class="inp" style="margin-bottom:0;width:80px;font-size:13px">
+              <option value="1">1</option><option value="2">2</option>
+              <option value="3">3</option><option value="4">4</option>
+            </select>
+            <div style="font-size:10px;color:var(--tx3);line-height:1.4">${COACH_LANG==='en'?'Same group = done together, no rest between':'Mismo grupo = se hacen juntos, sin descanso entre ellos'}</div>
+          </div>
         </div>
         <div class="form-lbl">${COACH_LANG==='en'?'Note to client':'Nota al cliente'}</div>
         <textarea id="tab_ex_nota" class="ta" placeholder="${COACH_LANG==='en'?'E.g. Control the descent 3 seconds...':'Ej: Controla la bajada en 3 segundos...'}" style="min-height:55px;margin-bottom:10px"></textarea>
@@ -2478,6 +2502,11 @@ function tabEntrenoEditEx(exId) {
     document.getElementById('tab_ex_rir').value = e.rir != null ? e.rir : 2;
     document.getElementById('tab_ex_principal').checked = !!e.es_principal;
     document.getElementById('tab_ex_nota').value = e.nota_coach || '';
+    // Superserie
+    const conSS = e.superset_grupo > 0;
+    document.getElementById('tab_ex_ss_on').checked = conSS;
+    document.getElementById('tab_ex_ss_wrap').style.display = conSS ? 'flex' : 'none';
+    if (conSS) document.getElementById('tab_ex_ss_grupo').value = String(e.superset_grupo);
   }).catch(e => alert('Error cargando ejercicio: ' + e.message));
 }
 
@@ -2497,7 +2526,9 @@ async function tabEntrenoGuardarEx() {
                      ? (parseInt(document.getElementById('tab_ex_rir').value) || 2)
                      : null,
         es_principal: document.getElementById('tab_ex_principal').checked ? 1 : 0,
-        nota_coach: document.getElementById('tab_ex_nota').value || ''
+        nota_coach: document.getElementById('tab_ex_nota').value || '',
+        superset_grupo: document.getElementById('tab_ex_ss_on').checked
+          ? (parseInt(document.getElementById('tab_ex_ss_grupo').value) || 1) : 0
       })
     });
     // Recargar cliente y re-renderizar tab
@@ -3941,34 +3972,114 @@ async function plantillaCargarLista() {
       wrap.innerHTML = `<div style="font-size:12px;color:var(--tx3);text-align:center;padding:12px 0">${COACH_LANG==='en'?'No templates yet. Save a routine to start.':'Sin plantillas aún. Guarda una rutina para empezar.'}</div>`;
       return;
     }
-    wrap.innerHTML = plantillas.map(p => `
-      <div style="background:var(--s2);border:0.5px solid rgba(168,85,247,.2);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nombre}</div>
-          <div style="font-size:11px;color:var(--tx3);margin-top:1px">
-            ${p.dias.length} ${COACH_LANG==='en'?'days':'días'}
-            ${p.objetivo ? ' · '+tc(p.objetivo) : ''}
-            ${p.nivel ? ' · '+tc(p.nivel) : ''}
-            ${p.usos ? ' · '+p.usos+' '+(COACH_LANG==='en'?'uses':'usos') : ''}
+    wrap.innerHTML = plantillas.map(p => {
+      const isEn = COACH_LANG === 'en';
+      const tipo = p.tipo === 'dia' ? (isEn?'📅 Day':'📅 Día') : (isEn?'📋 Week':'📋 Semana');
+      const tags = [
+        p.tipo_rutina,
+        p.objetivo ? tc(p.objetivo) : '',
+        p.nivel    ? tc(p.nivel)    : '',
+        p.lugar && p.lugar !== 'Gimnasio' ? (isEn?'Home':'Casa') : (p.lugar ? (isEn?'Gym':'Gimnasio') : ''),
+        p.duracion_estimada ? (p.duracion_estimada + ' min') : '',
+        p.usos > 0 ? p.usos + (isEn?' uses':' usos') : ''
+      ].filter(Boolean).join(' · ');
+
+      // Resumen de volumen por músculo
+      const musMap = {};
+      (p.dias||[]).forEach(d => {
+        (d.ejercicios||[]).forEach(ex => {
+          (ex.musculos||'').split(',').map(m => m.trim()).filter(Boolean).forEach(m => {
+            musMap[m] = (musMap[m]||0) + (parseInt(ex.series)||0);
+          });
+        });
+      });
+      const musSorted = Object.entries(musMap).sort((a,b)=>b[1]-a[1]);
+      const musHtml = musSorted.slice(0,8).map(([m,s])=>
+        `<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(168,85,247,.1);border:0.5px solid rgba(168,85,247,.2);color:#c084fc">${m}: ${s}s</span>`
+      ).join('');
+
+      // Días expandibles
+      const diasHtml = (p.dias||[]).map((d,di) => {
+        const exList = (d.ejercicios||[]).map(ex =>
+          `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.04)">
+            <div style="flex:1;min-width:0">
+              <span style="font-size:12px;color:var(--sv2);font-weight:600">${ex.nombre}</span>
+              ${ex.musculos ? `<span style="font-size:10px;color:var(--tx3);margin-left:5px">${ex.musculos}</span>` : ''}
+              ${ex.nota_coach ? `<div style="font-size:10px;color:var(--tx3);font-style:italic;margin-top:1px">${ex.nota_coach}</div>` : ''}
+            </div>
+            <span style="font-size:11px;color:#a78bfa;flex-shrink:0;font-weight:700">${ex.series}×${ex.reps}</span>
+            ${ex.peso_objetivo > 0 ? `<span style="font-size:10px;color:var(--tx3);flex-shrink:0">${ex.peso_objetivo}kg</span>` : ''}
+            ${ex.es_principal ? `<span style="font-size:9px;background:rgba(37,99,235,.2);color:var(--bl2);padding:1px 5px;border-radius:10px;flex-shrink:0">★</span>` : ''}
+          </div>`
+        ).join('');
+        return `<div style="border:0.5px solid rgba(255,255,255,.07);border-radius:8px;margin-bottom:6px;overflow:hidden">
+            <div onclick="pltToggleDia('plt_dia_${p.id}_${di}')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;cursor:pointer;background:rgba(255,255,255,.02)">
+              <div>
+                <span style="font-size:12px;font-weight:700;color:var(--sv)">${d.nombre}</span>
+                ${d.grupo ? `<span style="font-size:10px;color:var(--tx3);margin-left:6px">${d.grupo}</span>` : ''}
+              </div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:10px;color:var(--tx3)">${(d.ejercicios||[]).length} ${isEn?'ex':'ej'}</span>
+                <svg id="arr_plt_${p.id}_${di}" width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--tx3);transition:transform .2s"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </div>
+            </div>
+            <div id="plt_dia_${p.id}_${di}" style="max-height:0;overflow:hidden;transition:max-height .3s ease">
+              <div style="padding:6px 10px 10px">${exList}</div>
+            </div>
+          </div>`;
+      }).join('');
+
+      return `<div style="background:var(--s2);border:0.5px solid rgba(168,85,247,.2);border-radius:12px;margin-bottom:8px;overflow:hidden">
+          <div style="padding:10px 12px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+                  <span style="font-size:10px;color:#a78bfa;font-weight:700">${tipo}</span>
+                  <span style="font-size:13px;font-weight:700;color:var(--sv)">${p.nombre}</span>
+                </div>
+                <div style="font-size:10px;color:var(--tx3)">${tags}</div>
+                ${p.descripcion ? `<div style="font-size:11px;color:var(--tx3);margin-top:2px;font-style:italic">${p.descripcion}</div>` : ''}
+              </div>
+              <div style="display:flex;gap:5px;flex-shrink:0">
+                <button onclick="plantillaAplicar(${p.id})" style="padding:5px 10px;border-radius:8px;border:0.5px solid rgba(168,85,247,.35);background:rgba(168,85,247,.15);color:#d8b4fe;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${isEn?'Apply':'Aplicar'}</button>
+                <button onclick="abrirEditarPlantilla(${p.id})" style="padding:5px 8px;border-radius:8px;border:0.5px solid rgba(59,130,246,.3);background:rgba(59,130,246,.1);color:var(--bl2);font-size:12px;cursor:pointer;font-family:inherit" title="${isEn?'Edit':'Editar'}">✏️</button>
+                <button onclick="plantillaBorrar(${p.id},decodeURIComponent('${encodeURIComponent(p.nombre)}'))" style="padding:5px 8px;border-radius:8px;border:0.5px solid rgba(239,68,68,.25);background:rgba(239,68,68,.08);color:#fca5a5;font-size:12px;cursor:pointer;font-family:inherit">🗑</button>
+              </div>
+            </div>
+            ${musSorted.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">${musHtml}</div>` : ''}
+            ${p.dias?.length ? `<button onclick="pltToggleBody('plt_body_${p.id}','arr_plt_main_${p.id}')" style="display:flex;align-items:center;gap:4px;margin-top:8px;background:none;border:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit;padding:0">
+              <svg id="arr_plt_main_${p.id}" width="12" height="12" viewBox="0 0 16 16" fill="none" style="transition:transform .2s"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              ${isEn?'View exercises':'Ver ejercicios'} (${p.dias.length} ${isEn?'days':'días'} · ${p.num_ejercicios||0} ${isEn?'exercises':'ejercicios'})
+            </button>` : ''}
           </div>
-          ${p.descripcion ? `<div style="font-size:11px;color:var(--tx3);margin-top:2px;font-style:italic">${p.descripcion}</div>` : ''}
-        </div>
-        <div style="display:flex;gap:5px;flex-shrink:0">
-          <button onclick="plantillaAplicar(${p.id})"
-            style="padding:5px 10px;border-radius:8px;border:0.5px solid rgba(168,85,247,.35);background:rgba(168,85,247,.15);color:#d8b4fe;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">
-            ${COACH_LANG==='en'?'Apply':'Aplicar'}
-          </button>
-          <button onclick="plantillaBorrar(${p.id},'${p.nombre.replace(/'/g,"\\'")}')"
-            style="padding:5px 8px;border-radius:8px;border:0.5px solid rgba(239,68,68,.25);background:rgba(239,68,68,.08);color:#fca5a5;font-size:12px;cursor:pointer;font-family:inherit">
-            🗑
-          </button>
-        </div>
-      </div>`).join('');
+          ${p.dias?.length ? `<div id="plt_body_${p.id}" style="max-height:0;overflow:hidden;transition:max-height .4s ease"><div style="padding:0 12px 12px;border-top:0.5px solid rgba(255,255,255,.06)">${diasHtml}</div></div>` : ''}
+        </div>`;
+    }).join('');
   } catch(e) {
     if(wrap) wrap.innerHTML = `<div style="font-size:12px;color:#f87171;padding:8px 0">Error cargando plantillas</div>`;
   }
 }
 
+function pltToggleBody(bodyId, arrId) {
+  const body = document.getElementById(bodyId);
+  const arr  = document.getElementById(arrId);
+  if (!body) return;
+  const open = body.style.maxHeight && body.style.maxHeight !== '0px';
+  body.style.maxHeight = open ? '0px' : '4000px';
+  if (arr) arr.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+function pltToggleDia(diaId) {
+  const body = document.getElementById(diaId);
+  if (!body) return;
+  const parts = diaId.split('_');
+  const di  = parts[parts.length-1];
+  const pid = parts[parts.length-2];
+  const arr = document.getElementById('arr_plt_' + pid + '_' + di);
+  const open = body.style.maxHeight && body.style.maxHeight !== '0px';
+  body.style.maxHeight = open ? '0px' : '2000px';
+  if (arr) arr.style.transform = open ? '' : 'rotate(180deg)';
+}
 function plantillaGuardarActual() {
   const clienteId = document.getElementById('rb_cl')?.value;
   const modal = document.getElementById('modal_plantilla_guardar');
@@ -6238,7 +6349,15 @@ const imgUrl =
           </button>
           <button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='peso'?'active':''}" onclick="openKeyboard(${ei},${si},'peso')">${s.peso||0}</button>
           <button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='reps'?'active':''}" onclick="openKeyboard(${ei},${si},'reps')">${s.reps_real||s.reps||10}</button>
-          ${e.rir!=null?(si===e._series.length-1?`<button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='rir'?'active':''}" onclick="openKeyboard(${ei},${si},'rir')" style="font-size:13px">${s.rir_real!=null?s.rir_real:e.rir}</button>`:'<div></div>'):'<div></div>'}
+          ${e.rir!=null
+            ? (si===e._series.length-1
+                ? `<button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='rir'?'active':''}" onclick="openKeyboard(${ei},${si},'rir')" style="font-size:13px;position:relative" title="${t('Anota cuántas reps más podrías haber hecho')}">
+                    ${s.rir_real!=null
+                      ? `<span style="color:${s.rir_real<(e.rir-1)?'#f87171':s.rir_real>(e.rir+1)?'#fbbf24':'#4ade80'}">${s.rir_real}</span>`
+                      : `<span style="opacity:.5">${e.rir}</span>`}
+                  </button>`
+                : `<div style="font-size:9px;color:var(--tx3);text-align:center;opacity:.5">—</div>`)
+            : '<div></div>'}
         </div>
         ${s.done?`<div class="strong-timer-bar" id="tb_${ei}_${si}">
           <div class="strong-timer-fill ${rt&&timerSecs<=10?'urg':''}" id="tf_${ei}_${si}" style="width:${timerPct}%"></div>
@@ -6261,7 +6380,8 @@ const imgUrl =
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${t(e.grupo||'')||''}</div>
             ${e.es_principal?`<span style="font-size:10px;background:rgba(245,158,11,.2);color:var(--amb);padding:1px 6px;border-radius:4px;font-weight:700">⭐ Principal</span>`:''}
-            ${e.rir!=null?`<span style="font-size:10px;background:rgba(59,130,246,.15);color:var(--blg);padding:1px 6px;border-radius:4px;font-weight:700">RIR: ${e.rir}</span>`:''}
+            ${(e.superset_grupo||0)>0?`<span style="font-size:10px;background:rgba(168,85,247,.2);border:0.5px solid rgba(168,85,247,.4);color:#c084fc;padding:1px 7px;border-radius:10px;font-weight:700">🔗 Superserie ${e.superset_grupo}</span>`:''}
+            ${e.rir!=null?`<span style="font-size:10px;background:rgba(59,130,246,.12);border:0.5px solid rgba(59,130,246,.3);color:var(--blg);padding:1px 7px;border-radius:10px;font-weight:700" title="${t('Reps que deberías poder hacer más al terminar la serie')}">RIR obj: ${e.rir}</span>`:''}
           </div>
           <div style="font-size:16px;font-weight:700;color:var(--sv)">${e.nombre}</div>
           <div style="font-size:11px;color:var(--tx3)">${e.musculos||''}</div>
@@ -6474,16 +6594,48 @@ function kbSkip(){
 }
 
 function toggleSerieStrong(ei,si){
-  const e=CD.dias[activeDia].ejercicios[ei];
+  const ejercicios = CD.dias[activeDia].ejercicios;
+  const e = ejercicios[ei];
   if(!e._series)e._series=Array.from({length:e.series},(_,i)=>({done:false,peso:e.peso_objetivo,reps:parseFirstNum(e.reps),reps_real:parseFirstNum(e.reps)}));
   e._series[si].done=!e._series[si].done;
 
   if(e._series[si].done){
     soundDing();
-    // Iniciar timer de descanso para esta serie
-    startTimerInline(ei, si, e.descanso||90);
-    // Abrir teclado apuntando a esta serie para editar kg si quiere
-    openKeyboard(ei, si, 'peso');
+
+    // ── Lógica superserie ────────────────────────────────────────────
+    const ssGrupo = e.superset_grupo || 0;
+    if (ssGrupo > 0) {
+      // Buscar el ejercicio "compañero" en el mismo grupo SS
+      const compIdx = ejercicios.findIndex((ex, i) => i !== ei && (ex.superset_grupo||0) === ssGrupo);
+      const esUltimoDeSS = compIdx === -1 || ejercicios.slice(ei+1).every(ex => (ex.superset_grupo||0) !== ssGrupo);
+
+      if (!esUltimoDeSS) {
+        // Ejercicio A de la SS — NO arranca timer, descanso 0, scroll al compañero
+        // Mostrar mini-indicador visual de "→ pasa al siguiente"
+        const wrap = document.getElementById('sw_'+ei+'_'+si);
+        if (wrap) {
+          const ind = document.createElement('div');
+          ind.style.cssText = 'padding:4px 10px;font-size:11px;color:#a78bfa;font-weight:700;text-align:center;animation:mgrSlideUp .2s ease';
+          ind.textContent = '🔗 → ' + (ejercicios[compIdx]?.nombre || '');
+          wrap.appendChild(ind);
+          setTimeout(() => ind.remove(), 2500);
+        }
+        // Scroll al compañero
+        setTimeout(() => {
+          const compCard = document.getElementById('exc_'+compIdx);
+          if (compCard) compCard.scrollIntoView({behavior:'smooth', block:'center'});
+          openKeyboard(compIdx, si, 'peso');
+        }, 300);
+      } else {
+        // Ejercicio B (último de la SS) — arranca timer normal
+        startTimerInline(ei, si, e.descanso||90);
+        openKeyboard(ei, si, 'peso');
+      }
+    } else {
+      // Ejercicio normal — comportamiento original
+      startTimerInline(ei, si, e.descanso||90);
+      openKeyboard(ei, si, 'peso');
+    }
   } else {
     stopTimer(ei,si);
     closeKeyboard();
@@ -6491,7 +6643,7 @@ function toggleSerieStrong(ei,si){
 
   rerenderSerieRow(ei,si);
 
-  const allDone=CD.dias[activeDia].ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
+  const allDone=ejercicios.every(ex=>ex._series&&ex._series.every(s=>s.done));
   if(allDone && !doneShown){
     mostrarDoneOverlay('completado', 0);
   }
@@ -6664,7 +6816,15 @@ function rerenderSerieRow(ei,si){
     </button>
     <button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='peso'?'active':''}" onclick="openKeyboard(${ei},${si},'peso')">${s.peso||0}</button>
     <button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='reps'?'active':''}" onclick="openKeyboard(${ei},${si},'reps')">${s.reps_real||s.reps||10}</button>
-    ${e.rir!=null?(si===e._series.length-1?`<button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='rir'?'active':''}" onclick="openKeyboard(${ei},${si},'rir')" style="font-size:13px">${s.rir_real!=null?s.rir_real:e.rir}</button>`:'<div></div>'):'<div></div>'}
+    ${e.rir!=null
+      ? (si===e._series.length-1
+          ? `<button class="strong-cell ${activeInput&&activeInput.ei===ei&&activeInput.si===si&&activeInput.field==='rir'?'active':''}" onclick="openKeyboard(${ei},${si},'rir')" style="font-size:13px" title="${t('Anota cuántas reps más podrías haber hecho')}">
+              ${s.rir_real!=null
+                ? `<span style="color:${s.rir_real<(e.rir-1)?'#f87171':s.rir_real>(e.rir+1)?'#fbbf24':'#4ade80'}">${s.rir_real}</span>`
+                : `<span style="opacity:.5">${e.rir}</span>`}
+            </button>`
+          : `<div style="font-size:9px;color:var(--tx3);text-align:center;opacity:.5">—</div>`)
+      : '<div></div>'}
   </div>
   ${s.done?`<div class="strong-timer-bar" id="tb_${ei}_${si}" ${!rt?'style="display:none"':''}>
     <div class="strong-timer-fill${rt&&rt.secs<=10?' urg':''}" id="tf_${ei}_${si}" style="width:${timerPct}%"></div>
@@ -11560,4 +11720,221 @@ async function cargarBannersAnalisisCliente() {
       }
     });
   } catch(e) { /* silencioso */ }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EDITAR PLANTILLA — metadatos + ejercicios completos
+// ══════════════════════════════════════════════════════════════════════════════
+async function abrirEditarPlantilla(plantillaId) {
+  const isEn = COACH_LANG === 'en';
+
+  let modal = document.getElementById('modal_editar_plantilla');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal_editar_plantilla';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto';
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+  modal.innerHTML = `<div style="background:var(--s);border:0.5px solid rgba(59,130,246,.25);border-radius:16px;padding:20px;width:100%;max-width:540px;margin:auto">
+    <div style="font-size:13px;color:var(--tx3);text-align:center;padding:20px">⏳ ${isEn?'Loading...':'Cargando...'}</div>
+  </div>`;
+
+  try {
+    const plantillas = await api('/rutinas-plantillas');
+    const p = plantillas.find(x => x.id === plantillaId);
+    if (!p) { modal.style.display = 'none'; return; }
+
+    // Guardar datos en memoria para editar
+    window._editPlt = JSON.parse(JSON.stringify(p)); // deep copy
+
+    renderModalEditarPlantilla(p);
+  } catch(e) {
+    modal.style.display = 'none';
+    alert('Error: ' + e.message);
+  }
+}
+
+function renderModalEditarPlantilla(p) {
+  const isEn = COACH_LANG === 'en';
+  const modal = document.getElementById('modal_editar_plantilla');
+  if (!modal) return;
+
+  const diasHtml = (window._editPlt.dias || []).map((d, di) => {
+    const exHtml = (d.ejercicios || []).map((ex, ei) => `
+      <div id="plt_ex_${di}_${ei}" style="background:var(--s3);border:0.5px solid rgba(255,255,255,.07);border-radius:8px;padding:9px 11px;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+          <div style="flex:1;font-size:12px;font-weight:700;color:var(--sv2)">${ex.nombre}</div>
+          <span style="font-size:10px;color:var(--tx3)">${ex.musculos||''}</span>
+          ${ex.es_principal ? '<span style="font-size:9px;background:rgba(37,99,235,.2);color:var(--bl2);padding:1px 5px;border-radius:10px">★</span>' : ''}
+          <button onclick="pltEliminarEjercicio(${di},${ei})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:13px;padding:0;flex-shrink:0">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <div>
+            <div style="font-size:9px;color:var(--tx3);margin-bottom:3px;text-transform:uppercase">${isEn?'Sets':'Series'}</div>
+            <input type="number" value="${ex.series||3}" min="1" max="10"
+              onchange="pltUpdateEx(${di},${ei},'series',parseInt(this.value)||3)"
+              style="width:100%;padding:5px 7px;border:0.5px solid var(--br);border-radius:7px;background:var(--b);color:var(--blg);font-size:13px;font-weight:700;text-align:center;font-family:inherit"/>
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--tx3);margin-bottom:3px;text-transform:uppercase">${isEn?'Reps':'Reps'}</div>
+            <input type="text" value="${ex.reps||'10-12'}"
+              onchange="pltUpdateEx(${di},${ei},'reps',this.value)"
+              style="width:100%;padding:5px 7px;border:0.5px solid var(--br);border-radius:7px;background:var(--b);color:var(--blg);font-size:13px;font-weight:700;text-align:center;font-family:inherit"/>
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--tx3);margin-bottom:3px;text-transform:uppercase">${isEn?'Target kg':'Peso obj.'}</div>
+            <input type="number" value="${ex.peso_objetivo||0}" min="0" step="1.25"
+              onchange="pltUpdateEx(${di},${ei},'peso_objetivo',parseFloat(this.value)||0)"
+              style="width:100%;padding:5px 7px;border:0.5px solid var(--br);border-radius:7px;background:var(--b);color:var(--blg);font-size:13px;font-weight:700;text-align:center;font-family:inherit"/>
+          </div>
+        </div>
+        <div style="margin-top:6px">
+          <div style="font-size:9px;color:var(--tx3);margin-bottom:3px;text-transform:uppercase">${isEn?'Coach note':'Nota coach'}</div>
+          <input type="text" value="${(ex.nota_coach||'').replace(/"/g,'&quot;')}" placeholder="${isEn?'Optional note...':'Nota opcional...'}"
+            onchange="pltUpdateEx(${di},${ei},'nota_coach',this.value)"
+            style="width:100%;padding:5px 7px;border:0.5px solid var(--br);border-radius:7px;background:var(--b);color:var(--sv2);font-size:12px;font-family:inherit"/>
+        </div>
+      </div>`).join('');
+
+    return `
+      <div style="background:var(--s2);border:0.5px solid rgba(255,255,255,.08);border-radius:10px;margin-bottom:10px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:0.5px solid rgba(255,255,255,.06)">
+          <div style="flex:1">
+            <input type="text" value="${d.nombre}" placeholder="${isEn?'Day name':'Nombre del día'}"
+              onchange="window._editPlt.dias[${di}].nombre=this.value"
+              style="background:none;border:none;color:var(--sv);font-size:13px;font-weight:700;font-family:inherit;width:100%;padding:0"/>
+          </div>
+          <span style="font-size:10px;color:var(--tx3)">${(d.ejercicios||[]).length} ${isEn?'ex':'ej'}</span>
+        </div>
+        <div style="padding:10px 12px">${exHtml || `<div style="font-size:12px;color:var(--tx3);text-align:center;padding:10px">${isEn?'No exercises':'Sin ejercicios'}</div>`}</div>
+      </div>`;
+  }).join('');
+
+  modal.innerHTML = `
+    <div style="background:var(--s);border:0.5px solid rgba(59,130,246,.25);border-radius:16px;padding:20px;width:100%;max-width:540px;margin:auto">
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div style="font-size:16px;font-weight:700;color:var(--sv)">✏️ ${isEn?'Edit template':'Editar plantilla'}</div>
+        <button onclick="document.getElementById('modal_editar_plantilla').style.display='none'"
+          style="background:none;border:none;color:var(--tx3);font-size:20px;cursor:pointer">✕</button>
+      </div>
+
+      <!-- Metadatos -->
+      <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:14px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--bl2);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">
+          ${isEn?'Template info':'Información de la plantilla'}
+        </div>
+        <div class="form-lbl">${isEn?'Name':'Nombre'} *</div>
+        <input class="inp" id="plt_edit_nombre" value="${(p.nombre||'').replace(/"/g,'&quot;')}" style="margin-bottom:10px"/>
+
+        <div class="form-lbl">${isEn?'Description':'Descripción'}</div>
+        <input class="inp" id="plt_edit_desc" value="${(p.descripcion||'').replace(/"/g,'&quot;')}" placeholder="${isEn?'Optional...':'Opcional...'}" style="margin-bottom:10px"/>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div>
+            <div class="form-lbl">${isEn?'Level':'Nivel'}</div>
+            <select class="inp" id="plt_edit_nivel" style="margin-bottom:0">
+              <option value="">—</option>
+              ${['Principiante','Intermedio','Avanzado'].map(n=>`<option ${p.nivel===n?'selected':''}>${n}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <div class="form-lbl">${isEn?'Goal':'Objetivo'}</div>
+            <select class="inp" id="plt_edit_objetivo" style="margin-bottom:0">
+              <option value="">—</option>
+              ${['Volumen','Definición','Fuerza','Hipertrofia','Recomposición','Salud'].map(o=>`<option ${p.objetivo===o?'selected':''}>${o}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <div class="form-lbl">${isEn?'Type':'Tipo rutina'}</div>
+            <select class="inp" id="plt_edit_tipo_rutina" style="margin-bottom:0">
+              <option value="">—</option>
+              ${['Full Body','Upper Lower','Push Pull Legs','Torso Pierna','Arnold Split','Bro Split'].map(t=>`<option ${p.tipo_rutina===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <div class="form-lbl">${isEn?'Location':'Lugar'}</div>
+            <select class="inp" id="plt_edit_lugar" style="margin-bottom:0">
+              ${['Gimnasio','Casa'].map(l=>`<option ${p.lugar===l?'selected':''}>${l}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <div class="form-lbl">${isEn?'Duration (min)':'Duración (min)'}</div>
+            <input class="inp" id="plt_edit_duracion" type="number" value="${p.duracion_estimada||60}" min="15" max="180" step="5" style="margin-bottom:0"/>
+          </div>
+          <div>
+            <div class="form-lbl">${isEn?'Fatigue':'Fatiga'}</div>
+            <select class="inp" id="plt_edit_fatiga" style="margin-bottom:0">
+              ${['Baja','Media','Alta'].map(f=>`<option ${p.fatiga_estimada===f?'selected':''}>${f}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ejercicios por día -->
+      <div style="font-size:11px;color:var(--bl2);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">
+        ${isEn?'Exercises by day':'Ejercicios por día'}
+      </div>
+      <div id="plt_edit_dias">${diasHtml}</div>
+
+      <!-- Acciones -->
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="document.getElementById('modal_editar_plantilla').style.display='none'"
+          style="flex:1;padding:12px;border-radius:10px;border:0.5px solid rgba(255,255,255,.12);background:none;color:var(--tx2);font-size:14px;cursor:pointer;font-family:inherit">
+          ${isEn?'Cancel':'Cancelar'}
+        </button>
+        <button onclick="guardarCambiosPlantilla(${p.id})"
+          style="flex:2;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+          💾 ${isEn?'Save changes':'Guardar cambios'}
+        </button>
+      </div>
+      <div id="plt_edit_msg" style="font-size:12px;text-align:center;margin-top:8px;min-height:16px"></div>
+    </div>`;
+}
+
+function pltUpdateEx(di, ei, campo, valor) {
+  if (!window._editPlt?.dias?.[di]?.ejercicios?.[ei]) return;
+  window._editPlt.dias[di].ejercicios[ei][campo] = valor;
+}
+
+function pltEliminarEjercicio(di, ei) {
+  if (!window._editPlt?.dias?.[di]?.ejercicios) return;
+  window._editPlt.dias[di].ejercicios.splice(ei, 1);
+  renderModalEditarPlantilla(window._editPlt);
+}
+
+async function guardarCambiosPlantilla(plantillaId) {
+  const isEn = COACH_LANG === 'en';
+  const msg  = document.getElementById('plt_edit_msg');
+  if (msg) { msg.style.color = 'var(--tx3)'; msg.textContent = isEn?'Saving...':'Guardando...'; }
+
+  const nombre   = document.getElementById('plt_edit_nombre')?.value?.trim();
+  if (!nombre) { if(msg){msg.style.color='#f87171';msg.textContent=isEn?'Name required.':'El nombre es obligatorio.';} return; }
+
+  const payload = {
+    nombre,
+    descripcion:       document.getElementById('plt_edit_desc')?.value?.trim()     || '',
+    nivel:             document.getElementById('plt_edit_nivel')?.value             || '',
+    objetivo:          document.getElementById('plt_edit_objetivo')?.value          || '',
+    tipo_rutina:       document.getElementById('plt_edit_tipo_rutina')?.value       || '',
+    lugar:             document.getElementById('plt_edit_lugar')?.value             || 'Gimnasio',
+    duracion_estimada: parseInt(document.getElementById('plt_edit_duracion')?.value) || 60,
+    fatiga_estimada:   document.getElementById('plt_edit_fatiga')?.value            || 'Media',
+    dias:              window._editPlt?.dias || []
+  };
+
+  try {
+    await api(`/plantillas/${plantillaId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+    if (msg) { msg.style.color = '#4ade80'; msg.textContent = isEn?'✅ Saved!':'✅ ¡Guardado!'; }
+    setTimeout(() => {
+      document.getElementById('modal_editar_plantilla').style.display = 'none';
+      plantillaCargarLista();
+    }, 900);
+  } catch(e) {
+    if (msg) { msg.style.color = '#f87171'; msg.textContent = '❌ ' + e.message; }
+  }
 }
