@@ -121,6 +121,7 @@ function editarImagenEjercicio(nombre, urlActual){
 
 async function dbGenerarIANuevo(){
   const res = document.getElementById('db_ia_result');
+  let isEN = LANG === 'en'; // fallback hasta cargar c.lang
   if(!dbState.clienteId){ res.innerHTML='<div style="color:#f87171;font-size:13px">Selecciona un cliente primero</div>'; return; }
   const alimentos = [..._dbSeleccionados].join(', ') || document.getElementById('db_alimentos_input')?.value?.trim() || '';
   if(!alimentos){ res.innerHTML='<div style="color:#f87171;font-size:13px">Escribe los alimentos disponibles</div>'; return; }
@@ -168,7 +169,7 @@ async function dbGenerarIANuevo(){
 
   // ── Idioma del CLIENTE (no del coach) ──────────────────────────────────
   const clienteLang = c.lang || 'es';
-  const isEN = clienteLang === 'en';
+  isEN = clienteLang === 'en'; // actualizar con el idioma real del cliente
   console.log('[DietaIA] Cliente:', c.nombre, '| Lang cliente:', clienteLang, '| Lang coach:', LANG);
 
   // ── Nombres de comidas según número e idioma ─────────────────────────
@@ -602,7 +603,9 @@ async function dbPublicarPlan(){
 }
 
 function renderPlanDietaCoach(plan, cliente){
-  const esVeg = cliente.dieta_tipo==='Vegano'||cliente.dieta_tipo==='Vegetariano';
+  const clienteLang = cliente?.lang || window._planDietaCliente?.lang || 'es';
+  const isEN = clienteLang === 'en';
+  const esVeg = cliente?.dieta_tipo==='Vegano'||cliente?.dieta_tipo==='Vegetariano';
 
   const mealNamesCoachEN = {
     'Desayuno':'Breakfast','DESAYUNO':'BREAKFAST',
