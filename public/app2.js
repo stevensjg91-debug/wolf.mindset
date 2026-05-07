@@ -464,17 +464,53 @@ ${formatoJSON}`;
     let plan;
     try {
       let clean = d.reply || '';
-      // Remove markdown code blocks
+      // Limpiar markdown
       clean = clean.replace(/```json\s*/gi,'').replace(/```\s*/g,'');
-      // Extract JSON object
+      // Extraer objeto JSON
       const start = clean.indexOf('{');
-      const end = clean.lastIndexOf('}');
+      let end = clean.lastIndexOf('}');
       if(start>=0 && end>start) clean = clean.slice(start, end+1);
-      plan = JSON.parse(clean.trim());
-      if(!plan.comidas || !Array.isArray(plan.comidas)) throw new Error('Sin comidas');
+
+      // Intentar parsear directamente
+      try {
+        plan = JSON.parse(clean.trim());
+      } catch(parseErr) {
+        // JSON truncado — intentar reparar añadiendo cierres que faltan
+        console.warn('[DietaIA] JSON truncado, intentando reparar...', parseErr.message);
+        let repaired = clean.trim();
+        // Contar aperturas vs cierres de arrays y objetos
+        let opens = (repaired.match(/[{[]/g)||[]).length;
+        let closes = (repaired.match(/[}\]]/g)||[]).length;
+        let diff = opens - closes;
+        // Cerrar strings abiertos
+        const lastChar = repaired[repaired.length-1];
+        if(lastChar !== '"' && lastChar !== '}' && lastChar !== ']') {
+          // Cortar en la última coma o llave completa
+          const lastGood = Math.max(repaired.lastIndexOf('},'), repaired.lastIndexOf('}\n'));
+          if(lastGood > 0) repaired = repaired.slice(0, lastGood+1);
+        }
+        // Recalcular y cerrar
+        opens = (repaired.match(/[{[]/g)||[]).length;
+        closes = (repaired.match(/[}\]]/g)||[]).length;
+        diff = opens - closes;
+        let closing = '';
+        // Adivinar el orden de cierre mirando el stack
+        const stack = [];
+        for(const ch of repaired) { if(ch==='{') stack.push('}'); else if(ch==='[') stack.push(']'); else if(ch==='}' || ch===']') stack.pop(); }
+        closing = stack.reverse().join('');
+        try {
+          plan = JSON.parse((repaired + closing).trim());
+          console.log('[DietaIA] JSON reparado OK');
+        } catch(e2) {
+          throw new Error(isEN ? 'The plan was generated but could not be read. Try again.' : 'El plan se generó pero no se pudo leer. Inténtalo de nuevo.');
+        }
+      }
+      if(!plan.comidas || !Array.isArray(plan.comidas)) throw new Error(isEN?'No meals generated':'Sin comidas generadas');
+      // Asegurar que cada comida tenga al menos alimentos o opciones
+      plan.comidas.forEach(m => { if(!m.alimentos) m.alimentos = m.opciones?.[0]?.alimentos || []; });
     } catch(e) {
       console.error('Parse error:', e, 'Reply:', d.reply?.substring(0,200));
-      res.innerHTML=`<div style="color:#f87171;font-size:13px">Error: ${e.message}. Inténtalo de nuevo.</div>`;
+      res.innerHTML=`<div style="color:#f87171;font-size:13px">Error: ${e.message}. ${isEN?'Try again.':'Inténtalo de nuevo.'}</div>`;
       return;
     }
 
