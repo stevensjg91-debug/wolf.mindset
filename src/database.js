@@ -184,6 +184,8 @@ async function initDB() {
     created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at        DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  // Superseries v2
+  try { db.run("ALTER TABLE ejercicios_dia ADD COLUMN superset_grupo INTEGER DEFAULT 0"); } catch(e) {}
   // Metadatos v2 — para filtrado inteligente por IA (ALTER TABLE seguros, no rompen BD existente)
   try { db.run("ALTER TABLE rutinas_plantillas ADD COLUMN tipo TEXT DEFAULT 'semana'"); } catch(e) {}
   try { db.run("ALTER TABLE rutinas_plantillas ADD COLUMN tipo_rutina TEXT DEFAULT ''"); } catch(e) {}
