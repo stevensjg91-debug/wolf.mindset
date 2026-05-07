@@ -166,78 +166,89 @@ async function dbGenerarIANuevo(){
   const dist = distKcal[parseInt(numComidas)] || distKcal[5];
   const kcalPorComida = dist.map(p => Math.round(kcalObj * p / 100));
 
+  // ── Idioma del CLIENTE (no del coach) ──────────────────────────────────
   const clienteLang = c.lang || 'es';
-  const isEN = clienteLang === 'en'; // CORRECTO: idioma del CLIENTE, no del coach
-  console.log('[DietaIA] Cliente:', c.nombre, '| Idioma cliente:', clienteLang, '| Idioma coach:', LANG);
-  const prompt = isEN ? `You are an expert sports nutritionist. Create a diet plan for this client and respond ONLY with valid JSON, no extra text.
+  const isEN = clienteLang === 'en';
+  console.log('[DietaIA] Cliente:', c.nombre, '| Lang cliente:', clienteLang, '| Lang coach:', LANG);
 
-═══ CLIENT DATA ═══
-- Name: ${c.nombre}
-- Goal: ${c.objetivo} (${kcalLabel})
-- Weight: ${c.peso_actual||'not specified'}kg
-- Diet type: ${c.dieta_tipo||'Omnivore'}
-- FORBIDDEN foods: ${c.alimentos_no||'none'}
-- Intolerances/allergies: ${c.lesiones||'none'}
-- Coach notes: ${c.observaciones||'none'}
-- Extra notes: ${notasExtra||'none'}
-- Labs / deficiencies: ${analiticas||'none'}
+  // ── Nombres de comidas según número e idioma ─────────────────────────
+  const nombresComidasES = {
+    3: ['Desayuno','Comida','Cena'],
+    4: ['Desayuno','Comida','Merienda','Cena'],
+    5: ['Desayuno','Media mañana','Comida','Merienda','Cena'],
+    6: ['Desayuno','Media mañana','Comida','Merienda','Cena','Recena']
+  };
+  const nombresComidasEN = {
+    3: ['Breakfast','Lunch','Dinner'],
+    4: ['Breakfast','Lunch','Snack','Dinner'],
+    5: ['Breakfast','Mid-morning','Lunch','Snack','Dinner'],
+    6: ['Breakfast','Mid-morning','Lunch','Snack','Dinner','Evening snack']
+  };
+  const emojisComidas = ['☀️','🕐','🍽️','🌅','🌙','🌙'];
+  const nombresComidas = (isEN ? nombresComidasEN : nombresComidasES)[parseInt(numComidas)] ||
+                         (isEN ? nombresComidasEN : nombresComidasES)[5];
+  const comidasEjemplo = nombresComidas.map((nombre, i) =>
+    `${i+1}. ${nombre} (~${kcalPorComida[i]||300} kcal)`
+  ).join('\n');
 
-═══ NUTRITIONAL TARGETS ═══
-- Total calories: ${kcalObj} kcal/day
-- Protein: ${protObj}g | Carbs: ${carbsObj}g | Fats: ${fatObj}g
-- Number of meals: ${numComidas}
-- Calorie distribution per meal: ${kcalPorComida.join(', ')} kcal
+  // ── Instrucción de idioma reforzada ──────────────────────────────────
+  const langInstruccion = isEN
+    ? 'MANDATORY LANGUAGE: ALL text fields must be in ENGLISH — meal names, food names, notes, options, adjustments, supplementation, everything. No Spanish words allowed under any circumstance.'
+    : 'IDIOMA OBLIGATORIO: TODOS los campos de texto deben estar en ESPAÑOL — nombres de comidas, alimentos, notas, opciones, ajustes, suplementación, todo. Prohibido usar inglés bajo ningún concepto.';
 
-═══ AVAILABLE FOODS ═══
-${alimentos}
+  // ── Reglas culinarias compartidas ────────────────────────────────────
+  const reglasEN = `═══ CULINARY RULES — MANDATORY ═══
+Think like a chef. Before building each option ask: "Would a real person eat this in real life?" If no → do NOT include it.
 
-USE ONLY these foods. Do not invent or add any food not on this list.
+FORBIDDEN COMBINATIONS (never in the same meal):
+- Fish + legumes / Fish + dairy / Fish + fruit
+- Meat + fruit (unless smoothie context)
+- Protein powder + solid protein
+- Two different solid proteins (unless mixed salad)
+- Legumes + dairy as main base
+- Nuts as main dish (only fat complement)
+- Sweet + savoury without clear context
 
-═══ CULINARY RULES (MANDATORY — THINK LIKE A CHEF, NOT A CALCULATOR) ═══
+MANDATORY RULES:
+1. Every option must be a RECOGNISABLE REAL DISH someone would order or cook.
+2. Options A, B, C must be COMPLETELY DIFFERENT dishes — not the same meal with one swap.
+   - Option A: a dish with one protein source
+   - Option B: a dish with a DIFFERENT protein source OR completely different preparation
+   - Option C: a third distinct option (e.g. quick/express version)
+3. PROTEIN POWDER: only with liquid, yogurt, oats or fruit. Never with solid protein.
+4. OATS: always with liquid (milk, yogurt) or as pancakes. Never dry alone.
+5. COFFEE/TEA: side drink only, never the main food.
+6. Max 5 foods per option. Min 2.
+7. Strictly respect FORBIDDEN foods.
+8. If you cannot make 3 coherent options, use fewer foods per option rather than bizarre combos.`;
 
-Before building each meal ask yourself: "Would a real person eat this together in real life?" If the answer is no, do NOT put those foods in the same meal.
+  const reglasES = `═══ REGLAS CULINARIAS — OBLIGATORIAS ═══
+Piensa como un cocinero. Antes de construir cada opción pregúntate: "¿Una persona real comería esto en la vida real?" Si no → NO lo incluyas.
 
-FOOD CATEGORIES:
-- SOLID PROTEIN: meats, fish, eggs, legumes, tofu, tempeh, cheese
-- PROTEIN POWDER: whey, casein, vegan protein powder
-- BASE CARB: rice, pasta, potato, oats, bread, pancakes, quinoa
-- FRUIT: banana, apple, orange, berries, dates, etc.
-- LIQUID/CREAMY DAIRY: milk, yogurt, kefir, plant-based drink
-- FAT: oil, avocado, nuts, seeds, butter
-- VEGETABLE: any vegetable
-- DRINK: coffee, tea, water
+COMBINACIONES PROHIBIDAS (nunca en la misma comida):
+- Pescado + legumbres / Pescado + lácteos / Pescado + fruta
+- Carne + fruta (salvo contexto de batido)
+- Proteína en polvo + proteína sólida
+- Dos proteínas sólidas distintas (salvo ensalada mixta)
+- Legumbres + lácteos como base principal
+- Frutos secos como plato principal (solo complemento de grasa)
+- Dulce + salado sin contexto claro
 
-FORBIDDEN COMBINATIONS — never put these in the same meal:
-- Fish + legumes (salmon + chickpeas, tuna + lentils = NOT a real dish)
-- Fish + dairy (salmon + yogurt, tuna + milk = NOT a real dish)
-- Fish + fruit (salmon + banana = NOT a real dish)
-- Meat + fruit (chicken + banana = NOT a real dish, unless it's a smoothie context)
-- Eggs + fish in the same main dish (omelette with salmon is ok, but chicken + egg + tuna = no)
-- Legumes + dairy as main (chickpeas + yogurt = NOT a real dish)
-- Protein powder + solid protein (whey + chicken = forbidden)
-- Two different solid proteins unless it's a surf & turf or explicitly mixed salad
-- Nuts as a main dish — only as a side fat complement
-- Sweet + savoury without clear context (oats + chicken = no, rice + banana = no)
+NORMAS OBLIGATORIAS:
+1. Cada opción debe ser UN PLATO RECONOCIBLE que alguien pediría en un restaurante o cocinaría en casa.
+2. Las opciones A, B, C deben ser PLATOS COMPLETAMENTE DIFERENTES — no el mismo con un cambio.
+   - Opción A: un plato con una fuente de proteína
+   - Opción B: un plato con una fuente de proteína DIFERENTE O preparación completamente distinta
+   - Opción C: una tercera opción distinta (p.ej. versión rápida/express)
+3. PROTEÍNA EN POLVO: solo con líquido, yogur, avena o fruta. Nunca con proteína sólida.
+4. AVENA: siempre con líquido (leche, yogur) o en tortitas. Nunca sola y seca.
+5. CAFÉ/TÉ: bebida acompañante únicamente, nunca alimento principal.
+6. Máximo 5 alimentos por opción. Mínimo 2.
+7. Respeta estrictamente los alimentos PROHIBIDOS.
+8. Si no puedes hacer 3 opciones coherentes, usa menos alimentos por opción en vez de combinaciones raras.`;
 
-RULES:
-1. Each meal must be a RECOGNISABLE DISH a real person would order in a restaurant or cook at home.
-2. PROTEIN POWDER: ONLY with liquid, yogurt, oats or fruit. Never with solid protein.
-3. OATS: always with liquid (milk, yogurt) or as pancakes with egg. Never dry and alone.
-4. CHEESE: only with eggs, bread, pasta or salad. Not with protein powder.
-5. COFFEE/TEA: side drink only.
-6. Max 5 foods per meal.
-7. VARIATIONS must be real alternative dishes on their own — not random swaps.
-8. Repeat foods across meals rather than creating bizarre combinations.
-9. Strictly respect FORBIDDEN foods.
-10. If you cannot make a coherent meal with the available foods, simplify to 2-3 foods that work together.
-
-═══ MACRO DISTRIBUTION ═══
-- Main meals (lunch/dinner): more solid protein and base carbs.
-- Breakfast/snack: can include protein powder, dairy, fruit, fats.
-- Spread fats throughout the day, do not concentrate all in one meal.
-
-RESPOND EXACTLY in this JSON format — ALL text fields in English:
-{
+  // ── Formato JSON compartido (texto en el idioma del cliente) ─────────
+  const formatoJSON = isEN ? `{
   "kcal_total": 2000,
   "prot_total": 160,
   "carbs_total": 200,
@@ -247,16 +258,38 @@ RESPOND EXACTLY in this JSON format — ALL text fields in English:
       "numero": 1,
       "nombre": "Breakfast",
       "emoji": "☀️",
-      "alimentos": [
-        {"nombre": "Oats", "cantidad": "80g", "detalle": "raw"},
-        {"nombre": "Whole eggs", "cantidad": "3 units", "detalle": ""},
-        {"nombre": "Banana", "cantidad": "1 medium", "detalle": ""}
-      ],
-      "variaciones": [
-        {"letra":"B","nombre":"Quick option","alimentos":[{"nombre":"Protein yogurt","cantidad":"200g","detalle":""},{"nombre":"Oats","cantidad":"60g","detalle":""}]},
-        {"letra":"C","nombre":"Express option","alimentos":[{"nombre":"Wholegrain bread","cantidad":"80g","detalle":""},{"nombre":"Eggs","cantidad":"3 units","detalle":""}]}
-      ],
-      "nota": "Same macros across all options"
+      "opciones": [
+        {
+          "letra": "A",
+          "nombre": "Oat bowl with eggs",
+          "alimentos": [
+            {"nombre": "Oats", "cantidad": "80g", "detalle": "raw"},
+            {"nombre": "Whole eggs", "cantidad": "3 units", "detalle": ""},
+            {"nombre": "Banana", "cantidad": "1 medium", "detalle": ""}
+          ],
+          "nota": ""
+        },
+        {
+          "letra": "B",
+          "nombre": "Protein yogurt with fruit",
+          "alimentos": [
+            {"nombre": "Greek yogurt", "cantidad": "250g", "detalle": ""},
+            {"nombre": "Protein powder", "cantidad": "30g", "detalle": "mixed in"},
+            {"nombre": "Berries", "cantidad": "100g", "detalle": ""}
+          ],
+          "nota": "Quick option"
+        },
+        {
+          "letra": "C",
+          "nombre": "Wholegrain toast with eggs",
+          "alimentos": [
+            {"nombre": "Wholegrain bread", "cantidad": "80g", "detalle": ""},
+            {"nombre": "Whole eggs", "cantidad": "3 units", "detalle": "scrambled"},
+            {"nombre": "Olive oil", "cantidad": "10g", "detalle": ""}
+          ],
+          "nota": "Express version"
+        }
+      ]
     }
   ],
   "alternativas": {
@@ -269,84 +302,13 @@ RESPOND EXACTLY in this JSON format — ALL text fields in English:
     {"icono": "↓", "titulo": "Less fat?", "texto": "Choose chicken instead of beef"}
   ],
   "suplementacion": [
-    {"nombre": "Vitamin D3", "dosis": "2000 IU/day", "momento": "With main meal", "motivo": "Detected deficiency"},
-    {"nombre": "Omega-3", "dosis": "2g EPA+DHA/day", "momento": "With meals", "motivo": "Inflammation and recovery"}
+    {"nombre": "Vitamin D3", "dosis": "2000 IU/day", "momento": "With main meal", "motivo": "Detected deficiency"}
   ],
   "alimentos_therapeuticos": [
     {"alimento": "Beef liver", "frecuencia": "1-2 times/week", "motivo": "Low ferritin — haem iron source"}
   ],
   "frase_motivadora": "Consistency builds results."
-}` : `IDIOMA OBLIGATORIO: Todo el JSON debe estar en ESPAÑOL. Nombres de comidas, alimentos, notas, ajustes, suplementos — TODO EN ESPAÑOL. Si escribes algo en inglés el plan es inválido.
-
-Eres un nutricionista deportivo experto. Crea un plan de dieta para este cliente y responde SOLO con JSON válido, sin texto adicional.
-
-═══ DATOS DEL CLIENTE ═══
-- Nombre: ${c.nombre}
-- Objetivo: ${c.objetivo} (${kcalLabel})
-- Peso: ${c.peso_actual||'no especificado'}kg
-- Tipo de dieta: ${c.dieta_tipo||'Omnívoro'}
-- Alimentos PROHIBIDOS: ${c.alimentos_no||'ninguno'}
-- Intolerancias/alergias: ${c.lesiones||'ninguna'}
-- Observaciones del coach: ${c.observaciones||'ninguna'}
-- Notas extra: ${notasExtra||'ninguna'}
-- Analíticas / déficits: ${analiticas||'ninguno'}
-
-═══ OBJETIVOS NUTRICIONALES ═══
-- Calorías totales: ${kcalObj} kcal/día
-- Proteína: ${protObj}g | Carbos: ${carbsObj}g | Grasas: ${fatObj}g
-- Número de comidas: ${numComidas}
-- Distribución de calorías por comida: ${kcalPorComida.join(', ')} kcal
-
-═══ ALIMENTOS DISPONIBLES ═══
-${alimentos}
-
-USA ÚNICAMENTE estos alimentos. No inventes ni añadas ninguno que no esté en esta lista.
-
-═══ REGLAS DE SENTIDO CULINARIO (OBLIGATORIAS — PIENSA COMO UN COCINERO, NO COMO UNA CALCULADORA) ═══
-
-Antes de construir cada comida pregúntate: "¿Una persona real comería esto junto en la vida real?" Si la respuesta es no, NO pongas esos alimentos en la misma comida.
-
-CATEGORÍAS DE ALIMENTOS:
-- PROTEÍNA SÓLIDA: carnes, pescados, huevos, legumbres, tofu, tempeh, queso
-- PROTEÍNA EN POLVO: whey, caseína, proteína vegetal en polvo
-- CARBOHIDRATO BASE: arroz, pasta, patata, avena, pan, tortitas, quinoa
-- FRUTA: plátano, manzana, naranja, frutos rojos, dátiles, etc.
-- LÁCTEO LÍQUIDO/CREMOSO: leche, yogur, kéfir, bebida vegetal
-- GRASA: aceite, aguacate, frutos secos, semillas, mantequilla
-- VERDURA/HORTALIZA: cualquier vegetal
-- BEBIDA: café, té, agua
-
-COMBINACIONES PROHIBIDAS — nunca en la misma comida:
-- Pescado + legumbres (salmón + garbanzos, atún + lentejas = NO es un plato real)
-- Pescado + lácteos (salmón + yogur, atún + leche = NO es un plato real)
-- Pescado + fruta (salmón + plátano = NO es un plato real)
-- Carne + fruta (pollo + plátano = NO es un plato real salvo en contexto de batido)
-- Huevos + pescado como plato principal (tortilla con salmón OK, pero pollo + huevo + atún = no)
-- Legumbres + lácteos como base (garbanzos + yogur = NO es un plato real)
-- Proteína en polvo + proteína sólida (whey + pollo = prohibido)
-- Dos proteínas sólidas distintas salvo ensalada mixta justificada
-- Frutos secos como plato principal — solo complemento de grasa
-- Dulce + salado sin contexto claro (avena + pollo = no, arroz + plátano = no)
-
-NORMAS:
-1. Cada comida debe ser UN PLATO RECONOCIBLE que una persona real pediría en un restaurante o cocinaría en casa.
-2. PROTEÍNA EN POLVO: SOLO con líquido, yogur, avena o fruta. Nunca con proteína sólida.
-3. AVENA: siempre con líquido (leche, yogur) o en tortitas con huevo. Nunca sola y seca.
-4. QUESO: solo con huevos, pan, pasta o ensalada. No con proteína en polvo.
-5. CAFÉ/TÉ: bebida acompañante únicamente.
-6. Máximo 5 alimentos por comida.
-7. Las VARIACIONES deben ser platos alternativos reales por sí solos, no intercambios aleatorios.
-8. Repite alimentos entre comidas antes de hacer combinaciones raras.
-9. Respeta estrictamente los alimentos PROHIBIDOS.
-10. Si no puedes hacer una comida coherente con los alimentos disponibles, simplifica a 2-3 que sí encajen.
-
-═══ DISTRIBUCIÓN DE MACROS ═══
-- Comidas principales: más proteína sólida y carbohidrato base.
-- Desayuno/merienda: pueden incluir proteína en polvo, lácteos, fruta, grasas.
-- Distribuye las grasas a lo largo del día.
-
-RESPONDE EXACTAMENTE en este formato JSON — TODOS los campos de texto en español:
-{
+}` : `{
   "kcal_total": 2000,
   "prot_total": 160,
   "carbs_total": 200,
@@ -356,42 +318,147 @@ RESPONDE EXACTAMENTE en este formato JSON — TODOS los campos de texto en espa�
       "numero": 1,
       "nombre": "Desayuno",
       "emoji": "☀️",
-      "alimentos": [
-        {"nombre": "Avena", "cantidad": "80g", "detalle": "en crudo"},
-        {"nombre": "Huevos enteros", "cantidad": "3 uds", "detalle": ""},
-        {"nombre": "Plátano", "cantidad": "1 ud mediano", "detalle": ""}
-      ],
-      "variaciones": [
-        {"letra":"B","nombre":"Opción rápida","alimentos":[{"nombre":"Yogur proteico","cantidad":"200g","detalle":""},{"nombre":"Avena","cantidad":"60g","detalle":""}]}
-      ],
-      "nota": "Mismos macros en todas las opciones"
+      "opciones": [
+        {
+          "letra": "A",
+          "nombre": "Bowl de avena con huevos",
+          "alimentos": [
+            {"nombre": "Avena", "cantidad": "80g", "detalle": "en crudo"},
+            {"nombre": "Huevos enteros", "cantidad": "3 uds", "detalle": ""},
+            {"nombre": "Plátano", "cantidad": "1 ud mediano", "detalle": ""}
+          ],
+          "nota": ""
+        },
+        {
+          "letra": "B",
+          "nombre": "Yogur proteico con fruta",
+          "alimentos": [
+            {"nombre": "Yogur griego", "cantidad": "250g", "detalle": ""},
+            {"nombre": "Proteína en polvo", "cantidad": "30g", "detalle": "mezclada"},
+            {"nombre": "Frutos rojos", "cantidad": "100g", "detalle": ""}
+          ],
+          "nota": "Opción rápida"
+        },
+        {
+          "letra": "C",
+          "nombre": "Tostadas integrales con huevo",
+          "alimentos": [
+            {"nombre": "Pan integral", "cantidad": "80g", "detalle": ""},
+            {"nombre": "Huevos enteros", "cantidad": "3 uds", "detalle": "revueltos"},
+            {"nombre": "Aceite de oliva", "cantidad": "10g", "detalle": ""}
+          ],
+          "nota": "Versión express"
+        }
+      ]
     }
   ],
   "alternativas": {
     "proteinas": ["pollo", "pavo", "atún"],
     "carbos": ["arroz", "patata", "pan integral"],
-    "grasas": ["aguacate", "nueces", "aceite oliva"]
+    "grasas": ["aguacate", "nueces", "aceite de oliva"]
   },
   "ajustes": [
     {"icono": "↑", "titulo": "¿Más energía?", "texto": "Añade más arroz o patata"},
     {"icono": "↓", "titulo": "¿Menos grasa?", "texto": "Elige pollo en vez de ternera"}
   ],
   "suplementacion": [
-    {"nombre": "Vitamina D3", "dosis": "2000 UI/día", "momento": "Con la comida principal", "motivo": "Déficit detectado en analítica"},
-    {"nombre": "Omega-3", "dosis": "2g EPA+DHA/día", "momento": "Con las comidas", "motivo": "Inflamación y recuperación"}
+    {"nombre": "Vitamina D3", "dosis": "2000 UI/día", "momento": "Con la comida principal", "motivo": "Déficit detectado en analítica"}
   ],
   "alimentos_therapeuticos": [
     {"alimento": "Hígado de ternera", "frecuencia": "1-2 veces/semana", "motivo": "Ferritina baja — fuente de hierro hemo"}
   ],
   "frase_motivadora": "La constancia construye resultados."
-}
+}`;
 
-RECUERDA: TODA la respuesta debe estar en ESPAÑOL. Ninguna palabra en inglés.`;
+  const prompt = isEN
+    ? `${langInstruccion}
 
+You are an expert sports nutritionist AND experienced chef. Create a personalised diet plan and respond ONLY with valid JSON — no text, no markdown.
+
+═══ CLIENT DATA ═══
+- Name: ${c.nombre}
+- Goal: ${c.objetivo} (${kcalLabel})
+- Weight: ${c.peso_actual||'not specified'}kg | Diet type: ${c.dieta_tipo||'Omnivore'}
+- FORBIDDEN foods: ${c.alimentos_no||'none'}
+- Intolerances/allergies: ${c.lesiones||'none'}
+- Coach notes: ${c.observaciones||'none'}
+- Extra notes: ${notasExtra||'none'}
+- Labs / deficiencies: ${analiticas||'none'}
+
+═══ NUTRITIONAL TARGETS ═══
+- Total calories: ${kcalObj} kcal/day
+- Protein: ${protObj}g | Carbs: ${carbsObj}g | Fats: ${fatObj}g
+- Meals:
+${comidasEjemplo}
+
+═══ AVAILABLE FOODS ═══
+${alimentos}
+
+USE ONLY these foods. Do not invent or add any food not on this list.
+
+${reglasEN}
+
+═══ MACRO DISTRIBUTION ═══
+- Main meals (lunch/dinner): solid protein + base carbs + vegetables.
+- Breakfast/snack: can include protein powder, dairy, fruit, fats.
+- Spread fats across the day. Do not concentrate all fats in one meal.
+- Each option within a meal must have similar macros (±10%).
+
+═══ OPTIONS STRUCTURE — CRITICAL ═══
+Each meal MUST have EXACTLY 3 options (A, B, C):
+- They must be 3 COMPLETELY DIFFERENT dishes
+- Each option uses a different protein source OR completely different preparation method
+- All 3 options must be coherent, real dishes
+- Use the field "opciones" (NOT "variaciones") in the JSON
+
+RESPOND EXACTLY in this JSON format — ALL text in English:
+${formatoJSON}`
+    : `${langInstruccion}
+
+Eres un nutricionista deportivo experto Y chef experimentado. Crea un plan de dieta personalizado y responde SOLO con JSON válido — sin texto, sin markdown.
+
+═══ DATOS DEL CLIENTE ═══
+- Nombre: ${c.nombre}
+- Objetivo: ${c.objetivo} (${kcalLabel})
+- Peso: ${c.peso_actual||'no especificado'}kg | Tipo de dieta: ${c.dieta_tipo||'Omnívoro'}
+- Alimentos PROHIBIDOS: ${c.alimentos_no||'ninguno'}
+- Intolerancias/alergias: ${c.lesiones||'ninguna'}
+- Observaciones del coach: ${c.observaciones||'ninguna'}
+- Notas extra: ${notasExtra||'ninguna'}
+- Analíticas / déficits: ${analiticas||'ninguno'}
+
+═══ OBJETIVOS NUTRICIONALES ═══
+- Calorías totales: ${kcalObj} kcal/día
+- Proteína: ${protObj}g | Carbos: ${carbsObj}g | Grasas: ${fatObj}g
+- Comidas:
+${comidasEjemplo}
+
+═══ ALIMENTOS DISPONIBLES ═══
+${alimentos}
+
+USA ÚNICAMENTE estos alimentos. No inventes ni añadas ninguno que no esté en esta lista.
+
+${reglasES}
+
+═══ DISTRIBUCIÓN DE MACROS ═══
+- Comidas principales: proteína sólida + carbohidrato base + verduras.
+- Desayuno/merienda: pueden incluir proteína en polvo, lácteos, fruta, grasas.
+- Distribuye las grasas a lo largo del día. No concentres todas las grasas en una sola comida.
+- Cada opción dentro de una comida debe tener macros similares (±10%).
+
+═══ ESTRUCTURA DE OPCIONES — CRÍTICO ═══
+Cada comida DEBE tener EXACTAMENTE 3 opciones (A, B, C):
+- Deben ser 3 PLATOS COMPLETAMENTE DIFERENTES
+- Cada opción usa una fuente de proteína diferente O método de preparación completamente distinto
+- Las 3 opciones deben ser platos coherentes y reales
+- Usa el campo "opciones" (NO "variaciones") en el JSON
+
+RESPONDE EXACTAMENTE en este formato JSON — TODO el texto en español:
+${formatoJSON}`;
   try {
     const d = await api('/ia/chat', {method:'POST', body:JSON.stringify({
       messages:[{role:'user', content:prompt}],
-      system:`You are an expert sports nutritionist AND experienced chef. Always respond with valid compact JSON, no extra text, no markdown code blocks. All quantities raw/uncooked. Max 2 variations per meal, max 4 foods each. CRITICAL culinary rule: every meal must be something a real person would actually eat together — fish never goes with legumes or dairy, meat never with fruit, no bizarre combinations. When in doubt, simplify. Do not include macro summaries in the "nota" field. ${isEN?'CRITICAL: Write EVERY text field (nombre, detalle, nota, titulo, texto, momento, motivo, alimento, frecuencia, frase_motivadora) in English. No Spanish words whatsoever.':'CRÍTICO: Escribe TODOS los campos de texto EN ESPAÑOL. Nombres de comidas, alimentos, notas, ajustes, suplementación — TODO en español. Prohibido usar inglés.'}`
+      system:`You are an expert sports nutritionist AND experienced chef. Always respond with valid compact JSON — no extra text, no markdown. All food quantities in raw/uncooked form. CRITICAL: each meal must have EXACTLY 3 options (A, B, C) using the field "opciones". Each option must be a COMPLETELY DIFFERENT real dish — not the same meal with one swap. Max 5 foods per option. Every meal must make culinary sense: fish never with legumes or dairy, meat never with fruit, protein powder never with solid protein. ${isEN?'MANDATORY: Write EVERY text field in English — meal names, food names, notes, options, adjustments, all text. No Spanish.':'OBLIGATORIO: Escribe TODOS los campos de texto en español — nombres de comidas, alimentos, notas, opciones, ajustes, todo. Prohibido el inglés.'}`
     })});
 
     let plan;
@@ -512,26 +579,53 @@ function renderPlanDietaCoach(plan, cliente){
   const accentDark = esVeg ? '#166534' : '#1e3a5f';
   const accentBg = esVeg ? 'rgba(34,197,94,.08)' : 'rgba(37,99,235,.08)';
 
+  // Normalizar: si la IA devuelve "opciones" o "variaciones", unificar en "opciones"
+  plan.comidas.forEach(m => {
+    if (!m.opciones && m.variaciones) {
+      // Convertir variaciones viejas a opciones nuevas
+      m.opciones = [
+        { letra:'A', nombre: m.nombre, alimentos: m.alimentos, nota: '' },
+        ...m.variaciones.map((v,i) => ({ letra: v.letra||String.fromCharCode(66+i), nombre: v.nombre||('Opción '+(i+2)), alimentos: v.alimentos||[], nota: v.nota||'' }))
+      ];
+    } else if (!m.opciones) {
+      // Sin variaciones — crear opción A única
+      m.opciones = [{ letra:'A', nombre: m.nombre, alimentos: m.alimentos||[], nota: '' }];
+    }
+  });
+
+  const alimentosHtml = (alims, lang) => (alims||[]).map(a => `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;padding:3px 0;border-bottom:0.5px solid rgba(255,255,255,.04)">
+      <span style="color:var(--sv2)">${a.nombre}${a.detalle?` <span style="color:var(--tx3);font-size:10px">(${lang==='en'&&a.detalle==='en crudo'?'raw':a.detalle})</span>`:''}</span>
+      <span style="color:${accent};font-weight:700;flex-shrink:0;margin-left:8px">${a.cantidad}</span>
+    </div>`).join('');
+
   const mealHtml = plan.comidas.map((m,mi)=>{
-    const varBtns = m.variaciones?.length ? `
-      <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">
-        <button style="padding:3px 10px;border-radius:12px;border:0.5px solid ${accent};background:${accentBg};color:${accent};font-size:11px;font-weight:700;cursor:pointer" onclick="dbVarSelect(${mi},-1,this)">A</button>
-        ${m.variaciones.map((v,vi)=>`<button style="padding:3px 10px;border-radius:12px;border:0.5px solid rgba(255,255,255,.15);background:none;color:var(--tx3);font-size:11px;font-weight:700;cursor:pointer" onclick="dbVarSelect(${mi},${vi},this)">${v.letra||String.fromCharCode(66+vi)}</button>`).join('')}
-        <span style="font-size:10px;color:var(--tx3);align-self:center;margin-left:4px">${t('Elige opción')}</span>
+    const opciones = m.opciones || [];
+    const btnLetra = (letra, idx) => {
+      const isActive = idx === 0;
+      return `<button onclick="dbOpcionSelect(${mi},${idx},this)"
+        style="padding:4px 11px;border-radius:12px;border:0.5px solid ${isActive?accent:'rgba(255,255,255,.15)'};
+               background:${isActive?accentBg:'none'};color:${isActive?accent:'var(--tx3)'};
+               font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${letra}</button>`;
+    };
+    const opsBtns = opciones.length > 1 ? `
+      <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+        ${opciones.map((op,i) => btnLetra(op.letra||String.fromCharCode(65+i), i)).join('')}
+        <span style="font-size:10px;color:var(--tx3);margin-left:4px">${isEN?'Choose option':'Elige opción'}</span>
       </div>` : '';
-    const alimentosHtml = (alims)=>alims.map(a=>`
-      <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0">
-        <span style="color:var(--sv2)">${a.nombre}${a.detalle?' <span style="color:var(--tx3);font-size:11px">('+((LANG==="en"&&a.detalle==="en crudo")?"raw":a.detalle)+')</span>':''}</span>
-        <span style="color:${accent};font-weight:700">${a.cantidad}</span>
-      </div>`).join('');
-    return`<div style="padding:12px 0;border-bottom:0.5px solid var(--br)">
+
+    const opNombre = opciones[0]?.nombre ? `
+      <div id="coach_op_nombre_${mi}" style="font-size:11px;color:var(--tx3);font-style:italic;margin-bottom:5px">${opciones[0].nombre}</div>` : '';
+
+    return `<div style="padding:12px 0;border-bottom:0.5px solid var(--br)">
       <div style="display:flex;gap:12px">
-        <div style="width:36px;height:36px;border-radius:10px;background:${accentBg};border:0.5px solid ${accent}40;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:${accent};font-weight:700;flex-shrink:0">${m.numero}</div>
+        <div style="width:36px;height:36px;border-radius:10px;background:${accentBg};border:0.5px solid ${accent}40;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${m.emoji||'🍽️'}</div>
         <div style="flex:1">
-          <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:6px">${m.emoji||'🍽️'} ${translateMealName(m.nombre)}</div>
-          ${varBtns}
-          <div id="coach_var_${mi}">${alimentosHtml(m.alimentos)}</div>
-          ${m.nota&&!m.nota.match(/Aprox|kcal|prot|carbs|grasas/i)?`<div style="font-size:11px;color:var(--tx3);margin-top:4px;font-style:italic">${m.nota}</div>`:''}
+          <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:6px">${translateMealName(m.nombre)}</div>
+          ${opsBtns}
+          ${opNombre}
+          <div id="coach_var_${mi}">${alimentosHtml(opciones[0]?.alimentos||m.alimentos, clienteLang)}</div>
+          ${opciones[0]?.nota&&!opciones[0].nota.match(/Aprox|kcal|prot|carbs|grasas/i)?`<div style="font-size:11px;color:var(--tx3);margin-top:4px;font-style:italic">${opciones[0].nota}</div>`:''}
         </div>
       </div>
     </div>`;
@@ -647,28 +741,43 @@ function dbGuardarEdicion(){
   planDiv.innerHTML = renderPlanDietaCoach(window._planDietaActual, window._planDietaCliente);
 }
 
-function dbVarSelect(mi, vi, btn){
+function dbVarSelect(mi, vi, btn){ dbOpcionSelect(mi, vi, btn); } // alias legacy
+
+function dbOpcionSelect(mi, opIdx, btn){
   const plan = window._planDietaActual;
   if(!plan?.comidas[mi]) return;
   const m = plan.comidas[mi];
-  const alims = vi===-1 ? m.alimentos : m.variaciones?.[vi]?.alimentos || m.alimentos;
-  // Update display
+  const opcion = m.opciones?.[opIdx] || m.opciones?.[0];
+  const alims  = opcion?.alimentos || m.alimentos || [];
+  const esVeg  = window._planDietaCliente?.dieta_tipo==='Vegano'||window._planDietaCliente?.dieta_tipo==='Vegetariano';
+  const accent = esVeg ? '#22c55e' : '#3b82f6';
+  const accentBg = esVeg ? 'rgba(34,197,94,.08)' : 'rgba(37,99,235,.08)';
+  const clienteLang = window._planDietaCliente?.lang || 'es';
+
+  // Actualizar alimentos mostrados
   const wrap = document.getElementById('coach_var_'+mi);
   if(wrap) wrap.innerHTML = alims.map(a=>`
-    <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0">
-      <span style="color:var(--sv2)">${a.nombre}${a.detalle?' <span style="color:var(--tx3);font-size:11px">('+a.detalle+')</span>':''}</span>
-      <span style="color:var(--bl2);font-weight:700">${a.cantidad}</span>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;padding:3px 0;border-bottom:0.5px solid rgba(255,255,255,.04)">
+      <span style="color:var(--sv2)">${a.nombre}${a.detalle?` <span style="color:var(--tx3);font-size:10px">(${clienteLang==='en'&&a.detalle==='en crudo'?'raw':a.detalle})</span>`:''}</span>
+      <span style="color:${accent};font-weight:700;flex-shrink:0;margin-left:8px">${a.cantidad}</span>
     </div>`).join('');
-  // Update active button style
+
+  // Actualizar nombre de la opción
+  const nombreEl = document.getElementById('coach_op_nombre_'+mi);
+  if(nombreEl && opcion?.nombre) nombreEl.textContent = opcion.nombre;
+
+  // Actualizar botones activos
   const parent = btn.closest('div');
-  parent.querySelectorAll('button').forEach(b=>{
+  if(parent) parent.querySelectorAll('button').forEach(b=>{
     b.style.background='none'; b.style.color='var(--tx3)'; b.style.border='0.5px solid rgba(255,255,255,.15)';
   });
-  btn.style.background = 'rgba(37,99,235,.15)';
-  btn.style.color = 'var(--bl2)';
-  btn.style.border = '0.5px solid var(--bl2)';
-  // Store selection in plan for publishing
+  btn.style.background = accentBg;
+  btn.style.color      = accent;
+  btn.style.border     = `0.5px solid ${accent}`;
+
+  // Guardar selección para publicar
   plan.comidas[mi]._selectedAlimentos = alims;
+  plan.comidas[mi]._selectedOpcion    = opIdx;
 }
 
 
