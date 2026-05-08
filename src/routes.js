@@ -1982,40 +1982,75 @@ function botDebeResponder(clienteId) {
   } catch(e) { return false; }
 }
 
-// Genera respuesta IA para el chat usando contexto del cliente
+// Genera respuesta IA para el chat usando contexto COMPLETO del cliente
+// (rutina, dieta, historial de sesiones, progresión, check-ins)
 async function responderConIA(clienteId, mensajeUsuario) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
   try {
-    // Contexto del cliente
-    const cl = dbGet(`SELECT c.*, u.nombre, u.lang FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?`, [clienteId]);
+    // ── Perfil básico ──────────────────────────────────────────────────────
+    const cl = dbGet(`SELECT c.*, u.nombre, u.lang, u.user_id FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?`, [clienteId]);
     if (!cl) return null;
     const isEn = cl.lang === 'en';
 
-    // Últimos 10 mensajes para contexto de conversación
+    // ── Rutina completa ────────────────────────────────────────────────────
+    const dias = dbAll('SELECT id, nombre, grupo FROM dias_entreno WHERE cliente_id=? ORDER BY orden, id', [clienteId]);
+    const rutinaLineas = [];
+    dias.forEach(d => {
+      const ejercicios = dbAll('SELECT nombre, series, reps, peso_objetivo, rir FROM ejercicios_dia WHERE dia_id=? ORDER BY orden, id', [d.id]);
+      rutinaLineas.push(`▸ ${d.nombre}${d.grupo ? ' ('+d.grupo+')' : ''}`);
+      ejercicios.forEach(e => rutinaLineas.push(`  - ${e.nombre}: ${e.series}x${e.reps} @ ${e.peso_objetivo||0}kg${e.rir!=null?' RIR'+e.rir:''}`));
+    });
+
+    // ── Dieta completa ─────────────────────────────────────────────────────
+    const comidas = dbAll('SELECT id, nombre FROM comidas WHERE cliente_id=? ORDER BY orden, id', [clienteId]);
+    const dietaLineas = [];
+    comidas.forEach(c => {
+      const alimentos = dbAll('SELECT nombre, gramos FROM alimentos WHERE comida_id=? ORDER BY orden, id', [c.id]);
+      dietaLineas.push(`• ${c.nombre}: ${alimentos.map(a => a.nombre+' '+a.gramos+'g').join(', ') || '(sin alimentos)'}`);
+    });
+
+    // ── Últimas 3 sesiones con series ─────────────────────────────────────
+    const sesiones = dbAll('SELECT id, dia_nombre, fecha, estado FROM sesiones_entreno WHERE cliente_id=? ORDER BY fecha DESC LIMIT 3', [clienteId]);
+    const sesionesLineas = [];
+    sesiones.forEach(s => {
+      sesionesLineas.push(`• ${s.dia_nombre} (${s.fecha?.split('T')[0]}, ${s.estado})`);
+      const series = dbAll('SELECT ejercicio_nombre, peso_real, reps_real FROM series_log WHERE sesion_id=? ORDER BY id', [s.id]);
+      const porEj = {};
+      series.forEach(sl => { if(!porEj[sl.ejercicio_nombre]) porEj[sl.ejercicio_nombre]=[]; porEj[sl.ejercicio_nombre].push(`${sl.peso_real}kg×${sl.reps_real}`); });
+      Object.entries(porEj).forEach(([ej,srs]) => sesionesLineas.push(`  ${ej}: ${srs.join(' | ')}`));
+    });
+
+    // ── Métricas ───────────────────────────────────────────────────────────
+    const ultimoPeso    = dbGet('SELECT peso, grasa FROM peso_registros WHERE cliente_id=? ORDER BY rowid DESC LIMIT 1', [clienteId]);
+    const ultimoCheckin = dbGet('SELECT sueno, energia FROM checkins WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1', [clienteId]);
+    const totalSes      = dbGet("SELECT COUNT(*) as c FROM sesiones_entreno WHERE cliente_id=? AND estado='completado'", [clienteId]);
+
+    // ── Construir contexto ─────────────────────────────────────────────────
+    const contexto = [
+      `=== CLIENTE ===`,
+      `Nombre: ${cl.nombre} | Objetivo: ${cl.objetivo||'—'} | Nivel: ${cl.nivel||'—'}`,
+      `Peso: ${cl.peso_actual||'—'}kg | Altura: ${cl.altura||'—'}cm | Edad: ${cl.edad||'—'} | Sexo: ${cl.sexo||'—'}`,
+      `Kcal: ${cl.kcal_internas||'—'} | Prot: ${cl.prot||'—'}g | Carbs: ${cl.carbs||'—'}g | Grasas: ${cl.fat||'—'}g`,
+      ultimoPeso?.grasa ? `Grasa corporal: ${ultimoPeso.grasa}%` : '',
+      ultimoCheckin ? `Último check-in — sueño: ${ultimoCheckin.sueno}/10, energía: ${ultimoCheckin.energia}/10` : '',
+      `Sesiones completadas: ${totalSes?.c||0}`,
+      cl.lesiones ? `Lesiones: ${cl.lesiones}` : '',
+      cl.alimentos_no ? `Alimentos prohibidos: ${cl.alimentos_no}` : '',
+      rutinaLineas.length ? `\n=== RUTINA ===\n${rutinaLineas.join('\n')}` : '\n=== RUTINA: Sin asignar ===',
+      dietaLineas.length ? `\n=== DIETA ===\n${dietaLineas.join('\n')}` : '\n=== DIETA: Sin asignar ===',
+      sesionesLineas.length ? `\n=== ÚLTIMAS SESIONES ===\n${sesionesLineas.join('\n')}` : '',
+    ].filter(Boolean).join('\n');
+
+    // ── Historial de chat ──────────────────────────────────────────────────
     const historial = dbAll(
       'SELECT contenido, de_coach FROM mensajes WHERE cliente_id=? ORDER BY created_at DESC LIMIT 10',
       [clienteId]
     ).reverse();
 
-    // Peso actual y último checkin
-    const ultimoPeso = dbGet('SELECT peso, grasa FROM peso_registros WHERE cliente_id=? ORDER BY rowid DESC LIMIT 1', [clienteId]);
-    const ultimoCheckin = dbGet('SELECT sueno, energia FROM checkins WHERE cliente_id=? ORDER BY fecha DESC LIMIT 1', [clienteId]);
-
-    const contexto = [
-      `Cliente: ${cl.nombre}`,
-      `Objetivo: ${cl.objetivo || '—'}`,
-      `Nivel: ${cl.nivel || '—'}`,
-      cl.peso_actual ? `Peso: ${cl.peso_actual}kg` : '',
-      ultimoPeso?.grasa ? `Grasa: ${ultimoPeso.grasa}%` : '',
-      ultimoCheckin ? `Último check-in — sueño: ${ultimoCheckin.sueno}/10, energía: ${ultimoCheckin.energia}/10` : '',
-      cl.lesiones ? `Lesiones/limitaciones: ${cl.lesiones}` : '',
-      cl.observaciones ? `Notas: ${cl.observaciones}` : '',
-    ].filter(Boolean).join('\n');
-
     const system = isEn
-      ? `You are a WolfMindset fitness coach assistant. You respond to clients in a warm, direct, motivating tone — like a real coach who knows them personally. Keep responses concise (2-4 sentences max). Never mention AI or technology. If you don't know something specific about their plan, be honest and say the coach will follow up. NO markdown, NO asterisks, NO bullet points — plain conversational text only. Client context:\n${contexto}`
-      : `Eres el asistente del coach de WolfMindset. Respondes a los clientes con un tono cercano, directo y motivador — como un coach real que los conoce. Respuestas concisas (2-4 frases máximo). Nunca menciones IA ni tecnología. Si no sabes algo concreto de su plan, sé honesto y di que el coach lo confirmará. SIN markdown, SIN asteriscos, SIN listas — solo texto conversacional natural. Contexto del cliente:\n${contexto}`;
+      ? `You are the WolfMindset coach assistant. Respond warmly, directly and motivatingly — like a real coach who knows the client personally. Max 3-4 sentences. Never mention AI or technology. Use the client's REAL data (routine, diet, sessions) to answer. No markdown, no asterisks, no bullet lists — natural conversational text only.\n\n${contexto}`
+      : `Eres el asistente coach de WolfMindset. Responde con tono cercano, directo y motivador — como un coach real que conoce al cliente personalmente. Máximo 3-4 frases. Nunca menciones IA ni tecnología. Usa los datos REALES del cliente (rutina, dieta, sesiones) para responder. SIN markdown, SIN asteriscos, SIN listas — solo texto conversacional natural.\n\n${contexto}`;
 
     const messages = [
       ...historial.map(m => ({ role: m.de_coach ? 'assistant' : 'user', content: m.contenido })),
@@ -2025,7 +2060,7 @@ async function responderConIA(clienteId, mensajeUsuario) {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 300, system, messages })
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 400, system, messages })
     });
     const data = await response.json();
     if (data.error || !data.content?.[0]?.text) return null;
