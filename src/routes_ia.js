@@ -142,8 +142,13 @@ function buildClienteContexto(clienteId, { lang = 'es', incluirHistorialSesiones
   // ── Suscripción ──────────────────────────────────────────────────────────
   const sub = dbGet(`SELECT estado, fecha_fin FROM suscripciones WHERE cliente_id=?`, [clienteId]);
 
-  // ── Fotos recientes ──────────────────────────────────────────────────────
-  const fotosCount = dbGet(`SELECT COUNT(*) as c FROM fotos WHERE cliente_id=?`, [clienteId]);
+  // ── Fotos de progreso (últimas 6, con análisis guardado) ────────────────
+  const fotosRecientes = dbAll(`
+    SELECT url, analysis, tipo, fecha
+    FROM fotos
+    WHERE cliente_id = ?
+    ORDER BY fecha DESC
+    LIMIT 6`, [clienteId]);
 
   // ══ Construir texto del contexto ══════════════════════════════════════════
   const lines = [];
@@ -236,9 +241,15 @@ function buildClienteContexto(clienteId, { lang = 'es', incluirHistorialSesiones
     lines.push(`Sueño: ${ultimoCheckin.sueno}/10 | Energía: ${ultimoCheckin.energia}/10 | Peso: ${ultimoCheckin.peso || '—'}kg`);
   }
 
-  // Fotos
-  if (fotosCount?.c > 0) {
-    lines.push(`\nFotos de progreso registradas: ${fotosCount.c}`);
+  // Fotos y análisis de progreso
+  if (fotosRecientes.length > 0) {
+    lines.push(`\n=== FOTOS DE PROGRESO (${fotosRecientes.length} registradas) ===`);
+    fotosRecientes.forEach((f, i) => {
+      lines.push(`Foto ${i + 1} — ${f.fecha?.split('T')[0]} (${f.tipo || 'frente'})`);
+      if (f.analysis) lines.push(`  Análisis coach: ${f.analysis}`);
+    });
+  } else {
+    lines.push(`\nFotos de progreso: Sin fotos registradas aún`);
   }
 
   // Semanas y mensaje
@@ -349,50 +360,54 @@ router.post('/ia/coach-chat', coachOnly, async (req, res) => {
     const fechaHoy = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
     const systemPrompt = isEn
-      ? `You are the private AI assistant for WolfMindset coach. You have FULL access to all client data.
+      ? `You are the private AI assistant for WolfMindset coach. You have FULL access to all client data provided below.
 
 Today: ${fechaHoy}
 
 Your capabilities:
-- Analyze total training volume (series per muscle group per week) and compare with MRV/MEV/MAV ranges
-- Calculate macros and adjust based on objective, weight, activity
-- Analyze session-by-session progression for each exercise
+- Analyze total training volume (sets per muscle group per week) vs MRV/MEV/MAV ranges
+- Calculate and adjust macros based on goal, weight, activity
+- Analyze session-by-session progression for each exercise (real weights logged)
 - Detect imbalances, overtraining, stagnation
-- Generate complete meal plans respecting restrictions and preferences
-- Suggest routine adjustments (progressive overload, deload, exercise substitutions)
-- Identify clients needing attention (days without training, low check-in scores)
-- Create motivational messages personalized for each client
+- Generate complete personalized meal plans
+- Suggest routine adjustments (progressive overload, deload, substitutions)
+- Read and interpret the progress photo analysis stored for the client
+- Create personalized motivational messages
 
-RULES:
-- Always respond based on the client's real data (no generic assumptions)
-- If data is missing, say what's missing and what you'd need
-- Be specific: real numbers, real exercises, real weights
-- You are the coach's private assistant — he can ask you anything
+CRITICAL FORMATTING RULES — NEVER BREAK THESE:
+- NO markdown whatsoever: no **, no ##, no --, no tables with |, no bullet points with *
+- Use plain conversational text only
+- For lists use numbers: 1. 2. 3. or just line breaks
+- For emphasis use CAPS or just say it directly
 - Respond in the same language as the coach's message
 
-${contextText ? `\n${contextText}` : '(No specific client loaded — answer general questions or request a name to load full profile)'}`
-      : `Eres el asistente IA privado del coach de WolfMindset. Tienes acceso COMPLETO a todos los datos de los clientes.
+IMPORTANT: You DO have access to the client's progress photo analysis (stored in their profile). If the coach asks about photos or progress, read the FOTOS DE PROGRESO section in the client data below and summarize what the analysis says. You cannot see the images directly, but you have the written analysis generated when each photo was reviewed.
+
+${contextText ? `\n${contextText}` : '(No specific client loaded — answer general questions or select a client from the dropdown)'}`
+      : `Eres el asistente IA privado del coach de WolfMindset. Tienes acceso COMPLETO a todos los datos del cliente que se proporcionan abajo.
 
 Fecha hoy: ${fechaHoy}
 
 Tus capacidades:
-- Analizar volumen total de entrenamiento (series por grupo muscular/semana) y comparar con rangos MRV/MEV/MAV
-- Calcular macros y ajustar según objetivo, peso, actividad
-- Analizar la progresión sesión a sesión por ejercicio
+- Analizar volumen total (series por grupo muscular/semana) vs rangos MRV/MEV/MAV
+- Calcular y ajustar macros según objetivo, peso y actividad
+- Analizar la progresión sesión a sesión por ejercicio (pesos reales registrados)
 - Detectar desequilibrios, sobreentrenamiento, estancamientos
-- Generar planes de comida completos respetando restricciones y preferencias
+- Generar planes de comida completos y personalizados
 - Sugerir ajustes de rutina (sobrecarga progresiva, descarga, sustituciones)
-- Identificar clientes que necesitan atención (días sin entrenar, check-ins bajos)
-- Crear mensajes motivacionales personalizados para cada cliente
+- Leer e interpretar el análisis de fotos de progreso guardado del cliente
+- Crear mensajes motivacionales personalizados
 
-REGLAS:
-- Siempre responde basándote en los datos reales del cliente (sin suposiciones genéricas)
-- Si falta algún dato, indica qué falta y qué necesitarías
-- Sé específico: números reales, ejercicios reales, pesos reales
-- Eres el asistente privado del coach — puede preguntarte lo que sea
+REGLAS DE FORMATO CRÍTICAS — NUNCA LAS INCUMPLAS:
+- CERO markdown: nada de **, nada de ##, nada de --, nada de tablas con |, nada de listas con *
+- Solo texto conversacional plano
+- Para listas usa números: 1. 2. 3. o simplemente saltos de línea
+- Para énfasis usa MAYÚSCULAS o simplemente dilo directamente
 - Responde en el mismo idioma que el coach
 
-${contextText ? `\n${contextText}` : '(Sin cliente específico cargado — responde preguntas generales o pide un nombre para cargar perfil completo)'}`;
+IMPORTANTE: SÍ tienes acceso al análisis de las fotos de progreso del cliente (guardado en su perfil). Si el coach pregunta por las fotos o el progreso físico, lee la sección FOTOS DE PROGRESO en los datos del cliente abajo y resume lo que dice el análisis. No puedes ver las imágenes directamente, pero tienes el análisis escrito que se generó cuando se revisó cada foto.
+
+${contextText ? `\n${contextText}` : '(Sin cliente cargado — responde preguntas generales o selecciona un cliente en el desplegable)'}`;
 
     const reply = await callClaude({
       apiKey,
