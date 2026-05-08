@@ -150,6 +150,7 @@ const path = require('path');
 const { initDB, dbRun, dbAll, saveToDisk } = require('./database');
 const { router: authRouter } = require('./auth');
 const apiRoutes = require('./routes');
+const { router: iaRoutes } = require('./routes_ia');
 const { sseClients } = require('./sse');
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -258,6 +259,8 @@ app.get('/api/eventos', (req, res) => {
   });
 });
 
+// ── IA avanzada (routes_ia.js) — debe ir ANTES de apiRoutes para tener prioridad
+app.use('/api', iaRoutes);
 app.use('/api', apiRoutes);
 
 // Serve JS/CSS files with no-cache headers to prevent stale versions
