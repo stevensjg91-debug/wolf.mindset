@@ -1857,12 +1857,8 @@ async function renderCoach(s){
   else if(s==='mensajes'){el.innerHTML=hMensajesCoach();coachMsgsInit();}
   else if(s==='equipo'){el.innerHTML=hEquipo();initEquipo();}
   else if(s==='ia'){
-  if(!window._clientesCache){
-    api('/clientes').then(cl=>{ window._clientesCache=cl; }).catch(()=>{});
-  }
-  _iaClienteId=null; _iaClienteNombre=null;
   el.innerHTML=hIACoach();
-  iaH=[{role:'assistant',content:COACH_LANG==='en'?'Hello coach! Select a client from the dropdown and I\'ll have full access to their routine, diet, session history and progress photos.':'Hola coach. Selecciona un cliente arriba y tendré acceso completo a su rutina, dieta, historial de sesiones y fotos de progreso.'}];
+  iaH=[{role:'assistant',content:tc('Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?')}];
   fetch('/api/images-status').then(r=>r.json()).then(d=>{
     const btn=document.getElementById('btn_img_status');
     if(!btn)return;
@@ -5810,111 +5806,26 @@ document.addEventListener('keydown', e => {
 
 
 // ═══ IA COACH ═════════════════════════════════════════
-// _iaClienteId: cliente cargado actualmente en la IA (null = modo general)
-// _iaClienteNombre: nombre del cliente cargado (para mostrar en UI)
-let _iaClienteId = null, _iaClienteNombre = null;
+function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">${COACH_LANG==='en'?'Private AI coach assistant':'IA privada del coach'}</div>${COACH_LANG==='en'?'Generate full routines and diets, analyse progress or request specific adjustments for any client.':'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.'}</div>
 
-// Limpia markdown básico para mostrar texto plano en el chat
-function iaLimpiarMarkdown(txt){
-  return txt
-    .replace(/\*\*(.+?)\*\*/g,'$1')   // **negrita** → texto
-    .replace(/\*(.+?)\*/g,'$1')        // *cursiva* → texto
-    .replace(/#{1,4}\s*/g,'')          // ## títulos → texto
-    .replace(/\|[-|: ]+\|/g,'')        // líneas separadoras de tabla → vacío
-    .replace(/\|\s*/g,' ')             // | columnas → espacio
-    .replace(/^---+$/gm,'')            // --- separadores → vacío
-    .replace(/^- /gm,'')               // - lista → texto sin guión
-    .replace(/\n{3,}/g,'\n\n')         // máximo 2 saltos de línea seguidos
-    .trim();
-}
-
-function hIACoach(){
-  const clientes = window._clientesCache || [];
-  const optsClientes = clientes.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
-  const isEn = COACH_LANG==='en';
-  return `<div class="ia-chip" style="margin-bottom:12px">
-  <div class="ia-chip-title">${isEn?'Private AI coach assistant':'IA privada del coach'}</div>
-  ${isEn?'Select a client to give the AI full access to their routine, diet, sessions and progress photos.':'Selecciona un cliente para que la IA tenga acceso completo a su rutina, dieta, sesiones y fotos de progreso.'}
-</div>
-
-<div class="sec" style="margin-bottom:10px">
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <select id="iaCienteSel" onchange="iaSeleccionarCliente(this.value)"
-      style="flex:1;min-width:160px;padding:8px 10px;border-radius:8px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv);font-size:13px;font-family:inherit">
-      <option value="">${isEn?'— General mode (no client) —':'— Modo general (sin cliente) —'}</option>
-      ${optsClientes}
-    </select>
-    <div id="iaClienteBadge" style="font-size:11px;color:var(--tx3);white-space:nowrap"></div>
-    <button onclick="iaClearCliente()" style="padding:6px 10px;border-radius:8px;border:0.5px solid var(--br);background:none;color:var(--tx3);font-size:12px;cursor:pointer;font-family:inherit">${isEn?'Clear':'Limpiar'}</button>
-  </div>
-</div>
-
-<div class="sec" style="display:flex;flex-direction:column;height:460px">
+<div class="sec" style="display:flex;flex-direction:column;height:480px">
   <div class="chat-msgs" id="iaMsgs" style="flex:1;background:var(--b);border:0.5px solid var(--br);border-radius:10px;padding:11px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
-    <div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${isEn?'Hello coach! Select a client from the dropdown and I\'ll have full access to their routine, diet, session history and progress photos.':'Hola coach. Selecciona un cliente arriba y tendré acceso completo a su rutina, dieta, historial de sesiones y fotos de progreso.'}</div>
+    <div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${tc('Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?')}</div>
   </div>
-  <div class="typing" id="iaTyping">${isEn?'processing...':'procesando...'}</div>
+  <div class="typing" id="iaTyping">${COACH_LANG==='en'?'processing...':'procesando...'}</div>
   <div style="display:flex;gap:8px">
-    <input class="inp" id="iaIn" placeholder="${isEn?'E.g. analyse volume, generate diet, check photo progress...':'Ej: analiza el volumen, genera dieta, revisa fotos de progreso...'}" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')sendIA()"/>
+    <input class="inp" id="iaIn" placeholder="${COACH_LANG==='en'?'E.g. generate routine for Carlos, 4 days, bulk...':'Ej: genera rutina para Carlos, 4 días, volumen...'}" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')sendIA()"/>
     <button class="btn" onclick="sendIA()">${tc('Enviar')}</button>
   </div>
-</div>`;
-}
-
-function iaSeleccionarCliente(id){
-  _iaClienteId = id ? parseInt(id) : null;
-  const sel = document.getElementById('iaCienteSel');
-  const badge = document.getElementById('iaClienteBadge');
-  const isEn = COACH_LANG==='en';
-  if(_iaClienteId && sel){
-    _iaClienteNombre = sel.options[sel.selectedIndex]?.text || '';
-    if(badge) badge.textContent = (isEn?'✓ Loaded: ':'✓ Cargado: ') + _iaClienteNombre;
-    iaH=[{role:'assistant',content:isEn?`Client loaded: ${_iaClienteNombre}. I now have full access to their routine, diet, session history and progress photos. What do you need?`:`Cliente cargado: ${_iaClienteNombre}. Ahora tengo acceso completo a su rutina, dieta, historial de sesiones y fotos de progreso. ¿Qué necesitas?`}];
-    const msgs=document.getElementById('iaMsgs');
-    if(msgs) msgs.innerHTML=`<div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${iaH[0].content}</div>`;
-  } else {
-    _iaClienteId=null; _iaClienteNombre=null;
-    if(badge) badge.textContent='';
-    iaH=[{role:'assistant',content:COACH_LANG==='en'?'General mode — no client loaded. Ask me anything or select a client from the dropdown.':'Modo general — sin cliente cargado. Pregúntame lo que necesites o selecciona un cliente arriba.'}];
-    const msgs=document.getElementById('iaMsgs');
-    if(msgs) msgs.innerHTML=`<div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${iaH[0].content}</div>`;
-  }
-}
-
-function iaClearCliente(){
-  const sel=document.getElementById('iaCienteSel');
-  if(sel) sel.value='';
-  iaSeleccionarCliente('');
-}
+</div>`;}
 
 async function sendIA(){
-  const inp=document.getElementById('iaIn'),msg=inp.value.trim();
-  if(!msg)return;inp.value='';
+  const inp=document.getElementById('iaIn'),msg=inp.value.trim();if(!msg)return;inp.value='';
   const msgs=document.getElementById('iaMsgs');
   msgs.innerHTML+=`<div class="msg msg-u">${msg}</div>`;msgs.scrollTop=msgs.scrollHeight;
-  iaH.push({role:'user',content:msg});
-  document.getElementById('iaTyping').style.display='block';
-  try{
-    const body={messages:iaH,lang:COACH_LANG};
-    if(_iaClienteId) body.clienteId=_iaClienteId;
-    const d=await api('/ia/coach-chat',{method:'POST',body:JSON.stringify(body)});
-    if(d.clienteCargado && !_iaClienteId){
-      _iaClienteId=d.clienteCargado.id;
-      _iaClienteNombre=d.clienteCargado.nombre;
-      const sel=document.getElementById('iaCienteSel');
-      const badge=document.getElementById('iaClienteBadge');
-      if(sel) sel.value=String(_iaClienteId);
-      if(badge) badge.textContent=(COACH_LANG==='en'?'✓ Loaded: ':'✓ Cargado: ')+_iaClienteNombre;
-    }
-    const replyLimpio = iaLimpiarMarkdown(d.reply);
-    iaH.push({role:'assistant',content:d.reply});
-    document.getElementById('iaTyping').style.display='none';
-    msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${replyLimpio.replace(/\n/g,'<br>')}</div>`;
-    msgs.scrollTop=msgs.scrollHeight;
-  }catch(e){
-    document.getElementById('iaTyping').style.display='none';
-    msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${COACH_LANG==='en'?'Error. Try again.':'Error. Inténtalo de nuevo.'}</div>`;
-  }
+  iaH.push({role:'user',content:msg});document.getElementById('iaTyping').style.display='block';
+  try{const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:iaH,system:`Eres el asistente IA privado del coach WolfMindset. Ayudas con progresión de carga, periodización, ajustes calóricos, generación de rutinas y dietas completas. ${COACH_LANG==='en'?'Always respond in English. Technical and concise.':'Respuestas técnicas y concisas en español.'}`})});iaH.push({role:'assistant',content:d.reply});document.getElementById('iaTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${d.reply}</div>`;msgs.scrollTop=msgs.scrollHeight;}
+  catch(e){document.getElementById('iaTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>Error. Inténtalo de nuevo.</div>`;}
 }
 
 // ═══ CLIENTE ══════════════════════════════════════════
@@ -6141,6 +6052,9 @@ function renderSeleccion() {
 function hSeleccionDia(){
   if(!CD.dias.length) return`<div style="padding:60px 20px;text-align:center;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">🏋️</div><div style="font-size:16px;font-weight:600;color:var(--sv2)">${t('Tu coach está preparando tu plan')}</div></div>`;
 
+  // Cargar ajustes pendientes de ver (async, no bloquea render)
+  const _ajustesPorDia = window._ajustesPorDia || {};
+
   const cards = CD.dias.map((d,i)=>{
     const exNames = d.ejercicios.slice(0,3).map(e=>e.nombre).join(', ') + (d.ejercicios.length>3?'...':'');
     const lastSession = (CD.sesiones_resumen||[]).find(s=>s.dia_nombre===d.nombre);
@@ -6150,11 +6064,23 @@ function hSeleccionDia(){
     const yaHecha = !!estadoHoy;
     const borderColor = estadoHoy==='completado'?'rgba(34,197,94,.4)':estadoHoy==='incompleto'?'rgba(245,158,11,.3)':'var(--br)';
     const bgColor = estadoHoy==='completado'?'rgba(34,197,94,.05)':estadoHoy==='incompleto'?'rgba(245,158,11,.04)':'var(--s2)';
-    return`<div onclick="abrirPreviewDia(${i})" style="background:${bgColor};border:0.5px solid ${borderColor};border-radius:16px;padding:14px;cursor:pointer;transition:.15s">
+
+    // Badge de ajustes nuevos del coach
+    const ajustesDia = _ajustesPorDia[d.nombre];
+    const tieneAjustesNuevos = ajustesDia && !ajustesDia.visto;
+    const badgeAjuste = tieneAjustesNuevos
+      ? `<div style="position:absolute;top:-6px;right:-6px;background:#7c3aed;color:#fff;border-radius:50%;
+                     width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+                     font-size:11px;font-weight:700;border:2px solid var(--b);z-index:2">
+           ${ajustesDia.count||'!'}
+         </div>` : '';
+
+    return`<div onclick="abrirPreviewDia(${i})" style="position:relative;background:${bgColor};border:0.5px solid ${tieneAjustesNuevos?'rgba(124,58,237,.5)':borderColor};border-radius:16px;padding:14px;cursor:pointer;transition:.15s${tieneAjustesNuevos?';box-shadow:0 0 0 1px rgba(124,58,237,.2)':''}">
+      ${badgeAjuste}
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div style="flex:1;min-width:0">
           <div style="font-size:16px;font-weight:700;color:var(--sv);margin-bottom:2px">${d.nombre}</div>
-          <div style="font-size:12px;color:var(--blg);font-weight:600">${tc(d.grupo)||d.grupo}</div>
+          <div style="font-size:12px;color:${tieneAjustesNuevos?'#a78bfa':'var(--blg)'};font-weight:600">${tieneAjustesNuevos?'🔔 '+t('Ajustes del coach'):tc(d.grupo)||d.grupo}</div>
         </div>
         <div style="background:var(--s3);border-radius:8px;padding:4px 8px;text-align:center;flex-shrink:0;margin-left:8px">
           <div style="font-size:14px;font-weight:700;color:var(--sv)">${d.ejercicios.length}</div>
@@ -6180,6 +6106,7 @@ function hSeleccionDia(){
     ${hMensajeCoach()}
     ${hCheckinBanner()}
     ${hNotifBanner()}
+    <div id="toast_ajustes_coach"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${cards}</div>
   </div>`;
 }
@@ -11553,7 +11480,8 @@ function tiempoRelativo(fechaStr) {
 }
 
 // ── Modal de revisión de un análisis ─────────────────────────────────────────
-async function abrirRevisionAnalisis(analisisId, clienteNombre) {
+// modoEditar=false → modo lectura (post-aprobación) | modoEditar=true → edición activa
+async function abrirRevisionAnalisis(analisisId, clienteNombre, modoEditar) {
   const isEn = COACH_LANG === 'en';
   let modal = document.getElementById('modal_revision_analisis');
   if (!modal) {
@@ -11572,10 +11500,26 @@ async function abrirRevisionAnalisis(analisisId, clienteNombre) {
     </div>`;
 
   try {
-    // Cargar todos los pendientes y encontrar el que corresponde
+    // Intentar cargar de pendientes primero, luego buscar en todos (aprobados)
+    let analisis = null;
     const pendientes = await api('/coach/analisis-pendientes');
-    const analisis = pendientes.find(a => a.id === analisisId);
+    analisis = pendientes.find(a => a.id === analisisId);
+
+    // Si no está en pendientes, buscarlo por cliente (puede estar aprobado)
+    if (!analisis) {
+      // Buscar clienteId desde _clientesCache o por nombre
+      const clienteData = (window._clientesCache||[]).find(c=>c.nombre===clienteNombre||(clienteNombre&&c.nombre===clienteNombre));
+      if (clienteData) {
+        const aprobados = await api(`/clientes/${clienteData.id}/analisis-aprobados`);
+        analisis = aprobados.find(a => a.id === analisisId);
+        if (analisis) { analisis.ajustes = analisis.ajustes || []; analisis.estado = 'aprobado'; }
+      }
+    }
     if (!analisis) { modal.style.display = 'none'; return; }
+
+    const estaAprobado = analisis.estado === 'aprobado';
+    // Si ya está aprobado y no se pidió explícitamente editar → modo lectura
+    const esLectura = estaAprobado && !modoEditar;
 
     const ajustes = analisis.ajustes || [];
     const colores = { subir: { bg:'rgba(34,197,94,.1)', bdr:'rgba(34,197,94,.3)', tx:'#4ade80', icon:'↑ 📈' },
@@ -11595,67 +11539,102 @@ async function abrirRevisionAnalisis(analisisId, clienteNombre) {
             ${aj.nuevo_peso > 0 ? `
               <div style="display:flex;align-items:center;gap:4px">
                 <span style="font-size:11px;color:var(--tx3)">${aj.peso_actual||0}kg →</span>
-                <input id="rev_nuevo_peso_${i}" type="number" value="${aj.nuevo_peso}" step="1.25" min="0"
-                  style="width:70px;padding:4px 6px;border:0.5px solid ${c.bdr};border-radius:8px;
-                         background:var(--s2);color:${c.tx};font-size:14px;font-weight:700;text-align:center;font-family:inherit"/>
-                <span style="font-size:11px;color:var(--tx3)">kg</span>
+                ${esLectura
+                  ? `<span style="font-size:14px;font-weight:700;color:${c.tx};padding:4px 8px;background:var(--s2);border-radius:8px">${aj.nuevo_peso} kg</span>`
+                  : `<input id="rev_nuevo_peso_${i}" type="number" value="${aj.nuevo_peso}" step="1.25" min="0"
+                      style="width:70px;padding:4px 6px;border:0.5px solid ${c.bdr};border-radius:8px;
+                             background:var(--s2);color:${c.tx};font-size:14px;font-weight:700;text-align:center;font-family:inherit"/>
+                    <span style="font-size:11px;color:var(--tx3)">kg</span>`
+                }
               </div>` : ''}
           </div>
           <div style="font-size:11px;color:var(--tx3)">${aj.razon||''}</div>
         </div>`;
     }).join('');
 
+    // Badge de estado aprobado
+    const badgeAprobado = estaAprobado ? `
+      <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(34,197,94,.12);
+                  border:0.5px solid rgba(34,197,94,.3);border-radius:20px;padding:3px 10px;
+                  font-size:11px;font-weight:700;color:#4ade80;margin-bottom:12px">
+        ✅ ${isEn?'Sent to client':'Enviado al cliente'}
+        ${analisis.aprobado_at ? `<span style="font-weight:400;opacity:.7">· ${new Date(analisis.aprobado_at).toLocaleDateString()}</span>` : ''}
+      </div>` : '';
+
     modal.querySelector('div').innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div>
-          <div style="font-size:16px;font-weight:700;color:var(--sv)">🤖 ${isEn?'AI Analysis Review':'Revisión análisis IA'}</div>
+          <div style="font-size:16px;font-weight:700;color:var(--sv)">🤖 ${isEn?'AI Analysis':'Análisis IA'}</div>
           <div style="font-size:12px;color:var(--tx3);margin-top:2px">${clienteNombre} · ${analisis.dia_nombre}</div>
         </div>
-        <button onclick="document.getElementById('modal_revision_analisis').style.display='none'"
-          style="background:none;border:none;color:var(--tx3);font-size:20px;cursor:pointer">✕</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${estaAprobado && !modoEditar ? `
+            <button onclick="abrirRevisionAnalisis(${analisisId},decodeURIComponent('${encodeURIComponent(clienteNombre||'')}'),true)"
+              style="padding:6px 12px;border-radius:8px;border:0.5px solid rgba(245,158,11,.4);
+                     background:rgba(245,158,11,.1);color:#fcd34d;font-size:12px;font-weight:700;
+                     cursor:pointer;font-family:inherit">
+              ✏️ ${isEn?'Edit & resend':'Editar y reenviar'}
+            </button>` : ''}
+          <button onclick="document.getElementById('modal_revision_analisis').style.display='none'"
+            style="background:none;border:none;color:var(--tx3);font-size:20px;cursor:pointer">✕</button>
+        </div>
       </div>
+
+      ${badgeAprobado}
 
       <!-- Resumen IA -->
       <div style="background:rgba(124,58,237,.08);border:0.5px solid rgba(124,58,237,.2);border-radius:10px;
                   padding:12px;margin-bottom:16px;font-size:12px;color:var(--sv2);line-height:1.6">
         <div style="font-size:10px;color:#a78bfa;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px">
-          ${isEn?'AI Summary (for coach)':'Resumen IA (para el coach)'}
+          ${isEn?'AI Summary':'Resumen IA'}
         </div>
         ${analisis.resumen_ia}
       </div>
 
-      <!-- Ajustes editables -->
+      <!-- Ajustes -->
       <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">
         ${isEn?'Adjustments':'Ajustes'} (${ajustes.length})
       </div>
       ${ajustesHtml}
 
-      <!-- Mensaje al cliente editable -->
+      <!-- Mensaje al cliente -->
       <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;margin-top:16px">
-        ${isEn?'Message to client (editable before sending)':'Mensaje al cliente (editable antes de enviar)'}
+        ${isEn?'Message sent to client':'Mensaje enviado al cliente'}${!esLectura ? (isEn?' (editable)':' (editable)') : ''}
       </div>
-      <textarea id="rev_mensaje_cliente" style="width:100%;min-height:100px;padding:10px 12px;
-        border:0.5px solid rgba(59,130,246,.3);border-radius:10px;background:rgba(37,99,235,.05);
-        color:var(--sv);font-size:13px;font-family:inherit;line-height:1.6;resize:vertical;box-sizing:border-box"
-      >${analisis.mensaje_cliente}</textarea>
+      ${esLectura
+        ? `<div style="padding:12px;background:rgba(37,99,235,.05);border:0.5px solid rgba(59,130,246,.2);
+                       border-radius:10px;font-size:13px;color:var(--sv2);line-height:1.6">
+             ${analisis.mensaje_cliente||'—'}
+           </div>`
+        : `<textarea id="rev_mensaje_cliente" style="width:100%;min-height:100px;padding:10px 12px;
+              border:0.5px solid rgba(59,130,246,.3);border-radius:10px;background:rgba(37,99,235,.05);
+              color:var(--sv);font-size:13px;font-family:inherit;line-height:1.6;resize:vertical;box-sizing:border-box"
+            >${analisis.mensaje_cliente||''}</textarea>`
+      }
 
       <!-- Acciones -->
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button onclick="descartarAnalisis(${analisisId})"
-          style="flex:1;padding:11px;border-radius:10px;border:0.5px solid rgba(239,68,68,.25);
-                 background:none;color:#fca5a5;font-size:13px;cursor:pointer;font-family:inherit">
-          🗑 ${isEn?'Discard':'Descartar'}
-        </button>
-        <button onclick="aprobarAnalisis(${analisisId}, ${JSON.stringify(ajustes).replace(/"/g,'&quot;')})"
-          style="flex:2;padding:11px;border-radius:10px;border:none;
-                 background:linear-gradient(135deg,#7c3aed,#2563eb);
-                 color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-          ✅ ${isEn?'Approve & send to client':'Aprobar y enviar al cliente'}
-        </button>
+        ${esLectura
+          ? `<button onclick="document.getElementById('modal_revision_analisis').style.display='none'"
+               style="flex:1;padding:11px;border-radius:10px;border:0.5px solid var(--br);
+                      background:none;color:var(--tx2);font-size:13px;cursor:pointer;font-family:inherit">
+               ${isEn?'Close':'Cerrar'}
+             </button>`
+          : `<button onclick="descartarAnalisis(${analisisId})"
+               style="flex:1;padding:11px;border-radius:10px;border:0.5px solid rgba(239,68,68,.25);
+                      background:none;color:#fca5a5;font-size:13px;cursor:pointer;font-family:inherit">
+               🗑 ${isEn?'Discard':'Descartar'}
+             </button>
+             <button onclick="aprobarAnalisis(${analisisId}, ${JSON.stringify(ajustes).replace(/"/g,'&quot;')})"
+               style="flex:2;padding:11px;border-radius:10px;border:none;
+                      background:linear-gradient(135deg,#7c3aed,#2563eb);
+                      color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+               ${estaAprobado ? `✅ ${isEn?'Resend':'Reenviar'}` : `✅ ${isEn?'Approve & send to client':'Aprobar y enviar al cliente'}`}
+             </button>`
+        }
       </div>
       <div id="rev_analisis_msg" style="font-size:12px;text-align:center;margin-top:8px;min-height:16px"></div>`;
 
-    // Guardar referencia a los ajustes originales con IDs
     modal._ajustes = ajustes;
     modal._analisisId = analisisId;
 
@@ -11684,13 +11663,24 @@ async function aprobarAnalisis(analisisId, ajustesOriginales) {
       body: JSON.stringify({ ajustes: ajustesFinales, mensaje: mensajeFinal })
     });
     if (msg) { msg.style.color = '#4ade80'; msg.textContent = `✅ ${r.pesosActualizados} ${isEn?'weights updated · message sent':'pesos actualizados · mensaje enviado'}`; }
+
+    // Quitar este análisis de la lista de pendientes en el DOM inmediatamente
+    const filaAnalisis = document.querySelector(`[onclick*="abrirRevisionAnalisis(${analisisId},"]`);
+    if (filaAnalisis) {
+      const card = filaAnalisis.closest('[style*="border-radius:10px"]') || filaAnalisis.parentNode;
+      if (card) { card.style.transition = 'opacity .3s'; card.style.opacity = '0'; setTimeout(()=>card.remove(), 300); }
+    }
+
     setTimeout(() => {
-      document.getElementById('modal_revision_analisis').style.display = 'none';
+      // Recargar pendientes y tareas
       cargarAnalisisPendientes();
       cargarTareasPendientes();
       // Si estamos en la ficha de un cliente, refrescar
       if (window._coachClienteId) verCliente(window._coachClienteId);
-    }, 1200);
+      // Reabrir modal en modo lectura con datos actualizados
+      const clienteNombre = modal.querySelector('[style*="font-size:12px;color:var(--tx3)"]')?.textContent?.split('·')[0]?.trim() || '';
+      abrirRevisionAnalisis(analisisId, clienteNombre, false);
+    }, 1000);
   } catch(e) {
     if (msg) { msg.style.color = '#f87171'; msg.textContent = '❌ ' + e.message; }
   }
@@ -11738,24 +11728,51 @@ async function cargarBannersAnalisisCliente() {
   if (!CD) return;
   try {
     const analisis = await api('/clientes/' + CD.id + '/analisis-aprobados');
-    if (!analisis.length) return;
 
-    // Agrupar por día
+    // Agrupar por día y detectar cuáles son nuevos (no vistos)
     const porDia = {};
+    const vistoKey = 'wm_ajustes_vistos_' + CD.id;
+    const vistos = JSON.parse(localStorage.getItem(vistoKey) || '{}');
+
     analisis.forEach(a => {
-      if (!porDia[a.dia_nombre]) porDia[a.dia_nombre] = a;
+      if (!porDia[a.dia_nombre]) {
+        const visto = vistos[a.dia_nombre] === a.aprobado_at;
+        porDia[a.dia_nombre] = {
+          ...a,
+          visto,
+          count: (a.ajustes||[]).filter(aj=>aj.accion==='subir'||aj.accion==='bajar').length
+        };
+      }
     });
 
-    // Añadir banner debajo de cada day-pill correspondiente
+    // Guardar en window para que hSeleccionDia lo use
+    window._ajustesPorDia = porDia;
+
+    // Contar días con ajustes nuevos no vistos
+    const diasNuevos = Object.values(porDia).filter(a => !a.visto);
+
+    // ── TOAST (solo si hay ajustes nuevos y no se mostró ya esta sesión) ──
+    const toastKey = 'wm_toast_ajustes_' + CD.id;
+    const toastMostrado = sessionStorage.getItem(toastKey);
+    if (diasNuevos.length > 0 && !toastMostrado) {
+      sessionStorage.setItem(toastKey, '1');
+      mostrarToastAjustesCoach(diasNuevos);
+    }
+
+    // ── Re-renderizar tarjetas si hay cambios ──
+    if (Object.keys(porDia).length > 0 && vistaActual === 'seleccion') {
+      renderSeleccion();
+    }
+
+    // ── Banners dentro del entreno (ya existentes) ──
+    if (!analisis.length) return;
     CD.dias.forEach((dia, i) => {
       const analisisDia = porDia[dia.nombre];
       if (!analisisDia) return;
 
       const bannerId = `banner_analisis_dia_${i}`;
-      // Evitar duplicados
       if (document.getElementById(bannerId)) return;
 
-      // Buscar el contenedor del día
       const pill = document.querySelector(`.day-pill:nth-child(${i+1})`);
       if (!pill) return;
 
@@ -11791,14 +11808,12 @@ async function cargarBannersAnalisisCliente() {
                 </span>`).join('')}
             </div>
           </div>
-          <button onclick="this.closest('[id^=banner_analisis]').style.display='none'"
+          <button onclick="marcarAjusteVisto('${dia.nombre}','${analisisDia.aprobado_at||''}');this.closest('[id^=banner_analisis]').style.display='none'"
             style="background:none;border:none;color:var(--tx3);font-size:16px;cursor:pointer;flex-shrink:0;padding:0">✕</button>
         </div>`;
 
-      // Insertar después de las pills de días
       const pillsContainer = document.querySelector('.day-pills') || pill.parentNode;
       if (pillsContainer && pillsContainer.parentNode) {
-        // Buscar si ya hay un banner container
         let bannerContainer = document.getElementById('analisis_banners_container');
         if (!bannerContainer) {
           bannerContainer = document.createElement('div');
@@ -11809,6 +11824,88 @@ async function cargarBannersAnalisisCliente() {
       }
     });
   } catch(e) { /* silencioso */ }
+}
+
+// Marca un ajuste de día como visto en localStorage
+function marcarAjusteVisto(diaNombre, aprobadoAt) {
+  if (!CD) return;
+  const vistoKey = 'wm_ajustes_vistos_' + CD.id;
+  const vistos = JSON.parse(localStorage.getItem(vistoKey) || '{}');
+  vistos[diaNombre] = aprobadoAt;
+  localStorage.setItem(vistoKey, JSON.stringify(vistos));
+  // Actualizar state y re-renderizar tarjetas sin badge
+  if (window._ajustesPorDia && window._ajustesPorDia[diaNombre]) {
+    window._ajustesPorDia[diaNombre].visto = true;
+  }
+  if (vistaActual === 'seleccion') renderSeleccion();
+}
+
+// Toast modal que aparece al abrir la app si hay ajustes nuevos del coach
+function mostrarToastAjustesCoach(diasNuevos) {
+  const isEn = LANG === 'en';
+  let toast = document.getElementById('wm_toast_ajustes');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'wm_toast_ajustes';
+    toast.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;display:flex;align-items:flex-end;justify-content:center;padding:0;animation:fadeIn .25s ease';
+    document.body.appendChild(toast);
+  }
+
+  const diasHtml = diasNuevos.map(a => {
+    const ajustes = (a.ajustes||[]).filter(aj=>aj.accion==='subir'||aj.accion==='bajar');
+    return `<div style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,.07)">
+      <div style="font-size:13px;font-weight:700;color:var(--sv);margin-bottom:4px">🏋️ ${a.dia_nombre}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        ${ajustes.slice(0,4).map(aj=>`
+          <span style="font-size:11px;padding:2px 8px;border-radius:20px;
+                       background:${aj.accion==='subir'?'rgba(34,197,94,.12)':'rgba(239,68,68,.08)'};
+                       border:0.5px solid ${aj.accion==='subir'?'rgba(34,197,94,.25)':'rgba(239,68,68,.2)'};
+                       color:${aj.accion==='subir'?'#4ade80':'#f87171'}">
+            ${aj.accion==='subir'?'↑':'↓'} ${aj.ejercicio.length>18?aj.ejercicio.slice(0,16)+'…':aj.ejercicio} → ${aj.nuevo_peso}kg
+          </span>`).join('')}
+        ${ajustes.length > 4 ? `<span style="font-size:11px;color:var(--tx3)">+${ajustes.length-4} más</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  toast.innerHTML = `
+    <div style="background:var(--s);border-radius:20px 20px 0 0;border-top:0.5px solid rgba(124,58,237,.4);
+                padding:20px 20px 36px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="width:40px;height:40px;background:rgba(124,58,237,.2);border-radius:12px;
+                    display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🔔</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--sv)">
+            ${isEn?'Your coach updated your plan':'Tu coach actualizó tu plan'}
+          </div>
+          <div style="font-size:12px;color:#a78bfa;margin-top:1px">
+            ${diasNuevos.length} ${isEn?`day${diasNuevos.length>1?'s':''}  updated`:`día${diasNuevos.length>1?'s':''} actualizado${diasNuevos.length>1?'s':''}`}
+          </div>
+        </div>
+      </div>
+      ${diasHtml}
+      <button onclick="cerrarToastAjustes()"
+        style="width:100%;margin-top:16px;padding:14px;background:var(--bl2);color:#fff;border:none;
+               border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
+        ${isEn?'Got it, let\'s train!':'¡Entendido, a entrenar!'}
+      </button>
+    </div>`;
+}
+
+function cerrarToastAjustes() {
+  const toast = document.getElementById('wm_toast_ajustes');
+  if (toast) { toast.style.opacity='0'; toast.style.transition='opacity .2s'; setTimeout(()=>toast.remove(),200); }
+  // Marcar todos como vistos
+  if (window._ajustesPorDia && CD) {
+    const vistoKey = 'wm_ajustes_vistos_' + CD.id;
+    const vistos = JSON.parse(localStorage.getItem(vistoKey)||'{}');
+    Object.entries(window._ajustesPorDia).forEach(([diaNombre, a]) => {
+      vistos[diaNombre] = a.aprobado_at || '';
+      a.visto = true;
+    });
+    localStorage.setItem(vistoKey, JSON.stringify(vistos));
+  }
+  if (vistaActual === 'seleccion') renderSeleccion();
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
