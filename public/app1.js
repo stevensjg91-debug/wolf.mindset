@@ -1857,13 +1857,12 @@ async function renderCoach(s){
   else if(s==='mensajes'){el.innerHTML=hMensajesCoach();coachMsgsInit();}
   else if(s==='equipo'){el.innerHTML=hEquipo();initEquipo();}
   else if(s==='ia'){
-  // Precargar lista de clientes si no está en caché
   if(!window._clientesCache){
     api('/clientes').then(cl=>{ window._clientesCache=cl; }).catch(()=>{});
   }
   _iaClienteId=null; _iaClienteNombre=null;
   el.innerHTML=hIACoach();
-  iaH=[{role:'assistant',content:COACH_LANG==='en'?'Hello coach! Select a client from the dropdown and I\'ll have full access to their routine, diet and session history. Or ask me anything in general mode.':'Hola coach. Selecciona un cliente arriba y tendré acceso completo a su rutina, dieta e historial de sesiones. O pregúntame en modo general.'}];
+  iaH=[{role:'assistant',content:COACH_LANG==='en'?'Hello coach! Select a client from the dropdown and I\'ll have full access to their routine, diet, session history and progress photos.':'Hola coach. Selecciona un cliente arriba y tendré acceso completo a su rutina, dieta, historial de sesiones y fotos de progreso.'}];
   fetch('/api/images-status').then(r=>r.json()).then(d=>{
     const btn=document.getElementById('btn_img_status');
     if(!btn)return;
@@ -5815,14 +5814,27 @@ document.addEventListener('keydown', e => {
 // _iaClienteNombre: nombre del cliente cargado (para mostrar en UI)
 let _iaClienteId = null, _iaClienteNombre = null;
 
+// Limpia markdown básico para mostrar texto plano en el chat
+function iaLimpiarMarkdown(txt){
+  return txt
+    .replace(/\*\*(.+?)\*\*/g,'$1')   // **negrita** → texto
+    .replace(/\*(.+?)\*/g,'$1')        // *cursiva* → texto
+    .replace(/#{1,4}\s*/g,'')          // ## títulos → texto
+    .replace(/\|[-|: ]+\|/g,'')        // líneas separadoras de tabla → vacío
+    .replace(/\|\s*/g,' ')             // | columnas → espacio
+    .replace(/^---+$/gm,'')            // --- separadores → vacío
+    .replace(/^- /gm,'')               // - lista → texto sin guión
+    .replace(/\n{3,}/g,'\n\n')         // máximo 2 saltos de línea seguidos
+    .trim();
+}
+
 function hIACoach(){
-  // Construir selector de cliente a partir del caché
   const clientes = window._clientesCache || [];
   const optsClientes = clientes.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
   const isEn = COACH_LANG==='en';
   return `<div class="ia-chip" style="margin-bottom:12px">
   <div class="ia-chip-title">${isEn?'Private AI coach assistant':'IA privada del coach'}</div>
-  ${isEn?'Generates full routines and diets, analyses progress or requests specific adjustments for any client. <strong>Select a client to give the AI full access to their data.</strong>':'Genera rutinas y dietas completas, analiza progreso o pide ajustes para cualquier cliente. <strong>Selecciona un cliente para que la IA tenga acceso completo a sus datos.</strong>'}
+  ${isEn?'Select a client to give the AI full access to their routine, diet, sessions and progress photos.':'Selecciona un cliente para que la IA tenga acceso completo a su rutina, dieta, sesiones y fotos de progreso.'}
 </div>
 
 <div class="sec" style="margin-bottom:10px">
@@ -5839,11 +5851,11 @@ function hIACoach(){
 
 <div class="sec" style="display:flex;flex-direction:column;height:460px">
   <div class="chat-msgs" id="iaMsgs" style="flex:1;background:var(--b);border:0.5px solid var(--br);border-radius:10px;padding:11px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
-    <div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${isEn?'Hello coach! Select a client from the dropdown and I\'ll have full access to their routine, diet and session history. Or ask me anything in general mode.':'Hola coach. Selecciona un cliente arriba y tendré acceso completo a su rutina, dieta e historial de sesiones. O pregúntame en modo general.'}</div>
+    <div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${isEn?'Hello coach! Select a client from the dropdown and I\'ll have full access to their routine, diet, session history and progress photos.':'Hola coach. Selecciona un cliente arriba y tendré acceso completo a su rutina, dieta, historial de sesiones y fotos de progreso.'}</div>
   </div>
   <div class="typing" id="iaTyping">${isEn?'processing...':'procesando...'}</div>
   <div style="display:flex;gap:8px">
-    <input class="inp" id="iaIn" placeholder="${isEn?'E.g. analyse Steve\'s volume, generate diet for Carlos...':'Ej: analiza el volumen de Steve, genera dieta para Carlos...'}" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')sendIA()"/>
+    <input class="inp" id="iaIn" placeholder="${isEn?'E.g. analyse volume, generate diet, check photo progress...':'Ej: analiza el volumen, genera dieta, revisa fotos de progreso...'}" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')sendIA()"/>
     <button class="btn" onclick="sendIA()">${tc('Enviar')}</button>
   </div>
 </div>`;
@@ -5857,14 +5869,13 @@ function iaSeleccionarCliente(id){
   if(_iaClienteId && sel){
     _iaClienteNombre = sel.options[sel.selectedIndex]?.text || '';
     if(badge) badge.textContent = (isEn?'✓ Loaded: ':'✓ Cargado: ') + _iaClienteNombre;
-    // Reiniciar historial y avisar
-    iaH=[{role:'assistant',content:isEn?`Client loaded: ${_iaClienteNombre}. I now have full access to their routine, diet, session history and progress. What do you need?`:`Cliente cargado: ${_iaClienteNombre}. Ahora tengo acceso completo a su rutina, dieta, historial de sesiones y progreso. ¿Qué necesitas?`}];
+    iaH=[{role:'assistant',content:isEn?`Client loaded: ${_iaClienteNombre}. I now have full access to their routine, diet, session history and progress photos. What do you need?`:`Cliente cargado: ${_iaClienteNombre}. Ahora tengo acceso completo a su rutina, dieta, historial de sesiones y fotos de progreso. ¿Qué necesitas?`}];
     const msgs=document.getElementById('iaMsgs');
     if(msgs) msgs.innerHTML=`<div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${iaH[0].content}</div>`;
   } else {
     _iaClienteId=null; _iaClienteNombre=null;
     if(badge) badge.textContent='';
-    iaH=[{role:'assistant',content:isEn?'General mode — no client loaded. Ask me anything or select a client from the dropdown.':'Modo general — sin cliente cargado. Pregúntame lo que necesites o selecciona un cliente arriba.'}];
+    iaH=[{role:'assistant',content:COACH_LANG==='en'?'General mode — no client loaded. Ask me anything or select a client from the dropdown.':'Modo general — sin cliente cargado. Pregúntame lo que necesites o selecciona un cliente arriba.'}];
     const msgs=document.getElementById('iaMsgs');
     if(msgs) msgs.innerHTML=`<div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${iaH[0].content}</div>`;
   }
@@ -5884,13 +5895,9 @@ async function sendIA(){
   iaH.push({role:'user',content:msg});
   document.getElementById('iaTyping').style.display='block';
   try{
-    // Intentar detectar nombre de cliente en el mensaje si no hay uno seleccionado
     const body={messages:iaH,lang:COACH_LANG};
     if(_iaClienteId) body.clienteId=_iaClienteId;
-
     const d=await api('/ia/coach-chat',{method:'POST',body:JSON.stringify(body)});
-
-    // Si la IA detectó y cargó un cliente automáticamente, actualizar el selector
     if(d.clienteCargado && !_iaClienteId){
       _iaClienteId=d.clienteCargado.id;
       _iaClienteNombre=d.clienteCargado.nombre;
@@ -5899,10 +5906,10 @@ async function sendIA(){
       if(sel) sel.value=String(_iaClienteId);
       if(badge) badge.textContent=(COACH_LANG==='en'?'✓ Loaded: ':'✓ Cargado: ')+_iaClienteNombre;
     }
-
+    const replyLimpio = iaLimpiarMarkdown(d.reply);
     iaH.push({role:'assistant',content:d.reply});
     document.getElementById('iaTyping').style.display='none';
-    msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${d.reply.replace(/\n/g,'<br>')}</div>`;
+    msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${replyLimpio.replace(/\n/g,'<br>')}</div>`;
     msgs.scrollTop=msgs.scrollHeight;
   }catch(e){
     document.getElementById('iaTyping').style.display='none';
