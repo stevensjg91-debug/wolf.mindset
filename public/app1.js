@@ -1857,8 +1857,13 @@ async function renderCoach(s){
   else if(s==='mensajes'){el.innerHTML=hMensajesCoach();coachMsgsInit();}
   else if(s==='equipo'){el.innerHTML=hEquipo();initEquipo();}
   else if(s==='ia'){
+  // Precargar lista de clientes si no está en caché
+  if(!window._clientesCache){
+    api('/clientes').then(cl=>{ window._clientesCache=cl; }).catch(()=>{});
+  }
+  _iaClienteId=null; _iaClienteNombre=null;
   el.innerHTML=hIACoach();
-  iaH=[{role:'assistant',content:tc('Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?')}];
+  iaH=[{role:'assistant',content:COACH_LANG==='en'?'Hello coach! Select a client from the dropdown and I\'ll have full access to their routine, diet and session history. Or ask me anything in general mode.':'Hola coach. Selecciona un cliente arriba y tendré acceso completo a su rutina, dieta e historial de sesiones. O pregúntame en modo general.'}];
   fetch('/api/images-status').then(r=>r.json()).then(d=>{
     const btn=document.getElementById('btn_img_status');
     if(!btn)return;
@@ -5806,26 +5811,103 @@ document.addEventListener('keydown', e => {
 
 
 // ═══ IA COACH ═════════════════════════════════════════
-function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">${COACH_LANG==='en'?'Private AI coach assistant':'IA privada del coach'}</div>${COACH_LANG==='en'?'Generate full routines and diets, analyse progress or request specific adjustments for any client.':'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.'}</div>
+// _iaClienteId: cliente cargado actualmente en la IA (null = modo general)
+// _iaClienteNombre: nombre del cliente cargado (para mostrar en UI)
+let _iaClienteId = null, _iaClienteNombre = null;
 
-<div class="sec" style="display:flex;flex-direction:column;height:480px">
-  <div class="chat-msgs" id="iaMsgs" style="flex:1;background:var(--b);border:0.5px solid var(--br);border-radius:10px;padding:11px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
-    <div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${tc('Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?')}</div>
+function hIACoach(){
+  // Construir selector de cliente a partir del caché
+  const clientes = window._clientesCache || [];
+  const optsClientes = clientes.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+  const isEn = COACH_LANG==='en';
+  return `<div class="ia-chip" style="margin-bottom:12px">
+  <div class="ia-chip-title">${isEn?'Private AI coach assistant':'IA privada del coach'}</div>
+  ${isEn?'Generates full routines and diets, analyses progress or requests specific adjustments for any client. <strong>Select a client to give the AI full access to their data.</strong>':'Genera rutinas y dietas completas, analiza progreso o pide ajustes para cualquier cliente. <strong>Selecciona un cliente para que la IA tenga acceso completo a sus datos.</strong>'}
+</div>
+
+<div class="sec" style="margin-bottom:10px">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <select id="iaCienteSel" onchange="iaSeleccionarCliente(this.value)"
+      style="flex:1;min-width:160px;padding:8px 10px;border-radius:8px;border:0.5px solid var(--br);background:var(--s2);color:var(--sv);font-size:13px;font-family:inherit">
+      <option value="">${isEn?'— General mode (no client) —':'— Modo general (sin cliente) —'}</option>
+      ${optsClientes}
+    </select>
+    <div id="iaClienteBadge" style="font-size:11px;color:var(--tx3);white-space:nowrap"></div>
+    <button onclick="iaClearCliente()" style="padding:6px 10px;border-radius:8px;border:0.5px solid var(--br);background:none;color:var(--tx3);font-size:12px;cursor:pointer;font-family:inherit">${isEn?'Clear':'Limpiar'}</button>
   </div>
-  <div class="typing" id="iaTyping">${COACH_LANG==='en'?'processing...':'procesando...'}</div>
+</div>
+
+<div class="sec" style="display:flex;flex-direction:column;height:460px">
+  <div class="chat-msgs" id="iaMsgs" style="flex:1;background:var(--b);border:0.5px solid var(--br);border-radius:10px;padding:11px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
+    <div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${isEn?'Hello coach! Select a client from the dropdown and I\'ll have full access to their routine, diet and session history. Or ask me anything in general mode.':'Hola coach. Selecciona un cliente arriba y tendré acceso completo a su rutina, dieta e historial de sesiones. O pregúntame en modo general.'}</div>
+  </div>
+  <div class="typing" id="iaTyping">${isEn?'processing...':'procesando...'}</div>
   <div style="display:flex;gap:8px">
-    <input class="inp" id="iaIn" placeholder="${COACH_LANG==='en'?'E.g. generate routine for Carlos, 4 days, bulk...':'Ej: genera rutina para Carlos, 4 días, volumen...'}" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')sendIA()"/>
+    <input class="inp" id="iaIn" placeholder="${isEn?'E.g. analyse Steve\'s volume, generate diet for Carlos...':'Ej: analiza el volumen de Steve, genera dieta para Carlos...'}" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')sendIA()"/>
     <button class="btn" onclick="sendIA()">${tc('Enviar')}</button>
   </div>
-</div>`;}
+</div>`;
+}
+
+function iaSeleccionarCliente(id){
+  _iaClienteId = id ? parseInt(id) : null;
+  const sel = document.getElementById('iaCienteSel');
+  const badge = document.getElementById('iaClienteBadge');
+  const isEn = COACH_LANG==='en';
+  if(_iaClienteId && sel){
+    _iaClienteNombre = sel.options[sel.selectedIndex]?.text || '';
+    if(badge) badge.textContent = (isEn?'✓ Loaded: ':'✓ Cargado: ') + _iaClienteNombre;
+    // Reiniciar historial y avisar
+    iaH=[{role:'assistant',content:isEn?`Client loaded: ${_iaClienteNombre}. I now have full access to their routine, diet, session history and progress. What do you need?`:`Cliente cargado: ${_iaClienteNombre}. Ahora tengo acceso completo a su rutina, dieta, historial de sesiones y progreso. ¿Qué necesitas?`}];
+    const msgs=document.getElementById('iaMsgs');
+    if(msgs) msgs.innerHTML=`<div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${iaH[0].content}</div>`;
+  } else {
+    _iaClienteId=null; _iaClienteNombre=null;
+    if(badge) badge.textContent='';
+    iaH=[{role:'assistant',content:isEn?'General mode — no client loaded. Ask me anything or select a client from the dropdown.':'Modo general — sin cliente cargado. Pregúntame lo que necesites o selecciona un cliente arriba.'}];
+    const msgs=document.getElementById('iaMsgs');
+    if(msgs) msgs.innerHTML=`<div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${iaH[0].content}</div>`;
+  }
+}
+
+function iaClearCliente(){
+  const sel=document.getElementById('iaCienteSel');
+  if(sel) sel.value='';
+  iaSeleccionarCliente('');
+}
 
 async function sendIA(){
-  const inp=document.getElementById('iaIn'),msg=inp.value.trim();if(!msg)return;inp.value='';
+  const inp=document.getElementById('iaIn'),msg=inp.value.trim();
+  if(!msg)return;inp.value='';
   const msgs=document.getElementById('iaMsgs');
   msgs.innerHTML+=`<div class="msg msg-u">${msg}</div>`;msgs.scrollTop=msgs.scrollHeight;
-  iaH.push({role:'user',content:msg});document.getElementById('iaTyping').style.display='block';
-  try{const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:iaH,system:`Eres el asistente IA privado del coach WolfMindset. Ayudas con progresión de carga, periodización, ajustes calóricos, generación de rutinas y dietas completas. ${COACH_LANG==='en'?'Always respond in English. Technical and concise.':'Respuestas técnicas y concisas en español.'}`})});iaH.push({role:'assistant',content:d.reply});document.getElementById('iaTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${d.reply}</div>`;msgs.scrollTop=msgs.scrollHeight;}
-  catch(e){document.getElementById('iaTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>Error. Inténtalo de nuevo.</div>`;}
+  iaH.push({role:'user',content:msg});
+  document.getElementById('iaTyping').style.display='block';
+  try{
+    // Intentar detectar nombre de cliente en el mensaje si no hay uno seleccionado
+    const body={messages:iaH,lang:COACH_LANG};
+    if(_iaClienteId) body.clienteId=_iaClienteId;
+
+    const d=await api('/ia/coach-chat',{method:'POST',body:JSON.stringify(body)});
+
+    // Si la IA detectó y cargó un cliente automáticamente, actualizar el selector
+    if(d.clienteCargado && !_iaClienteId){
+      _iaClienteId=d.clienteCargado.id;
+      _iaClienteNombre=d.clienteCargado.nombre;
+      const sel=document.getElementById('iaCienteSel');
+      const badge=document.getElementById('iaClienteBadge');
+      if(sel) sel.value=String(_iaClienteId);
+      if(badge) badge.textContent=(COACH_LANG==='en'?'✓ Loaded: ':'✓ Cargado: ')+_iaClienteNombre;
+    }
+
+    iaH.push({role:'assistant',content:d.reply});
+    document.getElementById('iaTyping').style.display='none';
+    msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${d.reply.replace(/\n/g,'<br>')}</div>`;
+    msgs.scrollTop=msgs.scrollHeight;
+  }catch(e){
+    document.getElementById('iaTyping').style.display='none';
+    msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">IA WolfMindset</div>${COACH_LANG==='en'?'Error. Try again.':'Error. Inténtalo de nuevo.'}</div>`;
+  }
 }
 
 // ═══ CLIENTE ══════════════════════════════════════════
