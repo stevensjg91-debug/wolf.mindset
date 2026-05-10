@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" id="html_root">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
@@ -26,13 +26,13 @@
   <div class="login-bg-overlay"></div>
 
   <!-- Palabras flotantes -->
-  <div class="floating-word" style="top:6%;left:4%">DISCIPLINA</div>
-  <div class="floating-word" style="top:6%;right:4%;flex-direction:row-reverse">CONSTANCIA</div>
-  <div class="floating-word" style="top:26%;left:3%">ENFOQUE</div>
-  <div class="floating-word" style="top:26%;right:3%;flex-direction:row-reverse">ESFUERZO</div>
-  <div class="floating-word" style="bottom:28%;left:4%">FUERZA</div>
-  <div class="floating-word" style="bottom:28%;right:2%;flex-direction:row-reverse">MENTALIDAD</div>
-  <div class="floating-word" style="bottom:8%;left:50%;transform:translateX(-50%)">SUPERACIÓN</div>
+  <div class="floating-word" style="top:6%;left:4%" data-i18n-es="DISCIPLINA" data-i18n-en="DISCIPLINE">DISCIPLINA</div>
+  <div class="floating-word" style="top:6%;right:4%;flex-direction:row-reverse" data-i18n-es="CONSTANCIA" data-i18n-en="CONSISTENCY">CONSTANCIA</div>
+  <div class="floating-word" style="top:26%;left:3%" data-i18n-es="ENFOQUE" data-i18n-en="FOCUS">ENFOQUE</div>
+  <div class="floating-word" style="top:26%;right:3%;flex-direction:row-reverse" data-i18n-es="ESFUERZO" data-i18n-en="EFFORT">ESFUERZO</div>
+  <div class="floating-word" style="bottom:28%;left:4%" data-i18n-es="FUERZA" data-i18n-en="STRENGTH">FUERZA</div>
+  <div class="floating-word" style="bottom:28%;right:2%;flex-direction:row-reverse" data-i18n-es="MENTALIDAD" data-i18n-en="MINDSET">MENTALIDAD</div>
+  <div class="floating-word" style="bottom:8%;left:50%;transform:translateX(-50%)" data-i18n-es="SUPERACIÓN" data-i18n-en="GROWTH">SUPERACIÓN</div>
 
   <div class="login-content">
     <!-- Logo -->
@@ -57,20 +57,20 @@
     <!-- Card -->
     <div class="login-card">
       <div style="text-align:center;margin-bottom:18px">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:.15em;color:rgba(255,255,255,.5)" id="login_titulo">ACCESO MIEMBROS</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:.15em;color:rgba(255,255,255,.5)" id="login_titulo" data-i18n-es="ACCESO MIEMBROS" data-i18n-en="MEMBER ACCESS">ACCESO MIEMBROS</div>
       </div>
       <div id="lerr" class="ferr" style="display:none"></div>
-      <input class="finp" id="lu" placeholder="Usuario" autocomplete="username"/>
-      <input class="finp" id="lp" placeholder="Contraseña" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
-      <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;cursor:pointer;font-size:13px;color:rgba(255,255,255,.4)"><input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer;accent-color:var(--bl2)" checked/> <span id="login_recordar" data-i18n="Recordar contraseña">Recordar contraseña</span></label>
+      <input class="finp" id="lu" data-placeholder-es="Usuario" data-placeholder-en="Username" placeholder="Usuario" autocomplete="username"/>
+      <input class="finp" id="lp" data-placeholder-es="Contraseña" data-placeholder-en="Password" placeholder="Contraseña" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;cursor:pointer;font-size:13px;color:rgba(255,255,255,.4)"><input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer;accent-color:var(--bl2)" checked/> <span id="login_recordar" data-i18n="Recordar contraseña" data-i18n-es="Recordar contraseña" data-i18n-en="Remember me">Recordar contraseña</span></label>
 
-      <button class="fbtn" id="login_btn" onclick="doLogin()">Entrar</button>
+      <button class="fbtn" id="login_btn" data-i18n-es="Entrar" data-i18n-en="Sign in" onclick="doLogin()">Entrar</button>
       <div style="text-align:center;margin-top:12px">
-        <button onclick="mostrarOlvideContrasena()" style="background:none;border:none;color:rgba(255,255,255,.35);font-size:12px;cursor:pointer;font-family:inherit;padding:4px" id="login_olvide" data-i18n="¿Olvidaste tu contraseña?">¿Olvidaste tu contraseña?</button>
+        <button onclick="mostrarOlvideContrasena()" style="background:none;border:none;color:rgba(255,255,255,.35);font-size:12px;cursor:pointer;font-family:inherit;padding:4px" id="login_olvide" data-i18n-es="¿Olvidaste tu contraseña?" data-i18n-en="Forgot your password?">¿Olvidaste tu contraseña?</button>
       </div>
       <div style="text-align:center;margin-top:8px">
-        <span style="font-size:13px;color:rgba(255,255,255,.35)" id="login_nuevo_txt">¿Nuevo cliente? </span>
-        <button onclick="showRegistro()" style="background:none;border:none;color:var(--blg);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" id="login_solicitar" data-i18n="Solicitar acceso →">Solicitar acceso →</button>
+        <span style="font-size:13px;color:rgba(255,255,255,.35)" id="login_nuevo_txt" data-i18n-es="¿Nuevo cliente? " data-i18n-en="New client? ">¿Nuevo cliente? </span>
+        <button onclick="showRegistro()" style="background:none;border:none;color:var(--blg);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" id="login_solicitar" data-i18n-es="Solicitar acceso →" data-i18n-en="Request access →">Solicitar acceso →</button>
       </div>
     </div>
   </div>
@@ -84,25 +84,25 @@
     <div class="login-logo">
       <div style="width:220px;height:220px;margin:0 auto -20px;background:url('/logo.png') center/contain no-repeat"></div>
       <div class="login-brand">WOLFMINDSET</div>
-      <div class="login-sub" id="olvide_sub">Recuperar acceso</div>
+      <div class="login-sub" id="olvide_sub" data-i18n-es="Recuperar acceso" data-i18n-en="Recover access">Recuperar acceso</div>
     </div>
     <div class="login-card">
       <div style="text-align:center;margin-bottom:20px">
         <div style="font-size:40px;margin-bottom:10px">🔑</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.12em;color:rgba(255,255,255,.5)" id="olvide_titulo">¿OLVIDASTE TU CONTRASEÑA?</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.12em;color:rgba(255,255,255,.5)" id="olvide_titulo" data-i18n-es="¿OLVIDASTE TU CONTRASEÑA?" data-i18n-en="FORGOT YOUR PASSWORD?">¿OLVIDASTE TU CONTRASEÑA?</div>
       </div>
       <div style="background:rgba(37,99,235,.1);border:0.5px solid rgba(59,130,246,.2);border-radius:12px;padding:14px;margin-bottom:16px">
-        <div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.7" id="olvide_desc">
+        <div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.7" id="olvide_desc" data-i18n-es="Escribe tu nombre de usuario y tu coach recibirá una solicitud de reseteo. Te enviará tu nueva contraseña por el canal habitual (WhatsApp, email, etc.)" data-i18n-en="Enter your username and your coach will receive a reset request. They will send your new password through the usual channel (WhatsApp, email, etc.)">
           Escribe tu nombre de usuario y tu coach recibirá una solicitud de reseteo. Te enviará tu nueva contraseña por el canal habitual (WhatsApp, email, etc.)
         </div>
       </div>
       <div id="olvide_err" class="ferr" style="display:none"></div>
-      <div id="olvide_ok" style="display:none;background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.3);border-radius:10px;padding:12px;text-align:center;font-size:13px;color:var(--gnb);margin-bottom:12px">
+      <div id="olvide_ok" style="display:none;background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.3);border-radius:10px;padding:12px;text-align:center;font-size:13px;color:var(--gnb);margin-bottom:12px" data-i18n-es="✓ Solicitud enviada. Tu coach te contactará pronto." data-i18n-en="✓ Request sent. Your coach will contact you soon.">
         ✓ Solicitud enviada. Tu coach te contactará pronto.
       </div>
-      <input class="finp" id="olvide_user" placeholder="Tu nombre de usuario" autocomplete="username"/>
-      <button class="fbtn" onclick="solicitarReseteo()" id="olvide_btn">Enviar solicitud al coach</button>
-      <button onclick="show('sLogin')" style="width:100%;margin-top:10px;background:none;border:none;color:rgba(255,255,255,.35);font-size:13px;cursor:pointer;font-family:inherit;padding:8px" id="olvide_back">← Volver al login</button>
+      <input class="finp" id="olvide_user" data-placeholder-es="Tu nombre de usuario" data-placeholder-en="Your username" placeholder="Tu nombre de usuario" autocomplete="username"/>
+      <button class="fbtn" onclick="solicitarReseteo()" id="olvide_btn" data-i18n-es="Enviar solicitud al coach" data-i18n-en="Send request to coach">Enviar solicitud al coach</button>
+      <button onclick="show('sLogin')" style="width:100%;margin-top:10px;background:none;border:none;color:rgba(255,255,255,.35);font-size:13px;cursor:pointer;font-family:inherit;padding:8px" id="olvide_back" data-i18n-es="← Volver al login" data-i18n-en="← Back to login">← Volver al login</button>
     </div>
   </div>
 </div>
@@ -492,7 +492,7 @@
     <!-- Emoji grande -->
     <div id="badgeEmoji" style="font-size:72px;line-height:1;margin-bottom:0;display:block;filter:drop-shadow(0 0 20px rgba(245,158,11,.5))">🏆</div>
     <!-- Label logro -->
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:.25em;color:var(--amb);margin:16px 0 6px;text-transform:uppercase" data-i18n="¡Logro desbloqueado!">¡Logro desbloqueado!</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:.25em;color:var(--amb);margin:16px 0 6px;text-transform:uppercase" data-i18n-es="¡Logro desbloqueado!" data-i18n-en="Achievement unlocked!">¡Logro desbloqueado!</div>
     <!-- Línea decorativa -->
     <div style="width:40px;height:1px;background:linear-gradient(90deg,transparent,var(--amb),transparent);margin:0 auto 14px"></div>
     <!-- Título -->
@@ -561,6 +561,52 @@
   // uploadPreset: crealo en Settings > Upload > Add upload preset (modo Unsigned)
   window.CLOUDINARY_CLOUD_NAME    = 'dsurvzq14';
   window.CLOUDINARY_UPLOAD_PRESET = 'wolfmindset';
+</script>
+<script>
+// ── Bootstrap i18n para la pantalla de login ─────────────────────────────────
+// Se ejecuta antes de app1.js. Aplica data-i18n-es / data-i18n-en a todos los
+// elementos estáticos del login (palabras flotantes, placeholders, botones).
+// Cuando app1.js carga, applyLang() hace lo mismo para el resto de la app.
+(function(){
+  function applyLoginLang(lang) {
+    // Actualizar html lang
+    var html = document.getElementById('html_root');
+    if (html) html.setAttribute('lang', lang);
+
+    // Textos: data-i18n-es / data-i18n-en
+    document.querySelectorAll('[data-i18n-' + lang + ']').forEach(function(el) {
+      el.textContent = el.getAttribute('data-i18n-' + lang);
+    });
+
+    // Placeholders: data-placeholder-es / data-placeholder-en
+    document.querySelectorAll('[data-placeholder-' + lang + ']').forEach(function(el) {
+      el.placeholder = el.getAttribute('data-placeholder-' + lang);
+    });
+
+    // Botones activos del selector de idioma
+    var btnEs = document.getElementById('lang_es');
+    var btnEn = document.getElementById('lang_en');
+    if (btnEs && btnEn) {
+      var activeStyle   = 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:30px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);cursor:pointer;transition:.2s;opacity:1';
+      var inactiveStyle = 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:30px;border:1px solid rgba(255,255,255,.12);background:none;cursor:pointer;transition:.2s;opacity:.4';
+      btnEs.style.cssText = lang === 'es' ? activeStyle : inactiveStyle;
+      btnEn.style.cssText = lang === 'en' ? activeStyle : inactiveStyle;
+    }
+
+    // Guardar para que app1.js lo recoja al inicializar LANG
+    localStorage.setItem('wm_lang', lang);
+  }
+
+  // Leer idioma guardado o detectar por navigator
+  var saved = localStorage.getItem('wm_lang');
+  var lang = saved || (navigator.language || navigator.userLanguage || 'es').toLowerCase().startsWith('en') ? 'en' : 'es';
+  if (!saved) lang = (navigator.language || '').toLowerCase().startsWith('en') ? 'en' : 'es';
+
+  applyLoginLang(lang);
+
+  // Exponer para que los botones del HTML puedan llamarla antes de que cargue app1.js
+  window.setLangLogin = applyLoginLang;
+})();
 </script>
 <script src="/app1.js?v={{BUILD_VERSION}}"></script>
 <script src="/app2.js?v={{BUILD_VERSION}}"></script>
