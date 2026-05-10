@@ -167,10 +167,14 @@ async function dbGenerarIANuevo(){
   const dist = distKcal[parseInt(numComidas)] || distKcal[5];
   const kcalPorComida = dist.map(p => Math.round(kcalObj * p / 100));
 
-  // ── Idioma del CLIENTE (no del coach) ──────────────────────────────────
+  // ── Idiomas: coach vs cliente ──────────────────────────────────────────
+  // coachIsEN  → idioma de la vista previa del coach y mensajes de UI
+  // clienteIsEN / isEN → idioma en que se GENERA la dieta (para el cliente)
   const clienteLang = c.lang || 'es';
-  isEN = clienteLang === 'en'; // actualizar con el idioma real del cliente
-  console.log('[DietaIA] Cliente:', c.nombre, '| Lang cliente:', clienteLang, '| Lang coach:', LANG);
+  const clienteIsEN = clienteLang === 'en';
+  const coachIsEN   = COACH_LANG === 'en';
+  isEN = clienteIsEN; // la generación sigue el idioma del cliente
+  console.log('[DietaIA] Cliente:', c.nombre, '| Lang cliente:', clienteLang, '| Lang coach:', COACH_LANG);
 
   // ── Nombres de comidas según número e idioma ─────────────────────────
   const nombresComidasES = {
@@ -539,7 +543,7 @@ ${formatoJSON}`;
       preview.scrollIntoView({behavior:'smooth'});
     }
 
-    res.innerHTML='<div style="background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--gnb)">✓ Plan generado. Revisa la vista previa abajo y publica cuando estés listo.</div>';
+    res.innerHTML=`<div style="background:rgba(34,197,94,.08);border:0.5px solid rgba(34,197,94,.2);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--gnb)">✓ ${coachIsEN?'Plan generated. Review the preview below and publish when ready.':'Plan generado. Revisa la vista previa abajo y publica cuando estés listo.'}</div>`;
 
   } catch(e) {
     console.error('[DietaIA] Error completo:', e);
@@ -613,7 +617,8 @@ async function dbPublicarPlan(){
 }
 
 function renderPlanDietaCoach(plan, cliente){
-  const clienteLang = cliente?.lang || window._planDietaCliente?.lang || 'es';
+  // Vista previa del COACH: se muestra en el idioma del coach, no del cliente
+  const clienteLang = COACH_LANG || 'es';
   const isEN = clienteLang === 'en';
   const esVeg = cliente?.dieta_tipo==='Vegano'||cliente?.dieta_tipo==='Vegetariano';
 
@@ -653,64 +658,22 @@ function renderPlanDietaCoach(plan, cliente){
       <span style="color:${accent};font-weight:700;flex-shrink:0;margin-left:8px">${a.gramos!=null?a.gramos+'g':a.cantidad||''}</span>
     </div>`).join('');
 
-  // Renderiza macros de una opción (si vienen del backend)
-  const macrosHtml = (op) => {
-    if (!op?.kcal) return '';
-    return `<div style="display:flex;gap:6px;margin:5px 0 7px;flex-wrap:wrap">
-      ${[['kcal',op.kcal,'#fbbf24'],['P',op.prot+'g','#3b82f6'],['C',op.carbs+'g','#a78bfa'],['G',op.grasas+'g','#f97316']].map(([l,v,col])=>`
-        <div style="padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.04);font-size:10px;font-weight:700;color:${col}">${l}: ${v}</div>`).join('')}
-    </div>`;
+  // Helpers para formato bilingüe nuevo (_es/_en) — la vista del coach siempre en su idioma
+  const getAlimentos = (op) => {
+    if (isEN && op?.alimentos_en) return op.alimentos_en;
+    if (op?.alimentos_es) return op.alimentos_es;
+    return op?.alimentos || [];
   };
-
-  // Renderiza acordeón de receta
-  const recetaHtml = (op, mi, oi) => {
-    if (!op?.receta?.pasos?.length) return '';
-    const rid = `receta_${mi}_${oi}`;
-    const nombre = op.receta.nombre || (isEN ? 'Suggested recipe' : 'Receta sugerida');
-    const pasos = op.receta.pasos.map((p,pi)=>`
-      <div style="display:flex;gap:8px;margin-bottom:6px;align-items:flex-start">
-        <div style="width:18px;height:18px;border-radius:50%;background:${accentBg};border:0.5px solid ${accent}40;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:${accent};flex-shrink:0">${pi+1}</div>
-        <div style="font-size:11px;color:var(--sv2);line-height:1.5">${p}</div>
-      </div>`).join('');
-    return `
-      <div style="margin-top:7px">
-        <button onclick="(function(el){var b=document.getElementById('${rid}');var open=b.style.maxHeight&&b.style.maxHeight!=='0px';b.style.maxHeight=open?'0px':'300px';b.style.opacity=open?'0':'1';el.querySelector('[data-arr]').style.transform=open?'rotate(0deg)':'rotate(180deg)';})(this)"
-          style="display:flex;align-items:center;gap:5px;background:none;border:none;padding:0;cursor:pointer;font-family:inherit">
-          <span style="font-size:10px;color:${accent};font-weight:700">🍳 ${nombre}</span>
-          <span data-arr style="font-size:9px;color:${accent};transition:.2s;display:inline-block">▼</span>
-        </button>
-        <div id="${rid}" style="max-height:0;overflow:hidden;opacity:0;transition:max-height .3s ease,opacity .2s;padding-left:4px;margin-top:4px">
-          ${pasos}
-        </div>
-      </div>`;
-  };
-
-  // Helper: obtener alimentos según idioma (soporte formato nuevo _es/_en y legacy)
-  const getAlimentos = (op, lang) => {
-    if (lang === 'en' && op.alimentos_en) return op.alimentos_en;
-    if (op.alimentos_es) return op.alimentos_es;
-    return op.alimentos || [];
-  };
-
-  // Helper: obtener receta según idioma
-  const getReceta = (op, lang) => {
-    if (lang === 'en' && op.receta_en) return op.receta_en;
-    if (op.receta_es) return op.receta_es;
-    return op.receta || null;
-  };
-
-  // Helper: obtener nombre de la comida según idioma
-  const getMealName = (m, lang) => {
-    if (lang === 'en' && m.nombre_en) return m.nombre_en;
+  const getMealName = (m) => {
+    if (isEN && m.nombre_en) return m.nombre_en;
     if (m.nombre_es) return m.nombre_es;
     return m.nombre || '';
   };
 
   const mealHtml = plan.comidas.map((m,mi)=>{
     const opciones = m.opciones || [];
-    const btnLetra = (op, idx) => {
+    const btnLetra = (letra, idx) => {
       const isActive = idx === 0;
-      const letra = op.letra || String.fromCharCode(65+idx);
       return `<button onclick="dbOpcionSelect(${mi},${idx},this)"
         style="padding:4px 11px;border-radius:12px;border:0.5px solid ${isActive?accent:'rgba(255,255,255,.15)'};
                background:${isActive?accentBg:'none'};color:${isActive?accent:'var(--tx3)'};
@@ -718,23 +681,22 @@ function renderPlanDietaCoach(plan, cliente){
     };
     const opsBtns = opciones.length > 1 ? `
       <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
-        ${opciones.map((op,i) => btnLetra(op, i)).join('')}
+        ${opciones.map((op,i) => btnLetra(op.letra||String.fromCharCode(65+i), i)).join('')}
         <span style="font-size:10px;color:var(--tx3);margin-left:4px">${isEN?'Choose option':'Elige opción'}</span>
       </div>` : '';
 
-    const firstOp = opciones[0];
-    const firstAlims = getAlimentos(firstOp, clienteLang);
-    const firstReceta = getReceta(firstOp, clienteLang);
+    const opNombre = opciones[0]?.nombre ? `
+      <div id="coach_op_nombre_${mi}" style="font-size:11px;color:var(--tx3);font-style:italic;margin-bottom:5px">${opciones[0].nombre}</div>` : '';
 
     return `<div style="padding:12px 0;border-bottom:0.5px solid var(--br)">
       <div style="display:flex;gap:12px">
         <div style="width:36px;height:36px;border-radius:10px;background:${accentBg};border:0.5px solid ${accent}40;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${m.emoji||'🍽️'}</div>
         <div style="flex:1">
-          <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:6px">${getMealName(m, clienteLang)}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--sv);margin-bottom:6px">${getMealName(m)}</div>
           ${opsBtns}
-          <div id="coach_macros_${mi}">${macrosHtml(firstOp)}</div>
-          <div id="coach_var_${mi}">${alimentosHtml(firstAlims, clienteLang)}</div>
-          <div id="coach_receta_${mi}">${recetaHtml({...firstOp, receta: firstReceta}, mi, 0)}</div>
+          ${opNombre}
+          <div id="coach_var_${mi}">${alimentosHtml(getAlimentos(opciones[0]), clienteLang)}</div>
+          ${opciones[0]?.nota&&!opciones[0].nota.match(/Aprox|kcal|prot|carbs|grasas/i)?`<div style="font-size:11px;color:var(--tx3);margin-top:4px;font-style:italic">${opciones[0].nota}</div>`:''}
         </div>
       </div>
     </div>`;
@@ -857,65 +819,30 @@ function dbOpcionSelect(mi, opIdx, btn){
   if(!plan?.comidas[mi]) return;
   const m = plan.comidas[mi];
   const opcion = m.opciones?.[opIdx] || m.opciones?.[0];
-  const clienteLang = window._planDietaCliente?.lang || 'es';
-  const isEN = clienteLang === 'en';
   const esVeg  = window._planDietaCliente?.dieta_tipo==='Vegano'||window._planDietaCliente?.dieta_tipo==='Vegetariano';
   const accent = esVeg ? '#22c55e' : '#3b82f6';
   const accentBg = esVeg ? 'rgba(34,197,94,.08)' : 'rgba(37,99,235,.08)';
 
-  // Obtener alimentos y receta según idioma (soporte formato nuevo _es/_en y legacy)
-  const alims = (isEN && opcion?.alimentos_en) ? opcion.alimentos_en
+  // Vista previa siempre en el idioma del COACH
+  const coachLang = COACH_LANG || 'es';
+  const coachIsEN = coachLang === 'en';
+
+  // Obtener alimentos en el idioma del coach (soporte formato bilingüe _es/_en y legacy)
+  const alims = (coachIsEN && opcion?.alimentos_en) ? opcion.alimentos_en
               : opcion?.alimentos_es ? opcion.alimentos_es
               : opcion?.alimentos || m.alimentos || [];
-  const receta = (isEN && opcion?.receta_en) ? opcion.receta_en
-               : opcion?.receta_es ? opcion.receta_es
-               : opcion?.receta || null;
 
-  // Actualizar alimentos
+  // Actualizar alimentos mostrados
   const wrap = document.getElementById('coach_var_'+mi);
   if(wrap) wrap.innerHTML = alims.map(a=>`
     <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;padding:3px 0;border-bottom:0.5px solid rgba(255,255,255,.04)">
-      <span style="color:var(--sv2)">${a.nombre}</span>
+      <span style="color:var(--sv2)">${a.nombre}${a.detalle?` <span style="color:var(--tx3);font-size:10px">(${coachIsEN&&a.detalle==='en crudo'?'raw':a.detalle})</span>`:''}</span>
       <span style="color:${accent};font-weight:700;flex-shrink:0;margin-left:8px">${a.gramos!=null?a.gramos+'g':a.cantidad||''}</span>
     </div>`).join('');
 
-  // Actualizar macros
-  const macrosWrap = document.getElementById('coach_macros_'+mi);
-  if(macrosWrap && opcion?.kcal) {
-    macrosWrap.innerHTML = `<div style="display:flex;gap:6px;margin:5px 0 7px;flex-wrap:wrap">
-      ${[['kcal',opcion.kcal,'#fbbf24'],['P',opcion.prot+'g','#3b82f6'],['C',opcion.carbs+'g','#a78bfa'],['G',opcion.grasas+'g','#f97316']].map(([l,v,col])=>`
-        <div style="padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.04);font-size:10px;font-weight:700;color:${col}">${l}: ${v}</div>`).join('')}
-    </div>`;
-  } else if(macrosWrap) {
-    macrosWrap.innerHTML = '';
-  }
-
-  // Actualizar receta
-  const recetaWrap = document.getElementById('coach_receta_'+mi);
-  if(recetaWrap) {
-    if(receta?.pasos?.length) {
-      const rid = `receta_${mi}_${opIdx}`;
-      const nombre = receta.nombre || (isEN ? 'Suggested recipe' : 'Receta sugerida');
-      const pasos = receta.pasos.map((p,pi)=>`
-        <div style="display:flex;gap:8px;margin-bottom:6px;align-items:flex-start">
-          <div style="width:18px;height:18px;border-radius:50%;background:${accentBg};border:0.5px solid ${accent}40;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:${accent};flex-shrink:0">${pi+1}</div>
-          <div style="font-size:11px;color:var(--sv2);line-height:1.5">${p}</div>
-        </div>`).join('');
-      recetaWrap.innerHTML = `
-        <div style="margin-top:7px">
-          <button onclick="(function(el){var b=document.getElementById('${rid}');var open=b.style.maxHeight&&b.style.maxHeight!=='0px';b.style.maxHeight=open?'0px':'300px';b.style.opacity=open?'0':'1';el.querySelector('[data-arr]').style.transform=open?'rotate(0deg)':'rotate(180deg)';})(this)"
-            style="display:flex;align-items:center;gap:5px;background:none;border:none;padding:0;cursor:pointer;font-family:inherit">
-            <span style="font-size:10px;color:${accent};font-weight:700">🍳 ${nombre}</span>
-            <span data-arr style="font-size:9px;color:${accent};transition:.2s;display:inline-block">▼</span>
-          </button>
-          <div id="${rid}" style="max-height:0;overflow:hidden;opacity:0;transition:max-height .3s ease,opacity .2s;padding-left:4px;margin-top:4px">
-            ${pasos}
-          </div>
-        </div>`;
-    } else {
-      recetaWrap.innerHTML = '';
-    }
-  }
+  // Actualizar nombre de la opción
+  const nombreEl = document.getElementById('coach_op_nombre_'+mi);
+  if(nombreEl && opcion?.nombre) nombreEl.textContent = opcion.nombre;
 
   // Actualizar botones activos
   const parent = btn.closest('div');
