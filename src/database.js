@@ -98,9 +98,13 @@ async function initDB() {
   const bcrypt = require('bcryptjs');
   const existing = dbGet('SELECT id FROM users WHERE username = ?', ['wolf']);
   if (!existing) {
-    const hash = bcrypt.hashSync('1234', 10);
+    // Contraseña por defecto solo para primer arranque en desarrollo.
+    // IMPORTANTE: cámbiala desde el panel del coach antes de usar en producción.
+    const defaultPass = process.env.COACH_DEFAULT_PASSWORD || 'WolfMindset2024!';
+    const hash = bcrypt.hashSync(defaultPass, 10);
     dbRun('INSERT INTO users (username, password, role, nombre, lang) VALUES (?, ?, ?, ?, ?)', ['wolf', hash, 'coach', 'Coach WolfMindset', 'es']);
-    console.log('Coach creado: wolf / 1234');
+    // No mostrar la contraseña en logs — solo avisar que se creó el coach
+    console.log('✓ Coach inicial creado. Cambia la contraseña desde el panel antes de ir a producción.');
   }
 
   const exCount = dbGet('SELECT COUNT(*) as c FROM ejercicios_db', []);
