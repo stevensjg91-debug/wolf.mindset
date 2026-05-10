@@ -1,10 +1,29 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const { dbGet, dbRun, dbAll } = require('./database');
 
+// Rate limiter para login: máximo 10 intentos fallidos cada 15 minutos por IP.
+// Protege contra ataques de fuerza bruta de contraseñas.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos de acceso. Espera 15 minutos e inténtalo de nuevo.' },
+  skipSuccessfulRequests: true, // solo cuenta los intentos fallidos
+});
+
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'wolfmindset_dev_secret';
+
+// JWT_SECRET debe estar definido en .env — si no, el servidor no arranca.
+// Nunca usar un fallback hardcodeado en producción.
+if (!process.env.JWT_SECRET) {
+  console.error('❌ FATAL: JWT_SECRET no está definido en .env. El servidor no puede arrancar de forma segura.');
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
@@ -19,7 +38,7 @@ function coachOnly(req, res, next) {
 }
 
 // POST /api/auth/login
-router.post('/login', (req, res) => {
+router.post('/login', loginLimiter, (req, res) => {
   const { username, password } = req.body;
   const user = dbGet('SELECT * FROM users WHERE username = ?', [username]);
   if (!user || !bcrypt.compareSync(password, user.password)) return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
@@ -76,7 +95,7 @@ router.post('/solicitar-reset', async (req, res) => {
 router.post('/reset-password', authMiddleware, coachOnly, async (req, res) => {
   const { userId, newPassword } = req.body;
   if (!userId || !newPassword) return res.status(400).json({ error: 'Faltan datos' });
-  if (String(newPassword).length < 4) return res.status(400).json({ error: 'Mínimo 4 caracteres' });
+  if (String(newPassword).length < 6) return res.status(400).json({ error: 'Mínimo 6 caracteres' });
   const user = dbGet('SELECT id FROM users WHERE id = ?', [userId]);
   if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
   const hash = bcrypt.hashSync(String(newPassword), 10);
