@@ -150,140 +150,79 @@ function buildClienteContexto(clienteId, { lang = 'es', incluirHistorialSesiones
     ORDER BY fecha DESC
     LIMIT 6`, [clienteId]);
 
-  // ── Usar lang del cliente si no se pasó explícitamente ──────────────────
-  const clienteLang = cl.lang || lang;
-  const en = clienteLang === 'en';
-
-  // ── Labels bilingües (usados para el contexto que recibe la IA) ──────────
-  const L = {
-    profile:          en ? '=== CLIENT PROFILE ===' : '=== PERFIL DEL CLIENTE ===',
-    name:             en ? 'Name' : 'Nombre',
-    user:             en ? 'Username' : 'Usuario',
-    goal:             en ? 'Goal' : 'Objetivo',
-    level:            en ? 'Level' : 'Nivel',
-    sex:              en ? 'Sex' : 'Sexo',
-    age:              en ? 'age' : 'años',
-    weight:           en ? 'Current weight' : 'Peso actual',
-    height:           en ? 'Height' : 'Altura',
-    bodyFat:          en ? 'Body fat' : 'Grasa corporal',
-    waist:            en ? 'Waist' : 'Cintura',
-    activity:         en ? 'Activity' : 'Actividad',
-    dietType:         en ? 'Diet type' : 'Dieta tipo',
-    injuries:         en ? 'Injuries / limitations' : 'Lesiones / limitaciones',
-    foodsNo:          en ? 'Foods they cannot eat' : 'Alimentos que no puede comer',
-    coachNotes:       en ? 'Coach notes' : 'Notas del coach',
-    deficiencies:     en ? 'Deficiencies' : 'Deficiencias',
-    macros:           en ? '=== MACROS & NUTRITION PLAN ===' : '=== MACROS Y PLAN NUTRICIONAL ===',
-    kcal:             en ? 'Kcal' : 'Kcal',
-    protein:          en ? 'Protein' : 'Proteína',
-    carbs:            en ? 'Carbs' : 'Carbos',
-    fats:             en ? 'Fats' : 'Grasas',
-    freeM:            en ? 'Free meal' : 'Comida libre',
-    suppl:            en ? 'Supplementation' : 'Suplementación',
-    therapeutic:      en ? 'Therapeutic foods' : 'Alimentos terapéuticos',
-    dietHeader:       (n) => en ? `=== CURRENT DIET (${n} meals) ===` : `=== DIETA ACTUAL (${n} comidas) ===`,
-    dietNone:         en ? '=== DIET: Not assigned yet ===' : '=== DIETA: Sin dieta asignada aún ===',
-    noFoods:          en ? '(no foods)' : '(sin alimentos)',
-    routineHeader:    (n) => en ? `=== CURRENT ROUTINE (${n} days) ===` : `=== RUTINA ACTUAL (${n} días) ===`,
-    routineNone:      en ? '=== ROUTINE: Not assigned yet ===' : '=== RUTINA: Sin rutina asignada aún ===',
-    noExercises:      en ? '(no exercises assigned)' : '(Sin ejercicios asignados)',
-    lastReal:         en ? 'last real' : 'último real',
-    rest:             en ? 'Rest' : 'Descanso',
-    note:             en ? 'Note' : 'Nota',
-    target:           en ? 'target' : 'objetivo',
-    historyHeader:    en ? '=== WORKOUT HISTORY ===' : '=== HISTORIAL DE ENTRENAMIENTOS ===',
-    totalSessions:    en ? 'Total completed sessions' : 'Total sesiones completadas',
-    daysSince:        en ? 'Days since last workout' : 'Días desde último entreno',
-    lastWorkout:      en ? 'Last workout' : 'Último entreno',
-    noSessions:       en ? 'No sessions recorded yet' : 'Sin sesiones registradas aún',
-    recentSessions:   en ? 'Recent sessions with detail:' : 'Últimas sesiones con detalle:',
-    rating:           en ? 'Rating' : 'Valoración',
-    checkinHeader:    (w) => en ? `=== LAST CHECK-IN (Week ${w || '—'}) ===` : `=== ÚLTIMO CHECK-IN (Semana ${w || '—'}) ===`,
-    sleep:            en ? 'Sleep' : 'Sueño',
-    energy:           en ? 'Energy' : 'Energía',
-    photosHeader:     (n) => en ? `=== PROGRESS PHOTOS (${n} recorded) ===` : `=== FOTOS DE PROGRESO (${n} registradas) ===`,
-    photo:            en ? 'Photo' : 'Foto',
-    coachAnalysis:    en ? 'Coach analysis' : 'Análisis coach',
-    noPhotos:         en ? 'Progress photos: None recorded yet' : 'Fotos de progreso: Sin fotos registradas aún',
-    generalHeader:    en ? '=== GENERAL STATUS ===' : '=== ESTADO GENERAL ===',
-    weeksIn:          en ? 'Weeks in program' : 'Semanas en el programa',
-    weekMsg:          en ? 'Week message' : 'Mensaje de la semana',
-    subscription:     en ? 'Subscription' : 'Suscripción',
-    until:            en ? 'until' : 'hasta',
-  };
-
   // ══ Construir texto del contexto ══════════════════════════════════════════
   const lines = [];
 
   // Perfil
-  lines.push(L.profile);
-  lines.push(`${L.name}: ${cl.nombre}`);
-  lines.push(`${L.user}: ${cl.username}`);
-  lines.push(`${L.goal}: ${cl.objetivo || '—'}`);
-  lines.push(`${L.level}: ${cl.nivel || '—'}`);
-  lines.push(`${L.sex}: ${cl.sexo || '—'} | ${L.age}: ${cl.edad || '—'} ${en ? 'y/o' : 'años'}`);
-  lines.push(`${L.weight}: ${cl.peso_actual ? cl.peso_actual + ' kg' : '—'} | ${L.height}: ${cl.altura ? cl.altura + ' cm' : '—'}`);
-  if (ultimoPeso?.grasa)   lines.push(`${L.bodyFat}: ${ultimoPeso.grasa}%`);
-  if (ultimoPeso?.cintura) lines.push(`${L.waist}: ${ultimoPeso.cintura} cm`);
-  lines.push(`${L.activity}: ${cl.actividad || '—'} | ${L.dietType}: ${cl.dieta_tipo || '—'}`);
-  if (cl.lesiones)         lines.push(`${L.injuries}: ${cl.lesiones}`);
-  if (cl.alimentos_no)     lines.push(`${L.foodsNo}: ${cl.alimentos_no}`);
-  if (cl.observaciones)    lines.push(`${L.coachNotes}: ${cl.observaciones}`);
-  if (cl.deficiencias)     lines.push(`${L.deficiencies}: ${cl.deficiencias}`);
+  lines.push(`=== PERFIL DEL CLIENTE ===`);
+  lines.push(`Nombre: ${cl.nombre}`);
+  lines.push(`Usuario: ${cl.username}`);
+  lines.push(`Objetivo: ${cl.objetivo || '—'}`);
+  lines.push(`Nivel: ${cl.nivel || '—'}`);
+  lines.push(`Sexo: ${cl.sexo || '—'} | Edad: ${cl.edad || '—'} años`);
+  lines.push(`Peso actual: ${cl.peso_actual ? cl.peso_actual + ' kg' : '—'} | Altura: ${cl.altura ? cl.altura + ' cm' : '—'}`);
+  if (ultimoPeso?.grasa)   lines.push(`Grasa corporal: ${ultimoPeso.grasa}%`);
+  if (ultimoPeso?.cintura) lines.push(`Cintura: ${ultimoPeso.cintura} cm`);
+  lines.push(`Actividad: ${cl.actividad || '—'} | Dieta tipo: ${cl.dieta_tipo || '—'}`);
+  if (cl.lesiones)         lines.push(`Lesiones / limitaciones: ${cl.lesiones}`);
+  if (cl.alimentos_no)     lines.push(`Alimentos que no puede comer: ${cl.alimentos_no}`);
+  if (cl.observaciones)    lines.push(`Notas del coach: ${cl.observaciones}`);
+  if (cl.deficiencias)     lines.push(`Deficiencias: ${cl.deficiencias}`);
 
-  // Macros
-  lines.push(`\n${L.macros}`);
-  lines.push(`${L.kcal}: ${cl.kcal_internas || '—'} | ${L.protein}: ${cl.prot || '—'}g | ${L.carbs}: ${cl.carbs || '—'}g | ${L.fats}: ${cl.fat || '—'}g`);
-  if (cl.comida_libre)                        lines.push(`${L.freeM}: ${cl.comida_libre}`);
-  if (planMeta?.suplementacion)               lines.push(`${L.suppl}: ${planMeta.suplementacion}`);
-  if (planMeta?.alimentos_therapeuticos)      lines.push(`${L.therapeutic}: ${planMeta.alimentos_therapeuticos}`);
+  // Macros asignadas
+  lines.push(`\n=== MACROS Y PLAN NUTRICIONAL ===`);
+  lines.push(`Kcal: ${cl.kcal_internas || '—'} | Proteína: ${cl.prot || '—'}g | Carbos: ${cl.carbs || '—'}g | Grasas: ${cl.fat || '—'}g`);
+  if (cl.comida_libre)     lines.push(`Comida libre: ${cl.comida_libre}`);
+  if (planMeta?.suplementacion) lines.push(`Suplementación: ${planMeta.suplementacion}`);
+  if (planMeta?.alimentos_therapeuticos) lines.push(`Alimentos terapéuticos: ${planMeta.alimentos_therapeuticos}`);
 
   // Dieta
   if (dieta.length > 0) {
-    lines.push(`\n${L.dietHeader(dieta.length)}`);
+    lines.push(`\n=== DIETA ACTUAL (${dieta.length} comidas) ===`);
     dieta.forEach(c => {
       const aliStr = c.alimentos.map(a => `${a.nombre} ${a.gramos}g`).join(', ');
-      lines.push(`• ${c.comida}: ${aliStr || L.noFoods}`);
+      lines.push(`• ${c.comida}: ${aliStr || '(sin alimentos)'}`);
     });
   } else {
-    lines.push(`\n${L.dietNone}`);
+    lines.push(`\n=== DIETA: Sin dieta asignada aún ===`);
   }
 
   // Rutina
   if (rutina.length > 0) {
-    lines.push(`\n${L.routineHeader(rutina.length)}`);
+    lines.push(`\n=== RUTINA ACTUAL (${rutina.length} días) ===`);
     rutina.forEach(d => {
       lines.push(`\n▸ ${d.dia}${d.grupo ? ' — ' + d.grupo : ''}`);
       if (d.ejercicios.length === 0) {
-        lines.push(`  (${L.noExercises})`);
+        lines.push('  (Sin ejercicios asignados)');
       } else {
         d.ejercicios.forEach(e => {
           const progData = progresion[e.nombre];
-          const pesoReal = progData ? ` [${L.lastReal}: ${progData.ultimo_peso}kg]` : '';
-          const nota     = e.nota_coach ? ` | ${L.note}: ${e.nota_coach}` : '';
-          lines.push(`  - ${e.nombre}: ${e.series}x${e.reps} @ ${e.peso_objetivo || 0}kg ${L.target}${pesoReal} | ${L.rest}: ${e.descanso}s${e.rir != null ? ' | RIR: ' + e.rir : ''}${nota}`);
+          const pesoReal = progData ? ` [último real: ${progData.ultimo_peso}kg]` : '';
+          const nota     = e.nota_coach ? ` | Nota: ${e.nota_coach}` : '';
+          lines.push(`  - ${e.nombre}: ${e.series}x${e.reps} @ ${e.peso_objetivo || 0}kg objetivo${pesoReal} | Descanso: ${e.descanso}s${e.rir != null ? ' | RIR: ' + e.rir : ''}${nota}`);
         });
       }
     });
   } else {
-    lines.push(`\n${L.routineNone}`);
+    lines.push(`\n=== RUTINA: Sin rutina asignada aún ===`);
   }
 
   // Historial de sesiones
-  lines.push(`\n${L.historyHeader}`);
-  lines.push(`${L.totalSessions}: ${totalSesiones?.c || 0}`);
+  lines.push(`\n=== HISTORIAL DE ENTRENAMIENTOS ===`);
+  lines.push(`Total sesiones completadas: ${totalSesiones?.c || 0}`);
   if (diasSinEntreno !== null) {
-    lines.push(`${L.daysSince}: ${diasSinEntreno}`);
-    lines.push(`${L.lastWorkout}: ${ultimaSesion.dia_nombre} (${ultimaSesion.fecha?.split('T')[0]}) — ${ultimaSesion.estado}`);
+    lines.push(`Días desde último entreno: ${diasSinEntreno}`);
+    lines.push(`Último entreno: ${ultimaSesion.dia_nombre} (${ultimaSesion.fecha?.split('T')[0]}) — ${ultimaSesion.estado}`);
   } else {
-    lines.push(L.noSessions);
+    lines.push('Sin sesiones registradas aún');
   }
 
   if (sesionesRecientes.length > 0) {
-    lines.push(`\n${L.recentSessions}`);
+    lines.push(`\nÚltimas sesiones con detalle:`);
     sesionesRecientes.forEach(s => {
-      lines.push(`\n• ${s.dia_nombre} — ${s.fecha?.split('T')[0]} (${s.estado}, ${s.duracion_min || 0} min)${s.valoracion ? ' | ' + L.rating + ': ' + s.valoracion : ''}`);
+      lines.push(`\n• ${s.dia_nombre} — ${s.fecha?.split('T')[0]} (${s.estado}, ${s.duracion_min || 0} min)${s.valoracion ? ' | Valoración: ' + s.valoracion : ''}`);
       if (s.series.length > 0) {
+        // Agrupar series por ejercicio
         const porEjercicio = {};
         s.series.forEach(sl => {
           if (!porEjercicio[sl.ejercicio_nombre]) porEjercicio[sl.ejercicio_nombre] = [];
@@ -298,30 +237,30 @@ function buildClienteContexto(clienteId, { lang = 'es', incluirHistorialSesiones
 
   // Check-ins
   if (ultimoCheckin) {
-    lines.push(`\n${L.checkinHeader(ultimoCheckin.semana)}`);
-    lines.push(`${L.sleep}: ${ultimoCheckin.sueno}/10 | ${L.energy}: ${ultimoCheckin.energia}/10 | ${en ? 'Weight' : 'Peso'}: ${ultimoCheckin.peso || '—'}kg`);
+    lines.push(`\n=== ÚLTIMO CHECK-IN (Semana ${ultimoCheckin.semana || '—'}) ===`);
+    lines.push(`Sueño: ${ultimoCheckin.sueno}/10 | Energía: ${ultimoCheckin.energia}/10 | Peso: ${ultimoCheckin.peso || '—'}kg`);
   }
 
-  // Fotos
+  // Fotos y análisis de progreso
   if (fotosRecientes.length > 0) {
-    lines.push(`\n${L.photosHeader(fotosRecientes.length)}`);
+    lines.push(`\n=== FOTOS DE PROGRESO (${fotosRecientes.length} registradas) ===`);
     fotosRecientes.forEach((f, i) => {
-      lines.push(`${L.photo} ${i + 1} — ${f.fecha?.split('T')[0]} (${f.tipo || 'front'})`);
-      if (f.analysis) lines.push(`  ${L.coachAnalysis}: ${f.analysis}`);
+      lines.push(`Foto ${i + 1} — ${f.fecha?.split('T')[0]} (${f.tipo || 'frente'})`);
+      if (f.analysis) lines.push(`  Análisis coach: ${f.analysis}`);
     });
   } else {
-    lines.push(`\n${L.noPhotos}`);
+    lines.push(`\nFotos de progreso: Sin fotos registradas aún`);
   }
 
-  // Estado general
-  lines.push(`\n${L.generalHeader}`);
-  lines.push(`${L.weeksIn}: ${cl.semanas || 1}`);
-  if (cl.mensaje_semana) lines.push(`${L.weekMsg}: ${cl.mensaje_semana}`);
-  if (sub) lines.push(`${L.subscription}: ${sub.estado}${sub.fecha_fin ? ' ' + L.until + ' ' + sub.fecha_fin : ''}`);
+  // Semanas y mensaje
+  lines.push(`\n=== ESTADO GENERAL ===`);
+  lines.push(`Semanas en el programa: ${cl.semanas || 1}`);
+  if (cl.mensaje_semana) lines.push(`Mensaje de la semana: ${cl.mensaje_semana}`);
+  if (sub) lines.push(`Suscripción: ${sub.estado}${sub.fecha_fin ? ' hasta ' + sub.fecha_fin : ''}`);
 
   return {
     cliente: cl,
-    isEn: en,
+    isEn: cl.lang === 'en',
     texto: lines.filter(l => l !== undefined).join('\n')
   };
 }
@@ -656,67 +595,147 @@ ${texto}`;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  ENDPOINT 4: POST /api/ia/generar-dieta
-//  Genera dieta completa personalizada para un cliente
+//  Genera dieta BILINGÜE (ES+EN), 2-3 opciones, recetas únicas, proteína obligatoria
 // ══════════════════════════════════════════════════════════════════════════════
 router.post('/ia/generar-dieta', coachOnly, async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
 
-  const { clienteId, instrucciones, numComidas, lang } = req.body;
+  const { clienteId, instrucciones, numComidas } = req.body;
   if (!clienteId) return res.status(400).json({ error: 'clienteId requerido' });
 
   try {
     const ctx = buildClienteContexto(clienteId, { incluirHistorialSesiones: false });
     if (!ctx) return res.status(404).json({ error: 'Cliente no encontrado' });
 
-    const { isEn, texto } = ctx;
+    const { texto } = ctx;
 
-    const system = isEn
-      ? `You are an expert sports nutritionist and fitness coach. Generate a complete, detailed meal plan in JSON format. Use ONLY real, common foods. Be precise with grams. Respect all dietary restrictions.`
-      : `Eres un nutricionista deportivo y coach de fitness experto. Genera un plan de comidas completo y detallado en formato JSON. Usa SOLO alimentos reales y comunes. Sé preciso con los gramos. Respeta todas las restricciones alimentarias.`;
+    // Sistema: siempre bilingüe independientemente del idioma del cliente
+    const system = `You are an expert sports nutritionist and fitness coach.
+Generate a BILINGUAL meal plan (Spanish + English simultaneously) in JSON format.
+Use ONLY real, common foods. Be precise with grams.
+MANDATORY: every meal must include a protein source with at least 15g protein per option.
+Each meal has 2-3 options. Each option has its own UNIQUE recipe.
+Recipes must NEVER repeat within the same meal — different name, different technique, different steps.
+Recipes should also vary across meals (no same dish twice in the whole plan).`;
 
-    const prompt = isEn
-      ? `Generate a complete daily meal plan for this client.
-${instrucciones ? `Coach instructions: ${instrucciones}` : ''}
-Number of meals: ${numComidas || 'as needed for the client'}
-
-RESPOND ONLY WITH THIS JSON (no other text):
-{
+    const jsonExample = `{
   "comidas": [
     {
-      "nombre": "Desayuno",
-      "alimentos": [
-        { "nombre": "Avena", "gramos": 80 },
-        { "nombre": "Leche desnatada", "gramos": 300 }
+      "nombre_es": "Desayuno",
+      "nombre_en": "Breakfast",
+      "opciones": [
+        {
+          "letra": "A",
+          "alimentos_es": [
+            { "nombre": "Avena", "gramos": 80 },
+            { "nombre": "Leche desnatada", "gramos": 300 },
+            { "nombre": "Claras de huevo", "gramos": 120 }
+          ],
+          "alimentos_en": [
+            { "nombre": "Oats", "gramos": 80 },
+            { "nombre": "Skimmed milk", "gramos": 300 },
+            { "nombre": "Egg whites", "gramos": 120 }
+          ],
+          "kcal": 490,
+          "prot": 38,
+          "carbs": 64,
+          "grasas": 5,
+          "receta_es": {
+            "nombre": "Porridge proteico con claras",
+            "pasos": [
+              "Cocina la avena con la leche a fuego medio 5 min removiendo.",
+              "Añade las claras batidas y cocina 2 min más sin dejar de remover.",
+              "Sirve con canela al gusto."
+            ]
+          },
+          "receta_en": {
+            "nombre": "Protein oatmeal with egg whites",
+            "pasos": [
+              "Cook oats with milk over medium heat for 5 min, stirring.",
+              "Add beaten egg whites and cook 2 more min, stirring constantly.",
+              "Serve with cinnamon to taste."
+            ]
+          }
+        },
+        {
+          "letra": "B",
+          "alimentos_es": [
+            { "nombre": "Yogur griego 0%", "gramos": 250 },
+            { "nombre": "Whey isolate", "gramos": 30 },
+            { "nombre": "Avena", "gramos": 40 },
+            { "nombre": "Fresas", "gramos": 100 }
+          ],
+          "alimentos_en": [
+            { "nombre": "Greek yogurt 0%", "gramos": 250 },
+            { "nombre": "Whey isolate", "gramos": 30 },
+            { "nombre": "Oats", "gramos": 40 },
+            { "nombre": "Strawberries", "gramos": 100 }
+          ],
+          "kcal": 480,
+          "prot": 42,
+          "carbs": 52,
+          "grasas": 3,
+          "receta_es": {
+            "nombre": "Bowl de yogur proteico con frutas",
+            "pasos": [
+              "Mezcla el yogur con el whey hasta integrar bien.",
+              "Añade la avena cruda y las fresas troceadas.",
+              "Deja reposar 5 min para que la avena ablande ligeramente."
+            ]
+          },
+          "receta_en": {
+            "nombre": "Protein yogurt bowl with berries",
+            "pasos": [
+              "Mix yogurt with whey protein until well combined.",
+              "Add raw oats and sliced strawberries.",
+              "Let sit 5 min so oats soften slightly."
+            ]
+          }
+        }
       ]
     }
   ],
   "totales": { "kcal": 2200, "prot": 165, "carbs": 250, "grasas": 70 },
-  "notas": "Optional notes for the client"
-}
+  "notas_es": "Notas opcionales para el cliente",
+  "notas_en": "Optional notes for the client"
+}`;
+
+    const prompt = `Generate a complete BILINGUAL daily meal plan for this client.
+${instrucciones ? `Coach instructions / Instrucciones del coach: ${instrucciones}` : ''}
+Number of meals / Número de comidas: ${numComidas || 'as needed for the client'}
+
+STRICT RULES — ALL MANDATORY:
+
+1. BILINGUAL: every text field must exist in both _es (Spanish) and _en (English).
+   Fields: nombre_es, nombre_en, alimentos_es, alimentos_en, receta_es, receta_en, notas_es, notas_en.
+   Food names in alimentos_es must be in Spanish. Food names in alimentos_en must be in English.
+
+2. PROTEIN IN EVERY MEAL (NO EXCEPTIONS): each option of every meal MUST contain at least one
+   protein source providing minimum 15g protein. Valid sources: chicken, turkey, beef, pork,
+   fish, tuna, shrimp, eggs, egg whites, Greek yogurt, cottage cheese, whey protein, casein,
+   legumes (lentils, chickpeas), tofu. A meal without protein is INVALID and will be rejected.
+
+3. UNIQUE RECIPES — ZERO REPETITION:
+   - Within the same meal: each option (A, B, C) must have a completely different recipe.
+     Different dish name, different cooking method, different steps. Never use the same technique twice in the same meal.
+   - Across all meals: no recipe should repeat. If breakfast option A uses scrambled eggs,
+     no other meal's option can use scrambled eggs. Track recipe names used and ensure uniqueness.
+
+4. OPTIONS: 2-3 interchangeable options per meal (letra A, B, C). Similar macros between options (±10%).
+
+5. MACROS PER OPTION: include kcal, prot, carbs, grasas for each option.
+
+6. RECIPES: 2-4 practical steps using ONLY the foods listed in that specific option.
+
+7. DIETARY RESTRICTIONS: respect ALL client restrictions, intolerances and food preferences.
+
+8. TOTALES: sum of option A across all meals.
+
+RESPOND ONLY WITH VALID JSON matching this exact structure (no markdown, no extra text):
+${jsonExample}
 
 Client data:
-${texto}`
-      : `Genera un plan de comidas diario completo para este cliente.
-${instrucciones ? `Instrucciones del coach: ${instrucciones}` : ''}
-Número de comidas: ${numComidas || 'las que necesite el cliente'}
-
-RESPONDE SOLO CON ESTE JSON (sin texto adicional):
-{
-  "comidas": [
-    {
-      "nombre": "Desayuno",
-      "alimentos": [
-        { "nombre": "Avena", "gramos": 80 },
-        { "nombre": "Leche desnatada", "gramos": 300 }
-      ]
-    }
-  ],
-  "totales": { "kcal": 2200, "prot": 165, "carbs": 250, "grasas": 70 },
-  "notas": "Notas opcionales para el cliente"
-}
-
-Datos del cliente:
 ${texto}`;
 
     const raw = await callClaude({
@@ -724,11 +743,56 @@ ${texto}`;
       model: MODEL_COACH,
       system,
       messages: [{ role: 'user', content: prompt }],
-      maxTokens: 3000
+      maxTokens: 6000
     });
 
     const clean = raw.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
     const dieta = JSON.parse(clean);
+
+    // ── Validación y normalización post-generación ────────────────────────
+    // 1. Asegurar que cada opción tiene proteína (fallback: aviso en notas)
+    let warnings = [];
+    (dieta.comidas || []).forEach((m, mi) => {
+      (m.opciones || []).forEach((op, oi) => {
+        if ((op.prot || 0) < 10) {
+          warnings.push(`Meal ${mi+1} option ${op.letra}: low protein (${op.prot || 0}g)`);
+        }
+      });
+    });
+    if (warnings.length) {
+      dieta._warnings = warnings;
+      console.warn('[DietaIA] Protein warnings:', warnings);
+    }
+
+    // 2. Detectar recetas repetidas y marcarlas
+    const recipesSeen = new Set();
+    (dieta.comidas || []).forEach(m => {
+      (m.opciones || []).forEach(op => {
+        const nameEs = op.receta_es?.nombre?.toLowerCase().trim();
+        const nameEn = op.receta_en?.nombre?.toLowerCase().trim();
+        if (nameEs && recipesSeen.has(nameEs)) {
+          console.warn('[DietaIA] Repeated recipe detected:', nameEs);
+        }
+        if (nameEs) recipesSeen.add(nameEs);
+        if (nameEn) recipesSeen.add(nameEn);
+      });
+    });
+
+    // 3. Retrocompatibilidad: formato antiguo sin opciones
+    if (dieta.comidas?.[0]?.alimentos && !dieta.comidas[0]?.opciones) {
+      dieta.comidas = dieta.comidas.map(c => ({
+        nombre_es: c.nombre || c.nombre_es || '',
+        nombre_en: c.nombre_en || c.nombre || '',
+        opciones: [{
+          letra: 'A',
+          alimentos_es: c.alimentos,
+          alimentos_en: c.alimentos,
+          kcal: null, prot: null, carbs: null, grasas: null,
+          receta_es: null, receta_en: null
+        }]
+      }));
+    }
+
     res.json(dieta);
 
   } catch(e) {
