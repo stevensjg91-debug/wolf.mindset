@@ -6,9 +6,15 @@ const crypto = require('crypto');
 const https  = require('https');
 const urlMod = require('url');
 
-const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY  || 'BGXVsTmH4dCRzJk2vPoqMX08DtwH_EBk2fF42nIQGfubO9utSacLfZxCF4wTBQxDrH50S_8aZuUg5oKppHqF51A';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'uLGKx8F9YsP0gqhVqFuT_MKepxPBOQrjEX0bdnGxAoY';
+const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 const VAPID_SUBJECT     = process.env.VAPID_SUBJECT     || 'mailto:coach@wolfmindset.com';
+
+// Las claves VAPID deben estar en .env — nunca hardcodeadas en el código.
+// Si no están configuradas, las notificaciones push se desactivan sin romper la app.
+if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+  console.warn('⚠️  VAPID_PUBLIC_KEY o VAPID_PRIVATE_KEY no definidas en .env. Las notificaciones push estarán desactivadas.');
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function b64u(buf){ return buf.toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''); }
@@ -49,6 +55,7 @@ function makeVapidJwt(audience) {
 }
 
 async function sendWebPush(subscription, payload) {
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return 0; // push desactivado sin keys
   try {
     const endpoint  = subscription.endpoint;
     const parsed    = new urlMod.URL(endpoint);
@@ -162,6 +169,16 @@ app.use(express.static(path.join(__dirname, '../public'), { index: false }));
 app.use('/api/auth', authRouter);
 
 app.post('/api/reload-ejercicios', (req, res) => {
+  // Verificar que es el coach — mismo check que authMiddleware + coachOnly
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'No autorizado' });
+  try {
+    const jwt = require('jsonwebtoken');
+    const user = jwt.verify(token, process.env.JWT_SECRET);
+    if (user.role !== 'coach') return res.status(403).json({ error: 'Solo el coach' });
+  } catch(e) {
+    return res.status(401).json({ error: 'Token inválido' });
+  }
   try {
     const { dbRun, saveToDisk } = require('./database');
     dbRun('DELETE FROM ejercicios_db', []);
@@ -218,7 +235,9 @@ app.get('/api/eventos', (req, res) => {
   let user;
   try {
     const jwt = require('jsonwebtoken');
-    const JWT_SECRET = process.env.JWT_SECRET || 'wolfmindset_secret';
+    // Usar el mismo JWT_SECRET que auth.js — definido en .env
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) return res.status(500).end();
     user = jwt.verify(token, JWT_SECRET);
   } catch(e) {
     return res.status(401).end();
