@@ -31,8 +31,24 @@ function getCoachId() {
 function getNombreCliente(clienteId) {
   try {
     const c = dbGet('SELECT u.nombre FROM clientes c JOIN users u ON c.user_id=u.id WHERE c.id=?', [clienteId]);
-    return c ? c.nombre : 'Un cliente';
-  } catch(e) { return 'Un cliente'; }
+    return c ? c.nombre : 'A client';
+  } catch(e) { return 'A client'; }
+}
+
+// Obtener idioma de un usuario por su userId
+function getUserLang(userId) {
+  try {
+    const u = dbGet('SELECT lang FROM users WHERE id=?', [userId]);
+    return u?.lang || 'es';
+  } catch(e) { return 'es'; }
+}
+
+// Obtener idioma del coach
+function getCoachLang() {
+  try {
+    const coach = dbGet("SELECT lang FROM users WHERE role='coach' LIMIT 1");
+    return coach?.lang || 'es';
+  } catch(e) { return 'es'; }
 }
 
 function ensureClientArchiveSchema() {
@@ -50,7 +66,7 @@ function getClienteConUsuario(clienteId) {
 function borrarClientePermanentemente(clienteId) {
   const c = getClienteConUsuario(clienteId);
   if (!c) return null;
-  if (c.role && c.role !== 'cliente') throw new Error('Este usuario no es cliente');
+  if (c.role && c.role !== 'cliente') throw new Error('This user is not a client');
 
   // Hijos directos de estructuras anidadas
   const dias = dbAll('SELECT id FROM dias_entreno WHERE cliente_id=?', [clienteId]);
@@ -305,8 +321,12 @@ router.post('/clientes/:id/peso', (req, res) => {
   const coachId = getCoachId();
   if(coachId) {
     const nombre = getNombreCliente(req.params.id);
-    const detalle = grasa ? ` · ${grasa}% grasa` : '';
-    crearNotificacion(coachId, 'peso_registrado', `⚖️ ${nombre} ha registrado su peso: ${peso}kg${detalle}`);
+    const isEn = getCoachLang() === 'en';
+    const detalle = grasa ? ` · ${grasa}%${isEn ? ' body fat' : ' grasa'}` : '';
+    const msg = isEn
+      ? `⚖️ ${nombre} logged their weight: ${peso}kg${detalle}`
+      : `⚖️ ${nombre} ha registrado su peso: ${peso}kg${detalle}`;
+    crearNotificacion(coachId, 'peso_registrado', msg);
   }
   saveToDisk();
   res.json({ ok: true });
@@ -920,12 +940,15 @@ router.post('/clientes/:id/sesiones', (req, res) => {
     const coachId = getCoachId();
     if(coachId) {
       const nombre = getNombreCliente(req.params.id);
+      const isEn = getCoachLang() === 'en';
       const durStr = duracion_min ? ` (${duracion_min} min)` : '';
-      const diaStr = dia_nombre || 'entreno';
+      const diaStr = dia_nombre || (isEn ? 'workout' : 'entreno');
 
       // Notificación de sesión completada
       crearNotificacion(coachId, 'sesion_completada',
-        `💪 ${nombre} ha terminado: ${diaStr}${durStr}`);
+        isEn
+          ? `💪 ${nombre} finished: ${diaStr}${durStr}`
+          : `💪 ${nombre} ha terminado: ${diaStr}${durStr}`);
 
       // Notificaciones adicionales por notas/sensaciones con texto
       if(series && series.length) {
@@ -1503,13 +1526,19 @@ router.post('/clientes/:id/checkin', (req, res) => {
     const coachId = getCoachId();
     if(coachId) {
       const nombre = getNombreCliente(req.params.id);
+      const isEn = getCoachLang() === 'en';
       const detalles = [];
-      if(sueno != null && sueno !== '') detalles.push(`sueño ${sueno}/10`);
-      if(energia != null && energia !== '') detalles.push(`energía ${energia}/10`);
-      if(peso != null && peso !== '') detalles.push(`peso ${peso}kg`);
+      if(sueno != null && sueno !== '') detalles.push(isEn ? `sleep ${sueno}/10` : `sueño ${sueno}/10`);
+      if(energia != null && energia !== '') detalles.push(isEn ? `energy ${energia}/10` : `energía ${energia}/10`);
+      if(peso != null && peso !== '') detalles.push(`${isEn ? 'weight' : 'peso'} ${peso}kg`);
       const semanaTxt = semana ? ` (${semana})` : '';
-      const resumen = detalles.length ? detalles.join(' · ') : 'ha enviado su check-in';
-      crearNotificacion(coachId, 'checkin_cliente', `🧠 ${nombre} ha enviado check-in${semanaTxt}: ${resumen}`);
+      const resumen = detalles.length
+        ? detalles.join(' · ')
+        : (isEn ? 'sent their check-in' : 'ha enviado su check-in');
+      crearNotificacion(coachId, 'checkin_cliente',
+        isEn
+          ? `🧠 ${nombre} sent check-in${semanaTxt}: ${resumen}`
+          : `🧠 ${nombre} ha enviado check-in${semanaTxt}: ${resumen}`);
     }
 
     saveToDisk();
@@ -1543,7 +1572,11 @@ router.post('/clientes/:id/valoracion-sesion', (req, res) => {
         const coachId = getCoachId();
         if(coachId) {
           const nombre = getNombreCliente(req.params.id);
-          crearNotificacion(coachId, 'valoracion_entreno', `⭐ ${nombre} valoró su entreno: "${String(valoracion).trim()}"`);
+          const isEn = getCoachLang() === 'en';
+          crearNotificacion(coachId, 'valoracion_entreno',
+            isEn
+              ? `⭐ ${nombre} rated their workout: "${String(valoracion).trim()}"`
+              : `⭐ ${nombre} valoró su entreno: "${String(valoracion).trim()}"`);
         }
       }
 
@@ -2994,8 +3027,11 @@ async function lanzarAnalisisAutomatico(sesionId, clienteId, coachId) {
     // Notificar al coach que hay un análisis pendiente
     const coachNotifId = coachId || getCoachId();
     if (coachNotifId) {
+      const isEn = getCoachLang() === 'en';
       crearNotificacion(coachNotifId, 'analisis_pendiente',
-        `🤖 Análisis listo: ${cliente.nombre} — ${sesion.dia_nombre}. Revisa y aprueba.`);
+        isEn
+          ? `🤖 Analysis ready: ${cliente.nombre} — ${sesion.dia_nombre}. Review and approve.`
+          : `🤖 Análisis listo: ${cliente.nombre} — ${sesion.dia_nombre}. Revisa y aprueba.`);
     }
     console.log(`[AnalisisAuto] OK sesión ${sesionId} cliente ${clienteId}`);
   } catch(e) {
