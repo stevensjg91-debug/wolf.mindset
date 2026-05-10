@@ -1857,7 +1857,13 @@ async function renderCoach(s){
   else if(s==='mensajes'){el.innerHTML=hMensajesCoach();coachMsgsInit();}
   else if(s==='equipo'){el.innerHTML=hEquipo();initEquipo();}
   else if(s==='ia'){
+  // Asegurar que tenemos clientes en caché para el selector
+  if(!window._clientesCache || !window._clientesCache.length) {
+    api('/clientes').then(cl => { window._clientesCache = cl; el.innerHTML=hIACoach(); }).catch(()=>{});
+  }
   el.innerHTML=hIACoach();
+  _iaSelectedClienteId = null;
+  _iaSelectedClienteNombre = null;
   iaH=[{role:'assistant',content:tc('Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?')}];
   fetch('/api/images-status').then(r=>r.json()).then(d=>{
     const btn=document.getElementById('btn_img_status');
@@ -5806,26 +5812,120 @@ document.addEventListener('keydown', e => {
 
 
 // ═══ IA COACH ═════════════════════════════════════════
-function hIACoach(){return`<div class="ia-chip" style="margin-bottom:12px"><div class="ia-chip-title">${COACH_LANG==='en'?'Private AI coach assistant':'IA privada del coach'}</div>${COACH_LANG==='en'?'Generate full routines and diets, analyse progress or request specific adjustments for any client.':'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.'}</div>
+let _iaSelectedClienteId = null;
+let _iaSelectedClienteNombre = null;
 
-<div class="sec" style="display:flex;flex-direction:column;height:480px">
+function hIACoach(){
+  // Construir opciones del selector de clientes
+  const clientes = window._clientesCache || [];
+  const optsHtml = clientes.map(c =>
+    `<option value="${c.id}" data-nombre="${c.nombre}">${c.nombre}</option>`
+  ).join('');
+
+  return `<div class="ia-chip" style="margin-bottom:12px">
+  <div class="ia-chip-title">${COACH_LANG==='en'?'Private AI coach assistant':'IA privada del coach'}</div>
+  ${COACH_LANG==='en'?'Generate full routines and diets, analyse progress or request specific adjustments for any client.':'Genera rutinas y dietas completas, analiza progreso o pide ajustes específicos para cualquier cliente.'}
+</div>
+
+<div class="sec" style="display:flex;flex-direction:column;height:520px">
+  <!-- Selector de cliente -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+    <span style="font-size:11px;color:var(--tx3);white-space:nowrap">${COACH_LANG==='en'?'Client context:':'Contexto cliente:'}</span>
+    <select id="ia_cliente_sel" onchange="iaSetCliente(this)"
+      style="flex:1;padding:7px 10px;border:0.5px solid var(--br);border-radius:8px;background:var(--s2);color:var(--sv);font-size:12px;font-family:inherit">
+      <option value="">${COACH_LANG==='en'?'— General (no client) —':'— General (sin cliente) —'}</option>
+      ${optsHtml}
+    </select>
+    <div id="ia_cliente_badge" style="display:none;padding:3px 8px;border-radius:6px;background:rgba(37,99,235,.15);border:0.5px solid rgba(59,130,246,.3);font-size:11px;color:#93c5fd;white-space:nowrap">📂 ${COACH_LANG==='en'?'loaded':'cargado'}</div>
+  </div>
+
   <div class="chat-msgs" id="iaMsgs" style="flex:1;background:var(--b);border:0.5px solid var(--br);border-radius:10px;padding:11px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
     <div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${tc('Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?')}</div>
   </div>
   <div class="typing" id="iaTyping">${COACH_LANG==='en'?'processing...':'procesando...'}</div>
   <div style="display:flex;gap:8px">
-    <input class="inp" id="iaIn" placeholder="${COACH_LANG==='en'?'E.g. generate routine for Carlos, 4 days, bulk...':'Ej: genera rutina para Carlos, 4 días, volumen...'}" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')sendIA()"/>
+    <input class="inp" id="iaIn" placeholder="${COACH_LANG==='en'?'E.g. review Steven\'s routine...':'Ej: revisa la rutina de Steven...'}" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')sendIA()"/>
     <button class="btn" onclick="sendIA()">${tc('Enviar')}</button>
   </div>
 </div>`;}
 
+function iaSetCliente(sel) {
+  const id = sel.value;
+  const nombre = sel.options[sel.selectedIndex]?.getAttribute('data-nombre') || '';
+  _iaSelectedClienteId = id || null;
+  _iaSelectedClienteNombre = nombre || null;
+  const badge = document.getElementById('ia_cliente_badge');
+  if (badge) {
+    if (id) {
+      badge.style.display = 'inline-block';
+      badge.textContent = `📂 ${nombre} ${COACH_LANG==='en'?'loaded':'cargado'}`;
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+  // Resetear historial al cambiar de cliente
+  iaH = [{role:'assistant', content: tc('Hola coach, listo. Puedo generar rutinas y dietas completas, analizar progreso y sugerir ajustes. ¿Qué necesitas?')}];
+  const msgs = document.getElementById('iaMsgs');
+  if (msgs) msgs.innerHTML = `<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${iaH[0].content}</div>`;
+  if (id) {
+    // Mensaje de confirmación
+    const confirmMsg = COACH_LANG==='en'
+      ? `Client context loaded: ${nombre}. I now have access to their full routine, diet, session history and check-ins. What do you want to know?`
+      : `Contexto del cliente cargado: ${nombre}. Ahora tengo acceso a su rutina completa, dieta, historial de sesiones y check-ins. ¿Qué quieres saber?`;
+    iaH.push({role:'assistant', content: confirmMsg});
+    if (msgs) msgs.innerHTML += `<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${confirmMsg}</div>`;
+  }
+}
+
 async function sendIA(){
-  const inp=document.getElementById('iaIn'),msg=inp.value.trim();if(!msg)return;inp.value='';
+  const inp=document.getElementById('iaIn'), msg=inp.value.trim();
+  if(!msg) return;
+  inp.value='';
   const msgs=document.getElementById('iaMsgs');
-  msgs.innerHTML+=`<div class="msg msg-u">${msg}</div>`;msgs.scrollTop=msgs.scrollHeight;
-  iaH.push({role:'user',content:msg});document.getElementById('iaTyping').style.display='block';
-  try{const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:iaH,system:`Eres el asistente IA privado del coach WolfMindset. Ayudas con progresión de carga, periodización, ajustes calóricos, generación de rutinas y dietas completas. ${COACH_LANG==='en'?'Always respond in English. Technical and concise.':'Respuestas técnicas y concisas en español.'}`})});iaH.push({role:'assistant',content:d.reply});document.getElementById('iaTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${d.reply}</div>`;msgs.scrollTop=msgs.scrollHeight;}
-  catch(e){document.getElementById('iaTyping').style.display='none';msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>Error. Inténtalo de nuevo.</div>`;}
+  msgs.innerHTML+=`<div class="msg msg-u">${msg}</div>`;
+  msgs.scrollTop=msgs.scrollHeight;
+  iaH.push({role:'user', content:msg});
+  document.getElementById('iaTyping').style.display='block';
+
+  try {
+    const body = {
+      messages: iaH,
+      lang: COACH_LANG || 'es'
+    };
+    // Pasar cliente seleccionado en el dropdown
+    if (_iaSelectedClienteId) {
+      body.clienteId = _iaSelectedClienteId;
+    } else {
+      // Intentar detectar nombre de cliente en el mensaje
+      body.clienteNombre = msg;
+    }
+
+    const d = await api('/ia/coach-chat', {method:'POST', body:JSON.stringify(body)});
+
+    // Si la IA resolvió un cliente automáticamente, actualizar el selector
+    if (d.clienteCargado && !_iaSelectedClienteId) {
+      const sel = document.getElementById('ia_cliente_sel');
+      if (sel) {
+        const opt = [...sel.options].find(o => String(o.value) === String(d.clienteCargado.id));
+        if (opt) {
+          sel.value = d.clienteCargado.id;
+          iaSetCliente(sel);
+          // No duplicar el mensaje de confirmación — ya viene en la respuesta
+          iaH = iaH.filter(m => m.role !== 'assistant' || !m.content.includes('Contexto del cliente cargado'));
+        }
+      }
+    }
+
+    iaH.push({role:'assistant', content:d.reply});
+    document.getElementById('iaTyping').style.display='none';
+    msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${d.reply}</div>`;
+    msgs.scrollTop=msgs.scrollHeight;
+
+  } catch(e) {
+    document.getElementById('iaTyping').style.display='none';
+    const errMsg = COACH_LANG==='en' ? 'Error. Try again.' : 'Error. Inténtalo de nuevo.';
+    msgs.innerHTML+=`<div class="msg msg-b"><div class="msg-sender">${USER?.nombre||'Coach'}</div>${errMsg}</div>`;
+  }
 }
 
 // ═══ CLIENTE ══════════════════════════════════════════
