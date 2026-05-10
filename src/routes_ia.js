@@ -150,79 +150,140 @@ function buildClienteContexto(clienteId, { lang = 'es', incluirHistorialSesiones
     ORDER BY fecha DESC
     LIMIT 6`, [clienteId]);
 
+  // ── Usar lang del cliente si no se pasó explícitamente ──────────────────
+  const clienteLang = cl.lang || lang;
+  const en = clienteLang === 'en';
+
+  // ── Labels bilingües (usados para el contexto que recibe la IA) ──────────
+  const L = {
+    profile:          en ? '=== CLIENT PROFILE ===' : '=== PERFIL DEL CLIENTE ===',
+    name:             en ? 'Name' : 'Nombre',
+    user:             en ? 'Username' : 'Usuario',
+    goal:             en ? 'Goal' : 'Objetivo',
+    level:            en ? 'Level' : 'Nivel',
+    sex:              en ? 'Sex' : 'Sexo',
+    age:              en ? 'age' : 'años',
+    weight:           en ? 'Current weight' : 'Peso actual',
+    height:           en ? 'Height' : 'Altura',
+    bodyFat:          en ? 'Body fat' : 'Grasa corporal',
+    waist:            en ? 'Waist' : 'Cintura',
+    activity:         en ? 'Activity' : 'Actividad',
+    dietType:         en ? 'Diet type' : 'Dieta tipo',
+    injuries:         en ? 'Injuries / limitations' : 'Lesiones / limitaciones',
+    foodsNo:          en ? 'Foods they cannot eat' : 'Alimentos que no puede comer',
+    coachNotes:       en ? 'Coach notes' : 'Notas del coach',
+    deficiencies:     en ? 'Deficiencies' : 'Deficiencias',
+    macros:           en ? '=== MACROS & NUTRITION PLAN ===' : '=== MACROS Y PLAN NUTRICIONAL ===',
+    kcal:             en ? 'Kcal' : 'Kcal',
+    protein:          en ? 'Protein' : 'Proteína',
+    carbs:            en ? 'Carbs' : 'Carbos',
+    fats:             en ? 'Fats' : 'Grasas',
+    freeM:            en ? 'Free meal' : 'Comida libre',
+    suppl:            en ? 'Supplementation' : 'Suplementación',
+    therapeutic:      en ? 'Therapeutic foods' : 'Alimentos terapéuticos',
+    dietHeader:       (n) => en ? `=== CURRENT DIET (${n} meals) ===` : `=== DIETA ACTUAL (${n} comidas) ===`,
+    dietNone:         en ? '=== DIET: Not assigned yet ===' : '=== DIETA: Sin dieta asignada aún ===',
+    noFoods:          en ? '(no foods)' : '(sin alimentos)',
+    routineHeader:    (n) => en ? `=== CURRENT ROUTINE (${n} days) ===` : `=== RUTINA ACTUAL (${n} días) ===`,
+    routineNone:      en ? '=== ROUTINE: Not assigned yet ===' : '=== RUTINA: Sin rutina asignada aún ===',
+    noExercises:      en ? '(no exercises assigned)' : '(Sin ejercicios asignados)',
+    lastReal:         en ? 'last real' : 'último real',
+    rest:             en ? 'Rest' : 'Descanso',
+    note:             en ? 'Note' : 'Nota',
+    target:           en ? 'target' : 'objetivo',
+    historyHeader:    en ? '=== WORKOUT HISTORY ===' : '=== HISTORIAL DE ENTRENAMIENTOS ===',
+    totalSessions:    en ? 'Total completed sessions' : 'Total sesiones completadas',
+    daysSince:        en ? 'Days since last workout' : 'Días desde último entreno',
+    lastWorkout:      en ? 'Last workout' : 'Último entreno',
+    noSessions:       en ? 'No sessions recorded yet' : 'Sin sesiones registradas aún',
+    recentSessions:   en ? 'Recent sessions with detail:' : 'Últimas sesiones con detalle:',
+    rating:           en ? 'Rating' : 'Valoración',
+    checkinHeader:    (w) => en ? `=== LAST CHECK-IN (Week ${w || '—'}) ===` : `=== ÚLTIMO CHECK-IN (Semana ${w || '—'}) ===`,
+    sleep:            en ? 'Sleep' : 'Sueño',
+    energy:           en ? 'Energy' : 'Energía',
+    photosHeader:     (n) => en ? `=== PROGRESS PHOTOS (${n} recorded) ===` : `=== FOTOS DE PROGRESO (${n} registradas) ===`,
+    photo:            en ? 'Photo' : 'Foto',
+    coachAnalysis:    en ? 'Coach analysis' : 'Análisis coach',
+    noPhotos:         en ? 'Progress photos: None recorded yet' : 'Fotos de progreso: Sin fotos registradas aún',
+    generalHeader:    en ? '=== GENERAL STATUS ===' : '=== ESTADO GENERAL ===',
+    weeksIn:          en ? 'Weeks in program' : 'Semanas en el programa',
+    weekMsg:          en ? 'Week message' : 'Mensaje de la semana',
+    subscription:     en ? 'Subscription' : 'Suscripción',
+    until:            en ? 'until' : 'hasta',
+  };
+
   // ══ Construir texto del contexto ══════════════════════════════════════════
   const lines = [];
 
   // Perfil
-  lines.push(`=== PERFIL DEL CLIENTE ===`);
-  lines.push(`Nombre: ${cl.nombre}`);
-  lines.push(`Usuario: ${cl.username}`);
-  lines.push(`Objetivo: ${cl.objetivo || '—'}`);
-  lines.push(`Nivel: ${cl.nivel || '—'}`);
-  lines.push(`Sexo: ${cl.sexo || '—'} | Edad: ${cl.edad || '—'} años`);
-  lines.push(`Peso actual: ${cl.peso_actual ? cl.peso_actual + ' kg' : '—'} | Altura: ${cl.altura ? cl.altura + ' cm' : '—'}`);
-  if (ultimoPeso?.grasa)   lines.push(`Grasa corporal: ${ultimoPeso.grasa}%`);
-  if (ultimoPeso?.cintura) lines.push(`Cintura: ${ultimoPeso.cintura} cm`);
-  lines.push(`Actividad: ${cl.actividad || '—'} | Dieta tipo: ${cl.dieta_tipo || '—'}`);
-  if (cl.lesiones)         lines.push(`Lesiones / limitaciones: ${cl.lesiones}`);
-  if (cl.alimentos_no)     lines.push(`Alimentos que no puede comer: ${cl.alimentos_no}`);
-  if (cl.observaciones)    lines.push(`Notas del coach: ${cl.observaciones}`);
-  if (cl.deficiencias)     lines.push(`Deficiencias: ${cl.deficiencias}`);
+  lines.push(L.profile);
+  lines.push(`${L.name}: ${cl.nombre}`);
+  lines.push(`${L.user}: ${cl.username}`);
+  lines.push(`${L.goal}: ${cl.objetivo || '—'}`);
+  lines.push(`${L.level}: ${cl.nivel || '—'}`);
+  lines.push(`${L.sex}: ${cl.sexo || '—'} | ${L.age}: ${cl.edad || '—'} ${en ? 'y/o' : 'años'}`);
+  lines.push(`${L.weight}: ${cl.peso_actual ? cl.peso_actual + ' kg' : '—'} | ${L.height}: ${cl.altura ? cl.altura + ' cm' : '—'}`);
+  if (ultimoPeso?.grasa)   lines.push(`${L.bodyFat}: ${ultimoPeso.grasa}%`);
+  if (ultimoPeso?.cintura) lines.push(`${L.waist}: ${ultimoPeso.cintura} cm`);
+  lines.push(`${L.activity}: ${cl.actividad || '—'} | ${L.dietType}: ${cl.dieta_tipo || '—'}`);
+  if (cl.lesiones)         lines.push(`${L.injuries}: ${cl.lesiones}`);
+  if (cl.alimentos_no)     lines.push(`${L.foodsNo}: ${cl.alimentos_no}`);
+  if (cl.observaciones)    lines.push(`${L.coachNotes}: ${cl.observaciones}`);
+  if (cl.deficiencias)     lines.push(`${L.deficiencies}: ${cl.deficiencias}`);
 
-  // Macros asignadas
-  lines.push(`\n=== MACROS Y PLAN NUTRICIONAL ===`);
-  lines.push(`Kcal: ${cl.kcal_internas || '—'} | Proteína: ${cl.prot || '—'}g | Carbos: ${cl.carbs || '—'}g | Grasas: ${cl.fat || '—'}g`);
-  if (cl.comida_libre)     lines.push(`Comida libre: ${cl.comida_libre}`);
-  if (planMeta?.suplementacion) lines.push(`Suplementación: ${planMeta.suplementacion}`);
-  if (planMeta?.alimentos_therapeuticos) lines.push(`Alimentos terapéuticos: ${planMeta.alimentos_therapeuticos}`);
+  // Macros
+  lines.push(`\n${L.macros}`);
+  lines.push(`${L.kcal}: ${cl.kcal_internas || '—'} | ${L.protein}: ${cl.prot || '—'}g | ${L.carbs}: ${cl.carbs || '—'}g | ${L.fats}: ${cl.fat || '—'}g`);
+  if (cl.comida_libre)                        lines.push(`${L.freeM}: ${cl.comida_libre}`);
+  if (planMeta?.suplementacion)               lines.push(`${L.suppl}: ${planMeta.suplementacion}`);
+  if (planMeta?.alimentos_therapeuticos)      lines.push(`${L.therapeutic}: ${planMeta.alimentos_therapeuticos}`);
 
   // Dieta
   if (dieta.length > 0) {
-    lines.push(`\n=== DIETA ACTUAL (${dieta.length} comidas) ===`);
+    lines.push(`\n${L.dietHeader(dieta.length)}`);
     dieta.forEach(c => {
       const aliStr = c.alimentos.map(a => `${a.nombre} ${a.gramos}g`).join(', ');
-      lines.push(`• ${c.comida}: ${aliStr || '(sin alimentos)'}`);
+      lines.push(`• ${c.comida}: ${aliStr || L.noFoods}`);
     });
   } else {
-    lines.push(`\n=== DIETA: Sin dieta asignada aún ===`);
+    lines.push(`\n${L.dietNone}`);
   }
 
   // Rutina
   if (rutina.length > 0) {
-    lines.push(`\n=== RUTINA ACTUAL (${rutina.length} días) ===`);
+    lines.push(`\n${L.routineHeader(rutina.length)}`);
     rutina.forEach(d => {
       lines.push(`\n▸ ${d.dia}${d.grupo ? ' — ' + d.grupo : ''}`);
       if (d.ejercicios.length === 0) {
-        lines.push('  (Sin ejercicios asignados)');
+        lines.push(`  (${L.noExercises})`);
       } else {
         d.ejercicios.forEach(e => {
           const progData = progresion[e.nombre];
-          const pesoReal = progData ? ` [último real: ${progData.ultimo_peso}kg]` : '';
-          const nota     = e.nota_coach ? ` | Nota: ${e.nota_coach}` : '';
-          lines.push(`  - ${e.nombre}: ${e.series}x${e.reps} @ ${e.peso_objetivo || 0}kg objetivo${pesoReal} | Descanso: ${e.descanso}s${e.rir != null ? ' | RIR: ' + e.rir : ''}${nota}`);
+          const pesoReal = progData ? ` [${L.lastReal}: ${progData.ultimo_peso}kg]` : '';
+          const nota     = e.nota_coach ? ` | ${L.note}: ${e.nota_coach}` : '';
+          lines.push(`  - ${e.nombre}: ${e.series}x${e.reps} @ ${e.peso_objetivo || 0}kg ${L.target}${pesoReal} | ${L.rest}: ${e.descanso}s${e.rir != null ? ' | RIR: ' + e.rir : ''}${nota}`);
         });
       }
     });
   } else {
-    lines.push(`\n=== RUTINA: Sin rutina asignada aún ===`);
+    lines.push(`\n${L.routineNone}`);
   }
 
   // Historial de sesiones
-  lines.push(`\n=== HISTORIAL DE ENTRENAMIENTOS ===`);
-  lines.push(`Total sesiones completadas: ${totalSesiones?.c || 0}`);
+  lines.push(`\n${L.historyHeader}`);
+  lines.push(`${L.totalSessions}: ${totalSesiones?.c || 0}`);
   if (diasSinEntreno !== null) {
-    lines.push(`Días desde último entreno: ${diasSinEntreno}`);
-    lines.push(`Último entreno: ${ultimaSesion.dia_nombre} (${ultimaSesion.fecha?.split('T')[0]}) — ${ultimaSesion.estado}`);
+    lines.push(`${L.daysSince}: ${diasSinEntreno}`);
+    lines.push(`${L.lastWorkout}: ${ultimaSesion.dia_nombre} (${ultimaSesion.fecha?.split('T')[0]}) — ${ultimaSesion.estado}`);
   } else {
-    lines.push('Sin sesiones registradas aún');
+    lines.push(L.noSessions);
   }
 
   if (sesionesRecientes.length > 0) {
-    lines.push(`\nÚltimas sesiones con detalle:`);
+    lines.push(`\n${L.recentSessions}`);
     sesionesRecientes.forEach(s => {
-      lines.push(`\n• ${s.dia_nombre} — ${s.fecha?.split('T')[0]} (${s.estado}, ${s.duracion_min || 0} min)${s.valoracion ? ' | Valoración: ' + s.valoracion : ''}`);
+      lines.push(`\n• ${s.dia_nombre} — ${s.fecha?.split('T')[0]} (${s.estado}, ${s.duracion_min || 0} min)${s.valoracion ? ' | ' + L.rating + ': ' + s.valoracion : ''}`);
       if (s.series.length > 0) {
-        // Agrupar series por ejercicio
         const porEjercicio = {};
         s.series.forEach(sl => {
           if (!porEjercicio[sl.ejercicio_nombre]) porEjercicio[sl.ejercicio_nombre] = [];
@@ -237,30 +298,30 @@ function buildClienteContexto(clienteId, { lang = 'es', incluirHistorialSesiones
 
   // Check-ins
   if (ultimoCheckin) {
-    lines.push(`\n=== ÚLTIMO CHECK-IN (Semana ${ultimoCheckin.semana || '—'}) ===`);
-    lines.push(`Sueño: ${ultimoCheckin.sueno}/10 | Energía: ${ultimoCheckin.energia}/10 | Peso: ${ultimoCheckin.peso || '—'}kg`);
+    lines.push(`\n${L.checkinHeader(ultimoCheckin.semana)}`);
+    lines.push(`${L.sleep}: ${ultimoCheckin.sueno}/10 | ${L.energy}: ${ultimoCheckin.energia}/10 | ${en ? 'Weight' : 'Peso'}: ${ultimoCheckin.peso || '—'}kg`);
   }
 
-  // Fotos y análisis de progreso
+  // Fotos
   if (fotosRecientes.length > 0) {
-    lines.push(`\n=== FOTOS DE PROGRESO (${fotosRecientes.length} registradas) ===`);
+    lines.push(`\n${L.photosHeader(fotosRecientes.length)}`);
     fotosRecientes.forEach((f, i) => {
-      lines.push(`Foto ${i + 1} — ${f.fecha?.split('T')[0]} (${f.tipo || 'frente'})`);
-      if (f.analysis) lines.push(`  Análisis coach: ${f.analysis}`);
+      lines.push(`${L.photo} ${i + 1} — ${f.fecha?.split('T')[0]} (${f.tipo || 'front'})`);
+      if (f.analysis) lines.push(`  ${L.coachAnalysis}: ${f.analysis}`);
     });
   } else {
-    lines.push(`\nFotos de progreso: Sin fotos registradas aún`);
+    lines.push(`\n${L.noPhotos}`);
   }
 
-  // Semanas y mensaje
-  lines.push(`\n=== ESTADO GENERAL ===`);
-  lines.push(`Semanas en el programa: ${cl.semanas || 1}`);
-  if (cl.mensaje_semana) lines.push(`Mensaje de la semana: ${cl.mensaje_semana}`);
-  if (sub) lines.push(`Suscripción: ${sub.estado}${sub.fecha_fin ? ' hasta ' + sub.fecha_fin : ''}`);
+  // Estado general
+  lines.push(`\n${L.generalHeader}`);
+  lines.push(`${L.weeksIn}: ${cl.semanas || 1}`);
+  if (cl.mensaje_semana) lines.push(`${L.weekMsg}: ${cl.mensaje_semana}`);
+  if (sub) lines.push(`${L.subscription}: ${sub.estado}${sub.fecha_fin ? ' ' + L.until + ' ' + sub.fecha_fin : ''}`);
 
   return {
     cliente: cl,
-    isEn: cl.lang === 'en',
+    isEn: en,
     texto: lines.filter(l => l !== undefined).join('\n')
   };
 }
