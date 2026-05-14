@@ -924,7 +924,7 @@ function clienteVarSelect2(mi, vi, btn){
           <div style="width:4px;height:4px;border-radius:50%;background:${acc};flex-shrink:0"></div>
           <div style="font-size:12px;color:rgba(255,255,255,.8);line-height:1.4">${a.nombre||a.nombre}</div>
         </div>
-        <div style="font-size:13px;font-weight:700;color:${accLight};margin-left:8px;white-space:nowrap;font-family:'Bebas Neue',sans-serif">${a.cantidad||a.gramos+'g'}</div>
+        <div style="font-size:13px;font-weight:700;color:${accLight};margin-left:8px;white-space:nowrap;font-family:'Bebas Neue',sans-serif">${a.cantidad ? a.cantidad : (a.gramos != null ? a.gramos+'g' : '')}</div>
       </div>`).join('');
   }
   // Style buttons
