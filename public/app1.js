@@ -2607,8 +2607,8 @@ function switchClienteTab(tab, btn) {
         const fecha = new Date(s.fecha).toLocaleDateString(COACH_LANG==='en'?'en-GB':'es-ES',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
         const durStr = s.duracion_min ? ' · '+s.duracion_min+' min' : '';
         const totalSeries = s.series.length;
-        // Primeras 3 sesiones abiertas, el resto colapsadas
-        const openByDefault = si < 3;
+        // Todas las sesiones colapsadas por defecto
+        const openByDefault = false;
         const accId = 'ses_acc_'+s.id;
         return '<div style="background:var(--s2);border:0.5px solid '+(incompleto?'rgba(245,158,11,.4)':'rgba(34,197,94,.2)')+';border-radius:12px;margin-bottom:8px;overflow:hidden">'+
           // ── Cabecera acordeón ──
@@ -11581,6 +11581,16 @@ async function cargarAnalisisPendientes() {
         </div>
       </div>`;
   } catch(e) { if(wrap) wrap.innerHTML = ''; }
+}
+
+function toggleAcordeonCoach(id) {
+  const body = document.getElementById(id);
+  const arr = document.getElementById('arr_' + id);
+  if (!body) return;
+  const isOpen = body.style.maxHeight !== '0px' && body.style.maxHeight !== '';
+  body.style.maxHeight = isOpen ? '0px' : '3000px';
+  body.style.opacity = isOpen ? '0' : '1';
+  if (arr) arr.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
 
 function tiempoRelativo(fechaStr) {
