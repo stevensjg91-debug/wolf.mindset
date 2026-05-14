@@ -2261,7 +2261,7 @@ async function verCliente(id){
                 <button onclick="event.stopPropagation();tabEntrenoAddEx(${d.id},'${d.nombre.replace(/'/g,String.fromCharCode(39))}')" class="btn btn-sm" style="font-size:11px">${tc('+ Ejercicio')}</button>
                 <button onclick="event.stopPropagation();abrirModalGuardarDia(${d.id},'${d.nombre.replace(/'/g,String.fromCharCode(39))}')" title="${COACH_LANG==='en'?'Save as template':'Guardar como plantilla'}" style="background:none;border:none;color:#a78bfa;cursor:pointer;font-size:14px;padding:4px">💾</button>
                 <button onclick="event.stopPropagation();tabEntrenoDelDia(${d.id})" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:14px;padding:4px">🗑</button>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--tx3);flex-shrink:0"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--tx3);flex-shrink:0;transition:transform .25s"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
               </div>
             </div>
             <div id="tab_dia_body_${d.id}" style="display:none;padding:0 13px 12px">
@@ -2459,8 +2459,11 @@ let _tabExEditId = null;
 
 function tabEntrenoToggleDia(diaId) {
   const body = document.getElementById('tab_dia_body_' + diaId);
+  const arr = document.querySelector(`[onclick*="tabEntrenoToggleDia(${diaId})"] svg`);
   if(!body) return;
-  body.style.display = body.style.display === 'none' ? 'block' : 'none';
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if(arr) arr.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
 
 async function tabEntrenoNuevoDia(clienteId) {
