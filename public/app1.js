@@ -2050,12 +2050,18 @@ async function cargarTareasPendientes(){
         <button onclick="event.stopPropagation();marcarSesionRevisada(${s.id},this)" style="flex-shrink:0;padding:6px 10px;background:rgba(34,197,94,.12);border:0.5px solid rgba(34,197,94,.3);border-radius:8px;color:var(--gnb);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">✓ ${isEn?'Mark reviewed':'Revisar'}</button>
       </div>`;
     }).join('');
+    const wrId='pend_revisar_body';
     wrap.innerHTML=`<div style="background:var(--s);border:0.5px solid rgba(245,158,11,.25);border-radius:14px;padding:14px;margin-bottom:4px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="(()=>{const b=document.getElementById('${wrId}');const a=document.getElementById('${wrId}_arr');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▶':'▼';})()">
         <div style="font-size:12px;font-weight:700;color:var(--amb);text-transform:uppercase;letter-spacing:.07em">${titulo}</div>
-        <button onclick="cargarTareasPendientes()" style="background:none;border:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">↺</button>
-      </div>${items}
-      <div style="font-size:10px;color:var(--tx3);margin-top:6px;text-align:center">${isEn?'Click to review in Progress tab':'Pulsa para revisar en tab Progreso'}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="event.stopPropagation();cargarTareasPendientes()" style="background:none;border:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">↺</button>
+          <span id="${wrId}_arr" style="color:var(--tx3);font-size:10px">▼</span>
+        </div>
+      </div>
+      <div id="${wrId}" style="display:none;margin-top:10px">${items}
+        <div style="font-size:10px;color:var(--tx3);margin-top:6px;text-align:center">${isEn?'Click to review in Progress tab':'Pulsa para revisar en tab Progreso'}</div>
+      </div>
     </div>`;
   }catch(e){const w=document.getElementById('tareas_pendientes_wrap');if(w)w.innerHTML='';}
 }
@@ -11558,15 +11564,21 @@ async function cargarAnalisisPendientes() {
         </div>`;
     }).join('');
 
+    const iaId='analisis_ia_body';
     wrap.innerHTML = `
       <div style="background:var(--s);border:0.5px solid rgba(124,58,237,.25);border-radius:14px;padding:14px;margin-bottom:8px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="(()=>{const b=document.getElementById('${iaId}');const a=document.getElementById('${iaId}_arr');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▶':'▼';})()">
           <div style="font-size:12px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.07em">
             🤖 ${isEn?`AI analyses pending (${pendientes.length})`:`Análisis IA pendientes (${pendientes.length})`}
           </div>
-          <button onclick="cargarAnalisisPendientes()" style="background:none;border:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">↺</button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button onclick="event.stopPropagation();cargarAnalisisPendientes()" style="background:none;border:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">↺</button>
+            <span id="${iaId}_arr" style="color:var(--tx3);font-size:10px">▼</span>
+          </div>
         </div>
-        ${items}
+        <div id="${iaId}" style="display:none;margin-top:10px">
+          ${items}
+        </div>
       </div>`;
   } catch(e) { if(wrap) wrap.innerHTML = ''; }
 }
