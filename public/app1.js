@@ -2397,13 +2397,16 @@ async function verCliente(id){
     <div id="coach_fotos_timeline">${tc('Cargando...')}</div>
   </div>
 
-  
-    <div class="sec" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(37,99,235,.06),rgba(17,17,19,.8));border-color:rgba(59,130,246,.2)">
-    <div class="sec-hdr">📋 ${tc('Revisión semanal')} <span id="rev_estado" style="font-size:10px;font-weight:500;color:var(--tx3);text-transform:none;letter-spacing:0"></span></div>
-    <div id="revision_semanal_content"><div style="font-size:13px;color:var(--tx3)">${tc('Cargando...')}</div></div>
-  </div>
     <!-- MÉTRICAS AVANZADAS: 1RM + PRs + TONELAJE -->
     <div id="metricas_avanzadas_wrap"></div>
+
+    <div class="sec" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(37,99,235,.06),rgba(17,17,19,.8));border-color:rgba(59,130,246,.2)">
+    <div class="sec-hdr" style="cursor:pointer;user-select:none" onclick="(()=>{const b=document.getElementById('revision_semanal_content');const a=document.getElementById('arr_rev_semanal');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.style.transform=open?'':'rotate(180deg)';})()">
+      <span>📋 ${tc('Revisión semanal')} <span id="rev_estado" style="font-size:10px;font-weight:500;color:var(--tx3);text-transform:none;letter-spacing:0"></span></span>
+      <svg id="arr_rev_semanal" width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--tx3);flex-shrink:0;transition:transform .25s;margin-left:8px"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </div>
+    <div id="revision_semanal_content" style="display:none"><div style="font-size:13px;color:var(--tx3)">${tc('Cargando...')}</div></div>
+  </div>
   </div>`;
 
   window._cid=c.id;
@@ -9654,9 +9657,18 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
     // Progresión por ejercicio
     html += `<div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">${COACH_LANG==='en'?'Load progression':'Progresión de carga'}</div>`;
 
-    diasConEjercicios.forEach(d => {
-      html += `<div style="margin-bottom:16px">
-        <div style="font-size:12px;font-weight:700;color:var(--sv2);margin-bottom:8px;padding-bottom:4px;border-bottom:0.5px solid var(--br)">${d.nombre}${d.grupo ? ' — '+d.grupo : ''}</div>`;
+    diasConEjercicios.forEach((d, di) => {
+      const diaAccId = 'rev_dia_body_' + d.id;
+      const ajustesDia = d.ejercicios.filter(e => window._revSugerencias[e.id]?.haySugerencia).length;
+      html += `<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;margin-bottom:8px;overflow:hidden">
+        <div onclick="toggleRevDia('${diaAccId}')" style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;cursor:pointer;user-select:none">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--sv)">${d.nombre}${d.grupo ? ' — <span style=\"color:var(--tx3);font-weight:500\">'+d.grupo+'</span>' : ''}</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:1px">${d.ejercicios.length} ${COACH_LANG==='en'?'exercises':'ejercicios'}${ajustesDia > 0 ? ' · <span style=\"color:var(--amb);font-weight:600\">⚡ '+ajustesDia+' ajuste'+(ajustesDia>1?'s':'')+'</span>' : ''}</div>
+          </div>
+          <svg id="arr_${diaAccId}" width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--tx3);flex-shrink:0;transition:transform .25s"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div id="${diaAccId}" style="display:none;padding:0 13px 12px">`;
 
       d.ejercicios.forEach(e => {
         const rend  = ultimoRendimiento[e.nombre];
@@ -9731,7 +9743,7 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
         </div>`;
       });
 
-      html += `</div>`;
+      html += `</div></div>`;
     });
 
     // Botones de acción
@@ -11584,6 +11596,15 @@ async function cargarAnalisisPendientes() {
         </div>
       </div>`;
   } catch(e) { if(wrap) wrap.innerHTML = ''; }
+}
+
+function toggleRevDia(id) {
+  const body = document.getElementById(id);
+  const arr = document.getElementById('arr_' + id);
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (arr) arr.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
 
 function toggleAcordeonCoach(id) {
