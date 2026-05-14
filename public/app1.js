@@ -2197,9 +2197,9 @@ async function verCliente(id){
         <span>🟣 ${tc('Carbos')} <span id="carbs_pct">${Math.round(c.carbs*4/c.kcal_internas*100)}%</span></span>
       </div>
     </div>
-    <div class="form-lbl" style="margin-top:8px">${tc('Comida libre')}</div><input class="inp" id="clibre" value="${c.comida_libre||''}"/>
-    <div class="form-lbl">${COACH_LANG==='en'?'Motivational message':'Mensaje motivacional'}</div><textarea class="ta" id="msgsem">${c.mensaje_semana||''}</textarea>
-    <div class="form-lbl">${COACH_LANG==='en'?'Coach notes (private)':'Notas coach'}</div><textarea class="ta" id="notasc">${c.notas_coach||''}</textarea>
+    <input type="hidden" id="clibre" value="${c.comida_libre||''}"/>
+    <input type="hidden" id="msgsem" value="${c.mensaje_semana||''}"/>
+    <input type="hidden" id="notasc" value="${c.notas_coach||''}"/>
     <!-- Reseteo de contraseña -->
     <div style="margin-top:14px;padding-top:14px;border-top:0.5px solid var(--br)">
       <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">${tc('🔑 Contraseña del cliente')}</div>
