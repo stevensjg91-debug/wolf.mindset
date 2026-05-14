@@ -1215,7 +1215,10 @@ router.post('/clientes/:id/dieta/publicar', coachOnly, (req, res) => {
       );
 
       const comidaId = r.lastInsertRowid;
-      const alimentos = Array.isArray(comida.alimentos) ? comida.alimentos : [];
+      // La IA nueva pone los alimentos en opciones[0].alimentos, no en comida.alimentos
+      const alimentos = (Array.isArray(comida.alimentos) && comida.alimentos.length)
+        ? comida.alimentos
+        : (comida.opciones?.[0]?.alimentos || []);
 
       alimentos.forEach((alim, ai) => {
         const nombre = alim.nombre || 'Alimento';
@@ -1232,8 +1235,16 @@ router.post('/clientes/:id/dieta/publicar', coachOnly, (req, res) => {
 
     const variacionesPorComida = {};
     plan.comidas.forEach((comida, i) => {
-      if (Array.isArray(comida.variaciones) && comida.variaciones.length) {
-        variacionesPorComida[i] = comida.variaciones;
+      // La IA genera "opciones" (A/B/C). Soporte legacy para "variaciones" antiguas.
+      const ops = comida.opciones || comida.variaciones;
+      if (Array.isArray(ops) && ops.length > 1) {
+        // Guardamos las opciones B, C... (la A es la comida base ya guardada en alimentos)
+        variacionesPorComida[i] = ops.slice(1).map((op, idx) => ({
+          letra: op.letra || String.fromCharCode(66 + idx),
+          nombre: op.nombre || '',
+          alimentos: op.alimentos || [],
+          nota: op.nota || ''
+        }));
       }
     });
 
