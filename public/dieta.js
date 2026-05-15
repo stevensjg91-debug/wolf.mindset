@@ -1750,7 +1750,7 @@ function hDieta(){
 
     // Cards de opciones (siempre, incluso si solo hay A)
     const optCards = todasOpciones.map((op, oi)=>`
-      <div class="diet-opt-card" style="min-width:100%;box-sizing:border-box;padding:0 2px">
+      <div class="diet-opt-card" style="min-width:100%;box-sizing:border-box;padding:0 2px;scroll-snap-align:start;flex-shrink:0">
         ${hasVars ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
           <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:${acc};line-height:1">${op.letra}</span>
           <span style="font-size:11px;color:rgba(255,255,255,.4)">${op.nombre}</span>
@@ -1785,12 +1785,12 @@ function hDieta(){
           ${m.alimentos.some(a=>a.nombre.toLowerCase().match(/pollo|salmón|salmon|huevo|whey|pavo|carne|proteína/))
             ? `<div style="font-size:9px;font-weight:700;color:${accLight};border:0.5px solid ${acc};padding:2px 6px;border-radius:4px;letter-spacing:.06em;background:${accBg}">${LANG==='en'?'PROTEIN':'PROTEÍNA'}</div>`
             : ''}
-          <button onclick="_abrirReceta(${mi})" style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.08);border:0.5px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent" title="${LANG==='en'?'See recipe':'Ver receta'}">👨‍🍳</button>
+          <button onclick="_abrirReceta(${mi}, _getOpcionActiva(${mi}))" style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.08);border:0.5px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent" title="${LANG==='en'?'See recipe':'Ver receta'}">👨‍🍳</button>
         </div>
       </div>
       <!-- Swipe container -->
       <div style="padding:10px 12px 6px">
-        <div id="${swipeId}" style="display:flex;overflow-x:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scroll-behavior:smooth" data-mi="${mi}" data-total="${todasOpciones.length}">
+        <div id="${swipeId}" style="display:flex;overflow-x:scroll;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none" data-mi="${mi}" data-total="${todasOpciones.length}">
           ${optCards}
         </div>
         ${dots}
@@ -1985,12 +1985,33 @@ function _initDietaSwipe(){
 }
 
 // ── RECETA FITNESS con IA + foto Unsplash ────────────────────────────────
-async function _abrirReceta(mi){
+// Devuelve el índice de opción activa en un swipe de comida
+function _getOpcionActiva(mi){
+  const container = document.getElementById('swipe_'+mi);
+  if(!container) return 0;
+  const cardW = container.offsetWidth;
+  if(!cardW) return 0;
+  return Math.round(container.scrollLeft / cardW);
+}
+
+async function _abrirReceta(mi, oi){
   const comida = CD.comidas[mi];
   if(!comida) return;
-  const ingredientes = (comida.items||[]).map(it=>it.nombre+' '+it.gramos+'g').join(', ');
-  const nombreComida = comida.nombre || '';
-  const cacheKey = 'receta_'+CD.id+'_'+mi;
+  // Usar ingredientes de la opción activa (A=opción principal, B/C=variaciones)
+  const opIdx = oi !== undefined ? oi : 0;
+  let ingredientesArr, nombreOpcion;
+  if(opIdx === -1 || opIdx === 0){
+    ingredientesArr = (comida.items||[]).map(it=>({nombre:it.nombre, gramos:it.gramos}));
+    nombreOpcion = comida.nombre || '';
+  } else {
+    const vars = CD._planVariaciones?.[mi] || [];
+    const v = vars[opIdx-1] || vars[0];
+    ingredientesArr = (v?.alimentos||[]).map(a=>({nombre:a.nombre, gramos:a.gramos||parseInt((a.cantidad||'0'))}));
+    nombreOpcion = v?.nombre || comida.nombre || '';
+  }
+  const ingredientes = ingredientesArr.map(it=>it.nombre+' '+it.gramos+'g').join(', ');
+  const nombreComida = nombreOpcion;
+  const cacheKey = 'receta_'+CD.id+'_'+mi+'_'+opIdx;
 
   // Crear modal
   const modal = document.createElement('div');
@@ -2035,9 +2056,19 @@ async function _abrirReceta(mi){
       try { localStorage.setItem(cacheKey, JSON.stringify(receta)); } catch(e){}
     }
 
-    // Foto de Unsplash (sin API key — usando source.unsplash.com)
-    const query = encodeURIComponent(receta.foto_query || receta.nombre || 'healthy meal');
-    const fotoUrl = `https://source.unsplash.com/600x400/?${query}`;
+    // Foto de Unsplash via API pública (no requiere key)
+    const query = encodeURIComponent(receta.foto_query || receta.nombre || 'healthy food');
+    const fotoUrl = `https://api.unsplash.com/photos/random?query=${query}&orientation=landscape&client_id=hTbVSYX8CmKFLXPfwdHLCaHv5IxhijvT5X10T4QxKUE`;
+    let fotoSrc = '';
+    try {
+      const fotoRes = await fetch(fotoUrl);
+      if(fotoRes.ok){
+        const fotoData = await fotoRes.json();
+        fotoSrc = fotoData?.urls?.regular || fotoData?.urls?.small || '';
+      }
+    } catch(e){}
+    // Fallback: búsqueda por nombre en Pexels (no requiere key para embed)
+    if(!fotoSrc) fotoSrc = `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80`;
 
     const body = document.getElementById('receta_body');
     if(!body) return;
@@ -2047,7 +2078,7 @@ async function _abrirReceta(mi){
     body.innerHTML = `
       <!-- Foto del plato -->
       <div style="width:100%;height:200px;background:#0d1520;overflow:hidden;position:relative">
-        <img src="${fotoUrl}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.background='#0d1520';this.style.display='none'"/>
+        <img src="${fotoSrc}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.background='#0d1520';this.style.display='none'"/>
         <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(9,9,11,.9))"></div>
         <div style="position:absolute;bottom:12px;left:16px;right:16px">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;letter-spacing:.05em;line-height:1.2">${receta.nombre}</div>
