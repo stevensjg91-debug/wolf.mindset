@@ -2365,10 +2365,10 @@ async function _abrirReceta(mi, oi){
       <!-- Ingredientes -->
       <div style="padding:14px 16px;border-bottom:0.5px solid rgba(255,255,255,.07)">
         <div style="font-size:10px;font-weight:700;color:${acc};text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">🥩 ${LANG==='en'?'INGREDIENTS':'INGREDIENTES'}</div>
-        ${(comida.items||[]).map(it=>`
+        ${ingredientesArr.map(it=>`
         <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.04)">
           <span style="font-size:13px;color:rgba(255,255,255,.8)">${it.nombre}</span>
-          <span style="font-size:13px;font-weight:700;color:${accLight};font-family:'Bebas Neue',sans-serif">${it.gramos}g</span>
+          <span style="font-size:13px;font-weight:700;color:${accLight};font-family:'Bebas Neue',sans-serif">${it.gramos > 0 ? it.gramos+'g' : ''}</span>
         </div>`).join('')}
       </div>
       <!-- Preparación -->
