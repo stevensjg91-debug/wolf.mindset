@@ -3190,16 +3190,44 @@ router.post('/ia/receta-fitness', async (req, res) => {
   if (!apiKey) return res.status(500).json({ error: 'API key no configurada' });
   if (!ingredientes || !ingredientes.length) return res.status(400).json({ error: 'ingredientes requeridos' });
 
-  const listaIngr = ingredientes.map(it => `- ${it.nombre} (${it.gramos}g)`).join('\n');
   const isEn = lang === 'en';
+  const listaIngr = ingredientes.map(function(it){ return '- ' + it.nombre + ' (' + it.gramos + 'g)'; }).join('\n');
+  const jsonSchema = isEn
+    ? '{"nombre":"dish name","tiempo":"X min","especias":["h1","h2"],"pasos":["s1","s2","s3","s4"],"foto_query":"2 words"}'
+    : '{"nombre":"nombre plato","tiempo":"X min","especias":["h1","h2"],"pasos":["p1","p2","p3","p4"],"foto_query":"2 words"}';
 
-  const userMsg = isEn
-    ? `INGREDIENTS (use ONLY these exact ones, nothing else):\n${listaIngr}\n\nMeal: ${nombreComida || 'main meal'}\n\nReturn ONLY this JSON (no extra text):\n{"nombre":"dish name","tiempo":"X min","especias":["herb1","herb2","herb3"],"pasos":["step1","step2","step3","step4"],"foto_query":"2-word english ingredient photo"}`
-    : `INGREDIENTES (usa ÚNICAMENTE estos, sin añadir nada más):\n${listaIngr}\n\nComida: ${nombreComida || 'comida principal'}\n\nDevuelve ÚNICAMENTE este JSON (sin texto extra):\n{"nombre":"nombre plato","tiempo":"X min","especias":["hierba1","hierba2","hierba3"],"pasos":["paso1","paso2","paso3","paso4"],"foto_query":"2-word english ingredient photo"}`;
+  const userLines = isEn ? [
+    'INGREDIENTS (use ONLY these, no exceptions):',
+    listaIngr,
+    '',
+    'Meal: ' + (nombreComida || 'main meal'),
+    '',
+    'RULES:',
+    '- NO added ingredients whatsoever (no pasta, bread, cheese, cream, avocado, salmon, etc)',
+    '- Only salt, pepper, herbs allowed as extras',
+    '- Keep exact grams',
+    '',
+    'Return ONLY this JSON:',
+    jsonSchema
+  ] : [
+    'INGREDIENTES (usa UNICAMENTE estos, sin excepciones):',
+    listaIngr,
+    '',
+    'Comida: ' + (nombreComida || 'comida principal'),
+    '',
+    'REGLAS:',
+    '- NO añadir ningun ingrediente (sin pasta, pan, queso, nata, aguacate, salmon, etc)',
+    '- Solo sal, pimienta y hierbas como extras',
+    '- Usa los gramos exactos',
+    '',
+    'Devuelve UNICAMENTE este JSON:',
+    jsonSchema
+  ];
 
+  const userMsg = userLines.join('\n');
   const systemMsg = isEn
-    ? 'You are a fitness recipe generator. You ONLY use the exact ingredients provided. You NEVER add pasta, bread, cheese, cream, avocado, salmon or any ingredient not in the list. Respond ONLY with valid JSON.'
-    : 'Eres un generador de recetas fitness. SOLO usas los ingredientes exactos proporcionados. NUNCA añades pasta, pan, queso, nata, aguacate, salmón ni ningún ingrediente que no esté en la lista. Responde ÚNICAMENTE con JSON válido.';
+    ? 'Fitness recipe generator. Use ONLY provided ingredients. No creative additions. Return valid JSON only.'
+    : 'Generador de recetas fitness. Usa SOLO los ingredientes proporcionados. Sin añadidos creativos. Devuelve JSON valido solamente.';
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
