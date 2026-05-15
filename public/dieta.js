@@ -1997,6 +1997,251 @@ function _getOpcionActiva(mi){
 async function _abrirReceta(mi, oi){
   const comida = CD.comidas[mi];
   if(!comida) return;
+  const vars = CD._planVariaciones?.[mi] || [];
+  const acc = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? '#22c55e' : '#3b82f6';
+
+  // Construir lista de todas las opciones disponibles
+  const todasOpts = [
+    { letra:'A', nombre: LANG==='en'?'Main':'Principal', ingredientesArr: (comida.items||[]).map(it=>({nombre:it.nombre,gramos:it.gramos})) },
+    ...vars.map((v,vi)=>({
+      letra: v.letra||String.fromCharCode(66+vi),
+      nombre: v.nombre||'',
+      ingredientesArr: (v.alimentos||[]).map(a=>({nombre:a.nombre,gramos:a.gramos||parseInt((a.cantidad||'0'))}))
+    }))
+  ];
+  const hasMultiple = todasOpts.length > 1;
+  const startOi = (oi !== undefined && oi >= 0) ? oi : 0;
+
+  // Crear modal con tabs en el header si hay múltiples opciones
+  const tabsHtml = hasMultiple ? `
+    <div style="display:flex;gap:4px;margin-left:auto">
+      ${todasOpts.map((op,idx)=>`
+        <button id="receta_tab_${idx}" onclick="_recetaNavTab(${mi},${idx})"
+          style="padding:4px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid ${idx===startOi?acc:'rgba(255,255,255,.15)'};background:${idx===startOi?acc+'22':'none'};color:${idx===startOi?acc:'rgba(255,255,255,.4)'};transition:.2s;-webkit-tap-highlight-color:transparent">
+          ${op.letra}
+        </button>`).join('')}
+    </div>` : '';
+
+  const modal = document.createElement('div');
+  modal.id = 'receta_modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(9,9,11,.97);z-index:700;display:flex;flex-direction:column;overflow:hidden';
+  modal.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--s);border-bottom:0.5px solid var(--br);flex-shrink:0">
+      <button onclick="document.getElementById('receta_modal').remove()" style="width:34px;height:34px;border-radius:8px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);cursor:pointer;font-size:20px;line-height:1;flex-shrink:0">×</button>
+      <div style="font-size:15px;font-weight:700;color:var(--sv);flex-shrink:0">👨‍🍳 ${LANG==='en'?'Fitness Recipe':'Receta Fitness'}</div>
+      ${tabsHtml}
+    </div>
+    <div id="receta_body" style="flex:1;overflow-y:auto">
+      ${_recetaSpinner(LANG)}
+    </div>`;
+  document.body.appendChild(modal);
+
+  // Guardar contexto en el modal para que _recetaNavTab pueda acceder
+  modal._mi = mi;
+  modal._opts = todasOpts;
+  modal._acc = acc;
+
+  await _recetaCargar(mi, startOi, todasOpts, acc);
+}
+
+function _recetaSpinner(lang){
+  return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:14px">
+    <div style="width:40px;height:40px;border-radius:50%;border:3px solid var(--bl2);border-top-color:transparent;animation:spin .8s linear infinite"></div>
+    <div style="font-size:13px;color:var(--tx3)">${lang==='en'?'Creating your recipe...':'Creando tu receta...'}</div>
+  </div>`;
+}
+
+async function _recetaNavTab(mi, oi){
+  const modal = document.getElementById('receta_modal');
+  if(!modal) return;
+  const opts = modal._opts;
+  const acc  = modal._acc;
+
+  // Actualizar estilo de tabs
+  opts.forEach((_,idx)=>{
+    const tab = document.getElementById('receta_tab_'+idx);
+    if(!tab) return;
+    const active = idx===oi;
+    tab.style.border = `1px solid ${active?acc:'rgba(255,255,255,.15)'}`;
+    tab.style.background = active ? acc+'22' : 'none';
+    tab.style.color = active ? acc : 'rgba(255,255,255,.4)';
+  });
+
+  // Mostrar spinner y cargar
+  const body = document.getElementById('receta_body');
+  if(body) body.innerHTML = _recetaSpinner(LANG);
+  await _recetaCargar(mi, oi, opts, acc);
+}
+
+async function _recetaCargar(mi, oi, todasOpts, acc){
+  const op = todasOpts[oi];
+  if(!op) return;
+
+  const ingredientesArr = op.ingredientesArr;
+  const nombreComida    = op.nombre || CD.comidas[mi]?.nombre || '';
+  const cacheKey = 'receta_'+CD.id+'_'+mi+'_'+oi;
+  const accLight = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? '#86efac' : '#93c5fd';
+
+  const body = document.getElementById('receta_body');
+  if(!body) return;
+
+  try {
+    let receta = null;
+    try { receta = JSON.parse(localStorage.getItem(cacheKey)||'null'); } catch(e){}
+
+    if(!receta){
+      const listaIngr = ingredientesArr.map(it=>`- ${it.nombre} (${it.gramos}g)`).join('\n');
+      const prompt = LANG==='en'
+        ? `You are a fitness nutritionist. Create a recipe using ONLY AND EXACTLY these ingredients:
+${listaIngr}
+Meal: ${nombreComida}.
+STRICT RULES:
+1. Use ONLY the listed ingredients, no substitutions, no additions.
+2. Only salt, pepper and herbs as extras (0 calories).
+3. Keep exact quantities.
+Respond ONLY with compact JSON (no extra text):
+{"nombre":"short dish name based on the actual ingredients","tiempo":"X min","especias":["herb1","herb2","herb3"],"pasos":["step1","step2","step3","step4"],"foto_query":"2-word english food photo query matching the main ingredient"}`
+        : `Eres nutricionista deportivo. Crea una receta usando ÚNICAMENTE estos ingredientes:
+${listaIngr}
+Comida: ${nombreComida}.
+REGLAS ESTRICTAS:
+1. Usa SOLO los ingredientes listados, sin sustituciones ni añadidos.
+2. Solo sal, pimienta y hierbas como extras (0 calorías).
+3. Respeta las cantidades exactas.
+Responde SOLO con JSON compacto (sin texto extra):
+{"nombre":"nombre corto del plato basado en los ingredientes reales","tiempo":"X min","especias":["hierba1","hierba2","hierba3"],"pasos":["paso1","paso2","paso3","paso4"],"foto_query":"2-word english food photo query matching the main ingredient"}`;
+
+      const d = await api('/ia/chat', {
+        method: 'POST',
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: prompt }],
+          system: LANG==='en'
+            ? 'You are a fitness nutritionist. Respond ONLY with valid compact JSON, no extra text.'
+            : 'Eres nutricionista deportivo. Responde SOLO con JSON válido y compacto, sin texto extra.'
+        })
+      });
+      const raw = (d.reply||'').replace(/```json|```/g,'').trim();
+      receta = JSON.parse(raw);
+      try { localStorage.setItem(cacheKey, JSON.stringify(receta)); } catch(e){}
+    }
+
+    // Foto basada en ingrediente principal
+    const fotoQuery = receta.foto_query || ingredientesArr[0]?.nombre || 'healthy food';
+    const fotoQueryEnc = encodeURIComponent(fotoQuery);
+    let fotoSrc = '';
+    try {
+      const fotoRes = await fetch(`https://api.unsplash.com/photos/random?query=${fotoQueryEnc}&orientation=landscape&content_filter=high&client_id=hTbVSYX8CmKFLXPfwdHLCaHv5IxhijvT5X10T4QxKUE`);
+      if(fotoRes.ok){
+        const fotoData = await fotoRes.json();
+        fotoSrc = fotoData?.urls?.regular || fotoData?.urls?.small || '';
+      }
+    } catch(e){}
+    if(!fotoSrc){
+      const mainIngr = (ingredientesArr[0]?.nombre||'').toLowerCase();
+      const fallbacks = {
+        pollo:'1546069901-ba9599a7e63c', arroz:'1455619452-9214-91a0-8a5f-52b3b3c8a9c2',
+        salmon:'1467003909585-2f8a72700288', huevo:'1482049016688-2d3e1b311543',
+        carne:'1558030006-c2f32afd87ac', pasta:'1473093226555-0b23c14a1c64',
+        avena:'1504901218145-c3dcffca59af', ensalada:'1512621776951-a57141f2eefd',
+      };
+      const fbKey = Object.keys(fallbacks).find(k=>mainIngr.includes(k));
+      fotoSrc = `https://images.unsplash.com/photo-${fbKey?fallbacks[fbKey]:'1546069901-ba9599a7e63c'}?w=600&q=80`;
+    }
+
+    if(!document.getElementById('receta_body')) return; // modal cerrado
+
+    body.innerHTML = `
+      <div style="width:100%;height:200px;background:#0d1520;overflow:hidden;position:relative">
+        <img src="${fotoSrc}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.background='#0d1520';this.style.display='none'"/>
+        <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(9,9,11,.9))"></div>
+        <div style="position:absolute;bottom:12px;left:16px;right:16px">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;letter-spacing:.05em;line-height:1.2">${receta.nombre}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:3px">⏱ ${receta.tiempo} · 0 kcal extra</div>
+        </div>
+      </div>
+      <div style="padding:14px 16px;border-bottom:0.5px solid rgba(255,255,255,.07)">
+        <div style="font-size:10px;font-weight:700;color:${acc};text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">🧂 ${LANG==='en'?'SPICES & SEASONING':'ESPECIAS Y SAZÓN'}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${(receta.especias||[]).map(e=>`<span style="font-size:12px;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.06);border:0.5px solid rgba(255,255,255,.12);color:rgba(255,255,255,.8)">${e}</span>`).join('')}
+        </div>
+      </div>
+      <div style="padding:14px 16px;border-bottom:0.5px solid rgba(255,255,255,.07)">
+        <div style="font-size:10px;font-weight:700;color:${acc};text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">🥩 ${LANG==='en'?'INGREDIENTS':'INGREDIENTES'}</div>
+        ${ingredientesArr.map(it=>`
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.04)">
+          <span style="font-size:13px;color:rgba(255,255,255,.8)">${it.nombre}</span>
+          <span style="font-size:13px;font-weight:700;color:${accLight};font-family:'Bebas Neue',sans-serif">${it.gramos}g</span>
+        </div>`).join('')}
+      </div>
+      <div style="padding:14px 16px">
+        <div style="font-size:10px;font-weight:700;color:${acc};text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">👨‍🍳 ${LANG==='en'?'PREPARATION':'PREPARACIÓN'}</div>
+        ${(receta.pasos||[]).map((p,i)=>`
+        <div style="display:flex;gap:12px;margin-bottom:12px;align-items:flex-start">
+          <div style="width:24px;height:24px;border-radius:50%;background:${acc}22;border:1px solid ${acc}55;color:${accLight};font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${i+1}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.85);line-height:1.6">${p}</div>
+        </div>`).join('')}
+        <div style="margin-top:16px;padding:10px 12px;background:rgba(34,197,94,.06);border:0.5px solid rgba(34,197,94,.2);border-radius:10px;font-size:11px;color:rgba(255,255,255,.5);text-align:center">
+          ✅ ${LANG==='en'?'Same macros as your plan · No extra calories':'Mismos macros que tu plan · Sin calorías extra'}
+        </div>
+      </div>`;
+
+  } catch(e){
+    if(body) body.innerHTML = `<div style="padding:30px;text-align:center;color:var(--tx3);font-size:13px">${LANG==='en'?'Could not generate recipe. Try again.':'No se pudo generar la receta. Inténtalo de nuevo.'}</div>`;
+  }
+}
+
+// ── SWIPE A/B/C — navegación entre opciones de comida ─────────────────────
+function _dietaSwipeTo(mi, oi){
+  const container = document.getElementById('swipe_'+mi);
+  if(!container) return;
+  const cardW = container.offsetWidth;
+  container.scrollTo({ left: oi * cardW, behavior: 'smooth' });
+  // Actualizar dots
+  const dotsCont = document.getElementById('dots_'+mi);
+  if(dotsCont){
+    const acc = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? '#22c55e' : '#3b82f6';
+    dotsCont.querySelectorAll('[data-dot]').forEach(d=>{
+      const idx = parseInt(d.getAttribute('data-dot'));
+      d.style.width  = idx===oi ? '18px' : '7px';
+      d.style.background = idx===oi ? acc : 'rgba(255,255,255,.2)';
+    });
+  }
+}
+
+// Activar swipe táctil nativo (scroll-snap) — los dots se sincronizan al scroll
+function _initDietaSwipe(){
+  document.querySelectorAll('[id^="swipe_"]').forEach(container=>{
+    const mi = parseInt(container.getAttribute('data-mi'));
+    container.addEventListener('scroll', ()=>{
+      const cardW = container.offsetWidth;
+      if(!cardW) return;
+      const oi = Math.round(container.scrollLeft / cardW);
+      const dotsCont = document.getElementById('dots_'+mi);
+      if(dotsCont){
+        const acc = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? '#22c55e' : '#3b82f6';
+        dotsCont.querySelectorAll('[data-dot]').forEach(d=>{
+          const idx = parseInt(d.getAttribute('data-dot'));
+          d.style.width  = idx===oi ? '18px' : '7px';
+          d.style.background = idx===oi ? acc : 'rgba(255,255,255,.2)';
+        });
+      }
+    }, {passive:true});
+  });
+}
+
+// ── RECETA FITNESS con IA + foto Unsplash ────────────────────────────────
+// Devuelve el índice de opción activa en un swipe de comida
+function _getOpcionActiva(mi){
+  const container = document.getElementById('swipe_'+mi);
+  if(!container) return 0;
+  const cardW = container.offsetWidth;
+  if(!cardW) return 0;
+  return Math.round(container.scrollLeft / cardW);
+}
+
+async function _abrirReceta(mi, oi){
+  const comida = CD.comidas[mi];
+  if(!comida) return;
   // Usar ingredientes de la opción activa (A=opción principal, B/C=variaciones)
   const opIdx = oi !== undefined ? oi : 0;
   let ingredientesArr, nombreOpcion;
@@ -2038,9 +2283,11 @@ async function _abrirReceta(mi, oi){
 
     if(!receta){
       const lang = LANG==='en'?'English':'Spanish';
+      // Lista de ingredientes para el prompt (los exactos del plan)
+      const listaIngr = ingredientesArr.map(it=>`- ${it.nombre} (${it.gramos}g)`).join('\n');
       const prompt = LANG==='en'
-        ? `You are a fitness nutritionist. Create a tasty recipe using EXACTLY these ingredients (same quantities): ${ingredientes}. Meal type: ${nombreComida}. Rules: no added calories, only spices/herbs/salt/pepper allowed as extras. Respond ONLY with compact valid JSON: {"nombre":"dish name","tiempo":"X min","especias":["spice1","spice2","spice3"],"pasos":["step1","step2","step3","step4"],"foto_query":"3-word english query for food photo"}`
-        : `Eres nutricionista deportivo. Crea una receta sabrosa usando EXACTAMENTE estos ingredientes (mismas cantidades): ${ingredientes}. Tipo de comida: ${nombreComida}. Reglas: sin calorías extra, solo especias/hierbas/sal/pimienta permitidas como extras. Responde SOLO con JSON válido compacto: {"nombre":"nombre del plato","tiempo":"X min","especias":["especia1","especia2","especia3"],"pasos":["paso1","paso2","paso3","paso4"],"foto_query":"3-word english query for food photo"}`;
+        ? `You are a fitness nutritionist. Create a recipe using ONLY AND EXACTLY these ingredients:\n${listaIngr}\nMeal: ${nombreComida}.\nSTRICT RULES:\n1. Use ONLY the listed ingredients, no substitutions, no additions.\n2. Only salt, pepper and herbs as extras (0 calories).\n3. Keep exact quantities.\nRespond ONLY with compact JSON (no extra text):\n{"nombre":"short dish name based on the actual ingredients","tiempo":"X min","especias":["herb1","herb2","herb3"],"pasos":["step1","step2","step3","step4"],"foto_query":"2-word english food photo query matching the main ingredient"}`
+        : `Eres nutricionista deportivo. Crea una receta usando ÚNICAMENTE estos ingredientes:\n${listaIngr}\nComida: ${nombreComida}.\nREGLAS ESTRICTAS:\n1. Usa SOLO los ingredientes listados, sin sustituciones ni añadidos.\n2. Solo sal, pimienta y hierbas como extras (0 calorías).\n3. Respeta las cantidades exactas.\nResponde SOLO con JSON compacto (sin texto extra):\n{"nombre":"nombre corto del plato basado en los ingredientes reales","tiempo":"X min","especias":["hierba1","hierba2","hierba3"],"pasos":["paso1","paso2","paso3","paso4"],"foto_query":"2-word english food photo query matching the main ingredient"}`;
 
       const d = await api('/ia/chat', {
         method: 'POST',
@@ -2056,19 +2303,31 @@ async function _abrirReceta(mi, oi){
       try { localStorage.setItem(cacheKey, JSON.stringify(receta)); } catch(e){}
     }
 
-    // Foto de Unsplash via API pública (no requiere key)
-    const query = encodeURIComponent(receta.foto_query || receta.nombre || 'healthy food');
-    const fotoUrl = `https://api.unsplash.com/photos/random?query=${query}&orientation=landscape&client_id=hTbVSYX8CmKFLXPfwdHLCaHv5IxhijvT5X10T4QxKUE`;
+    // Foto: buscar por ingrediente principal del plato real
+    // Usar foto_query de la IA (que ahora es el ingrediente principal) via Unsplash
+    const fotoQuery = receta.foto_query || ingredientesArr[0]?.nombre || 'healthy food';
+    const fotoQueryEnc = encodeURIComponent(fotoQuery);
     let fotoSrc = '';
     try {
-      const fotoRes = await fetch(fotoUrl);
+      const fotoRes = await fetch(`https://api.unsplash.com/photos/random?query=${fotoQueryEnc}&orientation=landscape&content_filter=high&client_id=hTbVSYX8CmKFLXPfwdHLCaHv5IxhijvT5X10T4QxKUE`);
       if(fotoRes.ok){
         const fotoData = await fotoRes.json();
         fotoSrc = fotoData?.urls?.regular || fotoData?.urls?.small || '';
       }
     } catch(e){}
-    // Fallback: búsqueda por nombre en Pexels (no requiere key para embed)
-    if(!fotoSrc) fotoSrc = `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80`;
+    // Fallback según ingrediente principal
+    const mainIngr = (ingredientesArr[0]?.nombre||'').toLowerCase();
+    if(!fotoSrc){
+      const fallbacks = {
+        pollo:'1546069901-ba9599a7e63c', arroz:'1455619452-9214-91a0-8a5f-52b3b3c8a9c2',
+        salmon:'1467003909585-2f8a72700288', huevo:'1482049016688-2d3e1b311543',
+        carne:'1558030006-c2f32afd87ac', pasta:'1473093226555-0b23c14a1c64',
+        avena:'1504901218145-c3dcffca59af', ensalada:'1512621776951-a57141f2eefd',
+      };
+      const fbKey = Object.keys(fallbacks).find(k=>mainIngr.includes(k));
+      const fbId = fbKey ? fallbacks[fbKey] : '1546069901-ba9599a7e63c';
+      fotoSrc = `https://images.unsplash.com/photo-${fbId}?w=600&q=80`;
+    }
 
     const body = document.getElementById('receta_body');
     if(!body) return;
