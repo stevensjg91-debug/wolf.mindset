@@ -1727,26 +1727,36 @@ function hDieta(){
 
   const frase = (cachedTrans?.frase) || CD._planFrase || 'Consistency fuels results. Discipline builds freedom.';
 
-  // Each meal card matching template style
-  const comidasHtml = comidas.map((m,mi)=>`
-    <div style="display:flex;border:1px solid rgba(255,255,255,.1);border-radius:12px;overflow:hidden;margin-bottom:10px;background:rgba(255,255,255,.02)">
-      <!-- Left: number box -->
-      <div style="width:54px;background:${accDark};border-right:1px solid ${acc}40;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;padding:10px 0">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:${accLight};line-height:1">${m.numero}</div>
-      </div>
-      <!-- Right: content -->
-      <div style="flex:1;padding:10px 12px;min-width:0">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:#fff;letter-spacing:.1em">${m.nombre}</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.05em">${m.alimentos.length} ${t('alimentos')}</div>
-          </div>
-          ${m.alimentos.some(a=>a.nombre.toLowerCase().match(/pollo|salmón|salmon|huevo|whey|pavo|carne|proteína/))
-            ? `<div style="font-size:9px;font-weight:700;color:${accLight};border:0.5px solid ${acc};padding:2px 7px;border-radius:4px;letter-spacing:.08em;background:${accBg}">${LANG==='en'?'HIGH PROTEIN':'ALTO EN PROTEÍNA'}</div>`
-            : ''}
-        </div>
-        <div id="cl_meal_${mi}" style="display:contents">
-          ${m.alimentos.map(a=>`
+  // Each meal card — v2: swipe A/B/C siempre visible + botón receta
+  const comidasHtml = comidas.map((m,mi)=>{
+    const vars = CD._planVariaciones?.[mi] || [];
+    const hasVars = vars.length > 0;
+
+    // Todas las opciones: A (principal) + B, C...
+    const todasOpciones = [
+      { letra:'A', nombre: LANG==='en'?'Main option':'Opción principal', alimentos: m.alimentos },
+      ...vars.map((v,vi)=>({
+        letra: v.letra || String.fromCharCode(66+vi),
+        nombre: (cachedTrans?.vars?.[mi]?.[vi]) || v.nombre || '',
+        alimentos: (v.alimentos||[]).map(a=>({
+          nombre: a.nombre,
+          cantidad: a.cantidad ? a.cantidad : (a.gramos != null ? a.gramos+'g' : '')
+        }))
+      }))
+    ];
+
+    const swipeId = 'swipe_'+mi;
+    const dotId   = 'dots_'+mi;
+
+    // Cards de opciones (siempre, incluso si solo hay A)
+    const optCards = todasOpciones.map((op, oi)=>`
+      <div class="diet-opt-card" style="min-width:100%;box-sizing:border-box;padding:0 2px">
+        ${hasVars ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:${acc};line-height:1">${op.letra}</span>
+          <span style="font-size:11px;color:rgba(255,255,255,.4)">${op.nombre}</span>
+        </div>` : ''}
+        <div id="cl_meal_${mi}_${oi}">
+          ${op.alimentos.map(a=>`
           <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.05)">
             <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
               <div style="width:4px;height:4px;border-radius:50%;background:${acc};flex-shrink:0"></div>
@@ -1755,19 +1765,38 @@ function hDieta(){
             <div style="font-size:13px;font-weight:700;color:${accLight};margin-left:8px;white-space:nowrap;font-family:'Bebas Neue',sans-serif">${a.cantidad}</div>
           </div>`).join('')}
         </div>
-        ${(()=>{
-          const vars = CD._planVariaciones?.[mi];
-          if(!vars?.length) return '';
-          return `<div style="border-top:0.5px solid rgba(255,255,255,.07);margin-top:6px;padding-top:8px">
-            <div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:.08em;margin-bottom:6px">${t('OPCIONES ALTERNATIVAS')}</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button onclick="clienteVarSelect2(${mi},-1,this)" style="padding:4px 12px;border-radius:10px;border:1px solid ${acc};background:${accBg};color:${accLight};font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation">A</button>
-              ${vars.map((v,vi)=>`<button onclick="clienteVarSelect2(${mi},${vi},this)" style="padding:4px 12px;border-radius:10px;border:0.5px solid rgba(255,255,255,.2);background:none;color:rgba(255,255,255,.45);font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation">${v.letra||String.fromCharCode(66+vi)} · ${(cachedTrans?.vars?.[mi]?.[vi]) || v.nombre||''}</button>`).join('')}
-            </div>
-          </div>`;
-        })()}
+      </div>`).join('');
+
+    // Dots de navegación (solo si hay >1 opción)
+    const dots = hasVars ? `<div id="${dotId}" style="display:flex;justify-content:center;gap:6px;margin-top:10px">
+      ${todasOpciones.map((_,oi)=>`<div onclick="_dietaSwipeTo(${mi},${oi})" style="width:${oi===0?'18':'7'}px;height:7px;border-radius:4px;background:${oi===0?acc:'rgba(255,255,255,.2)'};cursor:pointer;transition:.3s" data-dot="${oi}"></div>`).join('')}
+    </div>` : '';
+
+    return `
+    <div style="border:1px solid rgba(255,255,255,.1);border-radius:12px;overflow:hidden;margin-bottom:10px;background:rgba(255,255,255,.02)">
+      <!-- Header comida -->
+      <div style="display:flex;background:${accDark};padding:10px 12px;align-items:center;gap:10px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:${accLight};line-height:1;flex-shrink:0">${m.numero}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:#fff;letter-spacing:.1em">${m.nombre}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4)">${m.alimentos.length} ${t('alimentos')}${hasVars?' · '+todasOpciones.length+' opciones':''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          ${m.alimentos.some(a=>a.nombre.toLowerCase().match(/pollo|salmón|salmon|huevo|whey|pavo|carne|proteína/))
+            ? `<div style="font-size:9px;font-weight:700;color:${accLight};border:0.5px solid ${acc};padding:2px 6px;border-radius:4px;letter-spacing:.06em;background:${accBg}">${LANG==='en'?'PROTEIN':'PROTEÍNA'}</div>`
+            : ''}
+          <button onclick="_abrirReceta(${mi})" style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.08);border:0.5px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent" title="${LANG==='en'?'See recipe':'Ver receta'}">👨‍🍳</button>
+        </div>
       </div>
-    </div>`).join('');
+      <!-- Swipe container -->
+      <div style="padding:10px 12px 6px">
+        <div id="${swipeId}" style="display:flex;overflow-x:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scroll-behavior:smooth" data-mi="${mi}" data-total="${todasOpciones.length}">
+          ${optCards}
+        </div>
+        ${dots}
+      </div>
+    </div>`;
+  }).join('');
 
   return `<div id="dieta_view" style="background:#06080e;min-height:100vh;padding-bottom:100px">
 
@@ -1911,4 +1940,152 @@ function hDieta(){
       </button>
     </div>
   </div>`;
+  // Inicializar swipe táctil tras renderizar el DOM
+  setTimeout(_initDietaSwipe, 100);
+}
+
+
+// ── SWIPE A/B/C — navegación entre opciones de comida ─────────────────────
+function _dietaSwipeTo(mi, oi){
+  const container = document.getElementById('swipe_'+mi);
+  if(!container) return;
+  const cardW = container.offsetWidth;
+  container.scrollTo({ left: oi * cardW, behavior: 'smooth' });
+  // Actualizar dots
+  const dotsCont = document.getElementById('dots_'+mi);
+  if(dotsCont){
+    const acc = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? '#22c55e' : '#3b82f6';
+    dotsCont.querySelectorAll('[data-dot]').forEach(d=>{
+      const idx = parseInt(d.getAttribute('data-dot'));
+      d.style.width  = idx===oi ? '18px' : '7px';
+      d.style.background = idx===oi ? acc : 'rgba(255,255,255,.2)';
+    });
+  }
+}
+
+// Activar swipe táctil nativo (scroll-snap) — los dots se sincronizan al scroll
+function _initDietaSwipe(){
+  document.querySelectorAll('[id^="swipe_"]').forEach(container=>{
+    const mi = parseInt(container.getAttribute('data-mi'));
+    container.addEventListener('scroll', ()=>{
+      const cardW = container.offsetWidth;
+      if(!cardW) return;
+      const oi = Math.round(container.scrollLeft / cardW);
+      const dotsCont = document.getElementById('dots_'+mi);
+      if(dotsCont){
+        const acc = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? '#22c55e' : '#3b82f6';
+        dotsCont.querySelectorAll('[data-dot]').forEach(d=>{
+          const idx = parseInt(d.getAttribute('data-dot'));
+          d.style.width  = idx===oi ? '18px' : '7px';
+          d.style.background = idx===oi ? acc : 'rgba(255,255,255,.2)';
+        });
+      }
+    }, {passive:true});
+  });
+}
+
+// ── RECETA FITNESS con IA + foto Unsplash ────────────────────────────────
+async function _abrirReceta(mi){
+  const comida = CD.comidas[mi];
+  if(!comida) return;
+  const ingredientes = (comida.items||[]).map(it=>it.nombre+' '+it.gramos+'g').join(', ');
+  const nombreComida = comida.nombre || '';
+  const cacheKey = 'receta_'+CD.id+'_'+mi;
+
+  // Crear modal
+  const modal = document.createElement('div');
+  modal.id = 'receta_modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(9,9,11,.97);z-index:700;display:flex;flex-direction:column;overflow:hidden';
+  modal.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--s);border-bottom:0.5px solid var(--br);flex-shrink:0">
+      <button onclick="document.getElementById('receta_modal').remove()" style="width:34px;height:34px;border-radius:8px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);cursor:pointer;font-size:20px;line-height:1">×</button>
+      <div style="font-size:15px;font-weight:700;color:var(--sv)">👨‍🍳 ${LANG==='en'?'Fitness Recipe':'Receta Fitness'}</div>
+      <span style="font-size:10px;background:rgba(124,58,237,.2);color:#a78bfa;border:0.5px solid rgba(124,58,237,.3);padding:2px 8px;border-radius:10px">🤖 IA</span>
+    </div>
+    <div id="receta_body" style="flex:1;overflow-y:auto">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:14px">
+        <div style="width:40px;height:40px;border-radius:50%;border:3px solid var(--bl2);border-top-color:transparent;animation:spin .8s linear infinite"></div>
+        <div style="font-size:13px;color:var(--tx3)">${LANG==='en'?'Creating your recipe...':'Creando tu receta...'}</div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  try {
+    // Intentar desde cache
+    let receta = null;
+    try { receta = JSON.parse(localStorage.getItem(cacheKey)||'null'); } catch(e){}
+
+    if(!receta){
+      const lang = LANG==='en'?'English':'Spanish';
+      const prompt = LANG==='en'
+        ? `You are a fitness nutritionist. Create a tasty recipe using EXACTLY these ingredients (same quantities): ${ingredientes}. Meal type: ${nombreComida}. Rules: no added calories, only spices/herbs/salt/pepper allowed as extras. Respond ONLY with compact valid JSON: {"nombre":"dish name","tiempo":"X min","especias":["spice1","spice2","spice3"],"pasos":["step1","step2","step3","step4"],"foto_query":"3-word english query for food photo"}`
+        : `Eres nutricionista deportivo. Crea una receta sabrosa usando EXACTAMENTE estos ingredientes (mismas cantidades): ${ingredientes}. Tipo de comida: ${nombreComida}. Reglas: sin calorías extra, solo especias/hierbas/sal/pimienta permitidas como extras. Responde SOLO con JSON válido compacto: {"nombre":"nombre del plato","tiempo":"X min","especias":["especia1","especia2","especia3"],"pasos":["paso1","paso2","paso3","paso4"],"foto_query":"3-word english query for food photo"}`;
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await res.json();
+      const raw = (data.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
+      receta = JSON.parse(raw);
+      try { localStorage.setItem(cacheKey, JSON.stringify(receta)); } catch(e){}
+    }
+
+    // Foto de Unsplash (sin API key — usando source.unsplash.com)
+    const query = encodeURIComponent(receta.foto_query || receta.nombre || 'healthy meal');
+    const fotoUrl = `https://source.unsplash.com/600x400/?${query}`;
+
+    const body = document.getElementById('receta_body');
+    if(!body) return;
+    const acc = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? '#22c55e' : '#3b82f6';
+    const accLight = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? '#86efac' : '#93c5fd';
+
+    body.innerHTML = `
+      <!-- Foto del plato -->
+      <div style="width:100%;height:200px;background:#0d1520;overflow:hidden;position:relative">
+        <img src="${fotoUrl}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.background='#0d1520';this.style.display='none'"/>
+        <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(9,9,11,.9))"></div>
+        <div style="position:absolute;bottom:12px;left:16px;right:16px">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;letter-spacing:.05em;line-height:1.2">${receta.nombre}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:3px">⏱ ${receta.tiempo} · 0 kcal extra</div>
+        </div>
+      </div>
+      <!-- Especias -->
+      <div style="padding:14px 16px;border-bottom:0.5px solid rgba(255,255,255,.07)">
+        <div style="font-size:10px;font-weight:700;color:${acc};text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">🧂 ${LANG==='en'?'SPICES & SEASONING':'ESPECIAS Y SAZÓN'}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${(receta.especias||[]).map(e=>`<span style="font-size:12px;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.06);border:0.5px solid rgba(255,255,255,.12);color:rgba(255,255,255,.8)">${e}</span>`).join('')}
+        </div>
+      </div>
+      <!-- Ingredientes -->
+      <div style="padding:14px 16px;border-bottom:0.5px solid rgba(255,255,255,.07)">
+        <div style="font-size:10px;font-weight:700;color:${acc};text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">🥩 ${LANG==='en'?'INGREDIENTS':'INGREDIENTES'}</div>
+        ${(comida.items||[]).map(it=>`
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.04)">
+          <span style="font-size:13px;color:rgba(255,255,255,.8)">${it.nombre}</span>
+          <span style="font-size:13px;font-weight:700;color:${accLight};font-family:'Bebas Neue',sans-serif">${it.gramos}g</span>
+        </div>`).join('')}
+      </div>
+      <!-- Preparación -->
+      <div style="padding:14px 16px">
+        <div style="font-size:10px;font-weight:700;color:${acc};text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">👨‍🍳 ${LANG==='en'?'PREPARATION':'PREPARACIÓN'}</div>
+        ${(receta.pasos||[]).map((p,i)=>`
+        <div style="display:flex;gap:12px;margin-bottom:12px;align-items:flex-start">
+          <div style="width:24px;height:24px;border-radius:50%;background:${acc}22;border:1px solid ${acc}55;color:${accLight};font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${i+1}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.85);line-height:1.6">${p}</div>
+        </div>`).join('')}
+        <div style="margin-top:16px;padding:10px 12px;background:rgba(34,197,94,.06);border:0.5px solid rgba(34,197,94,.2);border-radius:10px;font-size:11px;color:rgba(255,255,255,.5);text-align:center">
+          ✅ ${LANG==='en'?'Same macros as your plan · No extra calories':'Mismos macros que tu plan · Sin calorías extra'}
+        </div>
+      </div>`;
+
+  } catch(e){
+    const body = document.getElementById('receta_body');
+    if(body) body.innerHTML = `<div style="padding:30px;text-align:center;color:var(--tx3);font-size:13px">${LANG==='en'?'Could not generate recipe. Try again.':'No se pudo generar la receta. Inténtalo de nuevo.'}</div>`;
+  }
 }
