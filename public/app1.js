@@ -3137,7 +3137,7 @@ function renderEditarDietaCoach(c){
   // ─── BARRA DE MACROS ───
   let html = renderMacrosBarra(macros, obj);
 
-  // ─── OPCIÓN B: Rebalanceo IA ───
+  // ─── REBALANCEO IA ───
   html += `<div style="background:linear-gradient(135deg,rgba(37,99,235,.08),rgba(17,17,19,.9));border:0.5px solid rgba(59,130,246,.25);border-radius:10px;padding:12px;margin-bottom:10px">
     <div style="font-size:11px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">⚡ ${tc('Rebalanceo IA')}</div>
     <div style="font-size:12px;color:var(--sv3);margin-bottom:8px">${tc('Describe el ajuste y la IA redistribuye todo el plan')}</div>
@@ -3146,7 +3146,7 @@ function renderEditarDietaCoach(c){
     <button onclick="rebalancearConIA()" class="btn" style="width:100%;padding:10px;font-size:13px">⚡ ${tc('Rebalancear con IA')}</button>
   </div>`;
 
-  // ─── OPCIÓN A: Rebalanceo automático ───
+  // ─── AJUSTE AUTOMÁTICO ───
   html += `<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:12px;margin-bottom:10px">
     <div style="font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">🔧 ${tc('Ajuste automático')}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
@@ -3167,14 +3167,36 @@ function renderEditarDietaCoach(c){
     <button onclick="rebalancearAutomatico()" class="btn btn-sm" style="width:100%;padding:9px;background:var(--s3);color:var(--sv2);border:0.5px solid var(--br)">🔧 ${tc('Aplicar ajuste')}</button>
   </div>`;
 
-  // ─── EDICIÓN MANUAL POR COMIDA ───
+  // ─── EDICIÓN MANUAL POR COMIDA (opción A + B/C) ───
   html += `<div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${tc('Edición manual')}</div>`;
+
+  const vars = c._planVariaciones || {};
+
   c.comidas.forEach((m, mi) => {
     const nombreEsc = (m.nombre||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const emoji = ['☀️','🕐','🍽️','🌅','🌙','🥗'][mi]||'🍽️';
+    const opcionesBC = vars[mi] || [];
+    const hasBC = opcionesBC.length > 0;
+
     html += `<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:10px;padding:10px 12px;margin-bottom:8px">
-      <div style="font-size:12px;font-weight:700;color:var(--blg);margin-bottom:8px">${['☀️','🕐','🍽️','🌅','🌙','🥗'][mi]||'🍽️'} ${m.nombre}</div>`;
+      <div style="font-size:12px;font-weight:700;color:var(--blg);margin-bottom:10px">${emoji} ${m.nombre}</div>`;
+
+    // ── Tabs A / B / C ──
+    if(hasBC){
+      html += `<div style="display:flex;gap:4px;margin-bottom:10px" id="edit_tabs_${mi}">`;
+      html += `<button onclick="coachEditTab(${mi},'A',this)" data-tab="A"
+        style="padding:4px 14px;border-radius:8px;border:1px solid var(--bl);background:rgba(37,99,235,.15);color:var(--blg);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">A</button>`;
+      opcionesBC.forEach((op, oi) => {
+        const letra = op.letra || String.fromCharCode(66+oi);
+        html += `<button onclick="coachEditTab(${mi},'${letra}',this)" data-tab="${letra}"
+          style="padding:4px 14px;border-radius:8px;border:0.5px solid var(--br);background:none;color:var(--tx3);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">${letra}</button>`;
+      });
+      html += `</div>`;
+    }
+
+    // ── Panel Opción A (alimentos en BD) ──
+    html += `<div id="edit_panel_${mi}_A">`;
     (m.items||[]).forEach(it => {
-      const itNombreEsc = (it.nombre||'').replace(/"/g,'&quot;');
       html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span style="flex:1;font-size:12px;color:var(--sv2)">${it.nombre}</span>
         <input type="number" value="${it.gramos||0}" min="1" data-alim-id="${it.id}"
@@ -3187,10 +3209,113 @@ function renderEditarDietaCoach(c){
     html += `<button onclick="coachAnadirAlimento(${m.id}, '${nombreEsc}', this)"
       style="width:100%;padding:6px;border:0.5px dashed var(--br);border-radius:8px;background:none;color:var(--tx3);font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;margin-top:2px">${tc('+ Añadir alimento')}</button>
     </div>`;
+
+    // ── Paneles opciones B, C (en _planVariaciones, en memoria) ──
+    opcionesBC.forEach((op, oi) => {
+      const letra = op.letra || String.fromCharCode(66+oi);
+      html += `<div id="edit_panel_${mi}_${letra}" style="display:none">`;
+      (op.alimentos||[]).forEach((a, ai) => {
+        const nomEsc = (a.nombre||'').replace(/"/g,'&quot;');
+        const gramos = a.gramos != null ? a.gramos : parseInt((a.cantidad||'').replace(/[^0-9]/g,''))||0;
+        html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px" data-var-item="${mi}-${oi}-${ai}">
+          <span style="flex:1;font-size:12px;color:var(--sv2)">${a.nombre}</span>
+          <input type="number" value="${gramos}" min="1"
+            style="width:65px;padding:5px 7px;border:0.5px solid var(--br);border-radius:7px;background:var(--b);color:var(--blg);font-size:13px;font-weight:700;text-align:center;font-family:'Inter',sans-serif"
+            onchange="coachEditVarG(${mi},${oi},${ai},this.value)"/>
+          <span style="font-size:11px;color:var(--tx3)">g</span>
+          <button onclick="coachBorrarVarAlimento(${mi},${oi},${ai},this)" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px;flex-shrink:0">✕</button>
+        </div>`;
+      });
+      html += `<button onclick="coachAnadirVarAlimento(${mi},${oi},this)"
+        style="width:100%;padding:6px;border:0.5px dashed var(--br);border-radius:8px;background:none;color:var(--tx3);font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;margin-top:2px">${tc('+ Añadir alimento')}</button>
+      </div>`;
+    });
+
+    html += `</div>`; // cierre tarjeta comida
   });
 
   html += `<button onclick="guardarDietaCoach()" class="btn" style="width:100%;padding:11px;background:var(--gn);margin-top:4px">✓ ${tc('Guardar y cerrar')}</button>`;
   edit.innerHTML = html;
+}
+
+// Cambiar tab activo A/B/C dentro de una comida del editor
+function coachEditTab(mi, letra, btn){
+  const tabs = document.querySelectorAll(`#edit_tabs_${mi} button`);
+  tabs.forEach(b => {
+    b.style.background='none'; b.style.color='var(--tx3)'; b.style.border='0.5px solid var(--br)';
+  });
+  btn.style.background='rgba(37,99,235,.15)'; btn.style.color='var(--blg)'; btn.style.border='1px solid var(--bl)';
+
+  // Mostrar panel correspondiente, ocultar el resto
+  const allPanels = document.querySelectorAll(`[id^="edit_panel_${mi}_"]`);
+  allPanels.forEach(p => p.style.display='none');
+  const target = document.getElementById(`edit_panel_${mi}_${letra}`);
+  if(target) target.style.display='block';
+}
+
+// Editar gramos de un alimento en opción B/C (en memoria)
+function coachEditVarG(mi, oi, ai, valor){
+  const c = window._coachClienteActual;
+  if(!c || !c._planVariaciones) return;
+  const op = c._planVariaciones[mi]?.[oi];
+  if(!op || !op.alimentos[ai]) return;
+  const gramos = parseInt(valor)||0;
+  op.alimentos[ai].gramos = gramos;
+  op.alimentos[ai].cantidad = gramos+'g';
+}
+
+// Borrar alimento de opción B/C (en memoria)
+function coachBorrarVarAlimento(mi, oi, ai, btn){
+  const c = window._coachClienteActual;
+  if(!c || !c._planVariaciones) return;
+  const op = c._planVariaciones[mi]?.[oi];
+  if(!op) return;
+  op.alimentos.splice(ai, 1);
+  btn.closest('[data-var-item]').remove();
+  // Re-render el panel para actualizar índices
+  const letra = op.letra || String.fromCharCode(66+oi);
+  _reRenderVarPanel(mi, oi, letra);
+}
+
+// Añadir alimento a opción B/C (en memoria)
+function coachAnadirVarAlimento(mi, oi, btn){
+  const c = window._coachClienteActual;
+  if(!c || !c._planVariaciones) return;
+  const op = c._planVariaciones[mi]?.[oi];
+  if(!op) return;
+  const nombre = prompt(COACH_LANG==='en'?'Food name:':'Nombre del alimento:');
+  if(!nombre) return;
+  const gramos = parseInt(prompt(COACH_LANG==='en'?'Grams (raw):':'Gramos (en crudo):', '100')||'100');
+  if(!gramos) return;
+  op.alimentos.push({ nombre, gramos, cantidad: gramos+'g' });
+  const letra = op.letra || String.fromCharCode(66+oi);
+  _reRenderVarPanel(mi, oi, letra);
+}
+
+// Re-renderiza un panel B/C concreto sin tocar el resto del editor
+function _reRenderVarPanel(mi, oi, letra){
+  const c = window._coachClienteActual;
+  if(!c || !c._planVariaciones) return;
+  const op = c._planVariaciones[mi]?.[oi];
+  if(!op) return;
+  const panel = document.getElementById(`edit_panel_${mi}_${letra}`);
+  if(!panel) return;
+
+  let inner = '';
+  (op.alimentos||[]).forEach((a, ai) => {
+    const gramos = a.gramos != null ? a.gramos : parseInt((a.cantidad||'').replace(/[^0-9]/g,''))||0;
+    inner += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px" data-var-item="${mi}-${oi}-${ai}">
+      <span style="flex:1;font-size:12px;color:var(--sv2)">${a.nombre}</span>
+      <input type="number" value="${gramos}" min="1"
+        style="width:65px;padding:5px 7px;border:0.5px solid var(--br);border-radius:7px;background:var(--b);color:var(--blg);font-size:13px;font-weight:700;text-align:center;font-family:'Inter',sans-serif"
+        onchange="coachEditVarG(${mi},${oi},${ai},this.value)"/>
+      <span style="font-size:11px;color:var(--tx3)">g</span>
+      <button onclick="coachBorrarVarAlimento(${mi},${oi},${ai},this)" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px;flex-shrink:0">✕</button>
+    </div>`;
+  });
+  inner += `<button onclick="coachAnadirVarAlimento(${mi},${oi},this)"
+    style="width:100%;padding:6px;border:0.5px dashed var(--br);border-radius:8px;background:none;color:var(--tx3);font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;margin-top:2px">${tc('+ Añadir alimento')}</button>`;
+  panel.innerHTML = inner;
 }
 
 function actualizarBarraMacros(){
@@ -3366,12 +3491,25 @@ async function coachAnadirAlimento(comidaId, nombreComida, btn){
 async function guardarDietaCoach(){
   const btn = document.querySelector('#coach_dieta_edit .btn[onclick="guardarDietaCoach()"]');
   if(btn){ btn.textContent='⏳ Guardando...'; btn.disabled=true; }
-  const c = await api('/clientes/'+window._coachClienteId);
-  window._coachClienteActual = c;
+
+  const c = window._coachClienteActual;
+
+  // Guardar opciones B/C en plan_meta si hubo cambios
+  if(c && c._planVariaciones && Object.keys(c._planVariaciones).length){
+    try {
+      await api('/clientes/'+window._coachClienteId+'/plan-meta', {
+        method:'POST',
+        body: JSON.stringify({ variaciones: c._planVariaciones })
+      });
+    } catch(e){ console.warn('No se pudieron guardar opciones B/C:', e); }
+  }
+
+  const fresh = await api('/clientes/'+window._coachClienteId);
+  window._coachClienteActual = fresh;
   const view = document.getElementById('coach_dieta_view');
   const edit = document.getElementById('coach_dieta_edit');
   const btnEditar = document.getElementById('btn_editar_dieta_coach');
-  if(view) view.innerHTML = c.comidas.length ? c.comidas.map((m,mi)=>{
+  if(view) view.innerHTML = fresh.comidas.length ? fresh.comidas.map((m,mi)=>{
     const itemsHtml = (m.items||[]).map(it=>
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:0.5px solid rgba(39,39,42,.4)">'+
       '<span style="font-size:12px;color:var(--sv2)">'+it.nombre+'</span>'+
