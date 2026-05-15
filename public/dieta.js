@@ -2094,49 +2094,17 @@ async function _recetaCargar(mi, oi, todasOpts, acc){
     } catch(e){}
 
     if(!receta){
-      // Prompt construido con array + join para saltos de línea reales
-      const listaIngr = ingredientesArr.map(it => '- ' + it.nombre + ' (' + it.gramos + 'g)').join('\n');
-      const promptLines = LANG === 'en' ? [
-        'INGREDIENTS (use ONLY these, no exceptions):',
-        listaIngr,
-        '',
-        'Meal: ' + nombreComida,
-        '',
-        'RULES:',
-        '- NO added ingredients (no pasta, no cheese, no cream, no sauce, nothing not listed above)',
-        '- Salt, pepper, herbs allowed as extras (0 calories)',
-        '- Use the exact grams shown',
-        '- foto_query: 2 english words for the MAIN ingredient photo (e.g. grilled chicken)',
-        '',
-        'Return ONLY this JSON:',
-        '{"nombre":"dish name","tiempo":"X min","especias":["...","..."],"pasos":["...","...","...","..."],"foto_query":"2 words"}'
-      ] : [
-        'INGREDIENTES (usa ÚNICAMENTE estos, sin excepciones):',
-        listaIngr,
-        '',
-        'Comida: ' + nombreComida,
-        '',
-        'REGLAS:',
-        '- NO añadir ingredientes (sin pasta, sin queso, sin nata, sin salsas, nada que no esté arriba)',
-        '- Solo sal, pimienta y hierbas como extras (0 calorías)',
-        '- Usa los gramos exactos indicados',
-        '- foto_query: 2 palabras en inglés para foto del ingrediente principal (ej: grilled chicken)',
-        '',
-        'Devuelve ÚNICAMENTE este JSON:',
-        '{"nombre":"nombre plato","tiempo":"X min","especias":["...","..."],"pasos":["...","...","...","..."],"foto_query":"2 words"}'
-      ];
-      const prompt = promptLines.join('\n');
-      const d = await api('/ia/chat', {
+      // Usar endpoint dedicado — modelo haiku, prompt ultra-estricto
+      const d = await api('/ia/receta-fitness', {
         method: 'POST',
         body: JSON.stringify({
-          messages: [{ role: 'user', content: prompt }],
-          system: LANG==='en'
-            ? 'You are a fitness nutritionist. Respond ONLY with valid compact JSON, no extra text.'
-            : 'Eres nutricionista deportivo. Responde SOLO con JSON válido y compacto, sin texto extra.'
+          ingredientes: ingredientesArr,
+          nombreComida,
+          lang: LANG
         })
       });
-      const raw = (d.reply||'').replace(/```json|```/g,'').trim();
-      receta = JSON.parse(raw);
+      receta = d.receta;
+      if(!receta) throw new Error('no receta');
       try { localStorage.setItem(cacheKey, JSON.stringify(receta)); } catch(e){}
     }
 
