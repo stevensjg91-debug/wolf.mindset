@@ -6689,6 +6689,12 @@ const imgUrl =
   <div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.08em">${d.grupo}</div>
   ${exCards}
   ${d.ejercicios.length>0&&d.ejercicios.every(e=>e._series&&e._series.every(s=>s.done))?`<div style="margin:0 14px 20px;background:var(--gnd);border:0.5px solid rgba(34,197,94,.3);border-radius:14px;padding:18px;text-align:center"><div style="font-size:32px;margin-bottom:8px">🎉</div><div style="font-size:16px;font-weight:700;color:var(--gnb)">${t('¡Entreno completado!')}</div><div style="font-size:13px;color:var(--tx3);margin-top:4px">${t('Descansa y come bien.')}</div></div>`:''}
+  <div style="margin:24px 14px 80px;padding-top:20px;border-top:0.5px solid var(--br2);text-align:center">
+    <button onclick="cancelarEntreno()" style="background:transparent;color:var(--tx3);border:0.5px solid var(--br2);border-radius:10px;padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation">
+      ${t('Cancelar entreno')}
+    </button>
+    <div style="font-size:11px;color:var(--tx3);margin-top:8px;opacity:.7">${t('Descarta el progreso y vuelve al inicio')}</div>
+  </div>
   ${renderKeyboard()}`;
 }
 
@@ -10630,6 +10636,46 @@ function terminarEntreno(){
     );
     if(!confirmar) return;
   }
+   function cancelarEntreno(){
+  const d = CD.dias[activeDia];
+  const doneSeries = d.ejercicios.reduce((a,e)=>a+(e._series?e._series.filter(s=>s.done).length:0),0);
+
+  // Mensaje según haya progreso o no
+  const msg = doneSeries > 0
+    ? (LANG==='en'
+        ? `Cancel workout? You'll lose ${doneSeries} completed set${doneSeries>1?'s':''}.\n\nNothing will be saved.`
+        : `¿Cancelar entreno? Perderás ${doneSeries} serie${doneSeries>1?'s':''} completada${doneSeries>1?'s':''}.\n\nNo se guardará nada.`)
+    : (LANG==='en'
+        ? 'Cancel workout and go back?'
+        : '¿Cancelar entreno y volver atrás?');
+
+  if(!confirm(msg)) return;
+
+  // 1) Parar el cronómetro del entreno
+  workoutStartTime = null;
+  if(workoutTimerInt){ clearInterval(workoutTimerInt); workoutTimerInt = null; }
+
+  // 2) Parar timers de descanso activos
+  runningTimers = {};
+  activeInput = null;
+
+  // 3) Descartar series en memoria (borrar progreso del día actual)
+  d.ejercicios.forEach(e => { if(e._series) e._series = null; });
+
+  // 4) Limpiar estado persistido en localStorage
+  limpiarEstadoEntreno();
+
+  // 5) Cancelar notificaciones de descanso si las hubiera
+  try { if(typeof cancelarTodasNotificaciones === 'function') cancelarTodasNotificaciones(); } catch(e){}
+
+  // 6) Volver a la pantalla de selección de día
+  vistaActual = 'seleccion';
+  const klEl = document.getElementById('klContent');
+  if(klEl){
+    klEl.innerHTML = hSeleccionDia();
+    applyLang(klEl);
+  }
+}
 
   // mostrarDoneOverlay se encarga de guardar
   mostrarDoneOverlay(pendientes>0?'incompleto':'completado', pendientes);
