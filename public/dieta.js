@@ -2122,28 +2122,33 @@ async function _recetaCargar(mi, oi, todasOpts, acc){
       try { localStorage.setItem(cacheKey, JSON.stringify(receta)); } catch(e){}
     }
 
-    // Foto basada en ingrediente principal
-    const fotoQuery = receta.foto_query || ingredientesArr[0]?.nombre || 'healthy food';
-    const fotoQueryEnc = encodeURIComponent(fotoQuery);
-    let fotoSrc = '';
-    try {
-      const fotoRes = await fetch(`https://api.unsplash.com/photos/random?query=${fotoQueryEnc}&orientation=landscape&content_filter=high&client_id=hTbVSYX8CmKFLXPfwdHLCaHv5IxhijvT5X10T4QxKUE`);
-      if(fotoRes.ok){
-        const fotoData = await fotoRes.json();
-        fotoSrc = fotoData?.urls?.regular || fotoData?.urls?.small || '';
-      }
-    } catch(e){}
-    if(!fotoSrc){
-      const mainIngr = (ingredientesArr[0]?.nombre||'').toLowerCase();
-      const fallbacks = {
-        pollo:'1546069901-ba9599a7e63c', arroz:'1455619452-9214-91a0-8a5f-52b3b3c8a9c2',
-        salmon:'1467003909585-2f8a72700288', huevo:'1482049016688-2d3e1b311543',
-        carne:'1558030006-c2f32afd87ac', pasta:'1473093226555-0b23c14a1c64',
-        avena:'1504901218145-c3dcffca59af', ensalada:'1512621776951-a57141f2eefd',
-      };
-      const fbKey = Object.keys(fallbacks).find(k=>mainIngr.includes(k));
-      fotoSrc = `https://images.unsplash.com/photo-${fbKey?fallbacks[fbKey]:'1546069901-ba9599a7e63c'}?w=600&q=80`;
-    }
+    // Foto por ingrediente principal — fotos estáticas de Unsplash (sin API key)
+    const mainIngr = (ingredientesArr[0]?.nombre||'').toLowerCase();
+    const fotoMap = {
+      pollo:    '1532550907401-a500c9a57435',
+      pechuga:  '1532550907401-a500c9a57435',
+      salmon:   '1467003909585-2f8a72700288',
+      atun:     '1467003909585-2f8a72700288',
+      carne:    '1558030006-c2f32afd87ac',
+      ternera:  '1558030006-c2f32afd87ac',
+      cerdo:    '1558030006-c2f32afd87ac',
+      huevo:    '1482049016688-2d3e1b311543',
+      arroz:    '1455619452-9214-91a0-8a5f-52b3b3c8a9c2',
+      avena:    '1504901218145-c3dcffca59af',
+      pasta:    '1473093226555-0b23c14a1c64',
+      ensalada: '1512621776951-a57141f2eefd',
+      verdura:  '1512621776951-a57141f2eefd',
+      whey:     '1532550907401-a500c9a57435',
+      yogur:    '1488477181228-c815e7389caa',
+      leche:    '1488477181228-c815e7389caa',
+      patata:   '1518977676878-7d93acaba5b6',
+      boniato:  '1518977676878-7d93acaba5b6',
+      platano:  '1469045678638-3f5a77df0716',
+      fruta:    '1469045678638-3f5a77df0716',
+    };
+    const fbKey = Object.keys(fotoMap).find(k => mainIngr.includes(k));
+    const fotoId = fbKey ? fotoMap[fbKey] : '1546069901-ba9599a7e63c';
+    const fotoSrc = 'https://images.unsplash.com/photo-' + fotoId + '?w=600&q=80&fit=crop';
 
     if(!document.getElementById('receta_body')) return; // modal cerrado
 
