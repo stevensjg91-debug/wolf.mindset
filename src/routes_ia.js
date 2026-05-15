@@ -3251,4 +3251,135 @@ router.post('/ia/receta-fitness', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── IMAGEN IA PARA RECETA FITNESS — OpenAI + Cloudinary con fallback seguro ───
+async function subirRecetaACloudinary(dataUrl, nombre){
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey    = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  // Si no está configurado Cloudinary, devolvemos la data URL para no romper.
+  if(!cloudName || !apiKey || !apiSecret) return dataUrl;
+
+  const crypto = require('crypto');
+  const timestamp = Math.floor(Date.now() / 1000);
+  const folder = process.env.CLOUDINARY_RECIPE_FOLDER || 'wolfmindset/recipes';
+  const publicIdBase = String(nombre || 'fitness-recipe')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'fitness-recipe';
+  const public_id = publicIdBase + '-' + timestamp;
+
+  // Cloudinary signature: parámetros ordenados alfabéticamente + api_secret
+  const paramsToSign = `folder=${folder}&public_id=${public_id}&timestamp=${timestamp}`;
+  const signature = crypto
+    .createHash('sha1')
+    .update(paramsToSign + apiSecret)
+    .digest('hex');
+
+  const form = new FormData();
+  form.append('file', dataUrl);
+  form.append('api_key', apiKey);
+  form.append('timestamp', String(timestamp));
+  form.append('signature', signature);
+  form.append('folder', folder);
+  form.append('public_id', public_id);
+
+  const up = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+    method: 'POST',
+    body: form
+  });
+  const json = await up.json();
+  if(!up.ok) throw new Error(json.error?.message || 'Cloudinary upload error');
+
+  // URL optimizada: recorta y comprime para cabecera de receta móvil.
+  const secureUrl = json.secure_url || json.url;
+  if(!secureUrl) throw new Error('Cloudinary no devolvió URL');
+  return secureUrl.replace('/upload/', '/upload/f_auto,q_auto,w_900,h_520,c_fill/');
+}
+
+router.post('/ia/receta-imagen', async (req, res) => {
+  const { nombre, nombreComida, ingredientes, lang } = req.body;
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  // No rompemos la app si falta OpenAI: dieta.js usará fallback.
+  if (!apiKey) return res.json({ image_url: '', fallback: true, reason: 'OPENAI_API_KEY no configurada' });
+  if (!ingredientes || !ingredientes.length) return res.status(400).json({ error: 'ingredientes requeridos' });
+
+  const isEn = lang === 'en';
+  const listaIngr = ingredientes
+    .map(it => '- ' + (it.nombre || '') + ' (' + (it.gramos || 0) + 'g)')
+    .join('\n');
+
+  const prompt = [
+    'Create a premium realistic food photography image for a fitness coaching mobile app.',
+    'Dish name: ' + (nombre || nombreComida || 'Fitness recipe'),
+    'Meal type: ' + (nombreComida || 'fitness meal'),
+    'Use ONLY these visible ingredients as the dish composition:',
+    listaIngr,
+    '',
+    'Visual direction:',
+    '- realistic professional food photography',
+    '- clean bowl or plate presentation',
+    '- dark premium background matching a black/red fitness app',
+    '- appetizing natural lighting, high contrast, sharp details',
+    '- healthy, protein-focused, meal-prep aesthetic',
+    '',
+    'Strict negatives:',
+    '- no text, no labels, no logos, no hands, no people, no packaging',
+    '- no extra ingredients not listed',
+    '- no cartoon or illustration style',
+    isEn ? 'Language context: English app.' : 'Language context: Spanish app.'
+  ].join('\n');
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1',
+        prompt,
+        size: process.env.OPENAI_IMAGE_SIZE || '1024x1024',
+        quality: process.env.OPENAI_IMAGE_QUALITY || 'low',
+        n: 1
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.log('[receta-imagen][openai]', data.error?.message || 'Error OpenAI Images');
+      return res.json({ image_url: '', fallback: true, error: data.error?.message || 'Error generando imagen' });
+    }
+
+    const item = data.data && data.data[0];
+    let dataUrl = '';
+
+    if (item?.b64_json) {
+      dataUrl = 'data:image/png;base64,' + item.b64_json;
+    } else if (item?.url) {
+      // Algunos modelos/proveedores pueden devolver URL temporal.
+      dataUrl = item.url;
+    }
+
+    if(!dataUrl) return res.json({ image_url: '', fallback: true });
+
+    try {
+      const finalUrl = await subirRecetaACloudinary(dataUrl, nombre || nombreComida || 'fitness-recipe');
+      return res.json({ image_url: finalUrl, cloudinary: finalUrl !== dataUrl });
+    } catch(uploadErr) {
+      console.log('[receta-imagen][cloudinary]', uploadErr.message);
+      // No rompemos: si falla Cloudinary, devolvemos dataUrl para que al menos se vea.
+      return res.json({ image_url: dataUrl, cloudinary: false, cloudinary_error: uploadErr.message });
+    }
+  } catch(e) {
+    console.log('[receta-imagen]', e.message);
+    res.json({ image_url: '', fallback: true, error: e.message });
+  }
+});
+
 module.exports = { router };
