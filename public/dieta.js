@@ -2253,7 +2253,16 @@ async function _abrirReceta(mi, oi){
   } else {
     const vars = CD._planVariaciones?.[mi] || [];
     const v = vars[opIdx-1] || vars[0];
-    ingredientesArr = (v?.alimentos||[]).map(a=>({nombre:a.nombre, gramos:a.gramos||parseInt((a.cantidad||'0'))}));
+    ingredientesArr = (v?.alimentos||[]).map(a=>{
+        // cantidad puede ser "80g", "300g", "4 uds", "1 ud mediano", etc.
+        let gramos = a.gramos || 0;
+        if(!gramos && a.cantidad){
+          const num = parseFloat((a.cantidad||'').replace(',','.'));
+          const esUds = /ud|unid|pieza|reban/i.test(a.cantidad);
+          gramos = isNaN(num) ? 0 : (esUds ? Math.round(num * 60) : Math.round(num));
+        }
+        return { nombre: a.nombre + (a.detalle ? ' ('+a.detalle+')' : ''), gramos };
+      });
     nombreOpcion = v?.nombre || comida.nombre || '';
   }
   const ingredientes = ingredientesArr.map(it=>it.nombre+' '+it.gramos+'g').join(', ');
