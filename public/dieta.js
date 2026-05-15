@@ -2000,7 +2000,7 @@ async function _abrirReceta(mi){
     <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--s);border-bottom:0.5px solid var(--br);flex-shrink:0">
       <button onclick="document.getElementById('receta_modal').remove()" style="width:34px;height:34px;border-radius:8px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);cursor:pointer;font-size:20px;line-height:1">×</button>
       <div style="font-size:15px;font-weight:700;color:var(--sv)">👨‍🍳 ${LANG==='en'?'Fitness Recipe':'Receta Fitness'}</div>
-      <span style="font-size:10px;background:rgba(124,58,237,.2);color:#a78bfa;border:0.5px solid rgba(124,58,237,.3);padding:2px 8px;border-radius:10px">🤖 IA</span>
+
     </div>
     <div id="receta_body" style="flex:1;overflow-y:auto">
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:14px">
@@ -2021,17 +2021,16 @@ async function _abrirReceta(mi){
         ? `You are a fitness nutritionist. Create a tasty recipe using EXACTLY these ingredients (same quantities): ${ingredientes}. Meal type: ${nombreComida}. Rules: no added calories, only spices/herbs/salt/pepper allowed as extras. Respond ONLY with compact valid JSON: {"nombre":"dish name","tiempo":"X min","especias":["spice1","spice2","spice3"],"pasos":["step1","step2","step3","step4"],"foto_query":"3-word english query for food photo"}`
         : `Eres nutricionista deportivo. Crea una receta sabrosa usando EXACTAMENTE estos ingredientes (mismas cantidades): ${ingredientes}. Tipo de comida: ${nombreComida}. Reglas: sin calorías extra, solo especias/hierbas/sal/pimienta permitidas como extras. Responde SOLO con JSON válido compacto: {"nombre":"nombre del plato","tiempo":"X min","especias":["especia1","especia2","especia3"],"pasos":["paso1","paso2","paso3","paso4"],"foto_query":"3-word english query for food photo"}`;
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const d = await api('/ia/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{ role: 'user', content: prompt }]
+          messages: [{ role: 'user', content: prompt }],
+          system: LANG==='en'
+            ? 'You are a fitness nutritionist. Respond ONLY with valid compact JSON, no extra text.'
+            : 'Eres nutricionista deportivo. Responde SOLO con JSON válido y compacto, sin texto extra.'
         })
       });
-      const data = await res.json();
-      const raw = (data.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
+      const raw = (d.reply||'').replace(/```json|```/g,'').trim();
       receta = JSON.parse(raw);
       try { localStorage.setItem(cacheKey, JSON.stringify(receta)); } catch(e){}
     }
