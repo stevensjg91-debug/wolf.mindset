@@ -10635,6 +10635,47 @@ function terminarEntreno(){
   mostrarDoneOverlay(pendientes>0?'incompleto':'completado', pendientes);
 }
 
+function cancelarEntreno(){
+  const d = CD.dias[activeDia];
+  const doneSeries = d.ejercicios.reduce((a,e)=>a+(e._series?e._series.filter(s=>s.done).length:0),0);
+
+  // Mensaje según haya progreso o no
+  const msg = doneSeries > 0
+    ? (LANG==='en'
+        ? `Cancel workout? You'll lose ${doneSeries} completed set${doneSeries>1?'s':''}.\n\nNothing will be saved.`
+        : `¿Cancelar entreno? Perderás ${doneSeries} serie${doneSeries>1?'s':''} completada${doneSeries>1?'s':''}.\n\nNo se guardará nada.`)
+    : (LANG==='en'
+        ? 'Cancel workout and go back?'
+        : '¿Cancelar entreno y volver atrás?');
+
+  if(!confirm(msg)) return;
+
+  // 1) Parar el cronómetro del entreno
+  workoutStartTime = null;
+  if(workoutTimerInt){ clearInterval(workoutTimerInt); workoutTimerInt = null; }
+
+  // 2) Parar timers de descanso activos
+  runningTimers = {};
+  activeInput = null;
+
+  // 3) Descartar series en memoria (borrar progreso del día actual)
+  d.ejercicios.forEach(e => { if(e._series) e._series = null; });
+
+  // 4) Limpiar estado persistido en localStorage
+  limpiarEstadoEntreno();
+
+  // 5) Cancelar notificaciones de descanso si las hubiera
+  try { if(typeof cancelarTodasNotificaciones === 'function') cancelarTodasNotificaciones(); } catch(e){}
+
+  // 6) Volver a la pantalla de selección de día
+  vistaActual = 'seleccion';
+  const klEl = document.getElementById('klContent');
+  if(klEl){
+    klEl.innerHTML = hSeleccionDia();
+    applyLang(klEl);
+  }
+}
+
 async function guardarSesionParcial(){
   try{
     const d = CD.dias[activeDia];
