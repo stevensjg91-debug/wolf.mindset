@@ -3196,31 +3196,34 @@ router.post('/ia/receta-fitness', async (req, res) => {
     ? '{"nombre":"dish name","tiempo":"X min","especias":["h1","h2"],"pasos":["s1","s2","s3","s4"],"foto_query":"2 words"}'
     : '{"nombre":"nombre plato","tiempo":"X min","especias":["h1","h2"],"pasos":["p1","p2","p3","p4"],"foto_query":"2 words"}';
 
+  const nombresIngr = ingredientes.map(it => it.nombre).join(', ');
   const userLines = isEn ? [
-    'INGREDIENTS (use ONLY these, no exceptions):',
+    'AVAILABLE INGREDIENTS (use ONLY these ' + ingredientes.length + ' items, nothing else):',
     listaIngr,
     '',
-    'Meal: ' + (nombreComida || 'main meal'),
+    'Meal type: ' + (nombreComida || 'main meal'),
     '',
-    'RULES:',
-    '- NO added ingredients whatsoever (no pasta, bread, cheese, cream, avocado, salmon, etc)',
-    '- Only salt, pepper, herbs allowed as extras',
-    '- Keep exact grams',
+    'STRICT RULES - violations will be rejected:',
+    '- The dish NAME must only reference ingredients from the list above',
+    '- The STEPS must only use: ' + nombresIngr + ', plus salt/pepper/herbs',
+    '- NO pasta, bread, cheese, cream, avocado, salmon, nuts, or any unlisted ingredient',
+    '- foto_query: 2 english words describing the MAIN ingredient (e.g. "oat milk" or "chicken rice")',
     '',
-    'Return ONLY this JSON:',
+    'Return ONLY valid JSON, no commentary:',
     jsonSchema
   ] : [
-    'INGREDIENTES (usa UNICAMENTE estos, sin excepciones):',
+    'INGREDIENTES DISPONIBLES (usa SOLO estos ' + ingredientes.length + ' elementos, nada mas):',
     listaIngr,
     '',
-    'Comida: ' + (nombreComida || 'comida principal'),
+    'Tipo de comida: ' + (nombreComida || 'comida principal'),
     '',
-    'REGLAS:',
-    '- NO añadir ningun ingrediente (sin pasta, pan, queso, nata, aguacate, salmon, etc)',
-    '- Solo sal, pimienta y hierbas como extras',
-    '- Usa los gramos exactos',
+    'REGLAS ESTRICTAS - las violaciones seran rechazadas:',
+    '- El NOMBRE del plato solo debe mencionar ingredientes de la lista',
+    '- Los PASOS solo pueden usar: ' + nombresIngr + ', mas sal/pimienta/hierbas',
+    '- PROHIBIDO: pasta, pan, queso, nata, aguacate, salmon, frutos secos no listados, etc',
+    '- foto_query: 2 palabras en ingles describiendo el ingrediente PRINCIPAL (ej: "oat milk" o "chicken rice")',
     '',
-    'Devuelve UNICAMENTE este JSON:',
+    'Devuelve SOLO JSON valido, sin comentarios:',
     jsonSchema
   ];
 
