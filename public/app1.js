@@ -6689,6 +6689,12 @@ const imgUrl =
   <div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:var(--sv3);text-transform:uppercase;letter-spacing:.08em">${d.grupo}</div>
   ${exCards}
   ${d.ejercicios.length>0&&d.ejercicios.every(e=>e._series&&e._series.every(s=>s.done))?`<div style="margin:0 14px 20px;background:var(--gnd);border:0.5px solid rgba(34,197,94,.3);border-radius:14px;padding:18px;text-align:center"><div style="font-size:32px;margin-bottom:8px">🎉</div><div style="font-size:16px;font-weight:700;color:var(--gnb)">${t('¡Entreno completado!')}</div><div style="font-size:13px;color:var(--tx3);margin-top:4px">${t('Descansa y come bien.')}</div></div>`:''}
+  <div style="margin:24px 14px 80px;padding-top:20px;border-top:0.5px solid var(--br);text-align:center">
+    <button onclick="cancelarEntreno()" style="background:transparent;color:var(--tx3);border:0.5px solid var(--br);border-radius:10px;padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation">
+      ${t('Cancelar entreno')}
+    </button>
+    <div style="font-size:11px;color:var(--tx3);margin-top:8px;opacity:.7">${t('Descarta el progreso y vuelve al inicio')}</div>
+  </div>
   ${renderKeyboard()}`;
 }
 
