@@ -379,11 +379,18 @@ function empezarEntreno(i){
 }
 
 // Modal descripción ejercicio
+// Helper para llamar abrirDescripcion desde template literals sin problemas de escaping
+function _abrirDesc(ei){
+  const d = CD && CD.dias && CD.dias[activeDia];
+  if(!d || !d.ejercicios[ei]) return;
+  abrirDescripcion(d.ejercicios[ei].nombre);
+}
+
 function abrirDescripcion(nombre){
   const desc = EX_DESCRIPCIONES[nombre];
-  const emoji = getExerciseEmoji(nombre);
   const bg = getExerciseBg(nombre);
-  // Get imagen_url: exImages map (loaded at login, lightweight) > exConfig (coach) > CD fallback
+
+  // imagen_url: exImages > exConfig > CD
   let imgUrl = (window.exImages && window.exImages[nombre])
     || (window.exConfig && window.exConfig[nombre]?.imagen_url) || '';
   if(!imgUrl && CD && CD.dias){
@@ -392,59 +399,127 @@ function abrirDescripcion(nombre){
     }));
   }
 
-  // Cache de instrucciones traducidas
+  // Cache instrucciones (traducidas en EN, o generadas por IA)
   const exTransKey = 'ex_trans_'+nombre.replace(/[^a-zA-Z0-9]/g,'_');
-  const cachedSteps = LANG==='en' ? (()=>{ try{return JSON.parse(localStorage.getItem(exTransKey)||'null');}catch(e){return null;} })() : null;
-  const stepsToShow = cachedSteps || desc;
+  const exIAKey    = 'ex_ia_'+nombre.replace(/[^a-zA-Z0-9]/g,'_');
+  const cachedTrans = LANG==='en' ? (()=>{ try{return JSON.parse(localStorage.getItem(exTransKey)||'null');}catch(e){return null;} })() : null;
+  const cachedIA    = (()=>{ try{return JSON.parse(localStorage.getItem(exIAKey)||'null');}catch(e){return null;} })();
+  const stepsToShow = cachedTrans || desc || cachedIA;
 
-  const pasos = stepsToShow ? stepsToShow.map((p,i)=>`<div style="display:flex;gap:12px;margin-bottom:10px">
-    <div style="width:22px;height:22px;border-radius:50%;background:rgba(59,130,246,.2);color:var(--blg);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${i+1}</div>
-    <div style="font-size:14px;color:var(--sv2);line-height:1.55">${p}</div>
-  </div>`).join('') : `<div style="font-size:13px;color:var(--tx3)">${t('Descripción no disponible.')}</div>`;
+  window._descModalNombre = nombre;
+  window._descModalPasos  = desc || null;
+
+  function renderPasos(steps){
+    if(!steps || !steps.length) return '';
+    return steps.map((p,i)=>`<div style="display:flex;gap:12px;margin-bottom:10px">
+      <div style="width:22px;height:22px;border-radius:50%;background:rgba(59,130,246,.2);color:var(--blg);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${i+1}</div>
+      <div style="font-size:14px;color:var(--sv2);line-height:1.55">${p}</div>
+    </div>`).join('');
+  }
+
+  const pasosHtml = stepsToShow
+    ? renderPasos(stepsToShow)
+    : `<div id="ia_gen_wrap" style="text-align:center;padding:20px 0">
+         <div style="font-size:13px;color:var(--tx3);margin-bottom:12px">⏳ ${LANG==='en'?'Generating technique with AI...':'Generando técnica con IA...'}</div>
+         <div style="width:32px;height:32px;border-radius:50%;border:3px solid var(--bl2);border-top-color:transparent;animation:spin .8s linear infinite;margin:0 auto"></div>
+       </div>`;
 
   const modal = document.createElement('div');
   modal.id = 'desc_modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(9,9,11,.97);z-index:600;display:flex;flex-direction:column;overflow:hidden';
 
-  // Guardar en variable global para evitar problemas de escaping en onclick
-  window._descModalNombre = nombre;
-  window._descModalPasos = desc || null;
-
   modal.innerHTML = `
+    <style>#desc_modal @keyframes spin{to{transform:rotate(360deg)}}</style>
     <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--s);border-bottom:0.5px solid var(--br);flex-shrink:0">
-      <button onclick="document.getElementById('desc_modal').remove(); window._descModalNombre=null; window._descModalPasos=null;" style="width:34px;height:34px;border-radius:8px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);cursor:pointer;font-size:20px;line-height:1">×</button>
+      <button onclick="document.getElementById('desc_modal').remove();window._descModalNombre=null;window._descModalPasos=null;" style="width:34px;height:34px;border-radius:8px;background:var(--s2);border:0.5px solid var(--br);color:var(--sv2);cursor:pointer;font-size:20px;line-height:1">×</button>
       <div style="font-size:15px;font-weight:700;color:var(--sv);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nombre}</div>
+      ${stepsToShow && cachedIA && !desc ? '<span style="font-size:10px;background:rgba(124,58,237,.2);color:#a78bfa;border:0.5px solid rgba(124,58,237,.3);padding:2px 8px;border-radius:10px;flex-shrink:0">🤖 IA</span>' : ''}
     </div>
     <div style="flex:1;overflow-y:auto;padding:16px">
-      <div style="width:100%;border-radius:14px;overflow:hidden;margin-bottom:16px;background:${bg}">
-        ${imgUrl
-          ? `<div style="width:100%;display:flex;align-items:center;justify-content:center;background:#0d1520;border-radius:14px">
-               <img src="${imgUrl}" style="width:100%;object-fit:contain;border-radius:14px" onerror="this.parentElement.style.display='none'"/>
-             </div>`
-          : `<div style="padding:16px;display:flex;gap:12px;align-items:flex-start">
-               <div style="flex-shrink:0;width:80px">${getMuscleMapSVG(nombre)}</div>
-               <div style="flex:1">
-                 <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">${t("Músculos trabajados")}</div>
-                 <div style="display:flex;flex-wrap:wrap;gap:5px">
-                   ${getExerciseMuscles(nombre).map(m=>'<span style="font-size:11px;background:rgba(239,68,68,.15);color:#fca5a5;border:0.5px solid rgba(239,68,68,.3);padding:3px 8px;border-radius:10px;font-weight:600">'+t(m)+'</span>').join('')}
-                 </div>
-                 <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em;margin-top:10px;margin-bottom:5px">${t("Secundarios")}</div>
-                 <div style="display:flex;flex-wrap:wrap;gap:5px">
-                   ${getExerciseSecondary(nombre).map(m=>'<span style="font-size:11px;background:rgba(59,130,246,.1);color:#93c5fd;border:0.5px solid rgba(59,130,246,.2);padding:3px 8px;border-radius:10px">'+t(m)+'</span>').join('')}
-                 </div>
-               </div>
-             </div>`
-        }
-      </div>
+      ${imgUrl ? `
+      <div style="width:100%;border-radius:14px;overflow:hidden;margin-bottom:16px;background:#0d1520;display:flex;align-items:center;justify-content:center">
+        <img src="${imgUrl}" style="width:100%;object-fit:contain;border-radius:14px" onerror="this.parentElement.style.display='none'"/>
+      </div>` : `
+      <div style="background:${bg};border-radius:14px;padding:14px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start">
+        <div style="flex-shrink:0;width:72px">${getMuscleMapSVG(nombre)}</div>
+        <div style="flex:1">
+          <div style="font-size:10px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">${t('Músculos trabajados')}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
+            ${getExerciseMuscles(nombre).map(m=>'<span style="font-size:11px;background:rgba(239,68,68,.15);color:#fca5a5;border:0.5px solid rgba(239,68,68,.3);padding:2px 7px;border-radius:8px;font-weight:600">'+t(m)+'</span>').join('')}
+          </div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">${t('Secundarios')}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            ${getExerciseSecondary(nombre).map(m=>'<span style="font-size:11px;background:rgba(59,130,246,.1);color:#93c5fd;border:0.5px solid rgba(59,130,246,.2);padding:2px 7px;border-radius:8px">'+t(m)+'</span>').join('')}
+          </div>
+        </div>
+      </div>`}
       <div style="font-size:11px;font-weight:700;color:var(--blg);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">${t('INSTRUCCIONES')}</div>
-      <div id="desc_pasos">${pasos}</div>
-      ${LANG==='en' && desc ? `
+      <div id="desc_pasos">${pasosHtml}</div>
+      ${LANG==='en' && (desc||cachedIA) ? `
       <button id="btn_trans_ex" onclick="traducirEjercicioIA(window._descModalNombre, window._descModalPasos)" title="Translate with AI"
         style="width:100%;margin-top:14px;padding:8px;background:rgba(59,130,246,.1);color:#93c5fd;border:0.5px solid rgba(59,130,246,.2);border-radius:10px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;touch-action:manipulation">
-        <span style="font-size:20px" id="btn_trans_ex_txt">${cachedSteps ? '✅🇬🇧' : '🇬🇧'}</span>
+        <span style="font-size:20px" id="btn_trans_ex_txt">${cachedTrans ? '✅🇬🇧' : '🇬🇧'}</span>
       </button>` : ''}
     </div>`;
+
   document.body.appendChild(modal);
+
+  // Si no hay descripción ni cache IA → generar con IA automáticamente
+  if(!stepsToShow){
+    _generarTecnicaIA(nombre, exIAKey);
+  }
+}
+
+async function _generarTecnicaIA(nombre, cacheKey){
+  const wrap = document.getElementById('desc_pasos');
+  if(!wrap) return;
+  try {
+    const musculos = getExerciseMuscles(nombre).join(', ') || '';
+    const lang = LANG === 'en' ? 'English' : 'Spanish';
+    const prompt = LANG === 'en'
+      ? `You are a certified personal trainer. Give 5 clear step-by-step technique instructions for "${nombre}" (muscles: ${musculos||'general'}). Each step: 1 concise sentence focused on form. No intro, no outro, no markdown. Return ONLY a JSON array of 5 strings.`
+      : `Eres un entrenador personal certificado. Da 5 instrucciones claras de técnica para "${nombre}" (músculos: ${musculos||'general'}). Cada paso: 1 frase concisa sobre la ejecución correcta. Sin intro, sin conclusión, sin markdown. Devuelve SOLO un array JSON de 5 strings.`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content?.[0]?.text || '';
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const steps = JSON.parse(clean);
+    if(!Array.isArray(steps) || !steps.length) throw new Error('no steps');
+
+    // Guardar en cache
+    try { localStorage.setItem(cacheKey, JSON.stringify(steps)); } catch(e){}
+
+    // Actualizar el modal si sigue abierto
+    const pasosEl = document.getElementById('desc_pasos');
+    if(pasosEl){
+      pasosEl.innerHTML = steps.map((p,i)=>`<div style="display:flex;gap:12px;margin-bottom:10px">
+        <div style="width:22px;height:22px;border-radius:50%;background:rgba(124,58,237,.2);color:#a78bfa;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${i+1}</div>
+        <div style="font-size:14px;color:var(--sv2);line-height:1.55">${p}</div>
+      </div>`).join('') + '<div style="font-size:10px;color:var(--tx3);margin-top:10px;text-align:center">🤖 '+( LANG='en'?'Generated by AI · Saved for next time':'Generado por IA · Guardado para la próxima vez')+'</div>';
+      // Añadir badge IA al header
+      const header = document.querySelector('#desc_modal div:first-child');
+      if(header && !header.querySelector('[data-ia-badge]')){
+        const badge = document.createElement('span');
+        badge.setAttribute('data-ia-badge','1');
+        badge.style.cssText = 'font-size:10px;background:rgba(124,58,237,.2);color:#a78bfa;border:0.5px solid rgba(124,58,237,.3);padding:2px 8px;border-radius:10px;flex-shrink:0';
+        badge.textContent = '🤖 IA';
+        header.appendChild(badge);
+      }
+    }
+    window._descModalPasos = steps;
+  } catch(e){
+    const pasosEl = document.getElementById('desc_pasos');
+    if(pasosEl) pasosEl.innerHTML = `<div style="font-size:13px;color:var(--tx3);text-align:center;padding:16px">${LANG==='en'?'Could not load technique. Try again later.':'No se pudo cargar la técnica. Inténtalo más tarde.'}</div>`;
+  }
 }
 
 
@@ -518,7 +593,7 @@ const imgUrl =
             ${(e.superset_grupo||0)>0?`<span style="font-size:10px;background:rgba(168,85,247,.2);border:0.5px solid rgba(168,85,247,.4);color:#c084fc;padding:1px 7px;border-radius:10px;font-weight:700">🔗 Superserie ${e.superset_grupo}</span>`:''}
             ${e.rir!=null?`<span style="font-size:10px;background:rgba(59,130,246,.12);border:0.5px solid rgba(59,130,246,.3);color:var(--blg);padding:1px 7px;border-radius:10px;font-weight:700" title="${t('Reps que deberías poder hacer más al terminar la serie')}">RIR obj: ${e.rir}</span>`:''}
           </div>
-          <div style="font-size:16px;font-weight:700;color:var(--sv)">${e.nombre}</div>
+          <div onclick="_abrirDesc(${ei})" style="font-size:16px;font-weight:700;color:var(--sv);cursor:pointer;display:flex;align-items:center;gap:6px;-webkit-tap-highlight-color:transparent;touch-action:manipulation">${e.nombre}<span style="font-size:11px;color:var(--blg);opacity:.7">ⓘ</span></div>
           <div style="font-size:11px;color:var(--tx3)">${e.musculos||''}</div>
         </div>
         ${ytUrl?`<button onclick="openVideo('${ytUrl}','${e.nombre}')" style="width:34px;height:34px;border-radius:8px;background:rgba(239,68,68,.15);border:0.5px solid rgba(239,68,68,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg></button>`:''}
