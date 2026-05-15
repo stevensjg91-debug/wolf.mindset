@@ -48,6 +48,7 @@ function mostrarDoneOverlay(estado, pendientes){
   // Mostrar botón publicar solo cuando completado
   const btnPublicar = document.getElementById('btn_publicar_rutina');
   if(btnPublicar) btnPublicar.style.display = estado === 'completado' ? 'inline-flex' : 'none';
+  if(typeof wmEnsureWorkoutShareButton === 'function') wmEnsureWorkoutShareButton(estado);
   setTimeout(()=>{
     const msg = estado === 'completado'
       ? LANG==='en'?`Congrats, ${nombre}! You completed your workout in ${dur} min. Your discipline makes you stronger every day.`:`¡Felicidades, ${nombre}! Has completado tu entreno en ${dur} min. Tu disciplina te hace más fuerte cada día.`
@@ -1724,4 +1725,509 @@ function toggleAcordeonCoach(mesId){
   body.style.maxHeight = open ? "0px" : body.scrollHeight + "px";
   body.style.opacity   = open ? "0" : "1";
   if(arrow) arrow.style.transform = open ? "rotate(0deg)" : "rotate(180deg)";
+}
+
+
+/* ─────────────────────────────────────────────
+   WOLFMINDSET — Story logro de entreno
+   Genera una imagen 1080x1920 para compartir al terminar sesión.
+   No usa API, no toca la BD y mantiene fallback de descarga si Web Share falla.
+────────────────────────────────────────────── */
+
+function wmEnsureWorkoutShareButton(estado){
+  try{
+    const btnPublicar = document.getElementById('btn_publicar_rutina');
+    const parent = btnPublicar?.parentElement;
+    if(!parent) return;
+
+    let btn = document.getElementById('btn_compartir_entreno_story');
+    if(!btn){
+      btn = document.createElement('button');
+      btn.id = 'btn_compartir_entreno_story';
+      btn.className = 'btn';
+      btn.type = 'button';
+      btn.onclick = compartirEntrenoStory;
+      btn.style.cssText = 'padding:14px 22px;font-size:15px;background:linear-gradient(135deg,#dc2626,#991b1b);border-radius:14px;display:none;align-items:center;gap:6px';
+      parent.insertBefore(btn, parent.firstChild);
+    }
+    btn.style.display = estado === 'completado' ? 'inline-flex' : 'none';
+    btn.innerHTML = LANG === 'en'
+      ? '📲 <span>Share achievement</span>'
+      : '📲 <span>Compartir logro</span>';
+  }catch(e){ console.log('[WM] wmEnsureWorkoutShareButton error:', e); }
+}
+
+function wmNormTxt(v){
+  return String(v||'')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[()_\-]+/g,' ')
+    .trim();
+}
+
+function wmCanonicalMuscle(raw){
+  const n = wmNormTxt(raw);
+  if(!n) return null;
+  if(/dorsal|lat|back|espalda|row|remo|trapec|rhomboid|romboid/.test(n)) return 'back';
+  if(/pecho|chest|pectoral|bench|press/.test(n)) return 'chest';
+  if(/bicep|biceps|curl/.test(n)) return 'biceps';
+  if(/tricep|triceps|pushdown|skull|extension/.test(n)) return 'triceps';
+  if(/hombro|shoulder|deltoid|deltoides|lateral raise|rear delt|face pull/.test(n)) return 'shoulders';
+  if(/quad|cuadri|leg extension|squat|prensa|press pierna/.test(n)) return 'quads';
+  if(/femoral|hamstring|leg curl|deadlift|rdl|rumani/.test(n)) return 'hamstrings';
+  if(/glute|gluteo|hip thrust|abductor|kickback/.test(n)) return 'glutes';
+  if(/calf|gemelo|pantorrilla/.test(n)) return 'calves';
+  if(/abdomen|abs|core|crunch|plank|hanging/.test(n)) return 'abs';
+  return null;
+}
+
+function wmExerciseMuscles(ex){
+  const name = wmNormTxt(ex?.nombre);
+  const rawMuscles = String(ex?.musculos || ex?.grupo || '');
+  const found = [];
+  rawMuscles.split(/[,/;+|·]/).forEach(x => {
+    const c = wmCanonicalMuscle(x);
+    if(c && !found.includes(c)) found.push(c);
+  });
+
+  const add = (m) => { if(m && !found.includes(m)) found.push(m); };
+
+  if(/lat pulldown|pulldown|pull up|dominada|row|remo|face pull|t bar|barbell row|dumbbell row|seated row|incline row/.test(name)){
+    add('back'); add('biceps'); add('shoulders');
+  }
+  if(/bench press|press banca|chest press|incline press|pec deck|crossover|fly|apertura/.test(name)){
+    add('chest'); add('triceps'); add('shoulders');
+  }
+  if(/lateral raise|front raise|rear delt|reverse fly|shoulder press|overhead press|arnold/.test(name)){
+    add('shoulders');
+  }
+  if(/curl|bicep|preacher|ez bar|hammer/.test(name)){
+    add('biceps');
+  }
+  if(/tricep|pushdown|skull|dip|fondos|overhead extension/.test(name)){
+    add('triceps');
+  }
+  if(/squat|sentadilla|leg press|prensa|leg extension|lunge|zancada|hack squat/.test(name)){
+    add('quads'); add('glutes');
+  }
+  if(/deadlift|rumani|rdl|leg curl|femoral|hip hinge|good morning/.test(name)){
+    add('hamstrings'); add('glutes'); add('back');
+  }
+  if(/hip thrust|glute bridge|abductor|kickback/.test(name)){
+    add('glutes'); add('hamstrings');
+  }
+  if(/calf|gemelo|pantorrilla/.test(name)){
+    add('calves');
+  }
+  if(/crunch|plank|abs|abdominal|core|leg raise/.test(name)){
+    add('abs');
+  }
+
+  if(!found.length && typeof EX_GROUP_MAP !== 'undefined'){
+    const grp = EX_GROUP_MAP[ex?.nombre];
+    const c = wmCanonicalMuscle(grp);
+    if(c) found.push(c);
+  }
+  return found;
+}
+
+function wmGetWorkoutShareData(){
+  const d = CD?.dias?.[activeDia] || { nombre:'Workout', grupo:'' };
+  const exercises = d.ejercicios || [];
+  let totalSets = 0, doneSets = 0, volume = 0;
+  const muscleScore = {};
+
+  exercises.forEach(ex => {
+    const sets = ex._series || [];
+    totalSets += sets.length || (parseInt(ex.series)||0);
+    const done = sets.filter(s => s.done);
+    doneSets += done.length;
+    done.forEach(s => {
+      const reps = parseInt(s.reps_real || s.reps || parseFirstNum?.(ex.reps) || 0) || 0;
+      const peso = parseFloat(s.peso || 0) || 0;
+      volume += peso * reps;
+    });
+
+    const muscles = wmExerciseMuscles(ex);
+    const base = Math.max(done.length || parseInt(ex.series)||1, 1);
+    muscles.forEach((m, idx) => {
+      const mult = idx === 0 ? 1 : .58;
+      muscleScore[m] = (muscleScore[m] || 0) + base * mult;
+    });
+  });
+
+  const topMuscles = Object.entries(muscleScore)
+    .sort((a,b)=>b[1]-a[1])
+    .map(x=>x[0]);
+
+  return {
+    dayName: d.nombre || 'Workout',
+    group: d.grupo || '',
+    clientName: (CD?.nombre || USER?.nombre || '').split(' ')[0] || 'Wolf',
+    duration: (typeof getWorkoutDuration === 'function' ? getWorkoutDuration() : 0) || 0,
+    exercises,
+    totalSets,
+    doneSets,
+    volume: Math.round(volume),
+    calories: Math.max(80, Math.round(((typeof getWorkoutDuration === 'function' ? getWorkoutDuration() : 45) || 45) * 7.5)),
+    muscleScore,
+    topMuscles
+  };
+}
+
+function wmMuscleColor(score, max){
+  if(!score) return 'rgba(140,145,150,.28)';
+  const ratio = max ? score / max : 0;
+  if(ratio >= .78) return 'rgba(239,68,68,.94)';
+  if(ratio >= .45) return 'rgba(249,115,22,.86)';
+  return 'rgba(245,158,11,.78)';
+}
+
+function wmRoundRect(ctx,x,y,w,h,r,fill,stroke){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+  if(fill){ ctx.fillStyle=fill; ctx.fill(); }
+  if(stroke){ ctx.strokeStyle=stroke; ctx.lineWidth=2; ctx.stroke(); }
+}
+
+function wmEllipse(ctx,x,y,rx,ry,fill,rot=0){
+  ctx.beginPath();
+  ctx.ellipse(x,y,rx,ry,rot,0,Math.PI*2);
+  ctx.fillStyle=fill;
+  ctx.fill();
+}
+
+function wmDrawBody(ctx, side, cx, cy, scale, scores, maxScore){
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.scale(scale,scale);
+  const grey = 'rgba(170,174,178,.58)';
+  const dark = 'rgba(70,74,80,.55)';
+  const line = 'rgba(255,255,255,.10)';
+  const col = m => wmMuscleColor(scores[m]||0, maxScore);
+
+  // Head / neck
+  wmEllipse(ctx,0,-250,35,44,'rgba(125,130,138,.70)');
+  wmRoundRect(ctx,-18,-210,36,50,14,'rgba(130,135,142,.56)',null);
+
+  // Torso base
+  ctx.beginPath();
+  ctx.moveTo(-95,-165); ctx.quadraticCurveTo(-125,-70,-86,75);
+  ctx.quadraticCurveTo(-45,115,0,115); ctx.quadraticCurveTo(45,115,86,75);
+  ctx.quadraticCurveTo(125,-70,95,-165); ctx.quadraticCurveTo(45,-195,-45,-195);
+  ctx.closePath(); ctx.fillStyle=dark; ctx.fill();
+
+  // Arms base
+  ['L','R'].forEach(sideArm=>{
+    const s = sideArm==='L' ? -1 : 1;
+    wmEllipse(ctx,s*130,-95,32,90,grey,.12*s);
+    wmEllipse(ctx,s*150,25,25,88,grey,-.08*s);
+    wmEllipse(ctx,s*158,132,18,38,'rgba(120,124,130,.55)',0);
+  });
+
+  // Legs base
+  ['L','R'].forEach(sideLeg=>{
+    const s = sideLeg==='L' ? -1 : 1;
+    wmEllipse(ctx,s*45,205,34,105,grey,.04*s);
+    wmEllipse(ctx,s*44,390,25,95,grey,-.03*s);
+    wmEllipse(ctx,s*44,493,33,16,'rgba(120,124,130,.45)',0);
+  });
+
+  if(side === 'front'){
+    // chest
+    wmEllipse(ctx,-43,-132,52,36,col('chest'),-.18);
+    wmEllipse(ctx,43,-132,52,36,col('chest'),.18);
+    // abs
+    wmRoundRect(ctx,-42,-78,84,125,28,col('abs'),null);
+    ctx.strokeStyle=line; ctx.lineWidth=2;
+    for(let yy=-50; yy<=25; yy+=32){ ctx.beginPath(); ctx.moveTo(-34,yy); ctx.lineTo(34,yy); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(0,-77); ctx.lineTo(0,52); ctx.stroke();
+    // shoulders
+    wmEllipse(ctx,-103,-152,38,34,col('shoulders'),-.35);
+    wmEllipse(ctx,103,-152,38,34,col('shoulders'),.35);
+    // arms
+    wmEllipse(ctx,-132,-75,28,65,col('biceps'),.13);
+    wmEllipse(ctx,132,-75,28,65,col('biceps'),-.13);
+    wmEllipse(ctx,-152,33,22,76,col('triceps'),-.08);
+    wmEllipse(ctx,152,33,22,76,col('triceps'),.08);
+    // legs
+    wmEllipse(ctx,-45,205,34,105,col('quads'),.04);
+    wmEllipse(ctx,45,205,34,105,col('quads'),-.04);
+    wmEllipse(ctx,-44,390,23,80,col('calves'),-.05);
+    wmEllipse(ctx,44,390,23,80,col('calves'),.05);
+  } else {
+    // back
+    ctx.beginPath();
+    ctx.moveTo(-82,-164); ctx.quadraticCurveTo(-120,-78,-94,32); ctx.quadraticCurveTo(-45,70,0,72);
+    ctx.quadraticCurveTo(45,70,94,32); ctx.quadraticCurveTo(120,-78,82,-164); ctx.quadraticCurveTo(38,-188,-38,-188);
+    ctx.closePath(); ctx.fillStyle=col('back'); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.20)'; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.moveTo(0,-193); ctx.lineTo(0,90); ctx.stroke();
+    // rear shoulders
+    wmEllipse(ctx,-103,-152,38,34,col('shoulders'),-.35);
+    wmEllipse(ctx,103,-152,38,34,col('shoulders'),.35);
+    // arms
+    wmEllipse(ctx,-132,-75,28,65,col('biceps'),.13);
+    wmEllipse(ctx,132,-75,28,65,col('biceps'),-.13);
+    wmEllipse(ctx,-154,35,22,76,col('triceps'),-.08);
+    wmEllipse(ctx,154,35,22,76,col('triceps'),.08);
+    // glutes / hamstrings / calves
+    wmEllipse(ctx,-38,105,42,45,col('glutes'),-.15);
+    wmEllipse(ctx,38,105,42,45,col('glutes'),.15);
+    wmEllipse(ctx,-45,230,31,110,col('hamstrings'),.02);
+    wmEllipse(ctx,45,230,31,110,col('hamstrings'),-.02);
+    wmEllipse(ctx,-44,390,23,80,col('calves'),-.05);
+    wmEllipse(ctx,44,390,23,80,col('calves'),.05);
+  }
+
+  // subtle muscle lines
+  ctx.strokeStyle='rgba(255,255,255,.12)';
+  ctx.lineWidth=1;
+  for(let i=0;i<18;i++){
+    const yy=-150+i*25;
+    ctx.beginPath();
+    ctx.moveTo(-80+Math.sin(i)*12, yy);
+    ctx.quadraticCurveTo(0, yy+12, 80-Math.sin(i)*12, yy);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function wmDrawStat(ctx, x, y, label, value, icon){
+  wmRoundRect(ctx,x,y,270,88,18,'rgba(255,255,255,.035)','rgba(255,255,255,.11)');
+  ctx.font='30px system-ui';
+  ctx.fillStyle='#dc2626';
+  ctx.fillText(icon,x+22,y+53);
+  ctx.font='700 22px "Inter", system-ui, sans-serif';
+  ctx.fillStyle='rgba(255,255,255,.48)';
+  ctx.fillText(label.toUpperCase(),x+70,y+34);
+  ctx.font='800 34px "Bebas Neue", Impact, sans-serif';
+  ctx.fillStyle='#f8fafc';
+  ctx.fillText(String(value).toUpperCase(),x+70,y+68);
+}
+
+function wmWrapCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines){
+  const words = String(text||'').split(/\s+/);
+  let line='', lines=[];
+  for(const w of words){
+    const test = line ? line + ' ' + w : w;
+    if(ctx.measureText(test).width > maxWidth && line){
+      lines.push(line);
+      line = w;
+      if(maxLines && lines.length >= maxLines) break;
+    } else line = test;
+  }
+  if(line && (!maxLines || lines.length < maxLines)) lines.push(line);
+  lines.forEach((l,i)=>ctx.fillText(l, x, y + i*lineHeight));
+  return lines.length;
+}
+
+async function wmLoadImageSafe(src){
+  return new Promise(resolve=>{
+    if(!src) return resolve(null);
+    const img = new Image();
+    img.onload=()=>resolve(img);
+    img.onerror=()=>resolve(null);
+    img.src=src;
+  });
+}
+
+async function wmCreateWorkoutStoryCanvas(){
+  const data = wmGetWorkoutShareData();
+  const W=1080, H=1920;
+  const canvas=document.createElement('canvas');
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+
+  // Background
+  const bg=ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#050506'); bg.addColorStop(.45,'#09090b'); bg.addColorStop(1,'#030304');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(255,255,255,.025)';
+  for(let i=0;i<150;i++){
+    ctx.beginPath();
+    ctx.arc(Math.random()*W, Math.random()*H, Math.random()*1.4, 0, Math.PI*2);
+    ctx.fill();
+  }
+  // wolf watermark W shape
+  ctx.save();
+  ctx.globalAlpha=.07;
+  ctx.strokeStyle='#ffffff';
+  ctx.lineWidth=18;
+  ctx.beginPath();
+  ctx.moveTo(75,360); ctx.lineTo(185,965); ctx.lineTo(330,475); ctx.lineTo(540,1100); ctx.lineTo(750,475); ctx.lineTo(895,965); ctx.lineTo(1005,360);
+  ctx.stroke();
+  ctx.restore();
+
+  // logo/text
+  const logo = await wmLoadImageSafe('/logo.png');
+  if(logo){
+    ctx.drawImage(logo,66,58,92,92);
+  }
+  ctx.font='800 46px "Bebas Neue", Impact, sans-serif';
+  ctx.fillStyle='#ffffff';
+  ctx.fillText('WOLF',166,106);
+  ctx.fillStyle='#ef4444';
+  ctx.fillText('MINDSET',260,106);
+  ctx.font='600 15px "Inter", system-ui, sans-serif';
+  ctx.fillStyle='rgba(255,255,255,.48)';
+  ctx.fillText('DISCIPLINE OVER MOTIVATION',168,132);
+  ctx.font='500 24px "Inter", system-ui, sans-serif';
+  ctx.fillStyle='rgba(255,255,255,.28)';
+  ctx.textAlign='right';
+  ctx.fillText('#WOLFMINDSET',1015,92);
+  ctx.textAlign='left';
+
+  // title
+  ctx.font='900 104px "Bebas Neue", Impact, sans-serif';
+  ctx.fillStyle='#f8fafc';
+  ctx.fillText(LANG==='en'?'WORKOUT':'ENTRENO',66,255);
+  ctx.fillStyle='#dc2626';
+  ctx.font='900 92px "Bebas Neue", Impact, sans-serif';
+  ctx.fillText(LANG==='en'?'COMPLETED':'COMPLETADO',66,345);
+
+  wmRoundRect(ctx,66,382,500,64,16,'rgba(239,68,68,.08)','rgba(239,68,68,.35)');
+  ctx.font='800 33px "Inter", system-ui, sans-serif';
+  ctx.fillStyle='#f8fafc';
+  ctx.fillText(data.dayName.toUpperCase().slice(0,30),92,424);
+  ctx.font='700 22px "Inter", system-ui, sans-serif';
+  ctx.fillStyle='rgba(255,255,255,.55)';
+  ctx.fillText((data.group || (LANG==='en'?'FOCUS SESSION':'SESIÓN')).toUpperCase().slice(0,32),92,457);
+
+  // bodies
+  const maxScore = Math.max(1, ...Object.values(data.muscleScore));
+  wmDrawBody(ctx,'front',690,745,.92,data.muscleScore,maxScore);
+  wmDrawBody(ctx,'back',875,745,.92,data.muscleScore,maxScore);
+
+  // legend
+  wmRoundRect(ctx,600,1245,400,92,18,'rgba(0,0,0,.35)','rgba(255,255,255,.12)');
+  ctx.fillStyle='rgba(239,68,68,.95)'; ctx.beginPath(); ctx.arc(632,1282,13,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(249,115,22,.9)'; ctx.beginPath(); ctx.arc(632,1315,13,0,Math.PI*2); ctx.fill();
+  ctx.font='700 20px "Inter", system-ui, sans-serif';
+  ctx.fillStyle='rgba(255,255,255,.75)';
+  ctx.fillText(LANG==='en'?'PRIMARY / HIGH LOAD':'PRINCIPALES / ALTA CARGA',660,1289);
+  ctx.fillText(LANG==='en'?'SECONDARY MUSCLES':'MÚSCULOS SECUNDARIOS',660,1322);
+
+  // exercise list
+  wmRoundRect(ctx,66,500,455,690,20,'rgba(255,255,255,.035)','rgba(255,255,255,.12)');
+  ctx.font='800 27px "Bebas Neue", Impact, sans-serif';
+  ctx.fillStyle='#ef4444';
+  ctx.fillText(LANG==='en'?'SESSION ROUTINE':'RUTINA REALIZADA',96,545);
+  const exList = data.exercises.slice(0,8);
+  exList.forEach((ex,i)=>{
+    const y=585+i*70;
+    ctx.fillStyle='#dc2626';
+    wmRoundRect(ctx,92,y-28,34,34,8,'#dc2626',null);
+    ctx.font='800 20px "Inter", system-ui, sans-serif';
+    ctx.fillStyle='#fff';
+    ctx.fillText(String(i+1),103,y-5);
+    ctx.font='800 20px "Inter", system-ui, sans-serif';
+    ctx.fillStyle='#f4f4f5';
+    wmWrapCanvasText(ctx, String(ex.nombre||'Exercise').toUpperCase(), 142, y-9, 250, 23, 1);
+    ctx.font='600 15px "Inter", system-ui, sans-serif';
+    ctx.fillStyle='rgba(255,255,255,.48)';
+    ctx.fillText(`${ex.series||''} ${LANG==='en'?'sets':'series'}  |  ${ex.reps||''} reps`,142,y+17);
+    ctx.strokeStyle='rgba(255,255,255,.06)';
+    ctx.beginPath(); ctx.moveTo(92,y+31); ctx.lineTo(492,y+31); ctx.stroke();
+  });
+
+  // stats
+  wmDrawStat(ctx,66,1238,LANG==='en'?'Duration':'Duración',`${data.duration} MIN`,'⏱');
+  wmDrawStat(ctx,66,1344,LANG==='en'?'Volume':'Volumen',`${data.volume.toLocaleString('es-ES')} KG`,'🏋️');
+  wmDrawStat(ctx,66,1450,LANG==='en'?'Sets':'Series',`${data.doneSets || data.totalSets}`,'▰');
+  wmDrawStat(ctx,66,1556,LANG==='en'?'Calories':'Calorías',`${data.calories} KCAL`,'🔥');
+
+  // top muscles
+  const names = {
+    back: LANG==='en'?'Back':'Espalda',
+    chest: LANG==='en'?'Chest':'Pecho',
+    biceps:'Biceps', triceps:'Triceps',
+    shoulders: LANG==='en'?'Shoulders':'Hombros',
+    quads: LANG==='en'?'Quads':'Cuádriceps',
+    hamstrings: LANG==='en'?'Hamstrings':'Femoral',
+    glutes: LANG==='en'?'Glutes':'Glúteos',
+    calves: LANG==='en'?'Calves':'Gemelos',
+    abs: LANG==='en'?'Abs':'Abdomen'
+  };
+  wmRoundRect(ctx,600,1380,400,280,22,'rgba(255,255,255,.035)','rgba(255,255,255,.12)');
+  ctx.font='800 28px "Bebas Neue", Impact, sans-serif';
+  ctx.fillStyle='#f8fafc';
+  ctx.fillText(LANG==='en'?'MUSCLE HEATMAP':'MAPA DE CALOR MUSCULAR',630,1428);
+  data.topMuscles.slice(0,5).forEach((m,i)=>{
+    const y=1474+i*36;
+    ctx.fillStyle=wmMuscleColor(data.muscleScore[m], maxScore);
+    ctx.beginPath(); ctx.arc(636,y-7,10,0,Math.PI*2); ctx.fill();
+    ctx.font='700 20px "Inter", system-ui, sans-serif';
+    ctx.fillStyle='rgba(255,255,255,.80)';
+    ctx.fillText((names[m]||m).toUpperCase(),660,y);
+  });
+
+  // quote / footer
+  wmRoundRect(ctx,66,1700,948,112,22,'rgba(239,68,68,.06)','rgba(239,68,68,.24)');
+  ctx.font='800 34px "Inter", system-ui, sans-serif';
+  ctx.fillStyle='#f8fafc';
+  ctx.fillText(LANG==='en'?'YOUR DISCIPLINE TODAY':'TU DISCIPLINA HOY',110,1746);
+  ctx.fillStyle='#ef4444';
+  ctx.fillText(LANG==='en'?'BUILDS YOUR BEST VERSION TOMORROW':'CONSTRUYE TU MEJOR VERSIÓN MAÑANA',110,1785);
+
+  ctx.font='500 24px "Inter", system-ui, sans-serif';
+  ctx.fillStyle='rgba(255,255,255,.28)';
+  ctx.textAlign='center';
+  ctx.fillText('WOLFMINDSET APP',W/2,1872);
+  ctx.textAlign='left';
+
+  return canvas;
+}
+
+async function compartirEntrenoStory(){
+  const btn = document.getElementById('btn_compartir_entreno_story');
+  const old = btn?.innerHTML;
+  try{
+    if(btn){ btn.disabled = true; btn.innerHTML = LANG==='en'?'⏳ Creating...':'⏳ Creando...'; }
+    const canvas = await wmCreateWorkoutStoryCanvas();
+    const dataUrl = canvas.toDataURL('image/png');
+
+    if(navigator.share && navigator.canShare){
+      canvas.toBlob(async blob => {
+        const file = new File([blob], 'wolfmindset-workout-completed.png', { type:'image/png' });
+        try{
+          await navigator.share({
+            title: LANG==='en'?'Workout completed':'Entreno completado',
+            text: '#WolfMindset',
+            files: [file]
+          });
+        }catch(e){
+          wmDownloadWorkoutStory(dataUrl);
+        }finally{
+          if(btn){ btn.disabled = false; btn.innerHTML = old; }
+        }
+      }, 'image/png');
+    } else {
+      wmDownloadWorkoutStory(dataUrl);
+      if(btn){ btn.disabled = false; btn.innerHTML = old; }
+    }
+  }catch(e){
+    console.log('[WM] compartirEntrenoStory error:', e);
+    if(btn){ btn.disabled = false; btn.innerHTML = old || (LANG==='en'?'📲 Share achievement':'📲 Compartir logro'); }
+    alert(LANG==='en'?'Could not create the image. Please try again.':'No se pudo crear la imagen. Inténtalo de nuevo.');
+  }
+}
+
+function wmDownloadWorkoutStory(dataUrl){
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = 'wolfmindset-workout-completed.png';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
