@@ -2087,30 +2087,38 @@ async function _recetaCargar(mi, oi, todasOpts, acc){
 
   try {
     let receta = null;
-    try { receta = JSON.parse(localStorage.getItem(cacheKey)||'null'); } catch(e){}
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey)||'null');
+      // Invalidar cache si la receta no tiene foto_query (versión antigua)
+      if(cached && cached.foto_query && cached.pasos?.length) receta = cached;
+    } catch(e){}
 
     if(!receta){
-      const listaIngr = ingredientesArr.map(it=>`- ${it.nombre} (${it.gramos}g)`).join('\n');
-      const prompt = LANG==='en'
-        ? `You are a fitness nutritionist. Create a recipe using ONLY AND EXACTLY these ingredients:
-${listaIngr}
-Meal: ${nombreComida}.
-STRICT RULES:
-1. Use ONLY the listed ingredients, no substitutions, no additions.
-2. Only salt, pepper and herbs as extras (0 calories).
-3. Keep exact quantities.
-Respond ONLY with compact JSON (no extra text):
-{"nombre":"short dish name based on the actual ingredients","tiempo":"X min","especias":["herb1","herb2","herb3"],"pasos":["step1","step2","step3","step4"],"foto_query":"2-word english food photo query matching the main ingredient"}`
-        : `Eres nutricionista deportivo. Crea una receta usando ÚNICAMENTE estos ingredientes:
-${listaIngr}
-Comida: ${nombreComida}.
-REGLAS ESTRICTAS:
-1. Usa SOLO los ingredientes listados, sin sustituciones ni añadidos.
-2. Solo sal, pimienta y hierbas como extras (0 calorías).
-3. Respeta las cantidades exactas.
-Responde SOLO con JSON compacto (sin texto extra):
-{"nombre":"nombre corto del plato basado en los ingredientes reales","tiempo":"X min","especias":["hierba1","hierba2","hierba3"],"pasos":["paso1","paso2","paso3","paso4"],"foto_query":"2-word english food photo query matching the main ingredient"}`;
-
+      // Construir prompt fuera de template literals para saltos de línea reales
+      const listaIngr = ingredientesArr.map(it => '- ' + it.nombre + ' (' + it.gramos + 'g)').join('\n');
+      const jsonSchema = '{"nombre":"...","tiempo":"X min","especias":["..."],"pasos":["...","...","...","..."],"foto_query":"2-word english query"}';
+      let prompt;
+      if(LANG === 'en'){
+        prompt = 'You are a fitness nutritionist. Create a recipe using ONLY these exact ingredients:\\n'
+          + listaIngr + '\\n\\n'
+          + 'Meal type: ' + nombreComida + '\\n\\n'
+          + 'STRICT RULES:\\n'
+          + '1. Use ONLY the listed ingredients — no pasta, no cheese, no cream, no additions.\\n'
+          + '2. Salt, pepper and herbs are the only allowed extras (0 calories).\\n'
+          + '3. Keep exact gram quantities.\\n'
+          + '4. foto_query must match the MAIN ingredient (e.g. "grilled chicken").\\n\\n'
+          + 'Respond ONLY with valid JSON, no extra text:\\n' + jsonSchema;
+      } else {
+        prompt = 'Eres nutricionista deportivo. Crea una receta usando ÚNICAMENTE estos ingredientes exactos:\\n'
+          + listaIngr + '\\n\\n'
+          + 'Tipo de comida: ' + nombreComida + '\\n\\n'
+          + 'REGLAS ESTRICTAS:\\n'
+          + '1. Usa SOLO los ingredientes listados — sin pasta, sin queso, sin nata, sin añadidos.\\n'
+          + '2. Solo sal, pimienta y hierbas como extras (0 calorías).\\n'
+          + '3. Respeta los gramos exactos.\\n'
+          + '4. foto_query debe coincidir con el INGREDIENTE PRINCIPAL (ej: "pollo a la plancha").\\n\\n'
+          + 'Responde SOLO con JSON válido, sin texto extra:\\n' + jsonSchema;
+      }
       const d = await api('/ia/chat', {
         method: 'POST',
         body: JSON.stringify({
