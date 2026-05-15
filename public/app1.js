@@ -10636,7 +10636,12 @@ function terminarEntreno(){
     );
     if(!confirmar) return;
   }
-   function cancelarEntreno(){
+
+  // mostrarDoneOverlay se encarga de guardar
+  mostrarDoneOverlay(pendientes>0?'incompleto':'completado', pendientes);
+}
+
+function cancelarEntreno(){
   const d = CD.dias[activeDia];
   const doneSeries = d.ejercicios.reduce((a,e)=>a+(e._series?e._series.filter(s=>s.done).length:0),0);
 
@@ -10676,12 +10681,6 @@ function terminarEntreno(){
     applyLang(klEl);
   }
 }
-
-  // mostrarDoneOverlay se encarga de guardar
-  mostrarDoneOverlay(pendientes>0?'incompleto':'completado', pendientes);
-}
-
-async function guardarSesionParcial(){
   try{
     const d = CD.dias[activeDia];
     const series = [];
