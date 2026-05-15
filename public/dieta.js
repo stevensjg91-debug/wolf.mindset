@@ -1967,19 +1967,33 @@ function _dietaSwipeTo(mi, oi){
 function _initDietaSwipe(){
   document.querySelectorAll('[id^="swipe_"]').forEach(container=>{
     const mi = parseInt(container.getAttribute('data-mi'));
-    container.addEventListener('scroll', ()=>{
+    let _lastOi = -1;
+
+    function _updateDots(){
       const cardW = container.offsetWidth;
       if(!cardW) return;
       const oi = Math.round(container.scrollLeft / cardW);
+      if(oi === _lastOi) return;
+      _lastOi = oi;
       const dotsCont = document.getElementById('dots_'+mi);
-      if(dotsCont){
-        const acc = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? '#22c55e' : '#3b82f6';
-        dotsCont.querySelectorAll('[data-dot]').forEach(d=>{
-          const idx = parseInt(d.getAttribute('data-dot'));
-          d.style.width  = idx===oi ? '18px' : '7px';
-          d.style.background = idx===oi ? acc : 'rgba(255,255,255,.2)';
-        });
-      }
+      if(!dotsCont) return;
+      const acc = (CD.dieta_tipo==='Vegano'||CD.dieta_tipo==='Vegetariano') ? '#22c55e' : '#3b82f6';
+      dotsCont.querySelectorAll('[data-dot]').forEach(d=>{
+        const idx = parseInt(d.getAttribute('data-dot'));
+        d.style.width      = idx===oi ? '18px' : '7px';
+        d.style.background = idx===oi ? acc : 'rgba(255,255,255,.2)';
+      });
+    }
+
+    // scroll: se dispara continuamente mientras deslizas
+    container.addEventListener('scroll', _updateDots, {passive:true});
+    // scrollend: se dispara al terminar (mejor soporte en iOS 16+)
+    container.addEventListener('scrollend', _updateDots, {passive:true});
+    // Fallback: polling ligero mientras hay momentum (cubre iOS < 16)
+    let _scrollTimer = null;
+    container.addEventListener('scroll', ()=>{
+      if(_scrollTimer) clearTimeout(_scrollTimer);
+      _scrollTimer = setTimeout(_updateDots, 150);
     }, {passive:true});
   });
 }
