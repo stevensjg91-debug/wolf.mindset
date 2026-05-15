@@ -5,6 +5,7 @@
 
 // ── REGISTRO FORM LANGUAGE TOGGLE ─────────────────────────────────
 let _regLang = localStorage.getItem('wm_reg_lang') || 'en';
+const _regFoodsSelected = new Set(); // declarado aquí para evitar TDZ en setRegLang
 
 const REG_STRINGS = {
   en: {
@@ -904,7 +905,6 @@ function applyLang(el) {
     if(TRANSLATIONS[key]) el2.textContent = TRANSLATIONS[key];
   });
 }
-const _klNavOrig = klNav;
 function klNavLang(s, btn) {
   // se llama después de definir klNav
 }
@@ -4442,6 +4442,8 @@ function rbLimpiarFiltro(){
 }
 
 // ═══ DIETA BUILDER ════════════════════════════════════
+
+// ENTRENO CLIENTE (estilo Strong)
 // ── CHAT ASISTENTE (coach + IA fallback) ────────────────────────
 // Historial persistente en memoria mientras la sesión está abierta.
 // Se guarda también en localStorage para sobrevivir navegaciones entre tabs.
@@ -5990,7 +5992,6 @@ async function resetearContrasena(userId){
 function showRegistro(){show('sRegistro');}
 
 // ── REGISTRO: preferencias de dieta con chips ─────────────────────
-const _regFoodsSelected = new Set();
 function regToggleFoodChip(btn, nombre){
   if(!btn || !nombre) return;
   if(_regFoodsSelected.has(nombre)){
