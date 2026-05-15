@@ -2094,31 +2094,38 @@ async function _recetaCargar(mi, oi, todasOpts, acc){
     } catch(e){}
 
     if(!receta){
-      // Construir prompt fuera de template literals para saltos de línea reales
+      // Prompt construido con array + join para saltos de línea reales
       const listaIngr = ingredientesArr.map(it => '- ' + it.nombre + ' (' + it.gramos + 'g)').join('\n');
-      const jsonSchema = '{"nombre":"...","tiempo":"X min","especias":["..."],"pasos":["...","...","...","..."],"foto_query":"2-word english query"}';
-      let prompt;
-      if(LANG === 'en'){
-        prompt = 'You are a fitness nutritionist. Create a recipe using ONLY these exact ingredients:\\n'
-          + listaIngr + '\\n\\n'
-          + 'Meal type: ' + nombreComida + '\\n\\n'
-          + 'STRICT RULES:\\n'
-          + '1. Use ONLY the listed ingredients — no pasta, no cheese, no cream, no additions.\\n'
-          + '2. Salt, pepper and herbs are the only allowed extras (0 calories).\\n'
-          + '3. Keep exact gram quantities.\\n'
-          + '4. foto_query must match the MAIN ingredient (e.g. "grilled chicken").\\n\\n'
-          + 'Respond ONLY with valid JSON, no extra text:\\n' + jsonSchema;
-      } else {
-        prompt = 'Eres nutricionista deportivo. Crea una receta usando ÚNICAMENTE estos ingredientes exactos:\\n'
-          + listaIngr + '\\n\\n'
-          + 'Tipo de comida: ' + nombreComida + '\\n\\n'
-          + 'REGLAS ESTRICTAS:\\n'
-          + '1. Usa SOLO los ingredientes listados — sin pasta, sin queso, sin nata, sin añadidos.\\n'
-          + '2. Solo sal, pimienta y hierbas como extras (0 calorías).\\n'
-          + '3. Respeta los gramos exactos.\\n'
-          + '4. foto_query debe coincidir con el INGREDIENTE PRINCIPAL (ej: "pollo a la plancha").\\n\\n'
-          + 'Responde SOLO con JSON válido, sin texto extra:\\n' + jsonSchema;
-      }
+      const promptLines = LANG === 'en' ? [
+        'INGREDIENTS (use ONLY these, no exceptions):',
+        listaIngr,
+        '',
+        'Meal: ' + nombreComida,
+        '',
+        'RULES:',
+        '- NO added ingredients (no pasta, no cheese, no cream, no sauce, nothing not listed above)',
+        '- Salt, pepper, herbs allowed as extras (0 calories)',
+        '- Use the exact grams shown',
+        '- foto_query: 2 english words for the MAIN ingredient photo (e.g. grilled chicken)',
+        '',
+        'Return ONLY this JSON:',
+        '{"nombre":"dish name","tiempo":"X min","especias":["...","..."],"pasos":["...","...","...","..."],"foto_query":"2 words"}'
+      ] : [
+        'INGREDIENTES (usa ÚNICAMENTE estos, sin excepciones):',
+        listaIngr,
+        '',
+        'Comida: ' + nombreComida,
+        '',
+        'REGLAS:',
+        '- NO añadir ingredientes (sin pasta, sin queso, sin nata, sin salsas, nada que no esté arriba)',
+        '- Solo sal, pimienta y hierbas como extras (0 calorías)',
+        '- Usa los gramos exactos indicados',
+        '- foto_query: 2 palabras en inglés para foto del ingrediente principal (ej: grilled chicken)',
+        '',
+        'Devuelve ÚNICAMENTE este JSON:',
+        '{"nombre":"nombre plato","tiempo":"X min","especias":["...","..."],"pasos":["...","...","...","..."],"foto_query":"2 words"}'
+      ];
+      const prompt = promptLines.join('\n');
       const d = await api('/ia/chat', {
         method: 'POST',
         body: JSON.stringify({
