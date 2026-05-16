@@ -2,7 +2,7 @@ const express = require('express');
 const { dbGet, dbAll, dbRun, saveToDisk } = require('./database');
 const { authMiddleware, coachOnly } = require('./auth');
 const { ssePush, ssePushCoaches } = require('./sse');
-const { analizarSemana, getOptimalRange, groupByMuscle } = require('./muscle-volume');
+const { analizarSemana, getOptimalRange, groupByMuscle, isMuscleGroup } = require('./muscle-volume');
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -2446,12 +2446,20 @@ router.get('/revision-semanal/:cliente_id', (req, res) => {
 
     const analisis = analizarSemana(dias, cliente);
 
+    // Separar "deficiencias" en dos: las que son grupos musculares (prioridades
+    // de entreno) y las que son notas médicas/nutricionales (vitaminas, etc).
+    // Así la UI solo muestra como "prioridad" lo que realmente afecta al volumen.
+    const _todasDef = (cliente.deficiencias || '').split(',').map(s => s.trim()).filter(Boolean);
+    const prioridadesMusculares = _todasDef.filter(d => isMuscleGroup(d));
+    const notasNutricionales = _todasDef.filter(d => !isMuscleGroup(d));
+
     res.json({
       perfil: {
         nivel: cliente.nivel,
         objetivo: cliente.objetivo,
         edad: cliente.edad,
-        prioridades: (cliente.deficiencias || '').split(',').map(s => s.trim()).filter(Boolean),
+        prioridades: prioridadesMusculares,
+        notas_nutricionales: notasNutricionales,
         lesiones: (cliente.lesiones || '').split(',').map(s => s.trim()).filter(Boolean)
       },
       grupos: analisis.grupos,        // [{muscle, sets, range, estado}]
