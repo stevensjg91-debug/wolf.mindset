@@ -135,9 +135,17 @@ function getOptimalRange(muscle, cliente) {
   let mult = 1;
 
   // 1. Nivel/experiencia — principiantes saturan adaptación con menos volumen
+  // 1. Nivel/experiencia — moduladores basados en evidencia:
+  //    - Principiante puro: 0.65 (los antiguos 0.6 eran muy restrictivos)
+  //    - Re-entrenado (returning lifter, parón largo): 0.8 — mantienen muscle
+  //      memory y técnica, recuperan rápido, pero necesitan readaptación.
+  //      Ref: Schoenfeld 2019, "muscle memory" via myonuclear retention.
+  //    - Intermedio: 0.9
+  //    - Avanzado: 1.0
   const nivel = (cliente?.nivel || 'Intermedio');
-  if (nivel === 'Principiante') mult *= 0.6;
-  else if (nivel === 'Intermedio') mult *= 0.85;
+  if (nivel === 'Principiante') mult *= 0.65;
+  else if (nivel === 'Re-entrenado' || nivel === 'Returning') mult *= 0.8;
+  else if (nivel === 'Intermedio') mult *= 0.9;
   // Avanzado = 1.0
 
   // 2. Objetivo
@@ -303,7 +311,62 @@ function analizarSemana(dias, cliente) {
     }
   }
 
-  return { grupos, sugerencias, unmapped };
+  // 6. Detector de incongruencia nivel↔rutina.
+  //    Caso típico: cliente marcado como "Principiante" pero rutina con
+  //    volumen de intermedio/avanzado (lleva tiempo entrenando o es returning
+  //    lifter pero se autoclasificó como principiante por modestia/parón).
+  //    Si más de 1/3 de los grupos están "excesivo" con el nivel actual pero
+  //    caerían en "óptimo" con un nivel superior → sugerimos reclasificar.
+  let recomendacionNivel = null;
+  const nivelActual = cliente?.nivel || 'Intermedio';
+  const ordenNiveles = ['Principiante', 'Re-entrenado', 'Intermedio', 'Avanzado'];
+  const idxActual = ordenNiveles.indexOf(nivelActual);
+
+  if (idxActual >= 0 && idxActual < ordenNiveles.length - 1 && grupos.length >= 4) {
+    const excesivos = grupos.filter(g => g.estado === 'excesivo').length;
+    const optimosActuales = grupos.filter(g => g.estado === 'optimo').length;
+    const proporcionExcesivos = excesivos / grupos.length;
+
+    if (proporcionExcesivos > 0.33) {
+      // Probar TODOS los niveles superiores. Quedarse con el que mejor encaje
+      // (más óptimos, menos excesivos). Esto cubre tanto el caso "subir 1 nivel"
+      // como "este principiante en realidad es avanzado".
+      let mejorCandidato = null;
+      for (let i = idxActual + 1; i < ordenNiveles.length; i++) {
+        const siguienteNivel = ordenNiveles[i];
+        const clienteSimulado = { ...cliente, nivel: siguienteNivel };
+        const gruposSimulados = grupos.map(g => {
+          const r = getOptimalRange(g.muscle, clienteSimulado);
+          return { muscle: g.muscle, sets: g.sets, estado: classifyVolume(g.sets, r) };
+        });
+        const excesivosSim = gruposSimulados.filter(g => g.estado === 'excesivo').length;
+        const optimosSim = gruposSimulados.filter(g => g.estado === 'optimo').length;
+
+        const mejoraExcesivos = excesivosSim < excesivos;
+        const mejoraOptimos = optimosSim > optimosActuales;
+
+        if (mejoraExcesivos && mejoraOptimos) {
+          // Puntuación: priorizar más óptimos, penalizar excesivos
+          const score = optimosSim * 2 - excesivosSim;
+          if (!mejorCandidato || score > mejorCandidato.score) {
+            mejorCandidato = { nivel: siguienteNivel, excesivosSim, optimosSim, score };
+          }
+        }
+      }
+
+      if (mejorCandidato) {
+        recomendacionNivel = {
+          actual: nivelActual,
+          sugerido: mejorCandidato.nivel,
+          razon: `La rutina actual tiene volumen consistente con nivel ${mejorCandidato.nivel}, no ${nivelActual}. ${excesivos} grupos excesivos con el nivel actual pasarían a ${mejorCandidato.excesivosSim} si reclasificas al cliente.`,
+          excesivos_actuales: excesivos,
+          excesivos_simulados: mejorCandidato.excesivosSim
+        };
+      }
+    }
+  }
+
+  return { grupos, sugerencias, unmapped, recomendacionNivel };
 }
 
 /**
