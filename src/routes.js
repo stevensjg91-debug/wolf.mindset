@@ -2464,6 +2464,7 @@ router.get('/revision-semanal/:cliente_id', (req, res) => {
       },
       grupos: analisis.grupos,        // [{muscle, sets, range, estado}]
       sugerencias: analisis.sugerencias,
+      recomendacion_nivel: analisis.recomendacionNivel, // null o {actual, sugerido, razon, ...}
       unmapped: analisis.unmapped      // músculos sin clasificar (warning)
     });
   } catch (e) {
