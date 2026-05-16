@@ -239,12 +239,22 @@ function classifyVolume(currentSets, range) {
  * }}
  */
 function analizarSemana(dias, cliente) {
-  // 1. Conteo crudo (reutiliza tu función existente)
+  // 1. Conteo con FRACTIONAL SETS (modelo Israetel/RP, validado por evidencia):
+  //    - El primer músculo de la lista (target principal) recibe la serie completa (1.0)
+  //    - Los músculos secundarios reciben 0.5 series cada uno
+  //
+  //    Esto evita que un remo de 4 series cuente como 4s a Lat + 4s a Romboides +
+  //    4s a Rear Deltoid + 4s a Bíceps (= 16 series de un ejercicio real de 4).
+  //    Con fractional: 4s a Lat (target) + 2s a cada secundario.
   const rawMap = {};
   (dias || []).forEach(dia => {
     (dia.ejercicios || []).forEach(ex => {
-      String(ex.musculos || '').split(',').map(m => m.trim()).filter(Boolean).forEach(m => {
-        rawMap[m] = (rawMap[m] || 0) + (parseInt(ex.series) || 0);
+      const musculos = String(ex.musculos || '').split(',').map(m => m.trim()).filter(Boolean);
+      const series = parseInt(ex.series) || 0;
+      if (!musculos.length || !series) return;
+      musculos.forEach((m, idx) => {
+        const peso = (idx === 0) ? 1.0 : 0.5; // target principal o secundario
+        rawMap[m] = (rawMap[m] || 0) + (series * peso);
       });
     });
   });
@@ -252,14 +262,17 @@ function analizarSemana(dias, cliente) {
   // 2. Agrupar en músculos enteros
   const { grouped, unmapped } = groupByMuscle(rawMap);
 
-  // 3. Calcular rango óptimo + estado para cada grupo presente
+  // 3. Redondear (las medias series pueden dar decimales, mostramos enteros)
+  Object.keys(grouped).forEach(k => { grouped[k] = Math.round(grouped[k]); });
+
+  // 4. Calcular rango óptimo + estado para cada grupo presente
   const grupos = Object.entries(grouped).map(([muscle, sets]) => {
     const range = getOptimalRange(muscle, cliente);
     const estado = classifyVolume(sets, range);
     return { muscle, sets, range, estado };
   }).sort((a, b) => b.sets - a.sets);
 
-  // 4. Generar sugerencias accionables
+  // 5. Generar sugerencias accionables
   const sugerencias = [];
   for (const g of grupos) {
     if (!g.range) continue;
@@ -293,6 +306,15 @@ function analizarSemana(dias, cliente) {
   return { grupos, sugerencias, unmapped };
 }
 
+/**
+ * Comprueba si un string corresponde a un grupo muscular conocido.
+ * Útil para filtrar el campo "deficiencias" (que puede contener cosas
+ * no-musculares como "Vitamina D baja", "Hierro bajo"...).
+ */
+function isMuscleGroup(str) {
+  return !!MUSCLE_LOOKUP[normalize(str)];
+}
+
 module.exports = {
   MUSCLE_GROUPS,
   BASE_VOLUME,
@@ -300,5 +322,6 @@ module.exports = {
   getOptimalRange,
   classifyVolume,
   analizarSemana,
+  isMuscleGroup,
   normalize
 };
