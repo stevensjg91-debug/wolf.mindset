@@ -2,6 +2,7 @@ const express = require('express');
 const { dbGet, dbAll, dbRun, saveToDisk } = require('./database');
 const { authMiddleware, coachOnly } = require('./auth');
 const { ssePush, ssePushCoaches } = require('./sse');
+const { analizarSemana, getOptimalRange, groupByMuscle } = require('./muscle-volume');
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -2386,17 +2387,21 @@ router.get('/push/vapid-key', (req, res) => {
 // SISTEMA DE PLANTILLAS v2 — días individuales + semanas completas
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── Helper: calcula series totales por músculo ────────────────────────────────
+// ── Helper: calcula series totales por músculo (agrupadas en grupos enteros) ──
+// Usa el mapeo de muscle-volume.js para devolver totales por grupo entero
+// (Pecho, Espalda, Hombros, Bíceps, Tríceps, Cuádriceps, Femorales, Glúteos,
+// Gemelos, Core) en lugar de cada cabeza/porción suelta.
 function calcularResumenMusculos(dias) {
-  const mapa = {};
+  const rawMap = {};
   (dias || []).forEach(dia => {
     (dia.ejercicios || []).forEach(ex => {
       (ex.musculos || '').split(',').map(m => m.trim()).filter(Boolean).forEach(m => {
-        mapa[m] = (mapa[m] || 0) + (parseInt(ex.series) || 0);
+        rawMap[m] = (rawMap[m] || 0) + (parseInt(ex.series) || 0);
       });
     });
   });
-  return mapa;
+  const { grouped } = groupByMuscle(rawMap);
+  return grouped;
 }
 
 // ── Helper: construye objeto plantilla completo desde row BD ─────────────────
@@ -2406,6 +2411,57 @@ function buildPlantilla(p) {
   const numEj = dias.reduce((a, d) => a + (d.ejercicios || []).length, 0);
   return { ...p, dias, resumen: calcularResumenMusculos(dias), num_ejercicios: p.num_ejercicios || numEj };
 }
+
+// ── GET /api/revision-semanal/:cliente_id ────────────────────────────────────
+// Devuelve la revisión semanal con volumen agrupado por músculo entero
+// y rangos óptimos personalizados según el perfil del cliente
+// (nivel, objetivo, edad, lesiones, deficiencias). Basado en evidencia:
+// Schoenfeld 2017, Baz-Valle 2022, Israetel (RP) MV/MEV/MAV/MRV.
+router.get('/revision-semanal/:cliente_id', (req, res) => {
+  try {
+    const clienteId = parseInt(req.params.cliente_id);
+
+    // Permisos: el propio cliente o un coach
+    if (req.user.role !== 'coach') {
+      const c = dbGet('SELECT id FROM clientes WHERE user_id = ?', [req.user.id]);
+      if (!c || c.id !== clienteId) {
+        return res.status(403).json({ error: 'sin permiso' });
+      }
+    }
+
+    const cliente = dbGet('SELECT * FROM clientes WHERE id = ?', [clienteId]);
+    if (!cliente) return res.status(404).json({ error: 'cliente no encontrado' });
+
+    // Cargar rutina publicada (semana actual)
+    const dias = dbAll(
+      'SELECT * FROM dias_entreno WHERE cliente_id = ? ORDER BY orden',
+      [clienteId]
+    ).map(d => {
+      const ejercicios = dbAll(
+        'SELECT nombre, musculos, series FROM ejercicios_dia WHERE dia_id = ? ORDER BY orden',
+        [d.id]
+      );
+      return { ...d, ejercicios };
+    });
+
+    const analisis = analizarSemana(dias, cliente);
+
+    res.json({
+      perfil: {
+        nivel: cliente.nivel,
+        objetivo: cliente.objetivo,
+        edad: cliente.edad,
+        prioridades: (cliente.deficiencias || '').split(',').map(s => s.trim()).filter(Boolean),
+        lesiones: (cliente.lesiones || '').split(',').map(s => s.trim()).filter(Boolean)
+      },
+      grupos: analisis.grupos,        // [{muscle, sets, range, estado}]
+      sugerencias: analisis.sugerencias,
+      unmapped: analisis.unmapped      // músculos sin clasificar (warning)
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // ── GET /api/plantillas — listar plantillas ───────────────────────────────────
 // Query params opcionales: ?tipo=dia | ?tipo=semana | ?objetivo=X | ?nivel=X
@@ -2671,11 +2727,15 @@ router.post('/ia/generar-rutina', coachOnly, async (req, res) => {
   }
 
   // 8. Construir prompt
-  const volumenPorNivel = {
-    Principiante: '2-3 series/ejercicio, 4-5 ejercicios/día, volumen total bajo',
-    Intermedio:   '3-4 series/ejercicio, 5-7 ejercicios/día, volumen moderado',
-    Avanzado:     '4-5 series/ejercicio, 6-8 ejercicios/día, volumen alto con especialización'
-  };
+  // Calcular rangos óptimos por grupo muscular para ESTE cliente concreto
+  // (basado en evidencia: Schoenfeld 2017, Baz-Valle 2022, Israetel MV/MEV/MAV/MRV)
+  const _clienteParaRangos = { ...cliente, nivel: nivelFinal, objetivo: objetivoFinal };
+  const _gruposClave = ['Pecho','Espalda','Hombros','Bíceps','Tríceps',
+                        'Cuádriceps','Femorales','Glúteos','Gemelos'];
+  const rangosOptimos = _gruposClave.map(g => {
+    const r = getOptimalRange(g, _clienteParaRangos);
+    return `- ${g}: ${r.optimal_low}-${r.optimal_high} series/semana (MEV ${r.min}, MRV ${r.max})`;
+  }).join('\n');
 
   const clienteInfo = `
 PERFIL DEL CLIENTE:
@@ -2709,14 +2769,16 @@ ${histSection}
 ${analSection}
 ${plantSection}
 
-CONTROL DE VOLUMEN OBLIGATORIO según nivel "${nivelFinal}":
-${volumenPorNivel[nivelFinal] || volumenPorNivel['Intermedio']}
+CONTROL DE VOLUMEN SEMANAL ÓPTIMO (basado en evidencia científica — Schoenfeld 2017, Israetel/RP — ajustado a este cliente concreto):
+${rangosOptimos}
+
+La rutina semanal completa DEBE caer dentro del rango óptimo de cada grupo muscular. No bajes del MEV (mínimo efectivo) ni superes el MRV (máximo recuperable).
 
 EJERCICIOS DISPONIBLES EN LA APP (usa los nombres EXACTOS):
 ${listaEjercicios}
 
 REGLAS OBLIGATORIAS:
-1. Adapta el volumen ESTRICTAMENTE al nivel — un principiante NO necesita 5 series de 8 ejercicios
+1. Respeta ESTRICTAMENTE los rangos de volumen semanal por grupo muscular indicados arriba — cuenta las series totales por grupo entero (Pecho, Espalda, etc.) sumando todos los días
 2. Si tiene lesiones, EVITA completamente esos ejercicios y añade nota_coach con la alternativa segura
 3. Si hay músculos rezagados, dales mayor volumen y frecuencia semanal
 4. No entrenes el mismo músculo dos días seguidos — respeta recuperación
