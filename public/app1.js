@@ -4121,8 +4121,26 @@ async function rbGenerarIA(){
   try{
     const semanas = c.semanas || 1;
     const fase = semanas % 4 === 0 ? 'semana de descarga (reduce 40% volumen)' : `semana ${semanas%4||4} de mesociclo (carga progresiva)`;
-    const volPorNivel = {Principiante:'10-12 series/semana/grupo muscular', Intermedio:'14-16 series/semana/grupo muscular', Avanzado:'16-20+ series/semana/grupo muscular'};
-    const volObj = volPorNivel[c.nivel] || volPorNivel.Intermedio;
+
+    // Intentar obtener rangos óptimos personalizados del backend (MEV/MAV/MRV
+    // calculados según nivel + objetivo + edad + lesiones + prioridades).
+    // Si falla, fallback a rangos genéricos por nivel.
+    let volObj;
+    try {
+      const rev = await api('/revision-semanal/' + rbState.clienteId);
+      if (rev && rev.grupos && rev.grupos.length) {
+        const rangos = rev.grupos
+          .filter(g => g.range)
+          .map(g => `${g.muscle} ${g.range.optimal_low}-${g.range.optimal_high}s`)
+          .join(' · ');
+        volObj = `series/semana óptimas por grupo (basado en evidencia, ajustado al cliente): ${rangos}`;
+      }
+    } catch(e) { /* fallback abajo */ }
+    if (!volObj) {
+      const volPorNivel = {Principiante:'10-12 series/semana/grupo muscular', Intermedio:'14-16 series/semana/grupo muscular', Avanzado:'16-20+ series/semana/grupo muscular'};
+      volObj = volPorNivel[c.nivel] || volPorNivel.Intermedio;
+    }
+
     const d=await api('/ia/chat',{method:'POST',body:JSON.stringify({messages:[{role:'user',content:`Genera una rutina de entrenamiento con pesas para ${c.nombre}. 
 Objetivo: ${c.objetivo}. Nivel: ${c.nivel}. Semana ${semanas} (${fase}).
 Volumen objetivo: ${volObj}.
@@ -6607,12 +6625,10 @@ async function rbConfirmEdit(exId){
 
 
 // ═══ REVISIÓN SEMANAL ═══════════════════════════════════════════
-// Volumen semanal recomendado por grupo muscular y nivel
-const VOL_RECOMENDADO = {
-  Principiante: { min:10, max:12, desc: COACH_LANG==='en'?'10-12 sets/week/group':'10-12 series/semana/grupo' },
-  Intermedio:   { min:14, max:16, desc: COACH_LANG==='en'?'14-16 sets/week/group':'14-16 series/semana/grupo' },
-  Avanzado:     { min:16, max:20, desc: COACH_LANG==='en'?'16-20+ sets/week/group':'16-20+ series/semana/grupo' },
-};
+// Los rangos de volumen ya no están hardcoded aquí — el backend los calcula
+// personalizados por perfil (nivel + objetivo + edad + lesiones + prioridades)
+// en GET /api/revision-semanal/:cliente_id, basado en evidencia científica:
+// Schoenfeld 2017, Baz-Valle 2022, Israetel/RP MV/MEV/MAV/MRV.
 
 // Calcula progresión sugerida basada en RIR real vs objetivo
 function calcularProgresion(pesoActual, repsReales, rirReal, rirObjetivo, nivel) {
@@ -6707,25 +6723,18 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
       });
     });
 
-    // ── Volumen por grupo muscular (últimos 7 días, solo completadas) ──────────
-    const ejerciciosPlan = {};
-    (clienteData.dias || []).forEach(d => {
-      (d.ejercicios || []).forEach(e => { ejerciciosPlan[e.nombre] = { ...e, dia: d.nombre }; });
-    });
-    const volPorGrupo = {};
-    const hace7dias = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    sesiones.filter(s => new Date(s.fecha).getTime() > hace7dias).forEach(s => {
-      s.series.forEach(sr => {
-        const ex = ejerciciosPlan[sr.ejercicio_nombre];
-        if (!ex) return;
-        const grupo = (ex.musculos || '').split(',')[0].trim() || 'Otros';
-        if (!volPorGrupo[grupo]) volPorGrupo[grupo] = 0;
-        volPorGrupo[grupo]++;
-      });
-    });
+    // ── Volumen por grupo muscular — viene del backend con rangos personalizados ──
+    // El endpoint agrupa por músculo entero y calcula MEV/MAV/MRV según perfil
+    // (nivel, objetivo, edad, lesiones, prioridades). Si falla, no rompemos
+    // la pantalla — solo se omite el bloque de volumen.
+    let revision = null;
+    try {
+      revision = await api('/revision-semanal/' + clienteId);
+    } catch(e) {
+      console.warn('No se pudo cargar revision-semanal:', e);
+    }
 
     const nivel  = clienteData.nivel || 'Intermedio';
-    const volRec = VOL_RECOMENDADO[nivel] || VOL_RECOMENDADO.Intermedio;
     const diasConEjercicios = (clienteData.dias || []).filter(d => d.ejercicios.length > 0);
 
     if (!diasConEjercicios.length) {
@@ -6765,22 +6774,68 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
     // ── RENDER ───────────────────────────────────────────────────────────────
     let html = '';
 
-    // Volumen
-    html += `<div style="margin-bottom:14px">
-      <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
-        ${COACH_LANG==='en'?'Volume this week':'Volumen esta semana'} · ${tc(nivel)} (${volRec.desc})
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px">`;
-    if (Object.keys(volPorGrupo).length) {
-      Object.entries(volPorGrupo).forEach(([grupo, series]) => {
-        const ok = series >= volRec.min && series <= volRec.max;
-        const low = series < volRec.min;
-        html += `<span style="background:${ok?'rgba(34,197,94,.1)':low?'rgba(245,158,11,.1)':'rgba(239,68,68,.08)'};border:0.5px solid ${ok?'rgba(34,197,94,.2)':low?'rgba(245,158,11,.2)':'rgba(239,68,68,.2)'};border-radius:6px;padding:3px 9px;font-size:11px;color:${ok?'var(--gnb)':low?'var(--amb)':'#fca5a5'};font-weight:600">${grupo} ${series}s</span>`;
+    // Bloque Volumen — con rangos personalizados del backend
+    if (revision && revision.grupos && revision.grupos.length) {
+      const perfil = revision.perfil || {};
+      const objetivoTxt = perfil.objetivo ? ` · ${tc(perfil.objetivo)}` : '';
+      const edadTxt = perfil.edad ? ` · ${perfil.edad}${COACH_LANG==='en'?'y':'a'}` : '';
+      const prioTxt = (perfil.prioridades && perfil.prioridades.length)
+        ? ` · ${COACH_LANG==='en'?'priority':'prioridad'}: ${perfil.prioridades.join(', ')}`
+        : '';
+
+      html += `<div style="margin-bottom:14px">
+        <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">
+          ${COACH_LANG==='en'?'Volume this week':'Volumen esta semana'}
+        </div>
+        <div style="font-size:10px;color:var(--tx3);margin-bottom:6px">
+          ${tc(nivel)}${objetivoTxt}${edadTxt}${prioTxt} · ${COACH_LANG==='en'?'optimal range per muscle (MEV–MAV) based on profile':'rango óptimo por músculo (MEV–MAV) según perfil'}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">`;
+
+      // Estilos por estado — los chips usan color semántico:
+      //   optimo (verde) | alto/minimo (amarillo) | bajo/excesivo (rojo)
+      const estiloPorEstado = {
+        optimo:   { bg:'rgba(34,197,94,.1)',  bd:'rgba(34,197,94,.2)',  fg:'var(--gnb)' },
+        alto:     { bg:'rgba(245,158,11,.1)', bd:'rgba(245,158,11,.2)', fg:'var(--amb)' },
+        minimo:   { bg:'rgba(245,158,11,.1)', bd:'rgba(245,158,11,.2)', fg:'var(--amb)' },
+        bajo:     { bg:'rgba(239,68,68,.08)', bd:'rgba(239,68,68,.2)',  fg:'#fca5a5'    },
+        excesivo: { bg:'rgba(239,68,68,.08)', bd:'rgba(239,68,68,.2)',  fg:'#fca5a5'    }
+      };
+
+      revision.grupos.forEach(g => {
+        const est = estiloPorEstado[g.estado] || estiloPorEstado.optimo;
+        const r = g.range || {};
+        const tooltip = COACH_LANG==='en'
+          ? `${g.muscle}: ${g.sets} sets · optimal ${r.optimal_low}-${r.optimal_high} (MEV ${r.min}, MRV ${r.max})`
+          : `${g.muscle}: ${g.sets} series · óptimo ${r.optimal_low}-${r.optimal_high} (MEV ${r.min}, MRV ${r.max})`;
+        html += `<span title="${tooltip}" style="background:${est.bg};border:0.5px solid ${est.bd};border-radius:6px;padding:3px 9px;font-size:11px;color:${est.fg};font-weight:600">${g.muscle} ${g.sets}s</span>`;
       });
+      html += `</div>`;
+
+      // Sugerencias accionables del backend
+      if (revision.sugerencias && revision.sugerencias.length) {
+        html += `<div style="margin-top:8px;font-size:11px;color:var(--tx3);line-height:1.5">`;
+        revision.sugerencias.slice(0, 3).forEach(s => {
+          const accion = s.accion === 'añadir'
+            ? (COACH_LANG==='en'?'add':'añadir')
+            : (COACH_LANG==='en'?'reduce':'reducir');
+          const icon = s.accion === 'añadir' ? '↑' : '↓';
+          html += `<div style="margin-top:2px"><span style="color:var(--amb);font-weight:700">${icon}</span> ${accion} <strong>${s.delta}</strong> ${COACH_LANG==='en'?'sets in':'series en'} ${s.muscle}</div>`;
+        });
+        html += `</div>`;
+      }
+
+      html += `</div>`;
     } else {
-      html += `<span style="font-size:12px;color:var(--tx3)">${COACH_LANG==='en'?'No data this week':'Sin datos de esta semana'}</span>`;
+      // Fallback: sin datos del endpoint, mostramos solo el placeholder
+      html += `<div style="margin-bottom:14px">
+        <div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
+          ${COACH_LANG==='en'?'Volume this week':'Volumen esta semana'}
+        </div>
+        <div style="font-size:12px;color:var(--tx3)">${COACH_LANG==='en'?'No data this week':'Sin datos de esta semana'}</div>
+      </div>`;
     }
-    html += `</div></div>`;
+
 
     // Progresión por ejercicio
     html += `<div style="font-size:11px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">${COACH_LANG==='en'?'Load progression':'Progresión de carga'}</div>`;
@@ -7005,7 +7060,19 @@ async function sugerirProgresionIA(clienteId) {
     const nivel    = cliente.nivel || 'Intermedio';
     const semanas  = cliente.semanas || 1;
     const fase     = semanas % 4 === 0 ? 'DESCARGA (semana 4)' : `CARGA (semana ${semanas%4||4}/4)`;
-    const volRec   = VOL_RECOMENDADO[nivel] || VOL_RECOMENDADO.Intermedio;
+    // Obtener rangos óptimos personalizados del backend. Fallback a texto genérico si falla.
+    let volRecTexto;
+    try {
+      const rev = await api('/revision-semanal/' + cliente.id);
+      if (rev && rev.grupos && rev.grupos.length) {
+        volRecTexto = rev.grupos.filter(g => g.range)
+          .map(g => `${g.muscle} ${g.range.optimal_low}-${g.range.optimal_high}s`).join(' · ');
+      }
+    } catch(e) {}
+    if (!volRecTexto) {
+      const fb = {Principiante:'10-12 series/semana/grupo', Intermedio:'14-16 series/semana/grupo', Avanzado:'16-20+ series/semana/grupo'};
+      volRecTexto = fb[nivel] || fb.Intermedio;
+    }
 
     // Rendimiento medio por ejercicio (usando la misma lógica que el panel)
     const ultimoRendimiento = {};
@@ -7041,7 +7108,7 @@ async function sugerirProgresionIA(clienteId) {
     const prompt = `Eres un coach experto en periodización. Analiza estos datos REALES y da sugerencias CONCRETAS de ajuste de carga para la próxima semana.
 
 CLIENTE: ${cliente.nombre} | ${nivel} | ${tc(cliente.objetivo)} | ${fase}
-Volumen recomendado: ${volRec.desc}
+Volumen recomendado: ${volRecTexto}
 Últimas sesiones completadas: ${resumenSesiones}
 
 EJERCICIOS Y ÚLTIMO RENDIMIENTO:
@@ -7162,7 +7229,19 @@ async function sugerirProgresionIAHistorial(clienteId) {
     const nivel   = cliente.nivel || 'Intermedio';
     const semanas = cliente.semanas || 1;
     const fase    = semanas % 4 === 0 ? 'DESCARGA (semana 4)' : `CARGA (semana ${semanas%4||4}/4)`;
-    const volRec  = VOL_RECOMENDADO[nivel] || VOL_RECOMENDADO.Intermedio;
+    // Obtener rangos óptimos personalizados del backend. Fallback a texto genérico si falla.
+    let volRecTexto;
+    try {
+      const rev = await api('/revision-semanal/' + cliente.id);
+      if (rev && rev.grupos && rev.grupos.length) {
+        volRecTexto = rev.grupos.filter(g => g.range)
+          .map(g => `${g.muscle} ${g.range.optimal_low}-${g.range.optimal_high}s`).join(' · ');
+      }
+    } catch(e) {}
+    if (!volRecTexto) {
+      const fb = {Principiante:'10-12 series/semana/grupo', Intermedio:'14-16 series/semana/grupo', Avanzado:'16-20+ series/semana/grupo'};
+      volRecTexto = fb[nivel] || fb.Intermedio;
+    }
 
     const ultimoRendimiento = {};
     sesiones.forEach(s => {
@@ -7196,7 +7275,7 @@ async function sugerirProgresionIAHistorial(clienteId) {
     const prompt = `Eres un coach experto en periodización. Analiza estos datos REALES y da sugerencias CONCRETAS de ajuste de carga para la próxima semana.
 
 CLIENTE: ${cliente.nombre} | ${nivel} | ${tc(cliente.objetivo)} | ${fase}
-Volumen recomendado: ${volRec.desc}
+Volumen recomendado: ${volRecTexto}
 Últimas sesiones completadas: ${resumenSesiones}
 
 EJERCICIOS Y ÚLTIMO RENDIMIENTO:
