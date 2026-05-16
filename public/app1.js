@@ -2180,7 +2180,7 @@ async function verCliente(id){
     <div class="sec-hdr">${tc('Ajustar datos')} <button class="btn btn-sm" id="btn_guardar_datos" data-cliente-id="${c.id}" onclick="guardarDatos(${c.id})">${tc('Guardar')}</button></div>
     <div class="g2" style="gap:8px;margin-bottom:10px">
       <div><div class="form-lbl">${tc('Objetivo')}</div><input class="inp" id="obj" value="${c.objetivo}" oninput="recalcularYGuardarCoach()" style="margin-bottom:0"/></div>
-      <div><div class="form-lbl">${tc('Nivel')}</div><select class="inp" id="niv" onchange="autoGuardarMacrosCoach()" style="margin-bottom:0"><option ${c.nivel==='Principiante'?'selected':''}>${tc('Principiante')}</option><option ${c.nivel==='Intermedio'?'selected':''}>${tc('Intermedio')}</option><option ${c.nivel==='Avanzado'?'selected':''}>${tc('Avanzado')}</option></select></div>
+      <div><div class="form-lbl">${tc('Nivel')}</div><select class="inp" id="niv" onchange="autoGuardarMacrosCoach()" style="margin-bottom:0"><option ${c.nivel==='Principiante'?'selected':''}>${tc('Principiante')}</option><option ${c.nivel==='Re-entrenado'?'selected':''}>${tc('Re-entrenado')}</option><option ${c.nivel==='Intermedio'?'selected':''}>${tc('Intermedio')}</option><option ${c.nivel==='Avanzado'?'selected':''}>${tc('Avanzado')}</option></select></div>
     </div>
     <div style="background:var(--s2);border:0.5px solid var(--br);border-radius:12px;padding:12px;margin-bottom:8px">
       <div style="font-size:10px;color:var(--blg);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">${tc('Calculadora de macros — ajusta y se recalcula solo')} <button type="button" onclick="recalcularYGuardarCoach()" style="float:right;background:rgba(34,197,94,.15);border:0.5px solid rgba(34,197,94,.35);color:var(--gnb);border-radius:8px;padding:5px 9px;font-size:10px;font-weight:800;cursor:pointer">${tc('Recalcular')}</button></div>
@@ -6823,6 +6823,19 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
           html += `<div style="margin-top:2px"><span style="color:var(--amb);font-weight:700">${icon}</span> ${accion} <strong>${s.delta}</strong> ${COACH_LANG==='en'?'sets in':'series en'} ${s.muscle}</div>`;
         });
         html += `</div>`;
+      }
+
+      // Aviso de incongruencia nivel↔rutina (cliente posiblemente mal clasificado)
+      if (revision.recomendacion_nivel) {
+        const rec = revision.recomendacion_nivel;
+        const textoEn = `This client is set as <strong>${rec.actual}</strong> but their routine has volume consistent with <strong>${rec.sugerido}</strong>. ${rec.excesivos_actuales} muscle groups are flagged as excessive — most would fall in the optimal range if you reclassify the client.`;
+        const textoEs = `Este cliente está marcado como <strong>${rec.actual}</strong> pero su rutina tiene volumen consistente con <strong>${rec.sugerido}</strong>. ${rec.excesivos_actuales} grupos aparecen excesivos — la mayoría caerían en óptimo si reclasificas al cliente.`;
+        html += `<div style="margin-top:10px;padding:9px 11px;background:rgba(59,130,246,.08);border:0.5px solid rgba(59,130,246,.25);border-radius:8px;display:flex;gap:8px;align-items:flex-start">
+          <span style="font-size:14px;line-height:1;margin-top:1px">💡</span>
+          <div style="font-size:11px;color:var(--sv);line-height:1.5;flex:1">
+            ${COACH_LANG==='en'?textoEn:textoEs}
+          </div>
+        </div>`;
       }
 
       html += `</div>`;
