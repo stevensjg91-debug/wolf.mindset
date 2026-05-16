@@ -6808,21 +6808,34 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
         const tooltip = COACH_LANG==='en'
           ? `${g.muscle}: ${g.sets} sets · optimal ${r.optimal_low}-${r.optimal_high} (MEV ${r.min}, MRV ${r.max})`
           : `${g.muscle}: ${g.sets} series · óptimo ${r.optimal_low}-${r.optimal_high} (MEV ${r.min}, MRV ${r.max})`;
-        html += `<span title="${tooltip}" style="background:${est.bg};border:0.5px solid ${est.bd};border-radius:6px;padding:3px 9px;font-size:11px;color:${est.fg};font-weight:600">${g.muscle} ${g.sets}s</span>`;
+        // Rango visible en el chip: "Espalda 29s / 13-19"
+        const rangoTxt = (r.optimal_low != null && r.optimal_high != null)
+          ? ` <span style="opacity:.55;font-weight:400">/ ${r.optimal_low}-${r.optimal_high}</span>`
+          : '';
+        html += `<span title="${tooltip}" style="background:${est.bg};border:0.5px solid ${est.bd};border-radius:6px;padding:3px 9px;font-size:11px;color:${est.fg};font-weight:600">${g.muscle} ${g.sets}s${rangoTxt}</span>`;
       });
       html += `</div>`;
 
-      // Sugerencias accionables del backend
+      // Sugerencias accionables del backend.
+      // Mostramos TODAS las críticas (bajo/excesivo), las marginales (minimo/alto)
+      // se omiten para no saturar al coach.
       if (revision.sugerencias && revision.sugerencias.length) {
-        html += `<div style="margin-top:8px;font-size:11px;color:var(--tx3);line-height:1.5">`;
-        revision.sugerencias.slice(0, 3).forEach(s => {
-          const accion = s.accion === 'añadir'
-            ? (COACH_LANG==='en'?'add':'añadir')
-            : (COACH_LANG==='en'?'reduce':'reducir');
-          const icon = s.accion === 'añadir' ? '↑' : '↓';
-          html += `<div style="margin-top:2px"><span style="color:var(--amb);font-weight:700">${icon}</span> ${accion} <strong>${s.delta}</strong> ${COACH_LANG==='en'?'sets in':'series en'} ${s.muscle}</div>`;
-        });
-        html += `</div>`;
+        const criticas = revision.sugerencias.filter(s =>
+          (s.accion === 'reducir' && s.delta >= 2) ||
+          (s.accion === 'añadir' && s.delta >= 2)
+        );
+        if (criticas.length) {
+          html += `<div style="margin-top:8px;font-size:11px;color:var(--tx3);line-height:1.5">`;
+          criticas.forEach(s => {
+            const accion = s.accion === 'añadir'
+              ? (COACH_LANG==='en'?'add':'añadir')
+              : (COACH_LANG==='en'?'reduce':'reducir');
+            const icon = s.accion === 'añadir' ? '↑' : '↓';
+            const color = s.accion === 'añadir' ? '#86efac' : '#fca5a5';
+            html += `<div style="margin-top:2px"><span style="color:${color};font-weight:700">${icon}</span> ${accion} <strong>${s.delta}</strong> ${COACH_LANG==='en'?'sets in':'series en'} ${s.muscle}</div>`;
+          });
+          html += `</div>`;
+        }
       }
 
       // Aviso de incongruencia nivel↔rutina (cliente posiblemente mal clasificado)
