@@ -6805,35 +6805,85 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
       revision.grupos.forEach(g => {
         const est = estiloPorEstado[g.estado] || estiloPorEstado.optimo;
         const r = g.range || {};
+        // Icono de progresión: ↑ subiendo, → estancado, ↓ bajando, sin icono si sin_datos
+        const progIcon = {
+          subiendo:  ' <span style="color:#86efac" title="Progresando">↑</span>',
+          estancado: ' <span style="color:#fcd34d" title="Estancado">→</span>',
+          bajando:   ' <span style="color:#fca5a5" title="Rendimiento bajando">↓</span>',
+          sin_datos: ''
+        }[g.progresion] || '';
+
+        const tooltipProg = g.progresion && g.progresion !== 'sin_datos'
+          ? ` · progresión: ${g.progresion} (${g.semanas_datos}sem)` : ' · sin datos de progresión';
         const tooltip = COACH_LANG==='en'
-          ? `${g.muscle}: ${g.sets} sets · optimal ${r.optimal_low}-${r.optimal_high} (MEV ${r.min}, MRV ${r.max})`
-          : `${g.muscle}: ${g.sets} series · óptimo ${r.optimal_low}-${r.optimal_high} (MEV ${r.min}, MRV ${r.max})`;
-        // Rango visible en el chip: "Espalda 29s / 13-19"
+          ? `${g.muscle}: ${g.sets} sets · optimal ${r.optimal_low}-${r.optimal_high} (MEV ${r.min}, MRV ${r.max})${tooltipProg}`
+          : `${g.muscle}: ${g.sets} series · óptimo ${r.optimal_low}-${r.optimal_high} (MEV ${r.min}, MRV ${r.max})${tooltipProg}`;
         const rangoTxt = (r.optimal_low != null && r.optimal_high != null)
           ? ` <span style="opacity:.55;font-weight:400">/ ${r.optimal_low}-${r.optimal_high}</span>`
           : '';
-        html += `<span title="${tooltip}" style="background:${est.bg};border:0.5px solid ${est.bd};border-radius:6px;padding:3px 9px;font-size:11px;color:${est.fg};font-weight:600">${g.muscle} ${g.sets}s${rangoTxt}</span>`;
+        html += `<span title="${tooltip}" style="background:${est.bg};border:0.5px solid ${est.bd};border-radius:6px;padding:3px 9px;font-size:11px;color:${est.fg};font-weight:600">${g.muscle} ${g.sets}s${rangoTxt}${progIcon}</span>`;
       });
       html += `</div>`;
 
-      // Sugerencias accionables del backend.
-      // Mostramos TODAS las críticas (bajo/excesivo), las marginales (minimo/alto)
-      // se omiten para no saturar al coach.
+      // Mini-leyenda de progresión (solo si hay datos)
+      const hayDatosProg = revision.grupos.some(g => g.progresion && g.progresion !== 'sin_datos');
+      if (hayDatosProg) {
+        html += `<div style="font-size:10px;color:var(--tx3);margin-top:4px;display:flex;gap:12px;flex-wrap:wrap">
+          <span><span style="color:#86efac">↑</span> ${COACH_LANG==='en'?'progressing':'progresando'}</span>
+          <span><span style="color:#fcd34d">→</span> ${COACH_LANG==='en'?'plateaued':'estancado'}</span>
+          <span><span style="color:#fca5a5">↓</span> ${COACH_LANG==='en'?'declining':'bajando'}</span>
+          <span style="opacity:.6">${COACH_LANG==='en'?'(based on last 4 weeks e1RM)':'(basado en e1RM últimas 4 semanas)'}</span>
+        </div>`;
+      }
+
+      // ── Sugerencias contextuales (volumen × progresión) ───────────────────
       if (revision.sugerencias && revision.sugerencias.length) {
-        const criticas = revision.sugerencias.filter(s =>
-          (s.accion === 'reducir' && s.delta >= 2) ||
-          (s.accion === 'añadir' && s.delta >= 2)
-        );
-        if (criticas.length) {
-          html += `<div style="margin-top:8px;font-size:11px;color:var(--tx3);line-height:1.5">`;
-          criticas.forEach(s => {
-            const accion = s.accion === 'añadir'
-              ? (COACH_LANG==='en'?'add':'añadir')
-              : (COACH_LANG==='en'?'reduce':'reducir');
-            const icon = s.accion === 'añadir' ? '↑' : '↓';
-            const color = s.accion === 'añadir' ? '#86efac' : '#fca5a5';
-            html += `<div style="margin-top:2px"><span style="color:${color};font-weight:700">${icon}</span> ${accion} <strong>${s.delta}</strong> ${COACH_LANG==='en'?'sets in':'series en'} ${s.muscle}</div>`;
-          });
+        // Separar por prioridad
+        const criticas = revision.sugerencias.filter(s => s.prioridad === 'critica');
+        const altas    = revision.sugerencias.filter(s => s.prioridad === 'alta');
+        const info     = revision.sugerencias.filter(s => s.prioridad === 'info' || s.prioridad === 'media' || s.prioridad === 'baja');
+
+        // Guardar sugerencias aplicables en window para el botón
+        window._revSugerenciasAuto = revision.sugerencias.filter(s => s.aplicable_auto);
+        window._revClienteId = clienteId;
+
+        const renderSug = (s) => {
+          const accionTxt = s.accion === 'subir'   ? (COACH_LANG==='en'?'add':'añadir')
+                          : s.accion === 'bajar'   ? (COACH_LANG==='en'?'reduce':'reducir')
+                          : s.accion === 'deload'  ? (COACH_LANG==='en'?'deload':'deload')
+                          : (COACH_LANG==='en'?'observe':'observar');
+          const icon = s.accion === 'subir'  ? '↑'
+                     : s.accion === 'bajar'  ? '↓'
+                     : s.accion === 'deload' ? '⊘'
+                     : 'ℹ';
+          const color = s.accion === 'subir'  ? '#86efac'
+                      : s.accion === 'bajar'  ? '#fca5a5'
+                      : s.accion === 'deload' ? '#a78bfa'
+                      : 'var(--tx3)';
+          const deltaTxt = (s.accion === 'mantener' || s.delta === 0) ? '' :
+            ` <strong>${Math.abs(s.delta)}</strong> ${COACH_LANG==='en'?'sets':'series'}`;
+          return `<div style="margin-top:3px"><span style="color:${color};font-weight:700">${icon}</span> ${accionTxt}${deltaTxt} ${COACH_LANG==='en'?'in':'en'} <strong>${s.muscle}</strong>
+            <span style="color:var(--tx3);font-weight:400;font-size:10px;display:block;margin-left:14px;line-height:1.4">${s.razon}</span></div>`;
+        };
+
+        if (criticas.length || altas.length) {
+          html += `<div style="margin-top:10px;font-size:11px;color:var(--sv2);line-height:1.5">`;
+          [...criticas, ...altas].forEach(s => html += renderSug(s));
+          html += `</div>`;
+
+          // Botón aplicar automático (solo si hay alguna aplicable_auto)
+          const aplicables = [...criticas, ...altas].filter(s => s.aplicable_auto).length;
+          if (aplicables > 0) {
+            html += `<button onclick="aplicarSugerenciasVolumen()" style="margin-top:10px;background:rgba(245,158,11,.15);color:var(--amb);border:0.5px solid rgba(245,158,11,.35);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;width:100%;justify-content:center">
+              <span>⚡</span> ${COACH_LANG==='en'?'Apply':'Aplicar'} ${aplicables} ${COACH_LANG==='en'?'auto-adjustments':'ajustes automáticos'}
+            </button>`;
+          }
+        }
+
+        // Info (no requiere acción): observaciones positivas o "tolerando"
+        if (info.length) {
+          html += `<div style="margin-top:8px;font-size:11px;color:var(--tx3);line-height:1.5;opacity:.85">`;
+          info.forEach(s => html += renderSug(s));
           html += `</div>`;
         }
       }
@@ -7062,6 +7112,53 @@ async function publicarSemana(clienteId) {
     if(estado) estado.textContent = `· Publicado (${result.publicados} ejercicios actualizados)`;
     setTimeout(()=>{ btn.textContent='✓ Publicar semana'; btn.style.background='var(--gn)'; btn.style.color='#fff'; btn.disabled=false; }, 3000);
   } catch(e) { btn.textContent='Error'; btn.disabled=false; }
+}
+
+// ── Aplicar sugerencias de volumen (subir/bajar series por grupo muscular) ──
+// Botón "Aplicar N ajustes automáticos" en la revisión semanal.
+// Lee window._revSugerenciasAuto (rellenado por cargarRevisionSemanal).
+async function aplicarSugerenciasVolumen() {
+  const sugerencias = window._revSugerenciasAuto || [];
+  const clienteId = window._revClienteId;
+  if (!sugerencias.length || !clienteId) {
+    alert(COACH_LANG==='en'?'No automatic adjustments to apply':'No hay ajustes automáticos para aplicar');
+    return;
+  }
+
+  // Confirmación con resumen
+  const resumen = sugerencias.map(s => {
+    const verbo = s.accion === 'subir' ? (COACH_LANG==='en'?'add':'añadir')
+                : s.accion === 'bajar' ? (COACH_LANG==='en'?'reduce':'reducir')
+                : s.accion === 'deload' ? 'deload'
+                : s.accion;
+    return `  • ${verbo} ${Math.abs(s.delta)} ${COACH_LANG==='en'?'sets':'series'} → ${s.muscle}`;
+  }).join('\n');
+
+  const msg = (COACH_LANG==='en'
+    ? `Apply these volume adjustments to the routine?\n\n${resumen}\n\nThis will modify exercise sets. The client won't see changes until you publish the week.`
+    : `¿Aplicar estos ajustes de volumen a la rutina?\n\n${resumen}\n\nEsto modificará las series de los ejercicios. El cliente no verá los cambios hasta que publiques la semana.`);
+
+  if (!confirm(msg)) return;
+
+  try {
+    const r = await api('/aplicar-sugerencias/' + clienteId, {
+      method: 'POST',
+      body: JSON.stringify({ sugerencias })
+    });
+    const totalAplicados = (r.aplicados || []).length;
+    const totalCambios = (r.aplicados || []).reduce((acc, a) => acc + (a.cambios || []).length, 0);
+    alert(COACH_LANG==='en'
+      ? `Applied ${totalAplicados} suggestions (${totalCambios} exercises modified).`
+      : `Aplicados ${totalAplicados} ajustes (${totalCambios} ejercicios modificados).`);
+    // Recargar la revisión para reflejar cambios
+    if (typeof cargarRevisionSemanal === 'function') {
+      cargarRevisionSemanal(clienteId);
+    } else {
+      location.reload();
+    }
+  } catch(e) {
+    alert((COACH_LANG==='en'?'Error: ':'Error: ') + (e.message || e));
+  }
 }
 
 async function sugerirProgresionIA(clienteId) {
