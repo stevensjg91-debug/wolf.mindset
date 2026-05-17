@@ -2438,13 +2438,25 @@ router.get('/revision-semanal/:cliente_id', (req, res) => {
       [clienteId]
     ).map(d => {
       const ejercicios = dbAll(
-        'SELECT nombre, musculos, series FROM ejercicios_dia WHERE dia_id = ? ORDER BY orden',
+        'SELECT id, nombre, musculos, series FROM ejercicios_dia WHERE dia_id = ? ORDER BY orden',
         [d.id]
       );
       return { ...d, ejercicios };
     });
 
-    const analisis = analizarSemana(dias, cliente);
+    // Cargar log de series de las últimas 4 semanas (para análisis de progresión).
+    const hace28dias = new Date(Date.now() - 28 * 86400000).toISOString();
+    const seriesLog = dbAll(`
+      SELECT sl.peso_real, sl.reps_real, sl.rir, se.fecha,
+             COALESCE(ed.musculos, sl.ejercicio_nombre) AS musculos
+      FROM series_log sl
+      JOIN sesiones_entreno se ON se.id = sl.sesion_id
+      LEFT JOIN ejercicios_dia ed ON ed.nombre = sl.ejercicio_nombre
+      WHERE se.cliente_id = ? AND se.fecha >= ?
+        AND sl.peso_real > 0 AND sl.reps_real > 0
+    `, [clienteId, hace28dias]);
+
+    const analisis = analizarSemana(dias, cliente, seriesLog);
 
     // Separar "deficiencias" en dos: las que son grupos musculares (prioridades
     // de entreno) y las que son notas médicas/nutricionales (vitaminas, etc).
@@ -2471,6 +2483,96 @@ router.get('/revision-semanal/:cliente_id', (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ── POST /api/aplicar-sugerencias/:cliente_id ────────────────────────────────
+// Aplica automáticamente las sugerencias de subir/bajar series.
+// Reparte el delta de series entre los ejercicios del grupo, proporcionalmente
+// a las series actuales. Solo coach puede ejecutar esto.
+router.post('/aplicar-sugerencias/:cliente_id', coachOnly, (req, res) => {
+  try {
+    const clienteId = parseInt(req.params.cliente_id);
+    const sugerencias = (req.body && req.body.sugerencias) || [];
+
+    if (!Array.isArray(sugerencias) || !sugerencias.length) {
+      return res.status(400).json({ error: 'sin sugerencias para aplicar' });
+    }
+
+    const dias = dbAll('SELECT * FROM dias_entreno WHERE cliente_id = ?', [clienteId]);
+    const ejercicios = [];
+    dias.forEach(d => {
+      const ejs = dbAll('SELECT id, nombre, musculos, series FROM ejercicios_dia WHERE dia_id = ?', [d.id]);
+      ejs.forEach(e => ejercicios.push({ ...e, dia_id: d.id }));
+    });
+
+    const aplicados = [];
+    const ignorados = [];
+
+    for (const sug of sugerencias) {
+      if (!sug.aplicable_auto) {
+        ignorados.push({ muscle: sug.muscle, razon: 'sugerencia informativa, no automatizable' });
+        continue;
+      }
+      if (sug.accion === 'mantener' || !sug.delta) continue;
+
+      const ejsDelGrupo = ejercicios.filter(e => {
+        const primerMusc = String(e.musculos || '').split(',')[0].trim();
+        return isMuscleGroup(primerMusc) && _grupoDe(primerMusc) === sug.muscle;
+      });
+
+      if (!ejsDelGrupo.length) {
+        ignorados.push({ muscle: sug.muscle, razon: 'no se encontraron ejercicios target de ese grupo' });
+        continue;
+      }
+
+      let totalDelta;
+      if (sug.accion === 'subir')  totalDelta = +Math.abs(sug.delta);
+      else if (sug.accion === 'bajar')  totalDelta = -Math.abs(sug.delta);
+      else if (sug.accion === 'deload') totalDelta = sug.delta;
+      else continue;
+
+      const totalSeriesActuales = ejsDelGrupo.reduce((a, e) => a + (e.series || 0), 0);
+      if (!totalSeriesActuales) continue;
+
+      let repartido = 0;
+      const cambios = [];
+      ejsDelGrupo.forEach((e, idx) => {
+        let cuota;
+        if (idx === ejsDelGrupo.length - 1) {
+          cuota = totalDelta - repartido;
+        } else {
+          cuota = Math.round(totalDelta * (e.series / totalSeriesActuales));
+          repartido += cuota;
+        }
+        const nuevasSeries = Math.max(1, (e.series || 0) + cuota);
+        if (nuevasSeries !== e.series) {
+          dbRun('UPDATE ejercicios_dia SET series = ? WHERE id = ?', [nuevasSeries, e.id]);
+          cambios.push({ ejercicio: e.nombre, antes: e.series, despues: nuevasSeries });
+        }
+      });
+      aplicados.push({ muscle: sug.muscle, accion: sug.accion, delta_total: totalDelta, cambios });
+    }
+
+    saveToDisk();
+
+    try { ssePush(clienteId, { tipo: 'rutina_actualizada' }); } catch(e) {}
+    try { ssePushCoaches({ tipo: 'rutina_actualizada', cliente_id: clienteId }); } catch(e) {}
+
+    res.json({ aplicados, ignorados });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+function _grupoDe(musc) {
+  const { MUSCLE_GROUPS } = require('./muscle-volume');
+  const norm = String(musc || '').toLowerCase().trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  for (const [grupo, miembros] of Object.entries(MUSCLE_GROUPS)) {
+    if (miembros.some(m => m.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') === norm)) return grupo;
+  }
+  return null;
+}
 
 // ── GET /api/plantillas — listar plantillas ───────────────────────────────────
 // Query params opcionales: ?tipo=dia | ?tipo=semana | ?objetivo=X | ?nivel=X
