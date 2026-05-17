@@ -246,7 +246,7 @@ function classifyVolume(currentSets, range) {
  *   unmapped: string[]
  * }}
  */
-function analizarSemana(dias, cliente) {
+function analizarSemana(dias, cliente, seriesLog) {
   // 1. Conteo con FRACTIONAL SETS (modelo Israetel/RP, validado por evidencia):
   //    - El primer músculo de la lista (target principal) recibe la serie completa (1.0)
   //    - Los músculos secundarios reciben 0.5 series cada uno
@@ -273,45 +273,46 @@ function analizarSemana(dias, cliente) {
   // 3. Redondear (las medias series pueden dar decimales, mostramos enteros)
   Object.keys(grouped).forEach(k => { grouped[k] = Math.round(grouped[k]); });
 
-  // 4. Calcular rango óptimo + estado para cada grupo presente
+  // 4. Calcular progresión por grupo si tenemos log de series (últimas 4 semanas)
+  const historialE1RM = seriesLog ? calcularE1RMSemanalPorGrupo(seriesLog, 4) : {};
+  const progresionPorGrupo = {};
+  Object.entries(historialE1RM).forEach(([grupo, hist]) => {
+    progresionPorGrupo[grupo] = {
+      tendencia: clasificarProgresion(hist),
+      semanas_datos: hist.length,
+      historial: hist
+    };
+  });
+
+  // 5. Calcular rango óptimo + estado para cada grupo presente
   const grupos = Object.entries(grouped).map(([muscle, sets]) => {
     const range = getOptimalRange(muscle, cliente);
     const estado = classifyVolume(sets, range);
-    return { muscle, sets, range, estado };
+    const prog = progresionPorGrupo[muscle] || { tendencia: 'sin_datos', semanas_datos: 0 };
+    const estadoCtx = estadoContextual(estado, prog.tendencia);
+    return {
+      muscle, sets, range, estado,
+      progresion: prog.tendencia,
+      semanas_datos: prog.semanas_datos,
+      estado_contextual: estadoCtx
+    };
   }).sort((a, b) => b.sets - a.sets);
 
-  // 5. Generar sugerencias accionables
+  // 6. Generar sugerencias contextuales (mezcla volumen + progresión)
+  //    Si NO hay datos de progresión, igual genera por volumen puro (compat)
   const sugerencias = [];
   for (const g of grupos) {
     if (!g.range) continue;
-    if (g.estado === 'bajo') {
-      const delta = g.range.optimal_low - g.sets;
+    const sug = generarSugerenciaContextual(g, g.estado_contextual);
+    if (sug && sug.accion !== 'mantener') {
       sugerencias.push({
         muscle: g.muscle,
-        accion: 'añadir',
-        delta,
-        razon: `Estás bajo el MEV para tu perfil (mínimo ${g.range.min}s).`
-      });
-    } else if (g.estado === 'minimo') {
-      const delta = g.range.optimal_low - g.sets;
-      sugerencias.push({
-        muscle: g.muscle,
-        accion: 'añadir',
-        delta,
-        razon: `Justo en el mínimo. Subir a ${g.range.optimal_low}s te dará mejor crecimiento.`
-      });
-    } else if (g.estado === 'excesivo') {
-      const delta = g.sets - g.range.max;
-      sugerencias.push({
-        muscle: g.muscle,
-        accion: 'reducir',
-        delta,
-        razon: `Por encima del MRV (${g.range.max}s) — riesgo de sobreentreno.`
+        ...sug
       });
     }
   }
 
-  // 6. Detector de incongruencia nivel↔rutina.
+  // 7. Detector de incongruencia nivel↔rutina.
   //    Caso típico: cliente marcado como "Principiante" pero rutina con
   //    volumen de intermedio/avanzado (lleva tiempo entrenando o es returning
   //    lifter pero se autoclasificó como principiante por modestia/parón).
@@ -328,9 +329,6 @@ function analizarSemana(dias, cliente) {
     const proporcionExcesivos = excesivos / grupos.length;
 
     if (proporcionExcesivos > 0.33) {
-      // Probar TODOS los niveles superiores. Quedarse con el que mejor encaje
-      // (más óptimos, menos excesivos). Esto cubre tanto el caso "subir 1 nivel"
-      // como "este principiante en realidad es avanzado".
       let mejorCandidato = null;
       for (let i = idxActual + 1; i < ordenNiveles.length; i++) {
         const siguienteNivel = ordenNiveles[i];
@@ -346,7 +344,6 @@ function analizarSemana(dias, cliente) {
         const mejoraOptimos = optimosSim > optimosActuales;
 
         if (mejoraExcesivos && mejoraOptimos) {
-          // Puntuación: priorizar más óptimos, penalizar excesivos
           const score = optimosSim * 2 - excesivosSim;
           if (!mejorCandidato || score > mejorCandidato.score) {
             mejorCandidato = { nivel: siguienteNivel, excesivosSim, optimosSim, score };
@@ -378,6 +375,205 @@ function isMuscleGroup(str) {
   return !!MUSCLE_LOOKUP[normalize(str)];
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// PROGRESIÓN POR GRUPO MUSCULAR
+// ════════════════════════════════════════════════════════════════════════════
+// La métrica "óptima" de volumen no es la teórica, es la que produce progreso.
+// Si un cliente progresa con 29s de espalda → ese es SU óptimo, no el del libro.
+// Si está estancado con 14s (en rango) → necesita más estímulo.
+// Usamos e1RM medio semanal por grupo (Epley: peso × (1 + reps/30)) que combina
+// peso y reps en un solo número comparable entre semanas.
+
+/**
+ * Calcula e1RM medio semanal por grupo muscular durante las últimas N semanas.
+ *
+ * @param {Array} seriesLog - filas de series_log JOIN sesiones_entreno JOIN ejercicios_dia
+ *   cada fila: { peso_real, reps_real, fecha, musculos }
+ * @param {number} numSemanas - cuántas semanas hacia atrás analizar (default 4)
+ * @returns {Object} { 'Espalda': [{semana:'2024-W12', e1rm: 87.5, sesiones: 2}, ...] }
+ */
+function calcularE1RMSemanalPorGrupo(seriesLog, numSemanas = 4) {
+  // Epley formula: 1RM ≈ peso × (1 + reps/30)
+  const e1rm = (peso, reps) => {
+    if (!peso || !reps || reps <= 0) return 0;
+    return peso * (1 + reps / 30);
+  };
+
+  // Agrupar por (grupo muscular, semana). Para cada combo: e1RM medio.
+  // Semana = YYYY-WW (ISO week)
+  const buckets = {}; // { 'Espalda|2024-W12': { sum, count } }
+
+  seriesLog.forEach(s => {
+    if (!s.peso_real || !s.reps_real) return;
+    const valor = e1rm(s.peso_real, s.reps_real);
+    if (!valor) return;
+
+    // Solo coge el primer músculo (target principal), igual que fractional sets
+    const musculo = String(s.musculos || '').split(',')[0].trim();
+    if (!musculo) return;
+    const grupo = MUSCLE_LOOKUP[normalize(musculo)];
+    if (!grupo) return;
+
+    const semana = isoWeekKey(new Date(s.fecha));
+    const key = `${grupo}|${semana}`;
+    if (!buckets[key]) buckets[key] = { sum: 0, count: 0, peakE1RM: 0 };
+    buckets[key].sum += valor;
+    buckets[key].count += 1;
+    if (valor > buckets[key].peakE1RM) buckets[key].peakE1RM = valor;
+  });
+
+  // Agrupar por grupo, ordenar por semana desc, quedarse con últimas N
+  const porGrupo = {};
+  Object.entries(buckets).forEach(([key, data]) => {
+    const [grupo, semana] = key.split('|');
+    if (!porGrupo[grupo]) porGrupo[grupo] = [];
+    porGrupo[grupo].push({
+      semana,
+      e1rm_medio: data.sum / data.count,
+      e1rm_pico: data.peakE1RM,
+      sesiones: data.count
+    });
+  });
+
+  // Ordenar y recortar a últimas N semanas
+  Object.keys(porGrupo).forEach(g => {
+    porGrupo[g].sort((a, b) => a.semana.localeCompare(b.semana));
+    porGrupo[g] = porGrupo[g].slice(-numSemanas);
+  });
+
+  return porGrupo;
+}
+
+function isoWeekKey(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNum = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+/**
+ * Clasifica la tendencia de progresión a partir de las últimas N semanas de e1RM.
+ *
+ * @param {Array} historialGrupo - [{semana, e1rm_medio}, ...] orden ascendente
+ * @returns {'subiendo'|'estancado'|'bajando'|'sin_datos'}
+ *
+ * Reglas (basadas en lo que es ruido vs señal real):
+ *   - <3 semanas de datos → sin_datos (no se puede juzgar)
+ *   - Regresión lineal sobre e1rm vs semana:
+ *     * Pendiente > +0.5% por semana → subiendo
+ *     * Pendiente entre -0.5% y +0.5% → estancado
+ *     * Pendiente < -0.5% por semana → bajando
+ */
+function clasificarProgresion(historialGrupo) {
+  if (!historialGrupo || historialGrupo.length < 3) return 'sin_datos';
+
+  // Regresión lineal simple: y = e1rm, x = índice de semana (0, 1, 2...)
+  const n = historialGrupo.length;
+  const xs = historialGrupo.map((_, i) => i);
+  const ys = historialGrupo.map(h => h.e1rm_medio);
+
+  const meanX = xs.reduce((a, b) => a + b, 0) / n;
+  const meanY = ys.reduce((a, b) => a + b, 0) / n;
+
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (xs[i] - meanX) * (ys[i] - meanY);
+    den += (xs[i] - meanX) ** 2;
+  }
+  const slope = den === 0 ? 0 : num / den;
+
+  // Porcentaje de cambio semanal sobre la media
+  const pctSemanal = meanY > 0 ? (slope / meanY) * 100 : 0;
+
+  if (pctSemanal > 0.5) return 'subiendo';
+  if (pctSemanal < -0.5) return 'bajando';
+  return 'estancado';
+}
+
+/**
+ * Combina volumen + progresión en un estado contextualizado y una acción
+ * recomendada (más útil que solo el volumen).
+ *
+ * Matriz de decisión:
+ *
+ *                    │ Subiendo          │ Estancado        │ Bajando        │ Sin datos
+ *  ────────────────────────────────────────────────────────────────────────────
+ *  Volumen bajo      │ Mantén (pista)    │ Subir series     │ Subir series   │ Subir series
+ *  Volumen mínimo    │ Mantén            │ Subir series     │ Subir series   │ Subir series
+ *  Volumen óptimo    │ Perfecto          │ Subir series     │ Reducir/deload │ Mantén
+ *  Volumen alto      │ Excelente, vigila │ Mantener         │ Reducir series │ Mantén
+ *  Volumen excesivo  │ Vigilar fatiga    │ Reducir series   │ Reducir/deload │ Reducir series
+ */
+function estadoContextual(volumenEstado, progresion) {
+  const M = {
+    bajo:     { subiendo:'subir_a_pesar_progreso', estancado:'subir_critico',   bajando:'subir_critico',   sin_datos:'subir_critico' },
+    minimo:   { subiendo:'mantener_observar',      estancado:'subir',           bajando:'subir',           sin_datos:'subir' },
+    optimo:   { subiendo:'perfecto',               estancado:'subir_estimulo',  bajando:'reducir_deload',  sin_datos:'mantener' },
+    alto:     { subiendo:'sostenible',             estancado:'mantener',        bajando:'reducir',         sin_datos:'mantener' },
+    excesivo: { subiendo:'tolerando_vigilar',      estancado:'reducir',         bajando:'reducir_deload',  sin_datos:'reducir' }
+  };
+  return (M[volumenEstado] && M[volumenEstado][progresion]) || 'mantener';
+}
+
+/**
+ * Genera la sugerencia accionable a partir del estado contextual.
+ * Devuelve { accion, delta, prioridad, razon, aplicable_auto } o null.
+ *
+ *   accion:           'subir' | 'bajar' | 'mantener' | 'deload'
+ *   delta:            número de series a sumar/restar (positivo o negativo)
+ *   prioridad:        'critica' | 'alta' | 'media' | 'baja' | 'info'
+ *   aplicable_auto:   true si el botón "aplicar automático" debe modificarla
+ */
+function generarSugerenciaContextual(grupo, estadoCtx) {
+  const r = grupo.range;
+  if (!r) return null;
+  const sets = grupo.sets;
+
+  switch (estadoCtx) {
+    case 'subir_critico':
+      return { accion:'subir', delta: r.optimal_low - sets, prioridad:'critica',
+        razon:`Bajo el mínimo efectivo (MEV ${r.min}) y sin progresar — falta estímulo.`,
+        aplicable_auto: true };
+    case 'subir':
+      return { accion:'subir', delta: r.optimal_low - sets, prioridad:'alta',
+        razon:`Estás bajo el rango óptimo (${r.optimal_low}-${r.optimal_high}s).`,
+        aplicable_auto: true };
+    case 'subir_estimulo':
+      return { accion:'subir', delta: 2, prioridad:'alta',
+        razon:`Estancado en rango óptimo — añadir series para reactivar progresión.`,
+        aplicable_auto: true };
+    case 'subir_a_pesar_progreso':
+      return { accion:'mantener', delta: 0, prioridad:'info',
+        razon:`Volumen bajo pero progresando — funciona, observa próximas semanas.`,
+        aplicable_auto: false };
+    case 'reducir':
+      return { accion:'bajar', delta: sets - r.max, prioridad:'alta',
+        razon:`Por encima del MRV (${r.max}s) y sin progresar — exceso de fatiga.`,
+        aplicable_auto: true };
+    case 'reducir_deload':
+      return { accion:'deload', delta: -Math.round(sets * 0.4), prioridad:'critica',
+        razon:`Rendimiento bajando — deload recomendado (–40% volumen 1 semana).`,
+        aplicable_auto: true };
+    case 'tolerando_vigilar':
+      return { accion:'mantener', delta: 0, prioridad:'info',
+        razon:`Volumen excesivo PERO progresando — tu cliente lo tolera. Vigila fatiga/sueño.`,
+        aplicable_auto: false };
+    case 'sostenible':
+      return { accion:'mantener', delta: 0, prioridad:'info',
+        razon:`Volumen alto pero sostenible — sigue así.`,
+        aplicable_auto: false };
+    case 'perfecto':
+      return { accion:'mantener', delta: 0, prioridad:'info',
+        razon:`Rango óptimo + progresando. Sigue así.`,
+        aplicable_auto: false };
+    case 'mantener':
+    default:
+      return null;
+  }
+}
+
 module.exports = {
   MUSCLE_GROUPS,
   BASE_VOLUME,
@@ -386,5 +582,10 @@ module.exports = {
   classifyVolume,
   analizarSemana,
   isMuscleGroup,
-  normalize
+  normalize,
+  calcularE1RMSemanalPorGrupo,
+  clasificarProgresion,
+  estadoContextual,
+  generarSugerenciaContextual,
+  isoWeekKey
 };
