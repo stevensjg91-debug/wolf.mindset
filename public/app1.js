@@ -7318,6 +7318,7 @@ Solo JSON, sin texto extra.`;
         <div style="flex:1;min-width:0">
           <span style="font-size:12px;font-weight:700;color:var(--sv)">${aj.ejercicio}</span>
           ${aj.nuevo_peso>0?`<span style="font-size:11px;color:${color};font-weight:700;margin-left:6px">→ ${aj.nuevo_peso}kg</span>`:''}
+          ${aj.reps_sugeridas?`<span style="font-size:11px;color:${color};font-weight:700;margin-left:6px">· ${aj.reps_sugeridas}</span>`:''}
           <div style="font-size:11px;color:var(--tx3)">${aj.razon||''}</div>
         </div>
       </div>`;
@@ -7457,6 +7458,7 @@ Solo JSON, sin texto extra.`;
         <div style="flex:1;min-width:0">
           <span style="font-size:12px;font-weight:700;color:var(--sv)">${aj.ejercicio}</span>
           ${aj.nuevo_peso>0?`<span style="font-size:11px;color:${color};font-weight:700;margin-left:6px">→ ${aj.nuevo_peso}kg</span>`:''}
+          ${aj.reps_sugeridas?`<span style="font-size:11px;color:${color};font-weight:700;margin-left:6px">· ${aj.reps_sugeridas}</span>`:''}
           <div style="font-size:11px;color:var(--tx3)">${aj.razon||''}</div>
         </div>
       </div>`;
