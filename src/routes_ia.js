@@ -3124,8 +3124,7 @@ INSTRUCCIONES:
 2. Si no hay RIR registrado, usa solo peso y reps para sugerir
 3. Genera un mensaje motivador y claro para el cliente explicando los cambios
 4. El mensaje debe sonar como el coach (cercano, directo, motivador) — no menciones la IA
-5. "reps_sugeridas" es OBLIGATORIO en cada ajuste — usa el rango de reps del plan actual si no hay motivo para cambiarlo (ej: si el plan dice 10-12, pon "10-12"). Si subes peso, considera bajar reps (ej: "8-10"). Si bajas peso, sube reps (ej: "12-15").
-6. Responde SOLO con JSON válido:
+5. Responde SOLO con JSON válido:
 
 {
   "resumen": "análisis general en 2-3 frases (para el coach)",
@@ -3136,7 +3135,7 @@ INSTRUCCIONES:
       "accion": "subir|bajar|mantener|sin_datos",
       "peso_actual": 0,
       "nuevo_peso": 0,
-      "reps_sugeridas": "OBLIGATORIO — rango de reps para la próxima sesión (ej: '10-12', '8-10', '12-15')",
+      "reps_sugeridas": "ej: 3×10 o 4×8-10 (reps recomendadas para la próxima sesión)",
       "nota_coach": "frase corta opcional para el cliente visible en el ejercicio (ej: 'Céntrate en la bajada controlada'). Solo si hay algo relevante que destacar, si no deja vacío.",
       "razon": "explicación breve para el coach"
     }
@@ -3256,12 +3255,13 @@ router.get('/coach/analisis-pendientes/count', coachOnly, (req, res) => {
 router.post('/ia/analizar-sesion/:sesionId', coachOnly, async (req, res) => {
   try {
     const sesionId  = req.params.sesionId;
+    const forzar    = req.query.forzar === '1' || req.body.forzar === true;
     const sesion    = dbGet('SELECT * FROM sesiones_entreno WHERE id=?', [sesionId]);
     if (!sesion) return res.status(404).json({ error: 'Sesión no encontrada' });
 
-    // Si ya existe, devolver el existente
+    // Si ya existe pendiente y no se fuerza regeneración, devolver caché
     const existente = dbGet('SELECT * FROM analisis_sesion WHERE sesion_id=?', [sesionId]);
-    if (existente && existente.estado === 'pendiente') {
+    if (existente && existente.estado === 'pendiente' && !forzar) {
       return res.json({ ...existente, ajustes: JSON.parse(existente.ajustes_json||'[]'), cached: true });
     }
 
@@ -3280,7 +3280,10 @@ router.post('/ia/analizar-sesion/:sesionId', coachOnly, async (req, res) => {
     }
     saveToDisk();
     res.json({ resumen: iaData.resumen, ajustes: iaData.ajustes, mensaje_cliente: iaData.mensaje_cliente });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) {
+    console.error('[analizar-sesion] ERROR:', e.message, e.stack);
+    res.status(500).json({ error: e.message || 'Error desconocido en análisis IA' });
+  }
 });
 
 // ── POST /api/ia/aprobar-analisis/:analisisId ────────────────────────────────
