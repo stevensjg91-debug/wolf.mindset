@@ -3124,7 +3124,8 @@ INSTRUCCIONES:
 2. Si no hay RIR registrado, usa solo peso y reps para sugerir
 3. Genera un mensaje motivador y claro para el cliente explicando los cambios
 4. El mensaje debe sonar como el coach (cercano, directo, motivador) — no menciones la IA
-5. Responde SOLO con JSON válido:
+5. "reps_sugeridas" es OBLIGATORIO en cada ajuste — usa el rango de reps del plan actual si no hay motivo para cambiarlo (ej: si el plan dice 10-12, pon "10-12"). Si subes peso, considera bajar reps (ej: "8-10"). Si bajas peso, sube reps (ej: "12-15").
+6. Responde SOLO con JSON válido:
 
 {
   "resumen": "análisis general en 2-3 frases (para el coach)",
@@ -3135,7 +3136,7 @@ INSTRUCCIONES:
       "accion": "subir|bajar|mantener|sin_datos",
       "peso_actual": 0,
       "nuevo_peso": 0,
-      "reps_sugeridas": "ej: 3×10 o 4×8-10 (reps recomendadas para la próxima sesión)",
+      "reps_sugeridas": "OBLIGATORIO — rango de reps para la próxima sesión (ej: '10-12', '8-10', '12-15')",
       "nota_coach": "frase corta opcional para el cliente visible en el ejercicio (ej: 'Céntrate en la bajada controlada'). Solo si hay algo relevante que destacar, si no deja vacío.",
       "razon": "explicación breve para el coach"
     }
