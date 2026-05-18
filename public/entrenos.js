@@ -535,7 +535,19 @@ function hEntreno(){
   const pct=totalSeries?Math.round(doneSeries/totalSeries*100):0;
 
   const exCards=d.ejercicios.map((e,ei)=>{
-    if(!e._series)e._series=Array.from({length:e.series},(_,i)=>({done:false,peso:e.peso_objetivo,reps:parseFirstNum(e.reps),reps_real:parseFirstNum(e.reps),timer:null}));
+    // Calcular previous real de la última sesión para este ejercicio en este día
+    const sesiones = window._sesionesCache || [];
+    const ultimoPorEx = {};
+    sesiones.forEach(s=>{
+      if(s.dia_nombre !== d.nombre) return;
+      (s.series||[]).forEach(sr=>{
+        if(!ultimoPorEx[sr.ejercicio_nombre] || new Date(s.fecha)>new Date(ultimoPorEx[sr.ejercicio_nombre]._fecha)){
+          ultimoPorEx[sr.ejercicio_nombre] = {...sr, _fecha: s.fecha};
+        }
+      });
+    });
+    const prevEx = ultimoPorEx[e.nombre];
+    if(!e._series)e._series=Array.from({length:e.series},(_,i)=>({done:false,peso:e.peso_objetivo,reps:parseFirstNum(e.reps),reps_real:parseFirstNum(e.reps),timer:null, _prevPeso: prevEx?prevEx.peso_real:null, _prevReps: prevEx?prevEx.reps_real:null}));
     const exDone=e._series.every(s=>s.done);
     const ytUrl=e.youtube_url||EX_YT[e.nombre]||'';
     const cfg=(window.exConfig&&window.exConfig[e.nombre])||{};
@@ -554,7 +566,7 @@ const imgUrl =
       return`<div class="strong-serie-wrap" id="sw_${ei}_${si}">
         <div class="strong-serie-row ${s.done?'done':''}" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px 1fr 1fr'}">
           <div class="strong-serie-num">${si+1}</div>
-          <div class="strong-serie-prev">${s.peso||0} × ${s.reps_real||s.reps||10}</div>
+          <div class="strong-serie-prev">${s._prevPeso!=null ? `${fmtPeso(s._prevPeso)} × ${s._prevReps||'—'}` : '—'}</div>
           <button class="strong-check ${s.done?'done':''}" onclick="toggleSerieStrong(${ei},${si})">
             <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
@@ -645,7 +657,6 @@ const imgUrl =
 
 function parseFirstNum(r){
   const s=String(r||10);
-  // Si formato "series×reps" (ej: "3×10", "4x8"), coger el número DESPUÉS del × o x
   const cross=s.match(/[×x](\d+)/i);
   if(cross) return parseInt(cross[1]);
   const m=s.match(/\d+/);
@@ -1034,7 +1045,7 @@ function rerenderSerieRow(ei,si){
   const timerPct=rt?Math.round((timerSecs/rt.total)*100):100;
   row.innerHTML=`<div class="strong-serie-row ${s.done?'done':''}" style="grid-template-columns:${e.rir!=null?'28px 1fr 36px 58px 52px 44px':'28px 1fr 36px 1fr 1fr'}">
     <div class="strong-serie-num">${si+1}</div>
-    <div class="strong-serie-prev">${s.peso||0} × ${s.reps_real||s.reps||10}</div>
+    <div class="strong-serie-prev">${s._prevPeso!=null ? `${fmtPeso(s._prevPeso)} × ${s._prevReps||'—'}` : '—'}</div>
     <button class="strong-check ${s.done?'done':''}" onclick="toggleSerieStrong(${ei},${si})">
       <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
