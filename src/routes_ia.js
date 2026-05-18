@@ -3136,6 +3136,7 @@ INSTRUCCIONES:
       "peso_actual": 0,
       "nuevo_peso": 0,
       "reps_sugeridas": "ej: 3×10 o 4×8-10 (reps recomendadas para la próxima sesión)",
+      "nota_coach": "frase corta opcional para el cliente visible en el ejercicio (ej: 'Céntrate en la bajada controlada'). Solo si hay algo relevante que destacar, si no deja vacío.",
       "razon": "explicación breve para el coach"
     }
   ],
@@ -3295,21 +3296,22 @@ router.post('/ia/aprobar-analisis/:analisisId', coachOnly, async (req, res) => {
 
     let pesosActualizados = 0;
 
-    // 1. Aplicar nuevos pesos y reps a ejercicios_dia
+    // 1. Aplicar nuevos pesos, reps y nota_coach a ejercicios_dia
     ajustesFinales.forEach(aj => {
-      if (aj.ejercicio_id) {
-        const setPeso  = (aj.accion === 'subir' || aj.accion === 'bajar') && aj.nuevo_peso > 0;
-        const setReps  = aj.reps_sugeridas && aj.reps_sugeridas.trim();
-        if (setPeso && setReps) {
-          dbRun('UPDATE ejercicios_dia SET peso_objetivo=?, reps=? WHERE id=?', [aj.nuevo_peso, aj.reps_sugeridas.trim(), aj.ejercicio_id]);
-          pesosActualizados++;
-        } else if (setPeso) {
-          dbRun('UPDATE ejercicios_dia SET peso_objetivo=? WHERE id=?', [aj.nuevo_peso, aj.ejercicio_id]);
-          pesosActualizados++;
-        } else if (setReps) {
-          dbRun('UPDATE ejercicios_dia SET reps=? WHERE id=?', [aj.reps_sugeridas.trim(), aj.ejercicio_id]);
-          pesosActualizados++;
-        }
+      if (!aj.ejercicio_id) return;
+      const setPeso = (aj.accion === 'subir' || aj.accion === 'bajar') && aj.nuevo_peso > 0;
+      const setReps = aj.reps_sugeridas && aj.reps_sugeridas.trim();
+      const setNota = aj.nota_coach && aj.nota_coach.trim();
+
+      if (setPeso || setReps || setNota) {
+        const fields = [];
+        const vals   = [];
+        if (setPeso) { fields.push('peso_objetivo=?'); vals.push(aj.nuevo_peso); }
+        if (setReps) { fields.push('reps=?');          vals.push(aj.reps_sugeridas.trim()); }
+        if (setNota) { fields.push('nota_coach=?');    vals.push(aj.nota_coach.trim()); }
+        vals.push(aj.ejercicio_id);
+        dbRun(`UPDATE ejercicios_dia SET ${fields.join(',')} WHERE id=?`, vals);
+        pesosActualizados++;
       }
     });
 
