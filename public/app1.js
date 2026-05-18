@@ -2093,6 +2093,19 @@ function abrirNuevoClienteDesdeClientes(){
   setTimeout(()=>{ applyCoachLang(document.getElementById('cContent')); },50);
 }
 
+function mb2(label, color, gramos, kcal, kcalTotal){
+  const pct = kcalTotal > 0 ? Math.round(kcal / kcalTotal * 100) : 0;
+  return `<div style="margin-bottom:6px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
+      <span style="color:var(--tx3)">${label}</span>
+      <span style="color:var(--sv);font-weight:600">${gramos}g · ${pct}%</span>
+    </div>
+    <div style="height:5px;border-radius:3px;background:var(--s3);overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:.3s"></div>
+    </div>
+  </div>`;
+}
+
 async function verCliente(id){
   const c=await api('/clientes/'+id); window._coachClienteActual=c; window._coachClienteId=id; window._lastClienteId=id; const a=ac(0);
   const esMio = !c.coach_id || c.coach_id === USER.id;
@@ -8481,6 +8494,16 @@ async function abrirRevisionAnalisis(analisisId, clienteNombre, modoEditar) {
               </div>` : ''}
           </div>
           <div style="font-size:11px;color:var(--tx3)">${aj.razon||''}</div>
+          ${aj.reps_sugeridas ? `
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+            <span style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em">${isEn?'Reps':'Reps sugeridas'}:</span>
+            ${esLectura
+              ? `<span style="font-size:12px;font-weight:700;color:${c.tx}">${aj.reps_sugeridas}</span>`
+              : `<input id="rev_reps_${i}" type="text" value="${aj.reps_sugeridas}"
+                  style="width:90px;padding:3px 6px;border:0.5px solid ${c.bdr};border-radius:6px;
+                         background:var(--s2);color:${c.tx};font-size:12px;font-weight:700;text-align:center;font-family:inherit"/>`
+            }
+          </div>` : ''}
         </div>`;
     }).join('');
 
@@ -8584,7 +8607,12 @@ async function aprobarAnalisis(analisisId, ajustesOriginales) {
   // Recoger pesos editados por el coach desde los inputs
   const ajustesFinales = (modal?._ajustes || ajustesOriginales).map((aj, i) => {
     const inp = document.getElementById(`rev_nuevo_peso_${i}`);
-    return { ...aj, nuevo_peso: inp ? parseFloat(inp.value)||aj.nuevo_peso : aj.nuevo_peso };
+    const inpReps = document.getElementById(`rev_reps_${i}`);
+    return {
+      ...aj,
+      nuevo_peso: inp ? parseFloat(inp.value)||aj.nuevo_peso : aj.nuevo_peso,
+      reps_sugeridas: inpReps ? inpReps.value.trim()||aj.reps_sugeridas : aj.reps_sugeridas
+    };
   });
 
   const mensajeFinal = document.getElementById('rev_mensaje_cliente')?.value || '';
