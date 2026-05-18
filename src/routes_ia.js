@@ -3179,7 +3179,14 @@ async function ejecutarAnalisisIA(sesionId, clienteId, coachId) {
     })
   });
   const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
+  if (data.error) {
+    console.error('[ejecutarAnalisisIA] API error:', JSON.stringify(data.error));
+    throw new Error(data.error.message || JSON.stringify(data.error));
+  }
+  if (!data.content?.[0]?.text) {
+    console.error('[ejecutarAnalisisIA] Respuesta vacía:', JSON.stringify(data));
+    throw new Error('La IA devolvió una respuesta vacía');
+  }
 
   let raw = data.content[0].text.trim().replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```\s*$/i,'').trim();
   const iaData = JSON.parse(raw);
