@@ -162,6 +162,7 @@ async function guardarCheckin(){
 }
 
 function renderSeleccion() {
+  if(typeof CD !== 'undefined' && CD && CD.id && !_ssePush) iniciarSSE(CD.id);
   const el = document.getElementById('klContent');
   if(!el) return;
   el.innerHTML = hSeleccionDia();
@@ -642,7 +643,14 @@ const imgUrl =
   ${renderKeyboard()}`;
 }
 
-function parseFirstNum(r){const m=String(r||10).match(/\d+/);return m?parseInt(m[0]):10;}
+function parseFirstNum(r){
+  const s=String(r||10);
+  // Si formato "series×reps" (ej: "3×10", "4x8"), coger el número DESPUÉS del × o x
+  const cross=s.match(/[×x](\d+)/i);
+  if(cross) return parseInt(cross[1]);
+  const m=s.match(/\d+/);
+  return m?parseInt(m[0]):10;
+}
 
 function renderKeyboard(){
   return`<div id="strong_keyboard" style="display:none;position:fixed;bottom:60px;left:0;right:0;z-index:400;background:var(--s2);border-top:1.5px solid var(--br2);padding:10px 14px 16px;box-shadow:0 -8px 32px rgba(0,0,0,.7)">
