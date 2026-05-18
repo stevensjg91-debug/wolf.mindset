@@ -1740,14 +1740,14 @@ function moveEx(diaIndex, exIndex, dir){
 }
 // ═══ SSE — Eventos en tiempo real del coach ════════════════════════════════
 
-var _sseSource = null;
+var _ssePush = null;
 
 function iniciarSSE(clienteId){
   if(!clienteId) return;
   cerrarSSE();
-  _sseSource = new EventSource('/sse/cliente/' + clienteId);
+  _ssePush = new EventSource('/sse/cliente/' + clienteId);
 
-  _sseSource.addEventListener('rutina_revisada', function(e){
+  _ssePush.addEventListener('rutina_revisada', function(e){
     try {
       var data = JSON.parse(e.data || '{}');
       var diaNombre = data.dia_nombre || '';
@@ -1769,13 +1769,13 @@ function iniciarSSE(clienteId){
     }
   });
 
-  _sseSource.addEventListener('error', function(){
+  _ssePush.addEventListener('error', function(){
     console.warn('[SSE] error de conexión, reintentando…');
   });
 }
 
 function cerrarSSE(){
-  if(_sseSource){ _sseSource.close(); _sseSource = null; }
+  if(_ssePush){ _ssePush.close(); _ssePush = null; }
 }
 
 async function tabMoveEx(clienteId, diaId, exIndex, dir){
