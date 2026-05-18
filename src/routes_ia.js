@@ -3295,11 +3295,21 @@ router.post('/ia/aprobar-analisis/:analisisId', coachOnly, async (req, res) => {
 
     let pesosActualizados = 0;
 
-    // 1. Aplicar nuevos pesos a ejercicios_dia
+    // 1. Aplicar nuevos pesos y reps a ejercicios_dia
     ajustesFinales.forEach(aj => {
-      if ((aj.accion === 'subir' || aj.accion === 'bajar') && aj.nuevo_peso > 0 && aj.ejercicio_id) {
-        dbRun('UPDATE ejercicios_dia SET peso_objetivo=? WHERE id=?', [aj.nuevo_peso, aj.ejercicio_id]);
-        pesosActualizados++;
+      if (aj.ejercicio_id) {
+        const setPeso  = (aj.accion === 'subir' || aj.accion === 'bajar') && aj.nuevo_peso > 0;
+        const setReps  = aj.reps_sugeridas && aj.reps_sugeridas.trim();
+        if (setPeso && setReps) {
+          dbRun('UPDATE ejercicios_dia SET peso_objetivo=?, reps=? WHERE id=?', [aj.nuevo_peso, aj.reps_sugeridas.trim(), aj.ejercicio_id]);
+          pesosActualizados++;
+        } else if (setPeso) {
+          dbRun('UPDATE ejercicios_dia SET peso_objetivo=? WHERE id=?', [aj.nuevo_peso, aj.ejercicio_id]);
+          pesosActualizados++;
+        } else if (setReps) {
+          dbRun('UPDATE ejercicios_dia SET reps=? WHERE id=?', [aj.reps_sugeridas.trim(), aj.ejercicio_id]);
+          pesosActualizados++;
+        }
       }
     });
 
