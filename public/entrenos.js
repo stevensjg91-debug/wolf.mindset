@@ -1738,6 +1738,46 @@ function moveEx(diaIndex, exIndex, dir){
     el.innerHTML = hEntreno();
   }
 }
+// ═══ SSE — Eventos en tiempo real del coach ════════════════════════════════
+
+var _sseSource = null;
+
+function iniciarSSE(clienteId){
+  if(!clienteId) return;
+  cerrarSSE();
+  _sseSource = new EventSource('/sse/cliente/' + clienteId);
+
+  _sseSource.addEventListener('rutina_revisada', function(e){
+    try {
+      var data = JSON.parse(e.data || '{}');
+      var diaNombre = data.dia_nombre || '';
+      var ajustes   = data.ajustes   || [];
+
+      // Poblar _ajustesPorDia para que hSeleccionDia pinte el badge 🐺
+      window._ajustesPorDia = window._ajustesPorDia || {};
+      window._ajustesPorDia[diaNombre] = {
+        visto: false,
+        count: ajustes.length || 1,
+        ajustes: ajustes,
+        reps: ajustes.map(function(a){ return a.reps_sugeridas; }).filter(Boolean)
+      };
+
+      // Re-renderizar las tarjetas de día
+      renderSeleccion();
+    } catch(err){
+      console.warn('[SSE] rutina_revisada:', err);
+    }
+  });
+
+  _sseSource.addEventListener('error', function(){
+    console.warn('[SSE] error de conexión, reintentando…');
+  });
+}
+
+function cerrarSSE(){
+  if(_sseSource){ _sseSource.close(); _sseSource = null; }
+}
+
 async function tabMoveEx(clienteId, diaId, exIndex, dir){
   try{
     const c = await api('/clientes/'+clienteId);
