@@ -3135,6 +3135,7 @@ INSTRUCCIONES:
       "accion": "subir|bajar|mantener|sin_datos",
       "peso_actual": 0,
       "nuevo_peso": 0,
+      "reps_sugeridas": "ej: 3×10 o 4×8-10 (reps recomendadas para la próxima sesión)",
       "razon": "explicación breve para el coach"
     }
   ],
@@ -3325,6 +3326,34 @@ router.post('/ia/aprobar-analisis/:analisisId', coachOnly, async (req, res) => {
     // 3. Marcar análisis como aprobado
     dbRun(`UPDATE analisis_sesion SET estado='aprobado', ajustes_json=?, mensaje_cliente=?, aprobado_at=CURRENT_TIMESTAMP WHERE id=?`,
       [JSON.stringify(ajustesFinales), mensajeFinal, req.params.analisisId]);
+
+    // 4. Notificación en app al cliente: badge en el día correspondiente
+    const clienteUserNotif = dbGet('SELECT user_id FROM clientes WHERE id=?', [analisis.cliente_id]);
+    if (clienteUserNotif) {
+      const notifMsg = `Tu coach ha revisado "${analisis.dia_nombre}" y ha actualizado tus objetivos para la próxima sesión. ¡Revisa la rutina!`;
+      crearNotificacion(
+        String(clienteUserNotif.user_id),
+        'rutina_revisada',
+        notifMsg
+      );
+      // SSE en tiempo real con el día afectado para que el badge aparezca inmediatamente
+      ssePush(String(clienteUserNotif.user_id), 'rutina_revisada', {
+        dia_nombre: analisis.dia_nombre,
+        sesion_id:  analisis.sesion_id,
+        ajustes:    ajustesFinales,
+        mensaje:    notifMsg,
+        ts:         Date.now()
+      });
+      // Push notification si tiene el navegador/app abierto
+      if (global.sendPushToUser) {
+        global.sendPushToUser(
+          clienteUserNotif.user_id,
+          '🐺 Rutina revisada por tu coach',
+          notifMsg.slice(0, 80) + '…',
+          '/entrenar'
+        );
+      }
+    }
 
     saveToDisk();
     res.json({ ok: true, pesosActualizados, mensajeEnviado: !!mensajeFinal });
