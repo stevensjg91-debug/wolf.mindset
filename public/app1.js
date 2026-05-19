@@ -1926,7 +1926,7 @@ function hClientes(cl){
     <button class="clientes-filter ${filter==='archivados'?'on':''}" onclick="filtrarClientes('archivados')">🗄️ ${tc('Archivados')} (${archivados.length})</button>
   </div>
 
-  <div class="cc-grid clientes-card-grid">
+  <div class="cc-grid clientes-card-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:8px">
     ${clFiltrados.map((c,i)=>{
       const a=ac(i);
       const cc=c.coach_id?coachColors[c.coach_id]:coachColors[USER.id];
@@ -2041,13 +2041,14 @@ async function cargarTareasPendientes(){
       const mins=Math.floor((Date.now()-fecha.getTime())/60000);
       const haceStr=mins<60?(isEn?`${mins}m ago`:`hace ${mins}m`):mins<1440?(isEn?`${Math.floor(mins/60)}h ago`:`hace ${Math.floor(mins/60)}h`):(isEn?`${Math.floor(mins/1440)}d ago`:`hace ${Math.floor(mins/1440)}d`);
       const ini=s.cliente_nombre?s.cliente_nombre.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase():'?';
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border-radius:10px;margin-bottom:6px;cursor:pointer" onclick="verCliente(${s.cliente_id});setTimeout(()=>switchClienteTab('progreso',document.querySelector('.ctab[onclick*=progreso]')),600)">
+      return `<div id="tarea_${s.id}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border-radius:10px;margin-bottom:6px;cursor:pointer" onclick="verCliente(${s.cliente_id});setTimeout(()=>switchClienteTab('progreso',document.querySelector('.ctab[onclick*=progreso]')),600)">
         <div style="width:36px;height:36px;border-radius:50%;background:rgba(59,130,246,.18);color:#93c5fd;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;overflow:hidden">${s.foto_perfil?`<img src="${s.foto_perfil}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`:ini}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:700;color:var(--sv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.cliente_nombre}</div>
           <div style="font-size:11px;color:var(--tx3)">🏋️ ${s.dia_nombre}${s.dia_grupo?' · '+s.dia_grupo:''} · ${s.num_series} ${isEn?'sets':'series'} · ${haceStr}</div>
         </div>
         <button onclick="event.stopPropagation();marcarSesionRevisada(${s.id},this)" style="flex-shrink:0;padding:6px 10px;background:rgba(34,197,94,.12);border:0.5px solid rgba(34,197,94,.3);border-radius:8px;color:var(--gnb);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">✓ ${isEn?'Mark reviewed':'Revisar'}</button>
+        <button onclick="event.stopPropagation();eliminarTareaPendiente('tarea_${s.id}')" style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:rgba(239,68,68,.1);border:0.5px solid rgba(239,68,68,.25);color:#fca5a5;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;padding:0">✕</button>
       </div>`;
     }).join('');
     const wrId='pend_revisar_body';
@@ -2055,6 +2056,7 @@ async function cargarTareasPendientes(){
       <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="(()=>{const b=document.getElementById('${wrId}');const a=document.getElementById('${wrId}_arr');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▶':'▼';})()">
         <div style="font-size:12px;font-weight:700;color:var(--amb);text-transform:uppercase;letter-spacing:.07em">${titulo}</div>
         <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="event.stopPropagation();borrarTodasTareasPendientes()" style="background:rgba(239,68,68,.1);border:0.5px solid rgba(239,68,68,.25);color:#fca5a5;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;cursor:pointer;font-family:inherit">${isEn?'Clear all':'Borrar todo'}</button>
           <button onclick="event.stopPropagation();cargarTareasPendientes()" style="background:none;border:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">↺</button>
           <span id="${wrId}_arr" style="color:var(--tx3);font-size:10px">▼</span>
         </div>
@@ -8416,7 +8418,7 @@ async function cargarAnalisisPendientes() {
     const items = pendientes.map(a => {
       const hace = tiempoRelativo(a.created_at);
       return `
-        <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;
+        <div id="analisis_item_${a.id}" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;
                     background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(37,99,235,.05));
                     border:0.5px solid rgba(124,58,237,.25);border-radius:10px;margin-bottom:6px">
           <div style="font-size:22px;flex-shrink:0">🤖</div>
@@ -8436,6 +8438,8 @@ async function cargarAnalisisPendientes() {
                    font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">
             ${isEn?'Review':'Revisar'}
           </button>
+          <button onclick="eliminarTareaPendiente('analisis_item_${a.id}')"
+            style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:rgba(239,68,68,.1);border:0.5px solid rgba(239,68,68,.25);color:#fca5a5;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;padding:0">✕</button>
         </div>`;
     }).join('');
 
@@ -8447,6 +8451,7 @@ async function cargarAnalisisPendientes() {
             🤖 ${isEn?`AI analyses pending (${pendientes.length})`:`Análisis IA pendientes (${pendientes.length})`}
           </div>
           <div style="display:flex;align-items:center;gap:8px">
+            <button onclick="event.stopPropagation();borrarTodosAnalisisIA()" style="background:rgba(239,68,68,.1);border:0.5px solid rgba(239,68,68,.25);color:#fca5a5;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;cursor:pointer;font-family:inherit">${isEn?'Clear all':'Borrar todo'}</button>
             <button onclick="event.stopPropagation();cargarAnalisisPendientes()" style="background:none;border:none;color:var(--tx3);font-size:11px;cursor:pointer;font-family:inherit">↺</button>
             <span id="${iaId}_arr" style="color:var(--tx3);font-size:10px">▼</span>
           </div>
@@ -8458,7 +8463,35 @@ async function cargarAnalisisPendientes() {
   } catch(e) { if(wrap) wrap.innerHTML = ''; }
 }
 
-function toggleRevDia(id) {
+function eliminarTareaPendiente(elementId) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  el.style.transition = 'opacity .25s,transform .25s';
+  el.style.opacity = '0';
+  el.style.transform = 'translateX(20px)';
+  setTimeout(() => {
+    el.remove();
+    // Si ya no quedan items, ocultar el bloque entero
+    const wrapTareas = document.getElementById('tareas_pendientes_wrap');
+    const wrapAnalisis = document.getElementById('analisis_pendientes_wrap');
+    if (wrapTareas && !wrapTareas.querySelector('[id^="tarea_"]')) wrapTareas.innerHTML = '';
+    if (wrapAnalisis && !wrapAnalisis.querySelector('[id^="analisis_item_"]')) wrapAnalisis.innerHTML = '';
+  }, 280);
+}
+
+async function borrarTodasTareasPendientes() {
+  const isEn = COACH_LANG === 'en';
+  if (!confirm(isEn ? 'Mark all sessions as reviewed?' : '¿Marcar todas las sesiones como revisadas?')) return;
+  const wrap = document.getElementById('tareas_pendientes_wrap');
+  if (wrap) { wrap.style.transition = 'opacity .3s'; wrap.style.opacity = '0'; setTimeout(() => { wrap.innerHTML = ''; wrap.style.opacity = '1'; }, 300); }
+}
+
+async function borrarTodosAnalisisIA() {
+  const isEn = COACH_LANG === 'en';
+  if (!confirm(isEn ? 'Clear all pending AI analyses?' : '¿Borrar todos los análisis IA pendientes?')) return;
+  const wrap = document.getElementById('analisis_pendientes_wrap');
+  if (wrap) { wrap.style.transition = 'opacity .3s'; wrap.style.opacity = '0'; setTimeout(() => { wrap.innerHTML = ''; wrap.style.opacity = '1'; }, 300); }
+}
   const body = document.getElementById(id);
   const arr = document.getElementById('arr_' + id);
   if (!body) return;
