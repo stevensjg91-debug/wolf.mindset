@@ -8057,13 +8057,33 @@ function abrirModalGenerarRutina(clienteId, nombreCliente, nivelCliente) {
 }
 
 function mgrSelDia(n, btn) {
-  document.querySelectorAll('#mgr_dias_btns button').forEach(b => b.classList.remove('sel'));
+  document.querySelectorAll('#mgr_dias_btns button').forEach(b => {
+    b.classList.remove('sel');
+    b.style.background = 'none';
+    b.style.color = 'var(--tx2)';
+    b.style.border = '0.5px solid rgba(255,255,255,.15)';
+    b.style.fontWeight = '400';
+  });
   btn.classList.add('sel');
+  btn.style.background = 'linear-gradient(135deg,#2563eb,#7c3aed)';
+  btn.style.color = '#fff';
+  btn.style.border = 'none';
+  btn.style.fontWeight = '700';
 }
 
 function mgrSelTiempo(v, btn) {
-  document.querySelectorAll('#mgr_tiempo_btns button').forEach(b => { b.classList.remove('sel'); b.style.background='none'; b.style.color='var(--tx2)'; });
+  document.querySelectorAll('#mgr_tiempo_btns button').forEach(b => {
+    b.classList.remove('sel');
+    b.style.background = 'none';
+    b.style.color = 'var(--tx2)';
+    b.style.border = '0.5px solid rgba(255,255,255,.15)';
+    b.style.fontWeight = '400';
+  });
   btn.classList.add('sel');
+  btn.style.background = 'linear-gradient(135deg,#2563eb,#7c3aed)';
+  btn.style.color = '#fff';
+  btn.style.border = 'none';
+  btn.style.fontWeight = '700';
 }
 
 function cerrarModalGenRutina() {
