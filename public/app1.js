@@ -7318,7 +7318,6 @@ Solo JSON, sin texto extra.`;
         <div style="flex:1;min-width:0">
           <span style="font-size:12px;font-weight:700;color:var(--sv)">${aj.ejercicio}</span>
           ${aj.nuevo_peso>0?`<span style="font-size:11px;color:${color};font-weight:700;margin-left:6px">→ ${aj.nuevo_peso}kg</span>`:''}
-          ${aj.reps_sugeridas?`<span style="font-size:11px;color:${color};font-weight:700;margin-left:6px">· ${aj.reps_sugeridas}</span>`:''}
           <div style="font-size:11px;color:var(--tx3)">${aj.razon||''}</div>
         </div>
       </div>`;
@@ -7458,7 +7457,6 @@ Solo JSON, sin texto extra.`;
         <div style="flex:1;min-width:0">
           <span style="font-size:12px;font-weight:700;color:var(--sv)">${aj.ejercicio}</span>
           ${aj.nuevo_peso>0?`<span style="font-size:11px;color:${color};font-weight:700;margin-left:6px">→ ${aj.nuevo_peso}kg</span>`:''}
-          ${aj.reps_sugeridas?`<span style="font-size:11px;color:${color};font-weight:700;margin-left:6px">· ${aj.reps_sugeridas}</span>`:''}
           <div style="font-size:11px;color:var(--tx3)">${aj.razon||''}</div>
         </div>
       </div>`;
@@ -7987,6 +7985,39 @@ function abrirModalGenerarRutina(clienteId, nombreCliente, nivelCliente) {
                  background:rgba(255,255,255,.05);color:var(--sv);font-size:13px;font-family:inherit;box-sizing:border-box">
       </div>
 
+      <!-- Tiempo por sesión -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">
+          ${isEn?'Available time per session':'Tiempo disponible por sesión'}
+        </div>
+        <div id="mgr_tiempo_btns" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+          ${[['45','45 min'],['60','60 min'],['75','75 min'],['90','90 min']].map(([v,l]) => `
+            <button onclick="mgrSelTiempo('${v}',this)" ${v==='60'?'class="sel"':''} data-tiempo="${v}"
+              style="padding:8px 4px;border-radius:8px;border:0.5px solid rgba(255,255,255,.15);
+                     background:none;color:var(--tx2);font-size:12px;cursor:pointer;font-family:inherit;transition:.15s">
+              ${l}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Instrucciones libres -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
+          ${isEn?'Instructions for the AI (optional)':'Instrucciones para la IA (opcional)'}
+        </div>
+        <textarea id="mgr_instrucciones" rows="3"
+          placeholder="${isEn
+            ? 'E.g.: Focus on glutes and hamstrings, avoid squats due to knee pain, she loves hip thrusts, no more than 5 exercises per day...'
+            : 'Ej: Priorizar glúteos y femorales, evitar sentadillas por rodilla, le encantan los hip thrust, máximo 5 ejercicios por día, incluir trabajo de core...'}"
+          style="width:100%;padding:10px 12px;border-radius:10px;border:0.5px solid rgba(255,255,255,.15);
+                 background:rgba(255,255,255,.05);color:var(--sv);font-size:13px;font-family:inherit;
+                 box-sizing:border-box;resize:vertical;line-height:1.5"></textarea>
+        <div style="font-size:10px;color:var(--tx3);margin-top:4px">
+          ${isEn?'Points to focus on, exercises to avoid, injuries, favorites, client requests...':'Puntos débiles, ejercicios a evitar, lesiones, favoritos, peticiones del cliente...'}
+        </div>
+      </div>
+
       <!-- Status -->
       <div id="mgr_status" style="display:none;padding:12px;border-radius:10px;background:rgba(37,99,235,.12);
            border:0.5px solid rgba(37,99,235,.3);font-size:13px;color:var(--bl2);margin-bottom:16px;
@@ -8030,6 +8061,11 @@ function mgrSelDia(n, btn) {
   btn.classList.add('sel');
 }
 
+function mgrSelTiempo(v, btn) {
+  document.querySelectorAll('#mgr_tiempo_btns button').forEach(b => { b.classList.remove('sel'); b.style.background='none'; b.style.color='var(--tx2)'; });
+  btn.classList.add('sel');
+}
+
 function cerrarModalGenRutina() {
   const m = document.getElementById('modal_gen_rutina');
   if (m) m.style.display = 'none';
@@ -8042,6 +8078,9 @@ async function ejecutarGenerarRutina(clienteId) {
   const destino = document.querySelector('input[name="mgr_destino"]:checked')?.value || 'ambos';
   const reemplazar = document.getElementById('mgr_reemplazar')?.checked || false;
   const nombrePlantilla = document.getElementById('mgr_nombre_plantilla')?.value?.trim() || '';
+  const tiempoBtn = document.querySelector('#mgr_tiempo_btns button.sel');
+  const tiempoSesion = tiempoBtn ? tiempoBtn.dataset.tiempo : '60';
+  const instrucciones = document.getElementById('mgr_instrucciones')?.value?.trim() || '';
 
   const btn = document.getElementById('mgr_btn_generar');
   const status = document.getElementById('mgr_status');
@@ -8060,7 +8099,7 @@ async function ejecutarGenerarRutina(clienteId) {
   try {
     const result = await api('/ia/generar-rutina', {
       method: 'POST',
-      body: JSON.stringify({ clienteId, diasSemana, guardarComo: destino, reemplazar, nombrePlantilla })
+      body: JSON.stringify({ clienteId, diasSemana, guardarComo: destino, reemplazar, nombrePlantilla, tiempoSesion, instrucciones })
     });
 
     const rutina = result.rutina;
