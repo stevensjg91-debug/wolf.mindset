@@ -2741,7 +2741,7 @@ router.post('/ia/generar-rutina', coachOnly, async (req, res) => {
           // Parámetros extra del formulario avanzado
           objetivo: objOverride, nivel: nivelOverride, lesiones: lesionesOverride,
           rezagados, lugar, tiempoSesion, ejerciciosProhibidos, ejerciciosFavoritos,
-          tipoRutina } = req.body;
+          tipoRutina, instrucciones } = req.body;
 
   if (!clienteId || !diasSemana) return res.status(400).json({ error: 'clienteId y diasSemana requeridos' });
 
@@ -2867,7 +2867,8 @@ PERFIL DEL CLIENTE:
 - Días de entrenamiento por semana: ${diasSemana}
 - Frecuencia real de asistencia: ${frecuenciaReal||'sin datos'}
 - Observaciones del coach: ${cliente.observaciones||'ninguna'}
-- Notas del coach: ${cliente.notas_coach||'ninguna'}`.trim();
+- Notas del coach: ${cliente.notas_coach||'ninguna'}${instrucciones ? `
+\n🎯 INSTRUCCIONES ESPECÍFICAS DEL COACH (prioridad máxima — aplica todo lo que se indica aquí):\n${instrucciones}` : ''}`.trim();
 
   const histSection  = historialPesos   ? `\nRENDIMIENTO REAL (últimas 8 semanas — usa para peso_objetivo con +2.5-5% progresión):\n${historialPesos}` : '';
   const analSection  = ultimoAnalisis   ? `\nANÁLISIS CORPORAL (foto progreso más reciente):\n${ultimoAnalisis}` : '';
