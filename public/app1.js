@@ -8492,6 +8492,8 @@ async function borrarTodosAnalisisIA() {
   const wrap = document.getElementById('analisis_pendientes_wrap');
   if (wrap) { wrap.style.transition = 'opacity .3s'; wrap.style.opacity = '0'; setTimeout(() => { wrap.innerHTML = ''; wrap.style.opacity = '1'; }, 300); }
 }
+
+function toggleRevDia(id) {
   const body = document.getElementById(id);
   const arr = document.getElementById('arr_' + id);
   if (!body) return;
