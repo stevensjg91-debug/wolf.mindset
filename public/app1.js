@@ -6395,8 +6395,12 @@ async function cargarRevisionSemanal(clienteId, clienteData) {
       console.warn('No se pudo cargar revision-semanal:', e);
     }
 
-    const nivel  = clienteData.nivel || 'Intermedio';
-    const diasConEjercicios = (clienteData.dias || []).filter(d => d.ejercicios.length > 0);
+    // Defensa: esta función a veces se recarga sin pasar clienteData
+    // (por ejemplo tras aplicar ajustes automáticos). Evitamos romper la revisión
+    // si window._coachClienteActual todavía no está listo o no trae perfil/días.
+    const clienteSeguro = clienteData || window._coachClienteActual || {};
+    const nivel  = clienteSeguro?.nivel || 'Intermedio';
+    const diasConEjercicios = (clienteSeguro?.dias || []).filter(d => (d.ejercicios || []).length > 0);
 
     if (!diasConEjercicios.length) {
       wrap.innerHTML = `<div style="font-size:13px;color:var(--tx3)">${COACH_LANG==='en'?'No routine assigned.':'Sin rutina asignada.'}</div>`;
@@ -8128,15 +8132,27 @@ function eliminarTareaPendiente(elementId) {
 async function borrarTodasTareasPendientes() {
   const isEn = COACH_LANG === 'en';
   if (!confirm(isEn ? 'Mark all sessions as reviewed?' : '¿Marcar todas las sesiones como revisadas?')) return;
-  const wrap = document.getElementById('tareas_pendientes_wrap');
-  if (wrap) { wrap.style.transition = 'opacity .3s'; wrap.style.opacity = '0'; setTimeout(() => { wrap.innerHTML = ''; wrap.style.opacity = '1'; }, 300); }
+  try {
+    const pendientes = await api('/coach/sesiones-pendientes');
+    if (!Array.isArray(pendientes) || pendientes.length === 0) return;
+    await Promise.all(pendientes.map(s => api('/sesiones/' + s.id + '/revisar', { method: 'PUT' })));
+    await cargarTareasPendientes();
+  } catch(e) {
+    console.error('Error borrando tareas pendientes:', e);
+  }
 }
 
 async function borrarTodosAnalisisIA() {
   const isEn = COACH_LANG === 'en';
   if (!confirm(isEn ? 'Clear all pending AI analyses?' : '¿Borrar todos los análisis IA pendientes?')) return;
-  const wrap = document.getElementById('analisis_pendientes_wrap');
-  if (wrap) { wrap.style.transition = 'opacity .3s'; wrap.style.opacity = '0'; setTimeout(() => { wrap.innerHTML = ''; wrap.style.opacity = '1'; }, 300); }
+  try {
+    const pendientes = await api('/coach/analisis-pendientes');
+    if (!Array.isArray(pendientes) || pendientes.length === 0) return;
+    await Promise.all(pendientes.map(a => api('/ia/descartar-analisis/' + a.id, { method: 'POST' })));
+    await cargarAnalisisPendientes();
+  } catch(e) {
+    console.error('Error borrando análisis IA pendientes:', e);
+  }
 }
 
 function toggleRevDia(id) {
