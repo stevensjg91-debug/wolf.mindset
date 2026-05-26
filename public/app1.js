@@ -6083,6 +6083,7 @@ async function cargarGraficasCliente(){
 
       // ── PRs ──────────────────────────────────────────────────────
       const prsList = Object.entries(prs)
+        .filter(([nom]) => principales.includes(nom))
         .sort((a,b)=>{ const pa=principales.includes(a[0])?1:0, pb=principales.includes(b[0])?1:0; return pb-pa; })
         .slice(0,8);
       if(prsList.length) {
