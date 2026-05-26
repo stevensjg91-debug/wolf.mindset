@@ -104,6 +104,19 @@ function ensureTrainingTrackingSchema() {
   try { dbRun("ALTER TABLE series_log ADD COLUMN nota_cliente TEXT DEFAULT ''"); } catch(e) {}
   try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN coach_revisada INTEGER DEFAULT 0"); } catch(e) {}
   try { dbRun("ALTER TABLE sesiones_entreno ADD COLUMN coach_revisada_at DATETIME"); } catch(e) {}
+  // Persistencia del aviso "Ajustes del coach": cuándo el cliente abrió/realizó el día.
+  // Se guarda en BD (no en localStorage) para que sobreviva a recargas y cambios de dispositivo.
+  try { dbRun("ALTER TABLE analisis_sesion ADD COLUMN cliente_visto_at DATETIME"); } catch(e) {}
+}
+
+// ── Lunes 00:00 de la semana actual (hora del servidor) ──────────────────────
+// Usado para "realizado esta semana" — el estado se resetea cada lunes.
+function inicioSemanaISO() {
+  const d = new Date();
+  const day = d.getDay() || 7;            // domingo = 7
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - (day - 1));     // retrocede hasta el lunes
+  return d.toISOString().slice(0, 19).replace('T', ' ');
 }
 
 // Mensajes de suscripción bilingues
@@ -3367,6 +3380,117 @@ router.get('/clientes/:id/analisis-aprobados', (req, res) => {
     );
     res.json(rows.map(r => ({ ...r, ajustes: JSON.parse(r.ajustes_json||'[]') })));
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+// ── GET /api/clientes/:id/estado-dias ────────────────────────────────────────
+// Estado consolidado por día de entreno, leído de la BD (no de localStorage).
+// Devuelve, por cada dia_nombre: si se hizo esta semana, cuántas veces, última
+// fecha, y si hay ajustes del coach pendientes de ver. Esto es lo que hace que
+// el estado persista entre recargas y dispositivos.
+router.get('/clientes/:id/estado-dias', (req, res) => {
+  try {
+    ensureTrainingTrackingSchema();
+    const id = req.params.id;
+    if (req.user.role === 'cliente') {
+      const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
+      if (!mine || String(mine.id) !== String(id))
+        return res.status(403).json({ error: 'Sin acceso' });
+    }
+
+    const lunes = inicioSemanaISO();
+
+    // Sesiones de esta semana (para "realizado esta semana")
+    const estaSemanaRows = dbAll(
+      `SELECT dia_nombre, COUNT(*) as veces, MAX(fecha) as ultima, MAX(estado) as estado
+       FROM sesiones_entreno
+       WHERE cliente_id=? AND fecha >= ?
+       GROUP BY dia_nombre`,
+      [id, lunes]
+    );
+    // Última sesión histórica de cada día (para "última vez: hace X días")
+    const historicoRows = dbAll(
+      `SELECT dia_nombre, MAX(fecha) as ultima
+       FROM sesiones_entreno
+       WHERE cliente_id=?
+       GROUP BY dia_nombre`,
+      [id]
+    );
+    // Ajustes del coach aprobados pendientes de ver (cliente_visto_at NULL)
+    const ajustesRows = dbAll(
+      `SELECT dia_nombre, ajustes_json, mensaje_cliente, aprobado_at, cliente_visto_at
+       FROM analisis_sesion
+       WHERE cliente_id=? AND estado='aprobado'
+       ORDER BY aprobado_at DESC`,
+      [id]
+    );
+
+    const semanaMap = {};
+    estaSemanaRows.forEach(r => { semanaMap[r.dia_nombre] = r; });
+    const histMap = {};
+    historicoRows.forEach(r => { histMap[r.dia_nombre] = r.ultima; });
+
+    // Por día: el ajuste aprobado más reciente y si está pendiente de ver
+    const ajusteMap = {};
+    ajustesRows.forEach(r => {
+      if (ajusteMap[r.dia_nombre]) return; // ya tenemos el más reciente
+      let ajustes = [];
+      try { ajustes = JSON.parse(r.ajustes_json || '[]'); } catch(e) {}
+      ajusteMap[r.dia_nombre] = {
+        pendiente_ver: !r.cliente_visto_at,
+        count: ajustes.filter(a => a.accion === 'subir' || a.accion === 'bajar').length || ajustes.length,
+        mensaje_cliente: r.mensaje_cliente || '',
+        aprobado_at: r.aprobado_at
+      };
+    });
+
+    const dias = {};
+    const nombres = new Set([
+      ...Object.keys(semanaMap), ...Object.keys(histMap), ...Object.keys(ajusteMap)
+    ]);
+    nombres.forEach(nombre => {
+      const sem = semanaMap[nombre];
+      dias[nombre] = {
+        hecho_esta_semana: !!sem,
+        veces_esta_semana: sem ? sem.veces : 0,
+        estado_ultima: sem ? (sem.estado || 'completado') : null,
+        ultima_fecha: histMap[nombre] || null,
+        ajustes_coach: ajusteMap[nombre] || null
+      };
+    });
+
+    res.json({ inicio_semana: lunes, dias });
+  } catch(e) {
+    console.error('estado-dias error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── POST /api/clientes/:id/dia-visto ─────────────────────────────────────────
+// Marca como vistos los ajustes del coach de un día concreto. Se llama cuando
+// el cliente abre/realiza ese entreno, así el aviso 🔔 desaparece de forma
+// persistente (en BD) en lugar de depender de localStorage.
+router.post('/clientes/:id/dia-visto', (req, res) => {
+  try {
+    ensureTrainingTrackingSchema();
+    const id = req.params.id;
+    const { dia_nombre } = req.body;
+    if (req.user.role === 'cliente') {
+      const mine = dbGet('SELECT id FROM clientes WHERE user_id=?', [req.user.id]);
+      if (!mine || String(mine.id) !== String(id))
+        return res.status(403).json({ error: 'Sin acceso' });
+    }
+    if (!dia_nombre) return res.status(400).json({ error: 'Falta dia_nombre' });
+
+    dbRun(
+      `UPDATE analisis_sesion
+       SET cliente_visto_at = datetime('now')
+       WHERE cliente_id=? AND dia_nombre=? AND estado='aprobado' AND cliente_visto_at IS NULL`,
+      [id, dia_nombre]
+    );
+    saveToDisk();
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 
