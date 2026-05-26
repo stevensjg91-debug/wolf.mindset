@@ -167,57 +167,131 @@ function renderSeleccion() {
   if(!el) return;
   el.innerHTML = hSeleccionDia();
   if(LANG !== 'es') setTimeout(()=>applyLang(el), 30);
+  // Cargar estado real desde el servidor y re-renderizar cuando llegue.
+  cargarEstadoDias();
+}
+
+// ── Carga el estado consolidado de los días desde la BD ──────────────────────
+// Esto es lo que hace que "realizado esta semana" y el aviso de ajustes del
+// coach persistan entre recargas y dispositivos (antes vivían en localStorage).
+async function cargarEstadoDias(){
+  if(!CD || !CD.id) return;
+  try {
+    const data = await api('/clientes/'+CD.id+'/estado-dias');
+    window._estadoDias = data.dias || {};
+    // Re-render solo si seguimos en la pantalla de selección
+    if(vistaActual === 'seleccion'){
+      const el = document.getElementById('klContent');
+      if(el){ el.innerHTML = hSeleccionDia(); if(LANG !== 'es') setTimeout(()=>applyLang(el),30); }
+    }
+  } catch(e){ /* sin estado: las tarjetas se pintan como pendientes */ }
 }
 
 function hSeleccionDia(){
   if(!CD.dias.length) return`<div style="padding:60px 20px;text-align:center;color:var(--tx3)"><div style="font-size:48px;margin-bottom:14px">🏋️</div><div style="font-size:16px;font-weight:600;color:var(--sv2)">${t('Tu coach está preparando tu plan')}</div></div>`;
 
-  // Cargar ajustes pendientes de ver (async, no bloquea render)
-  const _ajustesPorDia = window._ajustesPorDia || {};
+  const estadoDias = window._estadoDias || {};
+
+  // Progreso de la semana (días distintos realizados / total)
+  const hechosSemana = CD.dias.filter(d => estadoDias[d.nombre] && estadoDias[d.nombre].hecho_esta_semana).length;
+  const totalDias = CD.dias.length;
+  const pct = totalDias ? Math.round(hechosSemana/totalDias*100) : 0;
 
   const cards = CD.dias.map((d,i)=>{
     const exNames = d.ejercicios.slice(0,3).map(e=>e.nombre).join(', ') + (d.ejercicios.length>3?'...':'');
-    const lastSession = (CD.sesiones_resumen||[]).find(s=>s.dia_nombre===d.nombre);
-    const lastStr = lastSession ? `Hace ${diasDesde(lastSession.fecha)}` : t('Sin realizar');
     const totalSeries = d.ejercicios.reduce((a,e)=>a+e.series,0);
-    const estadoHoy = getSesionEstado(d.nombre);
-    const yaHecha = !!estadoHoy;
-    const borderColor = estadoHoy==='completado'?'rgba(34,197,94,.4)':estadoHoy==='incompleto'?'rgba(245,158,11,.3)':'var(--br)';
-    const bgColor = estadoHoy==='completado'?'rgba(34,197,94,.05)':estadoHoy==='incompleto'?'rgba(245,158,11,.04)':'var(--s2)';
 
-    // Badge de ajustes nuevos del coach
-    const ajustesDia = _ajustesPorDia[d.nombre];
-    const tieneAjustesNuevos = ajustesDia && !ajustesDia.visto;
-    const badgeAjuste = tieneAjustesNuevos
-      ? `<div style="position:absolute;top:-6px;right:-6px;background:#7c3aed;color:#fff;border-radius:50%;
-                     width:20px;height:20px;display:flex;align-items:center;justify-content:center;
-                     font-size:11px;font-weight:700;border:2px solid var(--b);z-index:2">
-           ${ajustesDia.count||'!'}
+    const est = estadoDias[d.nombre] || {};
+    const hecho = !!est.hecho_esta_semana;
+    const incompleto = hecho && est.estado_ultima === 'incompleto';
+    const ajustes = est.ajustes_coach || null;
+    const ajusteNuevo = !!(ajustes && ajustes.pendiente_ver);
+    const ajusteRevisado = !!(ajustes && !ajustes.pendiente_ver);
+
+    // Colores por estado
+    let accent = 'var(--br)', glow = '';
+    if(ajusteNuevo){ accent = 'rgba(124,58,237,.55)'; glow = 'box-shadow:0 0 0 1px rgba(124,58,237,.25),0 4px 16px rgba(124,58,237,.12);'; }
+    else if(hecho && !incompleto){ accent = 'rgba(34,197,94,.45)'; }
+    else if(incompleto){ accent = 'rgba(245,158,11,.4)'; }
+
+    const bgColor = (hecho && !incompleto) ? 'rgba(34,197,94,.045)'
+                  : incompleto ? 'rgba(245,158,11,.04)'
+                  : 'var(--s2)';
+
+    // Badge contador de ajustes nuevos (esquina)
+    const badgeAjuste = ajusteNuevo
+      ? `<div style="position:absolute;top:-7px;right:-7px;min-width:22px;height:22px;padding:0 5px;box-sizing:border-box;background:#7c3aed;color:#fff;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:2px solid var(--b);z-index:3">${ajustes.count||'!'}</div>`
+      : '';
+
+    // Cinta superior de estado
+    let cinta = '';
+    if(ajusteNuevo){
+      cinta = `<div style="display:flex;align-items:center;gap:5px;background:rgba(124,58,237,.16);border-radius:7px;padding:4px 8px;margin-bottom:8px">
+        <span style="font-size:12px">🔔</span>
+        <span style="font-size:11px;font-weight:800;color:#a78bfa;letter-spacing:.01em">${t('Tu coach ajustó este día')}</span>
+      </div>`;
+    } else if(hecho && !incompleto){
+      cinta = `<div style="display:flex;align-items:center;gap:5px;background:rgba(34,197,94,.14);border-radius:7px;padding:4px 8px;margin-bottom:8px">
+        <span style="font-size:12px">✓</span>
+        <span style="font-size:11px;font-weight:800;color:var(--gnb)">${t('Hecho esta semana')}${est.veces_esta_semana>1?' ·'+est.veces_esta_semana+'×':''}</span>
+      </div>`;
+    } else if(incompleto){
+      cinta = `<div style="display:flex;align-items:center;gap:5px;background:rgba(245,158,11,.14);border-radius:7px;padding:4px 8px;margin-bottom:8px">
+        <span style="font-size:12px">⚠</span>
+        <span style="font-size:11px;font-weight:800;color:var(--amb)">${t('Incompleto')}</span>
+      </div>`;
+    }
+
+    // Pie: revisado por coach (ya visto) o última vez entrenado
+    let pie = '';
+    if(ajusteRevisado){
+      pie = `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#a78bfa;font-weight:600">🐺 ${t('Revisado por tu coach')}</span>`;
+    } else if(est.ultima_fecha){
+      pie = `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--tx3)">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#52525b" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="#52525b" stroke-width="1.3" stroke-linecap="round"/></svg>
+        ${t('Último')}: ${diasDesde(est.ultima_fecha)}</span>`;
+    } else {
+      pie = `<span style="font-size:11px;color:var(--tx3)">${t('Sin realizar')}</span>`;
+    }
+
+    // Check verde grande si está hecho (refuerzo visual)
+    const checkHecho = (hecho && !incompleto)
+      ? `<div style="position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;background:var(--gn);display:flex;align-items:center;justify-content:center;z-index:2">
+           <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5l3 3 6-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
          </div>` : '';
 
-    return`<div onclick="abrirPreviewDia(${i})" style="position:relative;background:${bgColor};border:0.5px solid ${tieneAjustesNuevos?'rgba(124,58,237,.5)':borderColor};border-radius:16px;padding:14px;cursor:pointer;transition:.15s${tieneAjustesNuevos?';box-shadow:0 0 0 1px rgba(124,58,237,.2)':''}">
-      ${badgeAjuste}
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:16px;font-weight:700;color:var(--sv);margin-bottom:2px">${d.nombre}</div>
-          <div style="font-size:12px;color:${tieneAjustesNuevos?'#a78bfa':'var(--blg)'};font-weight:600">${tieneAjustesNuevos?'🔔 '+t('Ajustes del coach'):tc(d.grupo)||d.grupo}</div>
+    return`<div onclick="abrirPreviewDia(${i})" style="position:relative;background:${bgColor};border:0.5px solid ${accent};border-radius:16px;padding:13px;cursor:pointer;transition:.15s;${glow}">
+      ${badgeAjuste}${checkHecho}
+      ${cinta}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px">
+        <div style="flex:1;min-width:0;padding-right:6px">
+          <div style="font-size:16px;font-weight:800;color:var(--sv);margin-bottom:2px;line-height:1.2">${d.nombre}</div>
+          <div style="font-size:12px;color:var(--blg);font-weight:600">${tc(d.grupo)||d.grupo}</div>
         </div>
-        <div style="background:var(--s3);border-radius:8px;padding:4px 8px;text-align:center;flex-shrink:0;margin-left:8px">
-          <div style="font-size:14px;font-weight:700;color:var(--sv)">${d.ejercicios.length}</div>
-          <div style="font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em">${t('ejerc.')}</div>
+        <div style="background:var(--s3);border-radius:8px;padding:4px 8px;text-align:center;flex-shrink:0">
+          <div style="font-size:14px;font-weight:800;color:var(--sv);line-height:1">${d.ejercicios.length}</div>
+          <div style="font-size:8px;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;margin-top:1px">${t('ejerc.')}</div>
         </div>
       </div>
-      <div style="font-size:12px;color:var(--tx3);margin-bottom:8px;line-height:1.5">${exNames||'Sin ejercicios'}</div>
-      <div style="display:flex;align-items:center;gap:5px">
-        ${estadoHoy
-          ? `<span style="display:inline-flex;align-items:center;gap:4px;background:${estadoHoy==='completado'?'rgba(34,197,94,.12)':'rgba(245,158,11,.12)'};border:0.5px solid ${estadoHoy==='completado'?'rgba(34,197,94,.3)':'rgba(245,158,11,.3)'};border-radius:20px;padding:3px 8px;font-size:11px;font-weight:700;color:${estadoHoy==='completado'?'var(--gnb)':'var(--amb)'}">${estadoHoy==='completado'?t('✓ Hoy'):t('⚠ Incompleto')}</span>`
-          : `<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#52525b" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="#52525b" stroke-width="1.3" stroke-linecap="round"/></svg>
-             <span style="font-size:11px;color:var(--tx3)">${lastStr}</span>`
-        }
-        <span style="margin-left:auto;font-size:11px;color:var(--tx3)">${totalSeries} series</span>
+      <div style="font-size:11.5px;color:var(--tx3);margin-bottom:9px;line-height:1.5;min-height:34px">${exNames||'Sin ejercicios'}</div>
+      <div style="display:flex;align-items:center;gap:6px;padding-top:8px;border-top:0.5px solid var(--br)">
+        ${pie}
+        <span style="margin-left:auto;font-size:11px;color:var(--tx3);font-weight:600">${totalSeries} ${t('series')}</span>
       </div>
     </div>`;
   }).join('');
+
+  // Barra de progreso semanal
+  const barraSemanal = `<div style="background:var(--s2);border:0.5px solid var(--br);border-radius:14px;padding:13px 14px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:700;color:var(--sv2)">${t('Tu progreso esta semana')}</span>
+      <span style="font-size:13px;font-weight:800;color:${pct>=100?'var(--gnb)':'var(--blg)'}">${hechosSemana}/${totalDias}</span>
+    </div>
+    <div style="height:8px;background:var(--s3);border-radius:6px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${pct>=100?'var(--gn)':'var(--bl2)'};border-radius:6px;transition:width .4s"></div>
+    </div>
+    ${pct>=100?`<div style="font-size:11px;color:var(--gnb);font-weight:700;margin-top:7px">🔥 ${t('¡Semana completada!')}</div>`:''}
+  </div>`;
 
   return`<div style="padding:16px 14px 8px">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.08em;color:var(--sv);margin-bottom:2px">${t('Entrenar')}</div>
@@ -227,6 +301,7 @@ function hSeleccionDia(){
     ${hCheckinBanner()}
     ${hNotifBanner()}
     <div id="toast_ajustes_coach"></div>
+    ${barraSemanal}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${cards}</div>
   </div>`;
 }
@@ -240,6 +315,20 @@ function diasDesde(fecha){
 async function abrirPreviewDia(i){
   activeDia = i;
   vistaActual = 'preview';
+  // Marcar los ajustes del coach de este día como vistos (persiste en BD).
+  // El aviso 🔔 desaparece de forma permanente, no depende de localStorage.
+  try {
+    const d = CD.dias[i];
+    const est = (window._estadoDias||{})[d.nombre];
+    if(est && est.ajustes_coach && est.ajustes_coach.pendiente_ver){
+      api('/clientes/'+CD.id+'/dia-visto', {
+        method:'POST', body:JSON.stringify({ dia_nombre: d.nombre })
+      }).then(()=>{
+        if(window._estadoDias && window._estadoDias[d.nombre] && window._estadoDias[d.nombre].ajustes_coach)
+          window._estadoDias[d.nombre].ajustes_coach.pendiente_ver = false;
+      }).catch(()=>{});
+    }
+  } catch(e){}
   try {
     const sesiones = await api('/clientes/'+CD.id+'/sesiones');
     window._sesionesCache = sesiones;
@@ -907,9 +996,8 @@ async function guardarSesion(){
       body:JSON.stringify({dia_nombre:d.nombre,dia_grupo:d.grupo,duracion_min:getWorkoutDuration(),series,estado:'completado'})
     });
     console.log('[WM] Sesión guardada OK:', r);
-    // Actualizar localStorage con estado del servidor
-    const hoy = new Date().toISOString().split('T')[0];
-    localStorage.setItem('wm_sesion_'+CD.id+'_'+d.nombre.replace(/\s/g,'_')+'_'+hoy, 'completado');
+    // Refrescar estado de días desde el servidor (persistente, no localStorage)
+    cargarEstadoDias();
   }catch(e){
     console.error('[WM] Error guardando sesión:',e);
     // Reintentar una vez tras 3 segundos
@@ -925,8 +1013,7 @@ async function guardarSesion(){
         });
         await api('/clientes/'+CD.id+'/sesiones',{method:'POST',body:JSON.stringify({dia_nombre:d.nombre,dia_grupo:d.grupo,duracion_min:getWorkoutDuration(),series,estado:'completado'})});
         console.log('[WM] Sesión guardada OK (reintento)');
-        const hoy = new Date().toISOString().split('T')[0];
-        localStorage.setItem('wm_sesion_'+CD.id+'_'+d.nombre.replace(/\s/g,'_')+'_'+hoy, 'completado');
+        cargarEstadoDias();
       }catch(e2){console.error('[WM] Error en reintento de sesión:',e2);}
     }, 3000);
   }
@@ -1772,7 +1859,7 @@ function iniciarSSE(clienteId){
       var diaNombre = data.dia_nombre || '';
       var ajustes   = data.ajustes   || [];
 
-      // Poblar _ajustesPorDia para que hSeleccionDia pinte el badge 🐺
+      // Poblar _ajustesPorDia (compatibilidad con el toast existente)
       window._ajustesPorDia = window._ajustesPorDia || {};
       window._ajustesPorDia[diaNombre] = {
         visto: false,
@@ -1781,8 +1868,10 @@ function iniciarSSE(clienteId){
         reps: ajustes.map(function(a){ return a.reps_sugeridas; }).filter(Boolean)
       };
 
-      // Re-renderizar las tarjetas de día
-      renderSeleccion();
+      // Recargar estado real desde la BD — pinta el aviso 🔔 en la tarjeta
+      // de forma persistente (sobrevive a recargas y cambios de dispositivo).
+      if(typeof cargarEstadoDias === 'function') cargarEstadoDias();
+      else renderSeleccion();
     } catch(err){
       console.warn('[SSE] rutina_revisada:', err);
     }

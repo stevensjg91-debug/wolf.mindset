@@ -166,6 +166,11 @@ const TRANSLATIONS = {
   // ── hSeleccionDia ──
   'Tu coach está preparando tu plan':'Your coach is preparing your plan',
   'Semana':'Week','Sin realizar':'Not done','ejerc.':'ex.',
+  'Hecho esta semana':'Done this week',
+  'Tu coach ajustó este día':'Your coach adjusted this day',
+  'Revisado por tu coach':'Reviewed by your coach',
+  'Tu progreso esta semana':'Your progress this week',
+  '¡Semana completada!':'Week completed!',
   '${t("✓ Completado hoy")}':'✓ Completed today','⚠ Incompleto hoy':'⚠ Incomplete today',
   'Completado hoy':'Completed today','Incompleto hoy':'Incomplete today',
   'series':'sets',
