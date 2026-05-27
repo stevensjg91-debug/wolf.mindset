@@ -314,8 +314,8 @@
   <div class="app-shell">
     <div class="sidebar">
       <div class="sb-top">
-        <img class="sb-logo" src="/logo.png" alt="W" onerror="this.style.display='none'"/>
-        <div><div class="sb-brand">WOLFMINDSET</div><div class="sb-role">Coach</div></div>
+        <img class="sb-logo" src="/logo.png" alt="W" onerror="this.style.display='none'" onclick="cNav('clientes',document.querySelector('.sni'))" style="cursor:pointer"/>
+        <div onclick="cNav('clientes',document.querySelector('.sni'))" style="cursor:pointer"><div class="sb-brand">WOLFMINDSET</div><div class="sb-role">Coach</div></div>
       </div>
       <div class="snav">
         <button class="sni on" onclick="cNav('clientes',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 13c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="5" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M14 13c0-1.86-.93-3.5-2.34-4.47" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span data-i18n-coach="Clientes">Clientes</span></button>
@@ -341,7 +341,7 @@
     <div class="main-area">
       <div class="topbar">
         <div class="topbar-left">
-          <img class="topbar-logo" src="/logo.png" alt="W" onerror="this.style.display='none'"/>
+          <img class="topbar-logo" src="/logo.png" alt="W" onerror="this.style.display='none'" onclick="cNav('clientes',document.querySelector('.sni'))" style="cursor:pointer"/>
           <div class="topbar-title" id="cTitle" data-i18n-coach="Clientes">Clientes</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
