@@ -3429,9 +3429,13 @@ router.get('/clientes/:id/estado-dias', (req, res) => {
     historicoRows.forEach(r => { histMap[r.dia_nombre] = r.ultima; });
 
     // Por día: el ajuste aprobado más reciente y si está pendiente de ver
+    // Solo es válido si fue aprobado DESPUÉS de la última sesión de ese día
     const ajusteMap = {};
     ajustesRows.forEach(r => {
       if (ajusteMap[r.dia_nombre]) return; // ya tenemos el más reciente
+      // Si hay sesión posterior al ajuste, ese ajuste ya está "consumido"
+      const ultimaSesion = histMap[r.dia_nombre];
+      if (ultimaSesion && ultimaSesion > r.aprobado_at) return;
       let ajustes = [];
       try { ajustes = JSON.parse(r.ajustes_json || '[]'); } catch(e) {}
       ajusteMap[r.dia_nombre] = {
