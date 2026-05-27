@@ -8472,6 +8472,17 @@ async function cargarBannersAnalisisCliente() {
     // Guardar en window para que hSeleccionDia lo use
     window._ajustesPorDia = porDia;
 
+    // Sincronizar en _estadoDias para que las tarjetas muestren el badge morado
+    if (!window._estadoDias) window._estadoDias = {};
+    Object.entries(porDia).forEach(([diaNombre, a]) => {
+      if (!window._estadoDias[diaNombre]) window._estadoDias[diaNombre] = {};
+      window._estadoDias[diaNombre].ajustes_coach = {
+        pendiente_ver: !a.visto,
+        count: a.count || 1,
+        aprobado_at: a.aprobado_at
+      };
+    });
+
     // Contar días con ajustes nuevos no vistos
     const diasNuevos = Object.values(porDia).filter(a => !a.visto);
 
