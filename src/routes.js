@@ -352,6 +352,15 @@ router.post('/clientes/:id/dias', coachOnly, (req, res) => {
   res.json({ id: r.lastInsertRowid });
 });
 
+router.put('/dias/:id', coachOnly, (req, res) => {
+  const { nombre, grupo } = req.body;
+  const dia = dbGet('SELECT id FROM dias_entreno WHERE id=?', [req.params.id]);
+  if (!dia) return res.status(404).json({ error: 'Dia no encontrado' });
+  if (nombre !== undefined) dbRun('UPDATE dias_entreno SET nombre=? WHERE id=?', [nombre, req.params.id]);
+  if (grupo  !== undefined) dbRun('UPDATE dias_entreno SET grupo=?  WHERE id=?', [grupo,  req.params.id]);
+  res.json({ ok: true });
+});
+
 router.delete('/dias/:id', coachOnly, (req, res) => {
   dbRun('DELETE FROM ejercicios_dia WHERE dia_id=?', [req.params.id]);
   dbRun('DELETE FROM dias_entreno WHERE id=?', [req.params.id]);
