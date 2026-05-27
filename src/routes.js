@@ -3368,7 +3368,8 @@ router.post('/ia/descartar-analisis/:analisisId', coachOnly, (req, res) => {
 });
 
 // ── GET /api/clientes/:id/analisis-aprobados ─────────────────────────────────
-// El cliente consulta qué ajustes tiene para sus próximas sesiones
+// El cliente consulta qué ajustes tiene para sus próximas sesiones.
+// Solo devuelve ajustes que NO han sido "consumidos" por una sesión posterior.
 router.get('/clientes/:id/analisis-aprobados', (req, res) => {
   try {
     const rows = dbAll(
@@ -3378,7 +3379,21 @@ router.get('/clientes/:id/analisis-aprobados', (req, res) => {
        ORDER BY aprobado_at DESC LIMIT 10`,
       [req.params.id]
     );
-    res.json(rows.map(r => ({ ...r, ajustes: JSON.parse(r.ajustes_json||'[]') })));
+    // Ultima sesion por dia
+    const ultimasSesiones = dbAll(
+      `SELECT dia_nombre, MAX(fecha) as ultima
+       FROM sesiones_entreno WHERE cliente_id=? GROUP BY dia_nombre`,
+      [req.params.id]
+    );
+    const ultimaMap = {};
+    ultimasSesiones.forEach(r => { ultimaMap[r.dia_nombre] = r.ultima; });
+    // Filtrar: solo ajustes aprobados DESPUES de la ultima sesion de ese dia
+    const validos = rows.filter(r => {
+      const ultima = ultimaMap[r.dia_nombre];
+      if (ultima && ultima > r.aprobado_at) return false;
+      return true;
+    });
+    res.json(validos.map(r => ({ ...r, ajustes: JSON.parse(r.ajustes_json||'[]') })));
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 // ── GET /api/clientes/:id/estado-dias ────────────────────────────────────────
