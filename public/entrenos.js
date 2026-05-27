@@ -218,22 +218,34 @@ function hSeleccionDia(){
                   : incompleto ? 'rgba(245,158,11,.04)'
                   : 'var(--s2)';
 
-    // Badge contador de ajustes nuevos (esquina)
+    // Badge: si hay ajuste nuevo Y está hecho, mostrar badge morado en esquina opuesta al check
+    // Si solo hay ajuste (sin hecho), badge en esquina superior derecha normal
     const badgeAjuste = ajusteNuevo
-      ? `<div style="position:absolute;top:-7px;right:-7px;min-width:22px;height:22px;padding:0 5px;box-sizing:border-box;background:#7c3aed;color:#fff;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:2px solid var(--b);z-index:3">${ajustes.count||'!'}</div>`
+      ? `<div style="position:absolute;top:-7px;${hecho?'left:-7px':'right:-7px'};min-width:22px;height:22px;padding:0 5px;box-sizing:border-box;background:#7c3aed;color:#fff;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:2px solid var(--b);z-index:3">${ajustes.count||'!'}</div>`
       : '';
 
-    // Cinta superior de estado
+    // Cinta superior de estado — si hay ajuste nuevo tiene prioridad, pero si también está hecho se muestra ambos
     let cinta = '';
-    if(ajusteNuevo){
+    if(ajusteNuevo && hecho && !incompleto){
+      cinta = `<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:5px;background:rgba(34,197,94,.14);border-radius:7px;padding:4px 8px">
+          <span style="font-size:12px">✓</span>
+          <span style="font-size:11px;font-weight:800;color:var(--gnb)">${t('Hecho esta semana')}${est.veces_esta_semana>1?' · '+est.veces_esta_semana+'×':''}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;background:rgba(124,58,237,.16);border-radius:7px;padding:4px 8px">
+          <span style="font-size:12px">🔔</span>
+          <span style="font-size:11px;font-weight:800;color:#a78bfa;letter-spacing:.01em">${t('Ajustes del coach')}</span>
+        </div>
+      </div>`;
+    } else if(ajusteNuevo){
       cinta = `<div style="display:flex;align-items:center;gap:5px;background:rgba(124,58,237,.16);border-radius:7px;padding:4px 8px;margin-bottom:8px">
         <span style="font-size:12px">🔔</span>
-        <span style="font-size:11px;font-weight:800;color:#a78bfa;letter-spacing:.01em">${t('Tu coach ajustó este día')}</span>
+        <span style="font-size:11px;font-weight:800;color:#a78bfa;letter-spacing:.01em">${t('Ajustes del coach')}</span>
       </div>`;
     } else if(hecho && !incompleto){
       cinta = `<div style="display:flex;align-items:center;gap:5px;background:rgba(34,197,94,.14);border-radius:7px;padding:4px 8px;margin-bottom:8px">
         <span style="font-size:12px">✓</span>
-        <span style="font-size:11px;font-weight:800;color:var(--gnb)">${t('Hecho esta semana')}${est.veces_esta_semana>1?' ·'+est.veces_esta_semana+'×':''}</span>
+        <span style="font-size:11px;font-weight:800;color:var(--gnb)">${t('Hecho esta semana')}${est.veces_esta_semana>1?' · '+est.veces_esta_semana+'×':''}</span>
       </div>`;
     } else if(incompleto){
       cinta = `<div style="display:flex;align-items:center;gap:5px;background:rgba(245,158,11,.14);border-radius:7px;padding:4px 8px;margin-bottom:8px">
@@ -242,10 +254,14 @@ function hSeleccionDia(){
       </div>`;
     }
 
-    // Pie: revisado por coach (ya visto) o última vez entrenado
+    // Pie: mostrar series totales si está hecho, si no la última fecha
     let pie = '';
     if(ajusteRevisado){
-      pie = `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#a78bfa;font-weight:600">🐺 ${t('Revisado por tu coach')}</span>`;
+      pie = `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#a78bfa;font-weight:600">🐺 ${t('Coach revisó tu rutina')}</span>`;
+    } else if(hecho && !incompleto){
+      pie = `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--gnb);font-weight:600">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5l3 3 6-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        ${t('Completado')} · ${diasDesde(est.ultima_fecha)}</span>`;
     } else if(est.ultima_fecha){
       pie = `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--tx3)">
         <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#52525b" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="#52525b" stroke-width="1.3" stroke-linecap="round"/></svg>
@@ -254,8 +270,8 @@ function hSeleccionDia(){
       pie = `<span style="font-size:11px;color:var(--tx3)">${t('Sin realizar')}</span>`;
     }
 
-    // Check verde grande si está hecho (refuerzo visual)
-    const checkHecho = (hecho && !incompleto)
+    // Check verde — solo si está hecho Y no hay ajuste nuevo (para no solaparse)
+    const checkHecho = (hecho && !incompleto && !ajusteNuevo)
       ? `<div style="position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;background:var(--gn);display:flex;align-items:center;justify-content:center;z-index:2">
            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5l3 3 6-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
          </div>` : '';
