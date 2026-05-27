@@ -8490,9 +8490,13 @@ async function cargarBannersAnalisisCliente() {
 
     // ── Banners dentro del entreno (ya existentes) ──
     if (!analisis.length) return;
+    const estadoDias = window._estadoDias || {};
     CD.dias.forEach((dia, i) => {
       const analisisDia = porDia[dia.nombre];
       if (!analisisDia) return;
+      // No mostrar banner si el día ya fue hecho esta semana
+      const est = estadoDias[dia.nombre] || {};
+      if (est.hecho_esta_semana) return;
 
       const bannerId = `banner_analisis_dia_${i}`;
       if (document.getElementById(bannerId)) return;
